@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+*.spec
+
+# Sanal ortam
+.venv/
+venv/
+env/
+
+# Test / araç çıktıları
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Yerel veriler - ASLA Git'e girmemeli (sohbetler, hata kayıtları, veritabanı)
+data/
+*.db
+*.sqlite3
+
+# API anahtarı içerebilecek her şey
+*.env
+.env
+secrets*
+!docs/SECURITY.md
+
+# Loglar
+logs/*.log
+logs/*.jsonl
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
