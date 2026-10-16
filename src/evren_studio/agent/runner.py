@@ -23,7 +23,14 @@ from typing import Any, Protocol
 
 from ..api.errors import ApiError, ErrorKind
 from . import textproto
-from .permissions import Decision, SessionPermissions, command_prefix, decide
+from .permissions import (
+    Decision,
+    SessionPermissions,
+    command_prefix,
+    decide,
+    is_sensitive_read,
+    normalize_mode,
+)
 from .prompts import build_agent_system, build_chat_system
 from .tools import (
     EXEC,
@@ -93,7 +100,9 @@ class ApprovalRequest:
     DENY = "deny"
 
     def __init__(self, call: ToolCall, kind: str, title: str, detail: str,
-                 change: FileChange | None = None, prefix: str | None = None):
+                 change: FileChange | None = None, prefix: str | None = None,
+                 reason: str = ""):
+        self.reason = reason       # neden soruldu (ör. "Otomatik mod sordu: paket kurma")
         self.call = call
         self.kind = kind
         self.title = title
@@ -255,7 +264,7 @@ def trim_for_context(history: list[dict], context_tokens: int | None,
 class AgentRunner:
     def __init__(self, client: Any, model: str, *, session_id: int,
                  store: SessionStore, events: AgentEvents | None = None,
-                 workspace: Workspace | None = None, mode: str = "onayli",
+                 workspace: Workspace | None = None, mode: str = "manuel",
                  protocol: str = "native", allow_protocol_fallback: bool = True,
                  permissions: SessionPermissions | None = None,
                  cancel: Any = None, stream: bool = True,
@@ -268,7 +277,7 @@ class AgentRunner:
         self.store = store
         self.events = events or AgentEvents()
         self.workspace = workspace
-        self.mode = mode
+        self.mode = normalize_mode(mode)
         self.protocol = protocol
         self.allow_fallback = allow_protocol_fallback
         self.perms = permissions or SessionPermissions()
@@ -279,7 +288,8 @@ class AgentRunner:
         self.context_tokens = context_tokens
         self.turn_id = turn_id
         self.toolbox = (
-            ToolBox(workspace, command_timeout=command_timeout, output_limit=output_limit)
+            ToolBox(workspace, command_timeout=command_timeout, output_limit=output_limit,
+                    skip_file=is_sensitive_read)
             if workspace else None
         )
 
@@ -292,12 +302,12 @@ class AgentRunner:
     def _specs(self):
         if not self.agentic:
             return []
-        return READ_ONLY_SPECS if self.mode == "plan" else TOOL_SPECS
+        return READ_ONLY_SPECS if normalize_mode(self.mode) == "plan" else TOOL_SPECS
 
     def _system(self) -> str:
         if not self.agentic:
             return build_chat_system()
-        return build_agent_system(self.workspace, self.mode, self._specs(),
+        return build_agent_system(self.workspace, normalize_mode(self.mode), self._specs(),
                                   text_protocol=(self.protocol == "text"))
 
     def _cancelled(self) -> bool:
@@ -423,7 +433,7 @@ class AgentRunner:
             return ToolResult(False, call.parse_error, "Parametreler okunamadı")
         if self.toolbox is None:
             return ToolResult(False, "Bu oturumda proje klasörü yok; araç kullanılamaz.", "Proje yok")
-        if self.mode == "plan" and spec.kind in (WRITE, EXEC):
+        if normalize_mode(self.mode) == "plan" and spec.kind in (WRITE, EXEC):
             _d, reason = decide(self.mode, spec.kind, self.perms)
             return ToolResult(False, reason, "Plan modunda engellendi")
         self.events.tool_started(call, describe_call(call))
@@ -452,6 +462,16 @@ class AgentRunner:
             out = tb.list_files(a.get("path") or ".", a.get("depth") or 2)
             summary = f"Listelendi: {a.get('path') or '.'}"
         elif call.name == "read_file":
+            rel = self.workspace.rel(self.workspace.resolve(_req(a, "path")))
+            decision, reason = decide(self.mode, READ, self.perms, path=rel)
+            if decision == Decision.ASK:
+                ok, feedback = self._approve(call, READ, f"Gizli olabilecek dosya okunsun mu? {rel}",
+                                             rel, reason=reason)
+                if not ok:
+                    msg = "Kullanıcı bu dosyanın okunmasına izin vermedi."
+                    if feedback:
+                        msg += f" Kullanıcının notu: {feedback}"
+                    return ToolResult(False, msg, f"Reddedildi: {rel}", {"denied": True})
             out = tb.read_file(_req(a, "path"), a.get("start_line"), a.get("end_line"))
             rng = ""
             if a.get("start_line") or a.get("end_line"):
@@ -478,13 +498,16 @@ class AgentRunner:
                           f"Görevler güncellendi ({done}/{len(todos)})", {"todos": todos})
 
     def _approve(self, call: ToolCall, kind: str, title: str, detail: str,
-                 change: FileChange | None = None, prefix: str | None = None) -> tuple[bool, str]:
-        req = ApprovalRequest(call, kind, title, detail, change, prefix)
+                 change: FileChange | None = None, prefix: str | None = None,
+                 reason: str = "") -> tuple[bool, str]:
+        req = ApprovalRequest(call, kind, title, detail, change, prefix, reason)
         self.events.approval_needed(req)
         decision = req.wait(self.cancel)
         if decision == ApprovalRequest.ALLOW_SESSION:
             if kind == WRITE:
                 self.perms.allow_all_writes = True
+            elif kind == READ:
+                self.perms.allow_sensitive_reads = True
             elif prefix:
                 self.perms.command_prefixes.add(prefix)
         return decision in (ApprovalRequest.ALLOW, ApprovalRequest.ALLOW_SESSION), req.feedback
@@ -496,11 +519,12 @@ class AgentRunner:
         else:
             change = self.toolbox.prepare_edit(_req(a, "path"), a.get("old_string"),
                                                a.get("new_string", ""), bool(a.get("replace_all")))
-        decision, reason = decide(self.mode, WRITE, self.perms)
+        decision, reason = decide(self.mode, WRITE, self.perms, path=change.rel_path)
         if decision == Decision.DENY:
             return ToolResult(False, reason, "Engellendi")
         if decision == Decision.ASK:
-            ok, feedback = self._approve(call, WRITE, change.summary(), change.diff, change=change)
+            ok, feedback = self._approve(call, WRITE, change.summary(), change.diff, change=change,
+                                         reason=reason)
             if not ok:
                 msg = "Kullanıcı bu dosya değişikliğini reddetti."
                 if feedback:
@@ -513,18 +537,22 @@ class AgentRunner:
         self.events.file_changed(change_id, change)
         added, removed = change.stats
         verb = "Oluşturuldu" if change.is_new else "Düzenlendi"
+        extra = {"diff": change.diff, "path": change.rel_path, "change_id": change_id}
+        if decision == Decision.ALLOW and normalize_mode(self.mode) in ("kabul", "auto"):
+            extra["auto_approved"] = True
         return ToolResult(True, f"{verb}: {change.rel_path} (+{added} −{removed} satır).",
-                          f"{verb}: {change.rel_path}  +{added} −{removed}",
-                          {"diff": change.diff, "path": change.rel_path, "change_id": change_id})
+                          f"{verb}: {change.rel_path}  +{added} −{removed}", extra)
 
     def _run_exec(self, call: ToolCall) -> ToolResult:
         command = _req(call.arguments, "command").strip()
-        decision, reason = decide(self.mode, EXEC, self.perms, command)
+        decision, reason = decide(self.mode, EXEC, self.perms, command,
+                                  root=self.workspace.root if self.workspace else None)
         if decision == Decision.DENY:
             return ToolResult(False, reason, "Engellendi")
         prefix = command_prefix(command)
         if decision == Decision.ASK:
-            ok, feedback = self._approve(call, EXEC, "Komut çalıştırılsın mı?", command, prefix=prefix)
+            ok, feedback = self._approve(call, EXEC, "Komut çalıştırılsın mı?", command, prefix=prefix,
+                                         reason=reason)
             if not ok:
                 msg = "Kullanıcı bu komutun çalıştırılmasını reddetti."
                 if feedback:
@@ -541,7 +569,9 @@ class AgentRunner:
         return ToolResult(ok, result.to_text(self.output_limit), f"Çalıştırıldı: {command[:80]} ({state})",
                           {"command": command, "exit_code": result.exit_code,
                            "output": truncate_middle(result.output, 8000),
-                           "duration": round(result.duration, 1)})
+                           "duration": round(result.duration, 1),
+                           "auto_approved": decision == Decision.ALLOW,
+                           "auto_reason": reason if decision == Decision.ALLOW else ""})
 
 
 def _req(args: dict, key: str) -> Any:

@@ -36,7 +36,24 @@
 - **Model çıktısı komut değildir**: yerel `tool_calls` veya metin
   protokolündeki bloklar ayrıştırılır, araç adı ve parametreleri
   doğrulanır, izin politikasından geçer. Bilinmeyen araçlar reddedilir.
-- **Komutlar hiçbir modda onaysız çalışmaz.** Kullanıcı tek tek onaylar ya da
+- **Modlar (Claude Code'a denk):** Manuel (her düzenleme ve komut sorulur) ·
+  Düzenlemeleri kabul et (proje içi düzenlemeler onaysız, komutlar sorulur) ·
+  Plan (yalnız okuma) · Otomatik (düzenlemeler ve GÜVENLİ LİSTEDEKİ komutlar
+  onaysız; riskli ve tanınmayan komutlar sorulur). Eski anahtarlar güvenli
+  eşdeğerine çevrilir: `onayli`→Manuel, `otomatik`→Düzenlemeleri kabul et
+  (asla Otomatik'e değil).
+- **Otomatik modun komut kararı yalnızca kurallarla** verilir
+  (`agent/commands.py`): salt okuma git komutları, test/derleme/lint,
+  dosya görüntüleme güvenlidir; silme, git push/reset/clean, paket kurma,
+  ağdan indirme, `iex`, süreç başlatma/sonlandırma, sistem ayarı, dosyaya
+  yönlendirme, satır içi kod (`python -c`) ve proje dışı yollar sorulur.
+  **Uyarı:** testler ve derleme projenin kendi kodunu çalıştırır; ajanın
+  yazdığı kod Otomatik modda `pytest` ile onaysız çalışabilir.
+- **Korumalı dosyalar (her modda sorulur):** `.env*`, `*.pem`, `*.key`, `id_rsa*`,
+  `.npmrc`, `.pypirc`, `.vscode/`, `.idea/`, `.github/workflows/`, `.claude/`,
+  `.cursor/`, `.kilocode/` yazmaları; `.env*`, anahtar ve kimlik dosyalarını
+  OKUMAK da sorulur (içerik EVREN'e gider) ve bu dosyalar aramaya dahil edilmez.
+- **Komutlar Manuel, Düzenlemeleri kabul et ve Plan modlarında onaysız çalışmaz.** Kullanıcı tek tek onaylar ya da
   "bu oturumda hep izin ver" ile belirli bir komut önekine (örn.
   `python -m pytest`) izin verir. `; && || | > < ` $(` içeren zincirli
   komutlar önek iznine rağmen HER ZAMAN sorulur. Oturum izinleri yalnızca

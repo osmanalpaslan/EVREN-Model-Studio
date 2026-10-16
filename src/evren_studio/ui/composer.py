@@ -18,14 +18,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..agent.permissions import MODE_HINTS, MODES
+from ..agent.permissions import MODE_HINTS, MODES, normalize_mode
 from . import icons, theme
 
 SLASH_COMMANDS = {
     "/model": "Modeli değiştir — listeden seçin",
-    "/plan": "Plan moduna geç (salt okunur)",
-    "/onayli": "Onaylı moda geç (her değişiklik için onay)",
-    "/otomatik": "Otomatik düzenleme moduna geç",
+    "/manuel": "Manuel mod: her değişiklik ve komut için onay",
+    "/kabul": "Düzenlemeleri kabul et: dosyalar onaysız, komutlar onaylı",
+    "/plan": "Plan modu: salt okunur, plan çıkarır",
+    "/otomatik": "Otomatik mod: düzenlemeler ve güvenli komutlar onaysız",
     "/init": "Projeyi inceleyip EVREN.md proje hafızası oluştur",
     "/ozet": "Uzun konuşmayı özetleyip bağlamı küçült",
     "/yeni": "Yeni oturum başlat",
@@ -33,11 +34,14 @@ SLASH_COMMANDS = {
     "/yardim": "Komutları ve kısayolları göster",
 }
 COMMAND_ICONS = {
-    "/model": "cpu", "/plan": "map", "/onayli": "shield", "/otomatik": "pencil",
+    "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
     "/init": "spark", "/ozet": "refresh", "/yeni": "plus", "/disa-aktar": "download",
     "/yardim": "help",
 }
-MODE_ICONS = {"plan": "map", "onayli": "shield", "otomatik": "pencil"}
+MODE_ICONS = {"manuel": "shield", "kabul": "pencil", "plan": "map", "auto": "spark"}
+# Eğik çizgi komutu → mod anahtarı (/onayli eski ad, gizli takma ad)
+MODE_COMMANDS = {"/manuel": "manuel", "/onayli": "manuel", "/kabul": "kabul",
+                 "/plan": "plan", "/otomatik": "auto"}
 ROLE_VALUE = Qt.UserRole + 1
 ROLE_KIND = Qt.UserRole + 2     # "command" | "model"
 
@@ -99,7 +103,7 @@ class Composer(QWidget):
         super().__init__(parent)
         self._running = False
         self._model = ""
-        self._mode = "onayli"
+        self._mode = "manuel"
         self._agentic = True
         self._models: list[tuple[str, str, bool]] = []
         outer = QVBoxLayout(self)
@@ -158,7 +162,7 @@ class Composer(QWidget):
         self.attach_btn.clicked.connect(self.attach_requested.emit)
         row.addWidget(self.attach_btn)
 
-        self.mode_btn = self._chip("shield", MODES["onayli"])
+        self.mode_btn = self._chip("shield", MODES["manuel"])
         self.mode_btn.setPopupMode(QToolButton.InstantPopup)
         self.mode_menu = QMenu(self)
         group = QActionGroup(self)
@@ -199,7 +203,7 @@ class Composer(QWidget):
         self.footer.setProperty("role", "faint")
         self.footer.setAlignment(Qt.AlignCenter)
         outer.addWidget(self.footer)
-        self.set_mode("onayli")
+        self.set_mode("manuel")
         self._update_send()
 
     def _chip(self, icon_name: str, text: str) -> QToolButton:
@@ -230,8 +234,7 @@ class Composer(QWidget):
             else "Mesajınızı yazın…  (/ komutlar)")
 
     def set_mode(self, mode: str, emit: bool = False) -> None:
-        if mode not in MODES:
-            return
+        mode = normalize_mode(mode)
         self._mode = mode
         self.mode_btn.setText(MODES[mode])
         self.mode_btn.setIcon(icons.icon(MODE_ICONS[mode], size=15))

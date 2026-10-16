@@ -449,7 +449,7 @@ class Database:
     # ---- Oturumlar (sohbet + kod ajanı) -------------------------------------
 
     def create_session(self, model: str, workspace: str | None = None,
-                       mode: str = "onayli", title: str = "Yeni oturum") -> int:
+                       mode: str = "manuel", title: str = "Yeni oturum") -> int:
         now = utcnow_iso()
         cur = self._exec(
             "INSERT INTO sessions(title, workspace, model, mode, created_at, updated_at)"

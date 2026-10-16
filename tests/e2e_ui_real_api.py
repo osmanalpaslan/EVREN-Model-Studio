@@ -138,6 +138,30 @@ def main() -> int:
         check("geri alma özgün dosyayı döndürdü",
               (proj / "hesap.py").read_text(encoding="utf-8") == original)
 
+    # 2b) Otomatik mod: güvenli komut onaysız çalışmalı
+    from evren_studio.ui.transcript import ToolCallWidget
+
+    w.session.set_mode("auto")
+    w.session.composer.set_mode("auto")
+    before = len(w.session.findChildren(ApprovalWidget))
+    w.session.send("Proje klasöründeki dosyaları run_command aracıyla `Get-ChildItem` komutunu "
+                   "çalıştırarak listele ve kaç dosya olduğunu söyle.")
+    auto_asked = 0
+    end = time.monotonic() + 180
+    while time.monotonic() < end and w.session.running:
+        app.processEvents()
+        for b in [b for b in w.session.findChildren(ApprovalWidget) if b.isVisible() and not b.request.resolved]:
+            auto_asked += 1
+            b._decide("deny")
+        time.sleep(0.05)
+    cards = [c for c in w.session.findChildren(ToolCallWidget) if c.name == "run_command"]
+    auto_cards = [c for c in cards if c.state.text().startswith("otomatik")]
+    check("Otomatik mod: güvenli komut onaysız çalıştı", bool(auto_cards) and auto_asked == 0,
+          f"{len(cards)} komut kartı, {len(auto_cards)} otomatik, {auto_asked} onay istendi; "
+          + "; ".join(c.title.text()[:50] for c in cards))
+    shot("otomatik_mod")
+    _ = before
+
     # 3) /model listesi ve ayarlar
     comp = w.session.composer
     comp.set_text("/model ")

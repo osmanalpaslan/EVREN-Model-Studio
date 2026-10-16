@@ -77,3 +77,14 @@
 - **Kural:** api/ veya agent/ ya da oturum arayüzüne dokunduysan ve API anahtarı varsa tests/e2e_real_api.py, tests/e2e_agent_real_api.py ve tests/e2e_ui_real_api.py çalıştır; sonucu oturum günlüğüne yaz.
 - **Neden:** Sahte istemcili testler gerçek sağlayıcı davranışını kanıtlamaz; araç çağrısı ancak gerçek testle doğrulandı.
 - **Kaynak:** 2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi
+
+### R-14 · Eski izin anahtarını asla daha yetkili moda çevirme
+- **Kural:** Mod/izin adlarını değiştirirken yeni anahtar kullan; eski değerleri normalize_mode ile eşdeğer veya daha kısıtlı moda eşle ve bunu test et.
+- **Neden:** 0.2.0'daki "otomatik" (=düzenlemeleri kabul et) yeni Otomatik moda eşlenseydi eski oturumlar onaysız komut çalıştırırdı.
+- **Kaynak:** 2026-10-16-duzenleme-modu-gizli-ve-yapilandirma-dosyalarini-korumuyordu
+
+### R-15 · Özelliğin hangi dalda olduğunu kullanıcıya söyle
+- **Kural:** Kullanıcıya bir özelliği "hazır" diye anlatırken birleştirilmemiş bir dalda/PR'da olup olmadığını ve diğer bilgisayarlarda nasıl güncelleneceğini belirt.
+- **Neden:** Kullanıcı diğer bilgisayarda master'daki eski sürümü çalıştırıp kod ajanı yok sandı.
+- **Kaynak:** 2026-10-16-kullanici-dosya-erisimi-yok-yaniti-aldi
+

@@ -40,6 +40,10 @@ class AppContext:
         # kullanıcı veri klasörünü değiştirse bile ayarlar bulunabilir.
         self.store = ConfigStore(default_data_dir())
         self.settings = settings or self.store.load()
+        # Eski mod anahtarları (onayli/otomatik) güvenli eşdeğerine çevrilir
+        from ..agent.permissions import normalize_mode
+
+        self.settings.agent_mode = normalize_mode(self.settings.agent_mode)
         self.db = Database(self.settings.resolved_data_dir() / "evren.db")
         self.recovery = RecoveryEngine(self.db, __version__)
         self._cached_key: str | None = None

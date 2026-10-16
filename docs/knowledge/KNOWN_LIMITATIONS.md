@@ -22,6 +22,10 @@
   araçları 8 modelde, onaylı dosya düzenleme + geri alma deepseek-v4-flash
   ile gerçek arayüzde. Komut çalıştırma ve uzun görevler gerçek modelle
   denenmedi.
+- **Otomatik mod yalnız kurallarla karar verir**: Claude Code'daki gibi bir
+  yapay zekâ denetçisi yoktur; "kullanıcının isteğini aşan" eylemi ayırt
+  edemez. Güvenli listedeki test/derleme komutları projenin kodunu çalıştırır.
+  Tanınmayan her komut sorulur (Otomatik mod bu yüzden Claude Code'dan sık sorar).
 - **Süre göstergesi**: her model çağrısının süresi kaydedilir; "tur toplamı"
   yalnızca kayıtlı adım sürelerinin toplamıdır (araç ve onay bekleme süresi
   canlı sayaçta görünür, kalıcı toplamda yoktur).

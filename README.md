@@ -34,9 +34,11 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
 - **Kod ajanı**: dosya listeleme, okuma, regex arama, glob, dosya yazma,
   birebir metin değiştirerek düzenleme, PowerShell komutu çalıştırma ve
   görev listesi araçları. Her şey seçili proje klasörüyle sınırlıdır.
-- **Çalışma modları**: *Plan* (salt okunur, plan çıkarır), *Onaylı* (her
-  değişiklik ve komut için onay), *Otomatik düzenleme* (dosyalar onaysız,
-  komutlar onaylı). Komutlar hiçbir modda kendiliğinden çalışmaz.
+- **Çalışma modları (Claude Code gibi)**: *Manuel* (her değişiklik ve komut
+  için onay), *Düzenlemeleri kabul et* (dosyalar onaysız, komutlar onaylı),
+  *Plan* (salt okunur), *Otomatik* (düzenlemeler ve güvenli listedeki
+  komutlar onaysız; riskli/tanınmayan komutlar ve korumalı dosyalar sorulur).
+- **Proje klasörü bağla**: klasörsüz başlatılan sohbete sonradan klasör bağlanabilir.
 - **Onay kutuları**: değişiklik uygulanmadan önce renkli diff; komutlar
   çalışmadan önce gösterilir. "Bu oturumda hep izin ver" ve reddetme notu.
 - **Geri alma**: ajanın her dosya değişikliği kaydedilir; sağ paneldeki

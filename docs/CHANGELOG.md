@@ -1,5 +1,25 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Otomatik mod
+
+### Eklendi
+
+- **Otomatik mod** (Claude Code'daki Auto'ya denk, kural tabanlı): düzenlemeler ve
+  güvenli listedeki komutlar onaysız; riskli/tanınmayan komutlar gerekçesiyle sorulur.
+  Onaysız çalışan araç kartlarında "otomatik" etiketi.
+- Modlar Claude Code adlarıyla: Manuel · Düzenlemeleri kabul et · Plan · Otomatik;
+  `/manuel`, `/kabul`, `/plan`, `/otomatik` komutları (`/onayli` takma ad).
+- Korumalı dosyalar (her modda sorulur) ve gizli dosya okuma onayı; gizli dosyalar
+  aramaya dahil edilmez.
+- Klasörsüz oturuma "Proje klasörü bağla"; klasörsüz sohbette model bu düğmeyi önerir.
+- 49 yeni test (`tests/test_auto_mode.py`); gerçek arayüz e2e'ye Otomatik mod adımı (15/15).
+
+### Değişti
+
+- `/otomatik` artık tam Otomatik modu açar (0.2.0'da "Otomatik düzenleme" idi;
+  o mod şimdi "Düzenlemeleri kabul et" / `/kabul`). Kayıtlı eski oturumlar
+  güvenli eşdeğerine çevrilir.
+
 ## 0.2.0 — 2026-10-16 (Aşama 2: Kod ajanı çalışma alanı)
 
 ### Eklendi

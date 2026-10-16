@@ -24,11 +24,14 @@
 | 20 | Ajan çekirdeği Qt'den bağımsız paket (`agent/`) | Arayüzsüz test edilebilir; döngü, araçlar, izinler ayrı modüller | 2026-10-16 |
 | 21 | Yerel function calling + metin protokolü geri dönüşü | EVREN şemasında `tools` var ama gerçek tur doğrulanmadı; reddedilirse (400/422) `<arac_cagrisi>` bloklarıyla devam | 2026-10-16 |
 | 22 | Yazma araçları "hazırla → onay → uygula" | Diff onaydan önce gösterilir; onay beklerken değişen dosyanın üzerine yazılmaz | 2026-10-16 |
-| 23 | Komutlar hiçbir modda onaysız çalışmaz | Güvenlik; yalnızca kullanıcının izin verdiği öneklere ve zincirsiz komutlara oturum izni | 2026-10-16 |
+| 23 | Komutlar hiçbir modda onaysız çalışmaz — **#28 ile değişti: Otomatik modda yalnız güvenli listedekiler onaysız** | Güvenlik; yalnızca kullanıcının izin verdiği öneklere ve zincirsiz komutlara oturum izni | 2026-10-16 |
 | 24 | Dosya değişiklikleri DB'de önce/sonra içerikle saklanır | Git'ten bağımsız geri alma; git deposu olmayan projelerde de çalışır | 2026-10-16 |
 | 25 | Markdown (python-markdown) + Pygments, QTextBrowser | Saf Python, küçük, BSD lisanslı; Qt zengin metniyle uyumlu satır içi stiller | 2026-10-16 |
 | 26 | Şema v2: eski `chats/messages` silinmez, oturumlara kopyalanır | Geri dönüşü olmayan veri kaybını önler | 2026-10-16 |
 | 27 | run.bat `pythonw` + crash.log | Konsol penceresi açılmaz; hatalar kaybolmaz | 2026-10-16 |
+| 28 | Otomatik mod yalnız kural tabanlı | Kullanıcı kararı: hızlı, ücretsiz, deterministik; yapay zekâ denetçisi yok; tanınmayan komut sorulur | 2026-10-16 |
+| 29 | Yeni mod anahtarları (manuel/kabul/plan/auto), eskiler güvenli eşdeğere | Eski `otomatik` = düzenlemeleri kabul et; yeni Otomatik'e çevrilseydi oturumlar sessizce yetki kazanırdı | 2026-10-16 |
+| 30 | Korumalı dosyalar her modda sorulur; gizli dosya okuma da sorulur | Claude Code'daki korumalı yollar; .env içeriği EVREN'e gitmesin | 2026-10-16 |
 
 ## Değerlendirilip reddedilenler
 
