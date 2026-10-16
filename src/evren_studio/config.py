@@ -59,7 +59,7 @@ class Settings:
     data_dir: str = ""
     code_workdir: str = ""
     # ---- kod ajanı / çalışma alanı ----
-    agent_mode: str = "onayli"              # plan | onayli | otomatik
+    agent_mode: str = "manuel"              # manuel | kabul | plan | auto (eski: onayli/otomatik)
     tool_protocol: str = "otomatik"         # otomatik | yerel | metin
     agent_max_steps: int = 40
     command_timeout_seconds: int = 120

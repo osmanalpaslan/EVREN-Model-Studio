@@ -431,10 +431,13 @@ class ToolBox:
     """Araç uygulamaları. İzin kararı çağırana (AgentRunner) aittir."""
 
     def __init__(self, workspace: Workspace, command_timeout: int = 120,
-                 output_limit: int = DEFAULT_OUTPUT_LIMIT):
+                 output_limit: int = DEFAULT_OUTPUT_LIMIT,
+                 skip_file: Callable[[str], bool] | None = None):
         self.ws = workspace
         self.command_timeout = command_timeout
         self.output_limit = output_limit
+        # Aramada içeriği okunmayacak dosyalar (ör. .env): göreli yol → True
+        self.skip_file = skip_file
 
     # -- okuma ----------------------------------------------------------------
 
@@ -522,8 +525,12 @@ class ToolBox:
         base = self.ws.resolve(path or ".")
         files = [base] if base.is_file() else _walk(self.ws.root, base)
         results: list[str] = []
+        skipped = 0
         for f in files:
             if glob and not fnmatch.fnmatch(f.name, glob):
+                continue
+            if self.skip_file is not None and self.skip_file(self.ws.rel(f)):
+                skipped += 1
                 continue
             try:
                 if f.stat().st_size > MAX_SEARCH_FILE_BYTES:
@@ -540,7 +547,8 @@ class ToolBox:
                     if len(results) >= MAX_SEARCH_RESULTS:
                         results.append(f"… (ilk {MAX_SEARCH_RESULTS} eşleşme)")
                         return "\n".join(results)
-        return "\n".join(results) if results else "Eşleşme bulunamadı."
+        note = f"\n({skipped} gizli bilgi dosyası aramaya dahil edilmedi)" if skipped else ""
+        return ("\n".join(results) if results else "Eşleşme bulunamadı.") + note
 
     def find_files(self, pattern: str) -> str:
         if not pattern:

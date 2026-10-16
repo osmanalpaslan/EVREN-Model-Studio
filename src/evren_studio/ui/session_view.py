@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..agent import prompts
-from ..agent.permissions import MODES, SessionPermissions
+from ..agent.permissions import MODES, SessionPermissions, normalize_mode
 from ..agent.runner import (
     AgentEvents,
     AgentRunner,
@@ -48,7 +48,7 @@ from ..agent.tools import FileChange, ToolBox, ToolError, Workspace
 from ..api.client import CancelToken
 from ..api.errors import ApiError, ErrorKind
 from . import icons, theme
-from .composer import SLASH_COMMANDS, Composer
+from .composer import MODE_COMMANDS, SLASH_COMMANDS, Composer
 from .transcript import (
     COLUMN_WIDTH,
     AssistantMessageWidget,
@@ -296,7 +296,7 @@ class SessionView(QWidget):
         self.panel = panel
         self.session_id: int | None = None
         self.workspace: str | None = None
-        self.mode = ctx.settings.agent_mode if ctx.settings.agent_mode in MODES else "onayli"
+        self.mode = normalize_mode(ctx.settings.agent_mode)
         self.model = ctx.settings.default_model
         self.running = False
         self.cancel_token: CancelToken | None = None
@@ -415,17 +415,57 @@ class SessionView(QWidget):
             self.branch_chip.setText(branch or "")
             self.branch_chip.setVisible(bool(branch))
         else:
-            self.ws_chip.setIcon(icons.icon("message", size=15))
-            self.ws_chip.setText("Sohbet")
-            self.ws_chip.setToolTip("Klasörsüz sohbet — dosya erişimi yok")
+            self.ws_chip.setIcon(icons.icon("folder", theme.current().accent, 15))
+            if self.session_id:
+                self.ws_chip.setText("Proje klasörü bağla")
+                self.ws_chip.setToolTip("Bu sohbete bir proje klasörü bağlayın: ajan dosyaları "
+                                        "okuyup düzenleyebilir ve komut çalıştırabilir.")
+            else:
+                self.ws_chip.setText("Sohbet")
+                self.ws_chip.setToolTip("Klasörsüz sohbet — dosya erişimi yok. Klasör seçmek için "
+                                        "karşılama ekranındaki düğmeyi kullanın.")
             self.ws_chip.setVisible(True)
             self.branch_chip.setVisible(False)
         self.more_btn.setEnabled(self.session_id is not None)
 
     def _open_ws(self) -> None:
         ws = self.workspace if self.session_id else self.welcome.workspace
+        if self.session_id and not self.workspace:
+            self.attach_workspace()
+            return
         if ws and os.name == "nt":
             subprocess.Popen(["explorer", ws])
+
+    def attach_workspace(self, folder: str | None = None) -> bool:
+        """Klasörsüz bir oturuma sonradan proje klasörü bağlar."""
+        if self.running:
+            QMessageBox.information(self, "Ajan çalışıyor", "Önce çalışan işlemi durdurun (Esc).")
+            return False
+        if not self.session_id or self.workspace:
+            return False
+        if folder is None:
+            folder = QFileDialog.getExistingDirectory(self, "Bu oturuma proje klasörü bağla",
+                                                      self.ctx.settings.code_workdir or str(Path.home()))
+            if not folder:
+                return False
+        try:
+            Workspace(folder)
+        except ToolError as exc:
+            QMessageBox.warning(self, "Klasör kullanılamıyor", str(exc))
+            return False
+        folder = str(Path(folder))
+        self.ctx.db.update_session(self.session_id, workspace=folder)
+        self.ctx.settings.remember_workspace(folder)
+        self.ctx.save_settings()
+        self.workspace = folder
+        self.composer.set_agentic(True)
+        self.composer.set_mode(self.mode)
+        self.panel.set_session(self.session_id, folder, self.ctx.db.get_session_todos(self.session_id))
+        self._update_header()
+        self.sessions_changed.emit()
+        self._note(f"Bu oturum artık “{Path(folder).name}” klasörüne bağlı. Ajan dosyaları "
+                   f"okuyabilir; düzenleme ve komutlar {MODES[self.mode]} moduna göre sorulur.", "folder")
+        return True
 
     def set_sidebar_hidden(self, hidden: bool) -> None:
         self.sidebar_btn.setVisible(hidden)
@@ -462,7 +502,7 @@ class SessionView(QWidget):
         self.session_id = None
         self.workspace = None
         self.edit_from = None
-        self.mode = self.ctx.settings.agent_mode if self.ctx.settings.agent_mode in MODES else "onayli"
+        self.mode = normalize_mode(self.ctx.settings.agent_mode)
         self.model = self.ctx.settings.default_model
         self.refresh_models()
         self.composer.set_mode(self.mode)
@@ -488,7 +528,7 @@ class SessionView(QWidget):
             return
         self.session_id = session_id
         self.workspace = row["workspace"]
-        self.mode = row["mode"] if row["mode"] in MODES else "onayli"
+        self.mode = normalize_mode(row["mode"])
         self.model = row["model"]
         self.edit_from = None
         self.refresh_models()
@@ -635,9 +675,13 @@ class SessionView(QWidget):
     # ---- mod / model ----
 
     def set_mode(self, mode: str) -> None:
-        if mode not in MODES:
-            return
+        mode = normalize_mode(mode)
+        changed = mode != self.mode
         self.mode = mode
+        if changed and mode == "auto" and self.session_id:
+            self._note("Otomatik mod: dosya düzenlemeleri ve güvenli komutlar (git status/diff/log, "
+                       "testler, derleme, lint, görüntüleme) onaysız çalışır. Riskli veya tanınmayan "
+                       "komutlar ve korumalı dosyalar yine size sorulur.", "spark")
         if self.runner is not None:
             self.runner.mode = mode       # sonraki araç kararından itibaren geçerli
         if self.session_id:
@@ -751,12 +795,12 @@ class SessionView(QWidget):
     def _command(self, text: str) -> bool:
         cmd, _, arg = text.partition(" ")
         cmd = cmd.lower()
-        if cmd not in SLASH_COMMANDS:
+        if cmd not in SLASH_COMMANDS and cmd not in MODE_COMMANDS:
             return False
         if cmd == "/yeni":
             self.new_session()
-        elif cmd in ("/plan", "/onayli", "/otomatik"):
-            mode = cmd[1:]
+        elif cmd in MODE_COMMANDS:
+            mode = MODE_COMMANDS[cmd]
             self.set_mode(mode)
             self.composer.set_mode(mode)
             self._note(f"Mod: {MODES[mode]}")

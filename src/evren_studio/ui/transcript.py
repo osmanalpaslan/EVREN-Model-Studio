@@ -483,9 +483,18 @@ class ApprovalWidget(QFrame):
         lay.setSpacing(8)
         title = QLabel(request.title)
         title.setStyleSheet("font-weight: 600;")
+        title.setWordWrap(True)
         lay.addWidget(title)
+        reason = getattr(request, "reason", "")
+        if reason:
+            why = QLabel(f"Neden soruluyor: {reason}")
+            why.setWordWrap(True)
+            why.setStyleSheet(f"color: {theme.current().warning};")
+            lay.addWidget(why)
         if request.kind == "write" and request.change is not None:
             lay.addWidget(DiffView(request.detail, max_lines=24))
+        elif request.kind == "read":
+            lay.addWidget(faint_label(f"Dosya: {request.detail} — içeriği EVREN API'sine gönderilecek.", "dim"))
         else:
             lay.addWidget(CodeView(f"PS> {request.detail}", max_lines=6))
             lay.addWidget(faint_label("Komut proje klasöründe çalışır. Çıktısı modele gönderilir."))
@@ -500,6 +509,8 @@ class ApprovalWidget(QFrame):
         allow.clicked.connect(lambda: self._decide("allow"))
         if request.kind == "write":
             session_text = "Bu oturumda tüm düzenlemelere izin ver"
+        elif request.kind == "read":
+            session_text = "Bu oturumda gizli dosya okumalarına izin ver"
         else:
             session_text = f"“{request.prefix}” komutlarına bu oturumda izin ver"
         always = QPushButton(session_text)
@@ -653,6 +664,11 @@ class ToolCallWidget(QFrame):
             code = meta.get("exit_code")
             if code is not None:
                 self.state.setText(f"çıkış {code}" + (f" · {meta.get('duration')} sn" if meta.get("duration") else ""))
+        if meta.get("auto_approved") and not meta.get("denied"):
+            # Otomatik / düzenlemeleri kabul modunda onaysız çalıştı
+            self.state.setText(("otomatik · " + self.state.text()).rstrip(" ·"))
+            if meta.get("auto_reason"):
+                self.state.setToolTip(meta["auto_reason"])
         elif meta.get("todos"):
             lines = []
             for t in meta["todos"]:
