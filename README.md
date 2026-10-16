@@ -52,3 +52,9 @@ ajanı.
 Aşama 1 (MVP) tamamlandı. Code Studio AI özellikleri Aşama 2'de; özel
 görev modelleri (görsel/OCR/ASR/...) Aşama 3'te; Windows paketleme Aşama
 4'te. Ayrıntılı ve dürüst durum: docs/TASK_CHECKLIST.md.
+
+## Lisans
+
+MIT — bkz. [LICENSE](LICENSE). Bağımlılıklar: PySide6 (LGPLv3), httpx
+(BSD), keyring (MIT).
+
