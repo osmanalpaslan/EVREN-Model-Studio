@@ -1,5 +1,15 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Ortak hafıza: GitHub eşitleme
+
+### Eklendi
+
+- `tools/ai_memory.py baslangic` önce GitHub'la eşitler: başka bilgisayarda
+  gönderilmiş yeni commit'leri güvenliyse kendiliğinden alır (yalnız ileri
+  sarma), master'a birleştirilmiş daldaysa master'a geçer; yerel değişiklik,
+  ayrışmış dal, gönderilmemiş commit ve ağ hatasında dokunmadan uyarır.
+  `--esitleme-yok` ile kapatılır. Kural R-18, `tests/test_ai_memory_sync.py`.
+
 ## Yayınlanmamış — OpenAI ve Anthropic sağlayıcıları (doğrulanmadı)
 
 ### Eklendi

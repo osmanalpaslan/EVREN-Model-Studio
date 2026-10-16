@@ -22,6 +22,7 @@ Komutlar:
 from __future__ import annotations
 
 import argparse
+import os
 import platform
 import re
 import subprocess
@@ -195,6 +196,111 @@ def git(*args: str) -> str:
         return ""
 
 
+def _git_run(root: Path, *args: str, timeout: float = 30.0) -> tuple[int, str]:
+    """(çıkış kodu, çıktı). git yoksa / zaman aşımında (-1, hata)."""
+    try:
+        r = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=timeout,
+                           env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+        return r.returncode, (r.stdout or r.stderr).strip()
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return -1, type(exc).__name__
+
+
+def sync_with_remote(root: Path | None = None, auto: bool = True) -> list[str]:
+    """Yerel kopyayı GitHub'la karşılaştırır; güvenliyse kendiliğinden eşitler.
+
+    Kullanıcı başka bir bilgisayarda çalışıp GitHub'a göndermiş olabilir; motor
+    bunu bilmeden eski kodu/hafızayı okumasın diye `baslangic` en başta bunu
+    çalıştırır. Hiçbir zaman veri kaybettirmez:
+    - Yalnızca İLERİ SARMA (--ff-only) yapılır; yerelde commit'lenmemiş
+      değişiklik veya gönderilmemiş commit varsa dokunulmaz, uyarı verilir.
+    - Bulunulan dal master'a tamamen birleştirilmişse (dalda master'da olmayan
+      hiçbir commit yoksa) ve çalışma ağacı temizse master'a geçilir.
+    Dönüş: ekrana yazılacak satırlar ("✓" yapıldı, "!" dikkat).
+    """
+    root = root or ROOT
+    out: list[str] = []
+    code, _ = _git_run(root, "rev-parse", "--is-inside-work-tree")
+    if code != 0:
+        return out
+    code, remotes = _git_run(root, "remote")
+    if code != 0 or "origin" not in remotes.split():
+        return ["! Uzak depo (origin) tanımlı değil; başka bilgisayardaki işler görülemez."]
+    code, msg = _git_run(root, "fetch", "--quiet", "--prune", "origin", timeout=45.0)
+    if code != 0:
+        return ["! GitHub'a ulaşılamadı (" + (msg.splitlines()[-1] if msg else "bilinmeyen hata")
+                + "). Yerel kopya güncel OLMAYABİLİR; başka bilgisayarda yapılan işler görünmez."]
+
+    def count(rng: str) -> int:
+        c, o = _git_run(root, "rev-list", "--count", rng)
+        return int(o) if c == 0 and o.isdigit() else 0
+
+    _, branch = _git_run(root, "rev-parse", "--abbrev-ref", "HEAD")
+    c, default = _git_run(root, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+    default = default if c == 0 and default else "origin/master"
+    default_local = default.split("/", 1)[1]
+    _, status = _git_run(root, "status", "--porcelain", "--untracked-files=no")
+    dirty = bool(status.strip())
+
+    # 1) birleştirilmiş özellik dalında kalınmış → master'a geç
+    if branch not in (default_local, "HEAD") and count(f"{default}..HEAD") == 0 \
+            and count(f"HEAD..{default}") > 0:
+        if auto and not dirty:
+            c, msg = _git_run(root, "checkout", default_local)
+            if c == 0:
+                out.append(f"✓ '{branch}' dalı zaten master'a birleştirilmişti; '{default_local}' dalına geçildi.")
+                branch = default_local
+            else:
+                out.append(f"! '{branch}' master'a birleştirilmiş ama '{default_local}' dalına geçilemedi: {msg[:200]}")
+        else:
+            out.append(f"! '{branch}' dalı master'a birleştirilmiş; yeni iş için önce: "
+                       f"git checkout {default_local} ; git pull --ff-only"
+                       + ("  (commit'lenmemiş değişiklik var: önce onları ele al)" if dirty else ""))
+
+    # 2) bulunulan dalı kendi uzak dalıyla karşılaştır
+    c, upstream = _git_run(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    if c != 0:
+        c2, _ = _git_run(root, "config", "--get", f"branch.{branch}.remote")
+        if c2 == 0:
+            out.append(f"! '{branch}' dalının GitHub'daki karşılığı silinmiş (büyük olasılıkla birleştirildi). "
+                       f"Kontrol: git log --oneline {default} -5")
+        elif branch != "HEAD":
+            out.append(f"! '{branch}' dalı GitHub'a hiç gönderilmemiş (yalnızca bu bilgisayarda).")
+    else:
+        behind, ahead = count(f"HEAD..{upstream}"), count(f"{upstream}..HEAD")
+        if behind and not ahead and not dirty and auto:
+            c, msg = _git_run(root, "merge", "--ff-only", "--quiet", upstream)
+            if c == 0:
+                out.append(f"✓ GitHub'daki {behind} yeni commit otomatik alındı ({upstream}). "
+                           "Başka bilgisayarda yapılan işler için aşağıdaki son oturumlara bak.")
+            else:
+                out.append(f"! {behind} yeni commit alınamadı: {msg[:200]}")
+        elif behind:
+            why = []
+            if dirty:
+                why.append("commit'lenmemiş yerel değişiklik var")
+            if ahead:
+                why.append(f"yerelde gönderilmemiş {ahead} commit var (dallar ayrışmış)")
+            out.append(f"! Yerel kopya GitHub'ın {behind} commit GERİSİNDE ve otomatik alınmadı: "
+                       + ", ".join(why or ["otomatik eşitleme kapalı"])
+                       + ". Kullanıcıya sor; veri kaybettirecek komut (reset/checkout --) çalıştırma.")
+        elif ahead:
+            out.append(f"! Yerelde GitHub'a gönderilmemiş {ahead} commit var ('{branch}'). "
+                       "Başka bilgisayarda devam edilecekse gönderilmesi gerekir (kullanıcı onayıyla).")
+    if branch != default_local:
+        newer = count(f"HEAD..{default}")
+        if newer:
+            out.append(f"! master'da ({default}) bu dalda olmayan {newer} commit var: başka bir bilgisayarda "
+                       "birleştirilmiş iş olabilir. Gerekirse kullanıcıya master'ı bu dala almayı öner.")
+    if dirty:
+        out.append("! Commit'lenmemiş yerel değişiklikler var (git status). Başka motorun yarım işi olabilir; "
+                   "üzerine yazmadan önce incele.")
+    if not out:
+        out.append(f"✓ Yerel kopya GitHub ile eşit ('{branch}').")
+    return out
+
+
 # ---- üretilen içerik ----------------------------------------------------------
 
 
@@ -358,13 +464,21 @@ def check() -> list[str]:
 # ---- komutlar -------------------------------------------------------------------
 
 
-def cmd_baslangic(_args) -> int:
+def cmd_baslangic(args) -> int:
+    # Önce GitHub'la eşitle: hafıza dosyaları eşitlemeden SONRA okunur.
+    sync_lines: list[str] = []
+    if not getattr(args, "esitleme_yok", False) and not os.environ.get("EVREN_AI_MEMORY_NO_SYNC"):
+        sync_lines = sync_with_remote()
     incidents = load(INCIDENTS)
     sessions_ = sorted(load(SESSIONS), key=lambda s: s["path"].stem, reverse=True)
     rules = parse_rules()
     _out("=" * 72)
     _out("ORTAK GELİŞTİRİCİ HAFIZASI — oturum başı özeti (AGENTS.md protokolü)")
     _out("=" * 72)
+    if sync_lines:
+        _out("## GitHub eşitleme (başka bilgisayarda yapılan işler)")
+        for line in sync_lines:
+            _out(f"  {line}")
     hooks = git("config", "--get", "core.hooksPath")
     if hooks.replace("\\", "/") != "tools/hooks":
         _out("! Git ön-commit kancası bu makinede kurulu değil:")
@@ -574,7 +688,10 @@ def main(argv: list[str] | None = None) -> int:
             pass
     p = argparse.ArgumentParser(description="Ortak geliştirici hafızası (docs/ai-memory)")
     sub = p.add_subparsers(dest="komut", required=True)
-    sub.add_parser("baslangic", help="oturum başı özeti").set_defaults(fn=cmd_baslangic)
+    b = sub.add_parser("baslangic", help="oturum başı özeti (önce GitHub ile eşitler)")
+    b.add_argument("--esitleme-yok", action="store_true",
+                   help="GitHub kontrolünü ve otomatik ileri sarmayı atla")
+    b.set_defaults(fn=cmd_baslangic)
     a = sub.add_parser("ara", help="hafızada ara")
     a.add_argument("kelimeler", nargs="+")
     a.set_defaults(fn=cmd_ara)

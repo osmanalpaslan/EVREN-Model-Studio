@@ -97,3 +97,8 @@
 - **Kural:** api/providers.py'deki fiyatları değiştirirken PRICES_AS_OF'u güncelle, kaynağı yaz; gerçek istekle denenmemiş sağlayıcıyı verified=False bırak ve arayüzde "doğrulanmadı" ile "tahmini" ifadelerini kaldırma.
 - **Neden:** OpenAI/Anthropic entegrasyonu anahtarsız, belgelerden yazıldı; fiyatlar değişir ve bütçe yalnızca tahmindir.
 - **Kaynak:** 2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma
+
+### R-18 · Başlamadan önce GitHub ile eşitle, eşitleme uyarısını yok sayma
+- **Kural:** `baslangic` çıktısındaki "GitHub eşitleme" bölümünü oku; "!" satırı varsa (geride, ayrışmış, commit'lenmemiş değişiklik) işe başlamadan kullanıcıya söyle ve veri kaybettiren git komutunu (reset, checkout --, stash drop, push --force) onaysız çalıştırma.
+- **Neden:** Kullanıcı birden çok bilgisayarda çalışıyor ve git pull yapmayı unutabiliyor; eski kopyada çalışan motor işi tekrarlar veya çakışma üretir.
+- **Kaynak:** 2026-10-16-motor-baska-bilgisayarda-yapilan-isleri-fark-etmiyordu
