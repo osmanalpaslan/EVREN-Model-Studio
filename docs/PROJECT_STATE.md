@@ -58,7 +58,8 @@
 ## Ortak geliştirici hafızası
 
 Her motor oturuma `.\.venv\Scripts\python.exe tools\ai_memory.py baslangic`
-ile başlar, bitirirken `docs/ai-memory/` altına oturum günlüğü ve gerekirse
+ile başlar (komut önce GitHub'la eşitler; başka bilgisayardaki işler böylece
+görünür), bitirirken `docs/ai-memory/` altına oturum günlüğü ve gerekirse
 kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX.md.
 
 ## Sıradaki iş

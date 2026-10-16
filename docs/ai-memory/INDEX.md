@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 23 · Açık/izlenen: 2 · Oturum: 8 · Kural: 17
+Kayıt: 24 · Açık/izlenen: 2 · Oturum: 9 · Kural: 18
 
 ## Açık ve izlenen kayıtlar
 
@@ -19,6 +19,7 @@ Kayıt: 23 · Açık/izlenen: 2 · Oturum: 8 · Kural: 17
 | 2026-10-16 | [2026-10-16-qtimer-silinmis-widgeta-cagri](incidents/2026-10-16-qtimer-silinmis-widgeta-cagri.md) | hata | orta | cozuldu | Claude Code (masaüstü) | QTimer.singleShot silinmiş widget'ı çağırdı |
 | 2026-10-16 | [2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma](incidents/2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | OpenAI ve Anthropic entegrasyonu gerçek anahtarla doğrulanmadı |
 | 2026-10-16 | [2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk](incidents/2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk.md) | ortam | dusuk | kabul-edildi | Claude Code (masaüstü) | Offscreen ekran görüntülerinde yazılar kutucuk görünüyor |
+| 2026-10-16 | [2026-10-16-motor-baska-bilgisayarda-yapilan-isleri-fark-etmiyordu](incidents/2026-10-16-motor-baska-bilgisayarda-yapilan-isleri-fark-etmiyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Motor başka bilgisayarda yapılan işleri fark etmiyordu |
 | 2026-10-16 | [2026-10-16-llm-markdown-listeleri-paragraf-gorunuyordu](incidents/2026-10-16-llm-markdown-listeleri-paragraf-gorunuyordu.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | LLM'lerin boş satırsız yazdığı listeler paragraf olarak görünüyordu |
 | 2026-10-16 | [2026-10-16-kullanici-dosya-erisimi-yok-yaniti-aldi](incidents/2026-10-16-kullanici-dosya-erisimi-yok-yaniti-aldi.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Kullanıcı uygulamada "dosya düzenleme erişimim yok" yanıtı aldı |
 | 2026-10-16 | [2026-10-16-kapanista-gec-sonuc-kapali-veritabanina-yaziyordu](incidents/2026-10-16-kapanista-gec-sonuc-kapali-veritabanina-yaziyordu.md) | hata | dusuk | cozuldu | Kilo Code (VS Code eklentisi) | Kapanışta geç gelen arka plan sonucu kapalı veritabanına yazıyordu |
@@ -48,6 +49,7 @@ Kayıt: 23 · Açık/izlenen: 2 · Oturum: 8 · Kural: 17
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-ortak-gelistirici-hafizasi-yapisi](sessions/2026-10-16-claude-code-masaustu-ortak-gelistirici-hafizasi-yapisi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Ortak geliştirici hafızası yapısı |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-openai-ve-anthropic-saglayicilari-butce](sessions/2026-10-16-claude-code-masaustu-openai-ve-anthropic-saglayicilari-butce.md) | Claude Code (masaüstü) / claude-opus-5-5 | kismi | OpenAI ve Anthropic sağlayıcıları, aylık bütçe |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-model-ve-sure-gostergesi-tiklanabilir-ko](sessions/2026-10-16-claude-code-masaustu-model-ve-sure-gostergesi-tiklanabilir-ko.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Model ve süre göstergesi, tıklanabilir komutlar, ayarlar ve tam QA |
+| 2026-10-16 | [2026-10-16-claude-code-masaustu-baslangic-github-esitleme](sessions/2026-10-16-claude-code-masaustu-baslangic-github-esitleme.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | baslangic: GitHub ile otomatik eşitleme |
 | 2026-10-16 | [2026-10-16-claude-code-kod-ajani-calisma-alani-ve-yeni-arayuz](sessions/2026-10-16-claude-code-kod-ajani-calisma-alani-ve-yeni-arayuz.md) | Claude Code (masaüstü) / claude-opus-5-5 | kismi | Kod ajanı çalışma alanı ve yeni arayüz (0.2.0, PR #2) |
 | 2026-10-16 | [2026-10-16-claude-code-ikinci-bilgisayar-kurulumu-ve-secrets-duzeltmesi](sessions/2026-10-16-claude-code-ikinci-bilgisayar-kurulumu-ve-secrets-duzeltmesi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | İkinci bilgisayarda kurulum ve secrets.py düzeltmesi |
 | 2026-10-15 | [2026-10-15-kilo-code-asama-0-1-arastirma-ve-mvp](sessions/2026-10-15-kilo-code-asama-0-1-arastirma-ve-mvp.md) | Kilo Code (VS Code eklentisi) / bilinmiyor (EVREN LLM) | kismi | Aşama 0 + 1: araştırma, MVP, testler ve bilgi tabanı (geriye dönük kayıt) |
@@ -71,3 +73,4 @@ Kayıt: 23 · Açık/izlenen: 2 · Oturum: 8 · Kural: 17
 - **R-15** · Özelliğin hangi dalda olduğunu kullanıcıya söyle
 - **R-16** · Uzun sürebilecek model çağrısını akışlı yap
 - **R-17** · Ücretli sağlayıcı fiyatını ve doğrulama durumunu tarihli tut
+- **R-18** · Başlamadan önce GitHub ile eşitle, eşitleme uyarısını yok sayma

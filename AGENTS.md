@@ -14,6 +14,10 @@
 
 1. Şu komutu çalıştır ve çıktısını oku:
    `.\.venv\Scripts\python.exe tools\ai_memory.py baslangic`
+   Komut önce GitHub'la eşitler (kullanıcı başka bilgisayarda çalışmış
+   olabilir): güvenliyse yeni commit'leri kendisi alır, birleştirilmiş
+   daldaysan master'a geçer. Çıktıdaki **"GitHub eşitleme"** bölümünde `!`
+   ile başlayan satır varsa işe başlamadan kullanıcıya söyle (R-18).
    (Komut çalıştıramıyorsan sırayla oku: `docs/ai-memory/RULES.md`,
    `docs/ai-memory/INDEX.md` içindeki **açık kayıtlar**, son 3 oturum
    günlüğü `docs/ai-memory/sessions/`, `docs/PROJECT_STATE.md`.)
@@ -99,4 +103,5 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-15** · Özelliğin hangi dalda olduğunu kullanıcıya söyle — Kullanıcıya bir özelliği "hazır" diye anlatırken birleştirilmemiş bir dalda/PR'da olup olmadığını ve diğer bilgisayarlarda nasıl güncelleneceğini belirt.
 - **R-16** · Uzun sürebilecek model çağrısını akışlı yap — Özet gibi uzun sürebilecek model çağrılarını stream=True ile yap; akışsız çağrıyı yalnız kısa, deterministik işler için kullan.
 - **R-17** · Ücretli sağlayıcı fiyatını ve doğrulama durumunu tarihli tut — api/providers.py'deki fiyatları değiştirirken PRICES_AS_OF'u güncelle, kaynağı yaz; gerçek istekle denenmemiş sağlayıcıyı verified=False bırak ve arayüzde "doğrulanmadı" ile "tahmini" ifadelerini kaldırma.
+- **R-18** · Başlamadan önce GitHub ile eşitle, eşitleme uyarısını yok sayma — `baslangic` çıktısındaki "GitHub eşitleme" bölümünü oku; "!" satırı varsa (geride, ayrışmış, commit'lenmemiş değişiklik) işe başlamadan kullanıcıya söyle ve veri kaybettiren git komutunu (reset, checkout --, stash drop, push --force) onaysız çalıştırma.
 <!-- KURALLAR:BITIR -->
