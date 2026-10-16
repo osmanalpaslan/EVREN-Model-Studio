@@ -31,6 +31,29 @@ class FakeKeyring:
         self.store.pop((service, key))
 
 
+@pytest.fixture(autouse=True)
+def _qt_pencere_temizligi():
+    """Her testten sonra açık kalan Qt pencerelerini gerçekten yok eder.
+
+    Kapatılan ama silinmeyen pencereler (zamanlayıcılar, dosya izleyicileri)
+    tam test paketinde birikip her yeni pencerenin açılışını yavaşlatıyordu.
+    """
+    yield
+    try:
+        from PySide6.QtCore import QCoreApplication, QEvent
+        from PySide6.QtWidgets import QApplication
+    except ImportError:
+        return
+    app = QApplication.instance()
+    if app is None:
+        return
+    for w in app.topLevelWidgets():
+        w.close()
+        w.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    app.processEvents()
+
+
 @pytest.fixture()
 def fake_keyring():
     from evren_studio import secrets

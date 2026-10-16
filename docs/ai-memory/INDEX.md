@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 17 · Açık/izlenen: 1 · Oturum: 6 · Kural: 15
+Kayıt: 20 · Açık/izlenen: 1 · Oturum: 7 · Kural: 16
 
 ## Açık ve izlenen kayıtlar
 
@@ -14,12 +14,15 @@ Kayıt: 17 · Açık/izlenen: 1 · Oturum: 6 · Kural: 15
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-10-16 | [2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu](incidents/2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu.md) | surec | dusuk | cozuldu | Claude Code (masaüstü) | Test paketi silinmeyen pencerelerle yavaşlıyordu |
 | 2026-10-16 | [2026-10-16-qtimer-silinmis-widgeta-cagri](incidents/2026-10-16-qtimer-silinmis-widgeta-cagri.md) | hata | orta | cozuldu | Claude Code (masaüstü) | QTimer.singleShot silinmiş widget'ı çağırdı |
 | 2026-10-16 | [2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk](incidents/2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk.md) | ortam | dusuk | kabul-edildi | Claude Code (masaüstü) | Offscreen ekran görüntülerinde yazılar kutucuk görünüyor |
 | 2026-10-16 | [2026-10-16-llm-markdown-listeleri-paragraf-gorunuyordu](incidents/2026-10-16-llm-markdown-listeleri-paragraf-gorunuyordu.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | LLM'lerin boş satırsız yazdığı listeler paragraf olarak görünüyordu |
 | 2026-10-16 | [2026-10-16-kullanici-dosya-erisimi-yok-yaniti-aldi](incidents/2026-10-16-kullanici-dosya-erisimi-yok-yaniti-aldi.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Kullanıcı uygulamada "dosya düzenleme erişimim yok" yanıtı aldı |
+| 2026-10-16 | [2026-10-16-kapanista-gec-sonuc-kapali-veritabanina-yaziyordu](incidents/2026-10-16-kapanista-gec-sonuc-kapali-veritabanina-yaziyordu.md) | hata | dusuk | cozuldu | Kilo Code (VS Code eklentisi) | Kapanışta geç gelen arka plan sonucu kapalı veritabanına yazıyordu |
 | 2026-10-16 | [2026-10-16-izleme-sayfasi-arayuzu-arka-plan-is-parcacigindan-guncelliyordu](incidents/2026-10-16-izleme-sayfasi-arayuzu-arka-plan-is-parcacigindan-guncelliyordu.md) | hata | yuksek | cozuldu | Kilo Code (VS Code eklentisi) | Durum İzleme sayfası arayüzü arka plan iş parçacığından güncelliyordu |
 | 2026-10-16 | [2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz](incidents/2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz.md) | hata | dusuk | izleniyor | Kilo Code (VS Code eklentisi) | İzleme döngüsü testi zamanlamaya bağlı ve kararsız |
+| 2026-10-16 | [2026-10-16-glm-5-3-akissiz-ozet-isteginde-baglanti-koptu](incidents/2026-10-16-glm-5-3-akissiz-ozet-isteginde-baglanti-koptu.md) | hata | orta | cozuldu | Claude Code (masaüstü) | glm-5.3 akışsız özet isteğinde bağlantı koptu |
 | 2026-10-16 | [2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi](incidents/2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi.md) | risk | yuksek | cozuldu | Claude Code (masaüstü) | EVREN API'de araç çağrısı (tools) gerçek istekle doğrulanmadı |
 | 2026-10-16 | [2026-10-16-esc-kisayolu-komut-listesini-kapatmiyordu](incidents/2026-10-16-esc-kisayolu-komut-listesini-kapatmiyordu.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Esc kısayolu komut listesini kapatmıyordu |
 | 2026-10-16 | [2026-10-16-duzenleme-modu-gizli-ve-yapilandirma-dosyalarini-korumuyordu](incidents/2026-10-16-duzenleme-modu-gizli-ve-yapilandirma-dosyalarini-korumuyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Düzenleme modu gizli ve yapılandırma dosyalarını korumuyordu |
@@ -36,6 +39,7 @@ Kayıt: 17 · Açık/izlenen: 1 · Oturum: 6 · Kural: 15
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact](sessions/2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik özet (auto-compact) |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba](sessions/2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik mod, korumalı dosyalar, klasör bağlama |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-ortak-gelistirici-hafizasi-yapisi](sessions/2026-10-16-claude-code-masaustu-ortak-gelistirici-hafizasi-yapisi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Ortak geliştirici hafızası yapısı |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-model-ve-sure-gostergesi-tiklanabilir-ko](sessions/2026-10-16-claude-code-masaustu-model-ve-sure-gostergesi-tiklanabilir-ko.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Model ve süre göstergesi, tıklanabilir komutlar, ayarlar ve tam QA |
@@ -60,3 +64,4 @@ Kayıt: 17 · Açık/izlenen: 1 · Oturum: 6 · Kural: 15
 - **R-13** · API/ajan değişikliğinden sonra gerçek uçtan uca testleri çalıştır
 - **R-14** · Eski izin anahtarını asla daha yetkili moda çevirme
 - **R-15** · Özelliğin hangi dalda olduğunu kullanıcıya söyle
+- **R-16** · Uzun sürebilecek model çağrısını akışlı yap

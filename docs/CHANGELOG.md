@@ -1,5 +1,27 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Otomatik özet (auto-compact)
+
+### Eklendi
+
+- **Otomatik özet**: yeni mesaj gönderilmeden önce bağlam min(modelin %75'i,
+  100.000 token) eşiğini aşarsa önce özetlenir, sonra mesaj gönderilir. Uzun
+  bir ajan görevi sırasında yalnızca güvenli noktada (araç sonuçları
+  kaydedildikten sonra, yeni model çağrısından önce) sert eşik aşılırsa
+  özetlenip ajan otomatik devam eder (en fazla 3 kez). Akış, araç veya onay
+  sırasında asla özetlenmez. Esc ile iptal: mesaj gönderilmez, kutuya geri konur.
+- `/compact [odak]` (`/ozet` ile aynı), özet kartında neden/süre; bağlam
+  göstergesinde eşik ve "özet yakında" uyarısı.
+- Ayarlar: otomatik özet aç/kapa, eşik yüzdesi, üst sınır, özeti üreten model
+  (varsayılan deepseek-v4-flash — ölçümde glm-5.3'ten ~4 kat hızlı).
+- `tests/test_auto_compact.py` (9 test), `tests/e2e_compact_real_api.py` (gerçek API özet kalitesi).
+
+### Düzeltildi
+
+- Özet isteği akışsızdı; glm-5.3 uzun düşünürken bağlantı kopuyordu → akışlı.
+- Pencere kapandıktan sonra gelen arka plan sonucu kapalı veritabanına yazıp hata veriyordu.
+- Test paketinde silinmeyen pencereler birikip süreyi 166 sn'ye çıkarıyordu → 30 sn.
+
 ## Yayınlanmamış — Otomatik mod
 
 ### Eklendi

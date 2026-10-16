@@ -65,6 +65,13 @@ class Settings:
     command_timeout_seconds: int = 120
     tool_output_limit: int = 20000
     recent_workspaces: list[str] = field(default_factory=list)
+    # Otomatik özet (compaction.py): eşik = min(bağlamın %percent'i, max_tokens)
+    auto_compact: bool = True
+    auto_compact_percent: int = 75
+    auto_compact_max_tokens: int = 100_000
+    # Özeti üreten model ("" = oturumun modeli). Ölçüm 2026-10-16: aynı özet
+    # glm-5.3 ile 153 sn, deepseek-v4-flash ile 41 sn, kalite eşdeğer.
+    auto_compact_model: str = "deepseek-v4-flash"
     show_reasoning: bool = True
     sidebar_visible: bool = True
     panel_visible: bool = True

@@ -112,6 +112,20 @@ INIT_PROMPT = (
 COMPACT_PROMPT = (
     "Şimdiye kadarki konuşmayı, çalışmaya kaldığı yerden devam edebilecek "
     "biçimde özetle: kullanıcının hedefi, alınan kararlar, değiştirilen "
-    "dosyalar, çalıştırılan komutların sonuçları, açık kalan işler ve "
-    "sıradaki adım. Yalnızca özeti yaz; araç çağırma."
+    "dosyalar (tam yollarıyla), çalıştırılan komutların sonuçları, karşılaşılan "
+    "hatalar, açık kalan işler ve sıradaki adım. Kod parçalarını yalnızca "
+    "devam etmek için gerekiyorsa kısaca ekle. Yalnızca özeti yaz; araç çağırma."
+)
+
+SUMMARY_SYSTEM = (
+    "Sen bir konuşma özetleyicisin. Sana bir kullanıcı ile kod ajanı arasındaki "
+    "konuşma ve araç sonuçları verilecek. Hiçbir araç çağırma, yeni iş yapma; "
+    "yalnızca istenen özeti Türkçe ve Markdown başlıklarıyla yaz. Bilgi "
+    "uydurma; emin olmadığın şeyi belirt."
+)
+
+AUTO_CONTINUE_PROMPT = (
+    "[Otomatik devam] Bağlam sınırına yaklaşıldığı için önceki konuşma özetlendi "
+    "(yukarıdaki özet). Görevine kaldığın yerden devam et; tamamlanan adımları "
+    "tekrarlama. Bir dosyanın güncel içeriğinden emin değilsen yeniden oku."
 )

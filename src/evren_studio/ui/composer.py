@@ -28,14 +28,15 @@ SLASH_COMMANDS = {
     "/plan": "Plan modu: salt okunur, plan çıkarır",
     "/otomatik": "Otomatik mod: düzenlemeler ve güvenli komutlar onaysız",
     "/init": "Projeyi inceleyip EVREN.md proje hafızası oluştur",
-    "/ozet": "Uzun konuşmayı özetleyip bağlamı küçült",
+    "/compact": "Konuşmayı özetleyip bağlamı küçült — /compact <odak> ile odak verin",
+    "/ozet": "Konuşmayı özetle (/compact ile aynı)",
     "/yeni": "Yeni oturum başlat",
     "/disa-aktar": "Oturumu Markdown olarak dışa aktar",
     "/yardim": "Komutları ve kısayolları göster",
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
-    "/init": "spark", "/ozet": "refresh", "/yeni": "plus", "/disa-aktar": "download",
+    "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/disa-aktar": "download",
     "/yardim": "help",
 }
 MODE_ICONS = {"manuel": "shield", "kabul": "pencil", "plan": "map", "auto": "spark"}
@@ -288,18 +289,34 @@ class Composer(QWidget):
         self.run_bar.setVisible(bool(text))
         self.run_text.setText(text or "")
 
-    def set_context(self, used_tokens: int, limit: int | None) -> None:
+    def set_context(self, used_tokens: int, limit: int | None, compact_at: int | None = None) -> None:
+        """Bağlam göstergesi; compact_at: otomatik özet eşiği (token)."""
         if not used_tokens:
             self.context_label.setText("")
+            self.context_label.setToolTip("")
             return
 
         def k(n: int) -> str:
             return f"{n / 1000:.1f}k" if n < 100_000 else f"{n // 1000}k"
         if limit:
             pct = min(100, int(used_tokens * 100 / limit))
-            self.context_label.setText(f"bağlam ~{k(used_tokens)} / {k(limit)} ({pct}%)")
+            text = f"bağlam ~{k(used_tokens)} / {k(limit)} ({pct}%)"
         else:
-            self.context_label.setText(f"bağlam ~{k(used_tokens)}")
+            text = f"bağlam ~{k(used_tokens)}"
+        tip = "Tahmini bağlam (≈3,5 karakter/token)."
+        color = ""
+        if compact_at:
+            ratio = used_tokens / compact_at
+            tip += (f" Otomatik özet ~{k(compact_at)} token'da devreye girer "
+                    f"(şu an %{int(ratio * 100)}). Elle: /compact")
+            if ratio >= 0.85:
+                color = theme.current().warning
+                text += "  ·  özet yakında"
+        else:
+            tip += " Otomatik özet kapalı (Ayarlar). Elle: /compact"
+        self.context_label.setText(text)
+        self.context_label.setToolTip(tip)
+        self.context_label.setStyleSheet(f"color: {color};" if color else "")
 
     def _update_send(self) -> None:
         p = theme.current()
