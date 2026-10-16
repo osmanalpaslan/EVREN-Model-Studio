@@ -38,6 +38,9 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
   için onay), *Düzenlemeleri kabul et* (dosyalar onaysız, komutlar onaylı),
   *Plan* (salt okunur), *Otomatik* (düzenlemeler ve güvenli listedeki
   komutlar onaysız; riskli/tanınmayan komutlar ve korumalı dosyalar sorulur).
+- **Otomatik özet (auto-compact)**: uzun konuşmalar, bağlam eşiğine (%75,
+  en fazla 100k token) gelince mesajdan önce özetlenir; uzun görevlerde güvenli
+  noktada özetleyip kendiliğinden devam eder. Elle: `/compact [odak]`.
 - **Proje klasörü bağla**: klasörsüz başlatılan sohbete sonradan klasör bağlanabilir.
 - **Onay kutuları**: değişiklik uygulanmadan önce renkli diff; komutlar
   çalışmadan önce gösterilir. "Bu oturumda hep izin ver" ve reddetme notu.

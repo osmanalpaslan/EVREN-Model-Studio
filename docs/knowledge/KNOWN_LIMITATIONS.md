@@ -30,8 +30,12 @@
   yalnızca kayıtlı adım sürelerinin toplamıdır (araç ve onay bekleme süresi
   canlı sayaçta görünür, kalıcı toplamda yoktur).
 - **Bağlam yönetimi**: token sayımı tahminidir (≈3,5 karakter/token).
-  Bağlamın %70'i aşılınca eski araç çıktıları modele kısaltılmış gönderilir;
-  tam özet için `/ozet` elle çalıştırılır (otomatik özetleme yok).
+  Otomatik özet: yeni mesajdan önce, bağlam min(%75, 100k token) eşiğini
+  aşınca; uzun görevde yalnız güvenli noktada (araç sonuçlarından sonra)
+  min(%90, eşik×1,5) aşılınca özetleyip otomatik devam (mesaj başına en
+  fazla 3 kez). Özet bir modeldir: ayrıntılar kaybolabilir; ajan dosyayı
+  gerekirse yeniden okur. Bağlamın %70'i aşılınca eski araç çıktıları
+  ayrıca kısaltılarak gönderilir. Elle: `/compact [odak]`.
 - **Komutlar**: etkileşimli (girdi bekleyen) komutlar desteklenmez
   (stdin kapalı); uzun süren sunucular zaman aşımında sonlandırılır.
 - **Geri alma**: yalnızca ajanın araçlarla yaptığı değişiklikler kaydedilir;

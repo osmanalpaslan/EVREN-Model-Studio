@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
-from . import icons, theme, wheel_guard
+from . import icons, theme, wheel_guard, workers
 from .app_context import AppContext
 from .connection_page import ConnectionPage
 from .errors_page import ErrorsPage
@@ -31,6 +31,7 @@ from .usage_page import UsagePage
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        workers.set_accepting(True)
         self.ctx = AppContext()
         s = self.ctx.settings
         app = QApplication.instance()
@@ -209,6 +210,7 @@ class MainWindow(QMainWindow):
             self.session.new_session()   # veriler silindiyse
 
     def closeEvent(self, event) -> None:
+        workers.set_accepting(False)   # kapanırken geç gelen sonuçlar işlenmesin
         self.session.shutdown()
         monitor = self.pages.get("monitor")
         if monitor and getattr(monitor, "agent", None) and monitor.agent.is_running():

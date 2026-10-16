@@ -32,6 +32,8 @@
 | 28 | Otomatik mod yalnız kural tabanlı | Kullanıcı kararı: hızlı, ücretsiz, deterministik; yapay zekâ denetçisi yok; tanınmayan komut sorulur | 2026-10-16 |
 | 29 | Yeni mod anahtarları (manuel/kabul/plan/auto), eskiler güvenli eşdeğere | Eski `otomatik` = düzenlemeleri kabul et; yeni Otomatik'e çevrilseydi oturumlar sessizce yetki kazanırdı | 2026-10-16 |
 | 30 | Korumalı dosyalar her modda sorulur; gizli dosya okuma da sorulur | Claude Code'daki korumalı yollar; .env içeriği EVREN'e gitmesin | 2026-10-16 |
+| 31 | Otomatik özet: mesajdan önce + tur içinde yalnız güvenli noktada; eşik min(%75, 100k), sert min(%90, ×1,5) | İş yarıda kesilmez; özet isteği sığar; büyük bağlamda yavaşlık ve günlük kota korunur | 2026-10-16 |
+| 32 | Özet modeli varsayılan deepseek-v4-flash, akışlı istek | Gerçek ölçüm: aynı özet glm-5.3 153 sn / deepseek-v4-flash 41 sn, kalite eşdeğer; akışsız istek glm-5.3'te koptu | 2026-10-16 |
 
 ## Değerlendirilip reddedilenler
 

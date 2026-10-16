@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..agent import prompts
+from ..agent.compaction import MAX_AUTO_RESUMES, CompactPolicy, needs_compaction, summarize
 from ..agent.permissions import MODES, SessionPermissions, normalize_mode
 from ..agent.runner import (
     AgentEvents,
@@ -315,6 +316,7 @@ class SessionView(QWidget):
         self._run_timer = QTimer(self)
         self._run_timer.setInterval(500)
         self._run_timer.timeout.connect(self._tick_run)
+        self._auto_resumes = 0          # bu kullanıcı mesajından beri otomatik devam sayısı
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -561,6 +563,10 @@ class SessionView(QWidget):
 
         for m in messages:
             role = m["role"]
+            if role == "user" and (m.get("meta") or {}).get("auto_continue"):
+                self.transcript.add(NoteWidget("Bağlam özetlendi; ajan kaldığı yerden otomatik devam etti.",
+                                               "refresh"))
+                continue
             if role == "user":
                 close_turn()
                 text, attached = split_attachments(m["content"] or "")
@@ -595,9 +601,13 @@ class SessionView(QWidget):
                 else:
                     self.transcript.add(NoteWidget(m["content"][:300], "alert"))
             elif role == "summary":
-                w = AssistantMessageWidget("özet", False)
-                w.finalize("**Konuşma özeti** — bu noktadan önceki mesajlar modele özet olarak gönderilir.\n\n"
-                           + (m["content"] or ""))
+                meta = m.get("meta") or {}
+                w = AssistantMessageWidget("otomatik özet" if meta.get("auto") else "özet", False)
+                head = "**Otomatik konuşma özeti**" if meta.get("auto") else "**Konuşma özeti**"
+                why = f" ({meta['reason']})" if meta.get("reason") else ""
+                w.finalize(f"{head}{why} — bu noktadan önceki mesajlar modele bu özet olarak "
+                           "gönderilir; ekranda ve kayıtta durmaya devam eder.\n\n" + (m["content"] or ""),
+                           duration=meta.get("duration_s"), model=m.get("model"))
                 self.transcript.add(w)
         close_turn()
         self.current = None
@@ -693,14 +703,33 @@ class SessionView(QWidget):
             self.ctx.db.update_session(self.session_id, model=model)
         self._update_context()
 
+    def _policy(self) -> CompactPolicy:
+        s = self.ctx.settings
+        return CompactPolicy(enabled=s.auto_compact, percent=s.auto_compact_percent,
+                             max_tokens=s.auto_compact_max_tokens)
+
+    def _summary_model(self) -> str:
+        """Özet modeli: ayar (varsayılan hızlı model) yoksa/kullanılamıyorsa oturumun modeli."""
+        wanted = (self.ctx.settings.auto_compact_model or "").strip()
+        if not wanted:
+            return self.model
+        ids = [m.id for m in self.ctx.chat_models()]
+        return wanted if (not ids or wanted in ids) else self.model
+
+    def _context_tokens(self) -> int | None:
+        info = self.ctx.model_info(self.model)
+        return info.context_length if info else None
+
     def _update_context(self) -> None:
         if not self.session_id:
             self.composer.set_context(0, None)
             return
         msgs = self.ctx.db.get_session_messages(self.session_id)
         info = self.ctx.model_info(self.model)
-        self.composer.set_context(estimate_tokens(to_api_messages("", msgs, "native")),
-                                  info.context_length if info else None)
+        ctx_tokens = info.context_length if info else None
+        policy = self._policy()
+        self.composer.set_context(estimate_tokens(to_api_messages("", msgs, "native")), ctx_tokens,
+                                  policy.soft_limit(ctx_tokens) if policy.enabled else None)
 
     # ---- dosya ekleme ----
 
@@ -773,6 +802,19 @@ class SessionView(QWidget):
             self.edit_from = None
             self.render_history(self.ctx.db.get_session_messages(sid))
         content = self._expand_mentions(text, self.workspace)
+        self._auto_resumes = 0
+        need, tokens, limit = needs_compaction(self.ctx.db.get_session_messages(sid), self._policy(),
+                                               self._context_tokens(), content)
+        if need:
+            pct = int(tokens * 100 / limit) if limit else 0
+            self.compact(auto=True, reason=f"bağlam ~{tokens // 1000}k token, otomatik özet eşiği "
+                                           f"{limit // 1000}k ({pct}%)",
+                         then=lambda: self._send_now(sid, content, text),
+                         on_cancel=lambda: self.composer.set_text(text))
+            return
+        self._send_now(sid, content, text)
+
+    def _send_now(self, sid: int, content: str, text: str) -> None:
         msg_id = self.ctx.db.add_session_message(sid, "user", content)
         _, attached = split_attachments(content)
         w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), msg_id)
@@ -822,8 +864,8 @@ class SessionView(QWidget):
                 self._note("/init için bir proje klasörü seçin.")
             else:
                 self.send(prompts.INIT_PROMPT)
-        elif cmd == "/ozet":
-            self.compact()
+        elif cmd in ("/ozet", "/compact"):
+            self.compact(focus=arg.strip() or None)
         elif cmd == "/disa-aktar":
             self.export()
         elif cmd == "/yardim":
@@ -900,6 +942,8 @@ class SessionView(QWidget):
             max_steps=s.agent_max_steps, command_timeout=s.command_timeout_seconds,
             output_limit=s.tool_output_limit,
             context_tokens=info.context_length if info else None,
+            hard_context_limit=(self._policy().hard_limit(info.context_length if info else None)
+                                if s.auto_compact else None),
         )
         runner = self.runner
         self.running = True
@@ -1074,6 +1118,14 @@ class SessionView(QWidget):
             self._note("Durduruldu. Devam etmek için yeni bir mesaj gönderin.", "stop")
         elif outcome.stopped == "max_steps":
             pass  # durum notu runner tarafından gönderildi
+        elif outcome.stopped == "context_limit":
+            if self._auto_resumes < MAX_AUTO_RESUMES:
+                self._auto_resumes += 1
+                self.compact(auto=True, reason="uzun görev bağlam sınırına yaklaştı (güvenli noktada durdu)",
+                             then=self._auto_continue)
+            else:
+                self._note(f"Bağlam sınırı: bu mesaj için {MAX_AUTO_RESUMES} kez otomatik özetlenip "
+                           "devam edildi. Devam etmek için yeni bir mesaj gönderin.", "alert")
         if self.session_id:
             self.panel.todos.set_todos(self.ctx.db.get_session_todos(self.session_id))
 
@@ -1131,51 +1183,98 @@ class SessionView(QWidget):
 
     # ---- özetleme ----
 
-    def compact(self) -> None:
-        if not self.session_id or self.running:
+    def compact(self, focus: str | None = None, auto: bool = False, reason: str = "",
+                then=None, on_cancel=None) -> None:
+        """Konuşmayı özetler. auto=True: otomatik (eşik); then: özet sonrası devam."""
+        if not self.session_id or (self.running and not auto):
             self._note("Özetlenecek bir oturum yok veya ajan çalışıyor.")
             return
         msgs = self.ctx.db.get_session_messages(self.session_id)
-        if len(msgs) < 4:
-            self._note("Konuşma henüz özetlenecek kadar uzun değil.")
+        # Otomatik özette tek bir dev araç çıktısı bile bağlamı doldurabilir: 2 mesaj yeter
+        if len(msgs) < (2 if auto else 4):
+            if then:
+                then()
+            else:
+                self._note("Konuşma henüz özetlenecek kadar uzun değil.")
             return
-        api = to_api_messages(prompts.build_chat_system(), msgs, "text")
-        api.append({"role": "user", "content": prompts.COMPACT_PROMPT})
-        model = self.model
+        model = self._summary_model()
         sid = self.session_id
+        info = self.ctx.model_info(model)
+        ctx_tokens = info.context_length if info else self._context_tokens()
         self.running = True
         self.composer.set_running(True)
         self.cancel_token = CancelToken()
         token = self.cancel_token
-        waiting = AssistantMessageWidget("özet")
-        waiting.start_waiting("Konuşma özetleniyor")
+        label = "Bağlam otomatik özetleniyor" if auto else "Konuşma özetleniyor"
+        self.composer.set_run_status(f"{model}  {label.lower()}" + (f"  ·  {reason}" if reason else ""))
+        waiting = AssistantMessageWidget("otomatik özet" if auto else "özet")
+        waiting.start_waiting(label)
+        waiting.start_clock(model)
         self.transcript.add(waiting)
+        t0 = time.monotonic()
+
+        def finish_ui():
+            waiting.deleteLater()
+            self.running = False
+            self.composer.set_running(False)
 
         def job():
             client = self.ctx.make_client()
             try:
-                return client.chat(model, api, stream=False, cancel=token)
+                return summarize(client, model, msgs, focus=focus, context_tokens=ctx_tokens, cancel=token)
             finally:
                 client.close()
 
         def done(result):
-            waiting.deleteLater()
-            self.running = False
-            self.composer.set_running(False)
-            if result.finish_reason == "cancelled_by_user" or not (result.content or "").strip():
-                self._note("Özet oluşturulamadı.", "alert")
+            finish_ui()
+            if token.cancelled:
+                # Kullanıcı Esc'ye bastı: özet kaydedilse de bekleyen iş başlatılmaz
+                if (result.content or "").strip() and result.finish_reason != "cancelled_by_user":
+                    self.ctx.db.add_session_message(sid, "summary", result.content.strip(),
+                                                    model=result.routed_model or model,
+                                                    meta={"auto": auto, "reason": reason} if reason else {"auto": auto})
+                    self.render_history(self.ctx.db.get_session_messages(sid))
+                self._note("Durduruldu. Mesajınız gönderilmedi.", "stop")
+                if on_cancel:
+                    on_cancel()
                 return
-            self.ctx.db.add_session_message(sid, "summary", result.content.strip(), model=result.model)
+            if result.finish_reason == "cancelled_by_user" or not (result.content or "").strip():
+                self._note("Özet oluşturulamadı" + ("; özetsiz devam ediliyor (eski araç çıktıları "
+                                                    "kısaltılarak gönderilir)." if then else "."), "alert")
+                if then and result.finish_reason != "cancelled_by_user":
+                    then()
+                return
+            meta = {"auto": auto, "duration_s": round(time.monotonic() - t0, 1)}
+            if reason:
+                meta["reason"] = reason
+            if focus:
+                meta["focus"] = focus
+            self.ctx.db.add_session_message(sid, "summary", result.content.strip(),
+                                            model=result.routed_model or model, meta=meta)
             self.render_history(self.ctx.db.get_session_messages(sid))
             self._update_context()
+            if then:
+                then()
 
         def fail(exc):
-            waiting.deleteLater()
-            self.running = False
-            self.composer.set_running(False)
-            self.transcript.add(ErrorCard("Özetleme başarısız", [str(exc)]))
+            finish_ui()
+            if then:
+                self._note(f"Otomatik özet başarısız ({exc}); özetsiz devam ediliyor.", "alert")
+                then()
+            else:
+                self.transcript.add(ErrorCard("Özetleme başarısız", [str(exc)]))
 
         Task(job, on_done=done, on_error=fail).start()
+
+    def _auto_continue(self) -> None:
+        """Güvenli noktada duran turu özetten sonra otomatik sürdürür."""
+        if not self.session_id:
+            return
+        self.ctx.db.add_session_message(self.session_id, "user", prompts.AUTO_CONTINUE_PROMPT,
+                                        meta={"auto_continue": True})
+        self.transcript.add(NoteWidget("Bağlam özetlendi; ajan kaldığı yerden otomatik devam ediyor.",
+                                       "refresh"))
+        self.start_run()
 
     def shutdown(self) -> None:
         if self.running and self.cancel_token is not None:

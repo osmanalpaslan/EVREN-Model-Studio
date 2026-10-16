@@ -88,3 +88,8 @@
 - **Neden:** Kullanıcı diğer bilgisayarda master'daki eski sürümü çalıştırıp kod ajanı yok sandı.
 - **Kaynak:** 2026-10-16-kullanici-dosya-erisimi-yok-yaniti-aldi
 
+### R-16 · Uzun sürebilecek model çağrısını akışlı yap
+- **Kural:** Özet gibi uzun sürebilecek model çağrılarını stream=True ile yap; akışsız çağrıyı yalnız kısa, deterministik işler için kullan.
+- **Neden:** glm-5.3 uzun düşünürken akışsız istekte bağlantı koptu ("sonuç belirsiz").
+- **Kaynak:** 2026-10-16-glm-5-3-akissiz-ozet-isteginde-baglanti-koptu
+

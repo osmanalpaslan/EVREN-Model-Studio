@@ -11,6 +11,14 @@ from PySide6.QtCore import QObject, Signal
 # çalışmaz (düğme "hiçbir şey yapmıyor" gibi görünür). Sonuç teslim
 # edilince referans bırakılır.
 _ACTIVE: set["Task"] = set()
+# Uygulama kapanırken False yapılır: geç gelen sonuçlar (ör. kapanmış
+# veritabanına yazacak model listesi) işlenmez.
+_ACCEPTING = True
+
+
+def set_accepting(value: bool) -> None:
+    global _ACCEPTING
+    _ACCEPTING = value
 
 
 class TaskSignals(QObject):
@@ -45,13 +53,14 @@ class Task:
 
     def _deliver_done(self, result: Any) -> None:
         try:
-            self._on_done(result)
+            if _ACCEPTING:
+                self._on_done(result)
         finally:
             _ACTIVE.discard(self)
 
     def _deliver_error(self, exc: Exception) -> None:
         try:
-            if self._on_error:
+            if self._on_error and _ACCEPTING:
                 self._on_error(exc)
         finally:
             _ACTIVE.discard(self)

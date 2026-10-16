@@ -202,6 +202,27 @@ class SettingsPage(BasePage):
         self.output_limit.setSuffix(" karakter")
         l.addWidget(kv_row_widget("Araç çıktısı sınırı (modele):", self.output_limit,
                                   f"{d.tool_output_limit:,}".replace(",", ".")))
+        self.auto_compact = QCheckBox("Uzun konuşmaları otomatik özetle (önerilir)")
+        l.addWidget(self.auto_compact)
+        l.addWidget(hint(
+            "Özet, yeni mesaj gönderilmeden önce yapılır; uzun bir görev sırasında yalnızca "
+            "güvenli noktada (araç sonuçlarından sonra) yapılır ve ajan kendiliğinden devam eder. "
+            "Eşik: modelin bağlamının yüzdesi veya üst sınır (token), hangisi önce gelirse."))
+        self.compact_percent = QSpinBox()
+        self.compact_percent.setRange(40, 90)
+        self.compact_percent.setSuffix(" %")
+        l.addWidget(kv_row_widget("Özet eşiği (bağlamın):", self.compact_percent, f"%{d.auto_compact_percent}"))
+        self.compact_max = QSpinBox()
+        self.compact_max.setRange(10_000, 900_000)
+        self.compact_max.setSingleStep(10_000)
+        self.compact_max.setSuffix(" token")
+        l.addWidget(kv_row_widget("Özet eşiği üst sınırı:", self.compact_max,
+                                  f"{d.auto_compact_max_tokens:,}".replace(",", ".")))
+        self.compact_model = QComboBox()
+        self.compact_model.setEditable(True)
+        l.addWidget(kv_row_widget("Özeti üreten model:", self.compact_model, d.auto_compact_model))
+        l.addWidget(hint("Boş bırakırsanız oturumun modeli kullanılır. Hızlı bir model önerilir: "
+                         "aynı özet glm-5.3 ile ~150 sn, deepseek-v4-flash ile ~40 sn sürdü."))
         self.show_reasoning = QCheckBox("Modelin düşünce sürecini göster (muhakeme modelleri)")
         l.addWidget(self.show_reasoning)
         self.send_enter = QCheckBox("Enter ile gönder (kapalıysa Ctrl+Enter)")
@@ -282,6 +303,12 @@ class SettingsPage(BasePage):
         self.output_limit.setValue(s.tool_output_limit)
         self.show_reasoning.setChecked(s.show_reasoning)
         self.send_enter.setChecked(s.send_with_enter)
+        self.auto_compact.setChecked(s.auto_compact)
+        self.compact_percent.setValue(s.auto_compact_percent)
+        self.compact_max.setValue(s.auto_compact_max_tokens)
+        self.compact_model.clear()
+        self.compact_model.addItems([""] + ids)
+        self.compact_model.setCurrentText(s.auto_compact_model)
         self.data_dir.setText(s.data_dir or str(default_data_dir()))
         self.theme.setCurrentText(s.theme if s.theme in ("koyu", "açık") else "koyu")
         self.font_size.setValue(s.font_size)
@@ -302,6 +329,10 @@ class SettingsPage(BasePage):
         s.tool_output_limit = int(self.output_limit.value())
         s.show_reasoning = self.show_reasoning.isChecked()
         s.send_with_enter = self.send_enter.isChecked()
+        s.auto_compact = self.auto_compact.isChecked()
+        s.auto_compact_percent = int(self.compact_percent.value())
+        s.auto_compact_max_tokens = int(self.compact_max.value())
+        s.auto_compact_model = self.compact_model.currentText().strip()
         data_dir = self.data_dir.text().strip()
         s.data_dir = "" if not data_dir or Path(data_dir) == default_data_dir() else data_dir
         s.theme = self.theme.currentText()

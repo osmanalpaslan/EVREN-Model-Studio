@@ -270,7 +270,8 @@ class AgentRunner:
                  cancel: Any = None, stream: bool = True,
                  max_steps: int = DEFAULT_MAX_STEPS,
                  command_timeout: int = 120, output_limit: int = 20_000,
-                 context_tokens: int | None = None, turn_id: int | None = None):
+                 context_tokens: int | None = None, turn_id: int | None = None,
+                 hard_context_limit: int | None = None):
         self.client = client
         self.model = model
         self.session_id = session_id
@@ -287,6 +288,10 @@ class AgentRunner:
         self.output_limit = output_limit
         self.context_tokens = context_tokens
         self.turn_id = turn_id
+        # Tur içi güvenli nokta denetimi: araç sonuçlarından sonra geçmiş bu
+        # tahmini token sayısını aşarsa tur "context_limit" ile durur; arayüz
+        # özetleyip otomatik devam eder (compaction.py).
+        self.hard_context_limit = hard_context_limit
         self.toolbox = (
             ToolBox(workspace, command_timeout=command_timeout, output_limit=output_limit,
                     skip_file=is_sensitive_read)
@@ -417,10 +422,16 @@ class AgentRunner:
             if self._cancelled():
                 outcome.stopped = "cancelled"
                 break
+            if self.hard_context_limit and self._history_tokens(history) >= self.hard_context_limit:
+                outcome.stopped = "context_limit"
+                break
         else:
             outcome.stopped = "max_steps"
             self.events.status(f"Adım sınırına ({self.max_steps}) ulaşıldı; devam etmek için mesaj gönderin.")
         return outcome
+
+    def _history_tokens(self, history: list[dict]) -> int:
+        return estimate_tokens(to_api_messages("", history, self.protocol)) + 2_500
 
     # -- araç yürütme -------------------------------------------------------------------------
 

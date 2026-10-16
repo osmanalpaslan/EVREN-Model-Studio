@@ -57,6 +57,17 @@ araçlı yanıtlar (list_files + read_file) doğru işleniyor. Dosya yazma
 (edit_file) gerçek arayüzde deepseek-v4-flash ile doğrulandı
 (`tests/e2e_ui_real_api.py`, 14/14).
 
+## Özet (compact) gerçek testi (2026-10-16, `tests/e2e_compact_real_api.py`)
+
+Aynı ajan geçmişi (~8 mesaj, ~7k karakter) akışlı istekle özetlendi; özette
+dosya yolu, karar, hata ve açık iş korunmalı.
+
+| Model | Süre | Sonuç |
+|---|---|---|
+| deepseek-v4-flash | 40,7 sn | ✅ |
+| qwen3.8-flash-next | 35,6 sn | ✅ |
+| glm-5.3 | 153,2 sn | ✅ (akışsız istekte bağlantı koptu) |
+
 ## Doğrulanmamışlar (⬜ — canlı istekle test edilmedi)
 
 - Görsel girdi (qwen3-vl-30b, gemma-4-31b, ...): yetenek bayrağı kayıt
