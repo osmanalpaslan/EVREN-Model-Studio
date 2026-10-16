@@ -27,6 +27,8 @@ data/
 .env
 secrets*
 !docs/SECURITY.md
+# Kaynak modül: anahtar İÇERMEZ, yalnızca kasaya erişim kodudur
+!src/evren_studio/secrets.py
 
 # Loglar
 logs/*.log
