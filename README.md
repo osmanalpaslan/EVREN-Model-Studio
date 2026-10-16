@@ -1,60 +1,78 @@
-# EVREN Model Studio
+# EVREN Studio
 
-EVREN LLM API'si için Türkçe Windows masaüstü uygulaması: sohbet, model
-incelemesi, kota takibi, hata kurtarma merkezi ve 30 dakikalık durum izleme
-ajanı.
+EVREN LLM API'si (https://evren.ssyz.org.tr/) için Türkçe Windows masaüstü
+uygulaması: **proje klasörünüzde çalışan bir kod ajanı** ve genel sohbet.
+Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm model
+çağrıları yalnızca sizin EVREN anahtarınızla EVREN'e gider.
 
 ## Hızlı başlangıç
 
-1. `run.bat` dosyasını çalıştırın (kurulum için bkz. docs/INSTALLATION.md).
-2. Ayarlar > API Anahtarı'na EVREN anahtarınızı girin (Windows Credential
-   Manager'da güvenle saklanır, ekranda maskeli kalır).
-3. API Bağlantı Testi ile doğrulayın, sonra Chat sayfasında sohbet edin.
+1. `run.bat` dosyasını çalıştırın (ilk kurulum: docs/INSTALLATION.md).
+2. Karşılama ekranındaki **Anahtar gir** düğmesiyle EVREN anahtarınızı
+   kaydedin (Windows Credential Manager'da saklanır, ekranda maskelenir).
+3. **Yeni oturum** → bir **proje klasörü** seçin (veya klasörsüz sohbet) →
+   görevi yazın, Enter'a basın.
 
-## Özellikler (Aşama 1 MVP — hepsi test edildi)
+## Çalışma alanı
 
-- **Chat**: akışlı yanıtlar (SSE), iptal, model seçimi, yerel geçmiş,
-  arama, dışa aktarma; glm-5.3 dahil doğrulanmış modeller.
-- **Modeller**: canlı liste, görev türü, yetenek bayrakları, ücretsizlik
-  bitişi, son test ve sağlık durumu.
-- **Kota**: 5 dakikalık pencere + günlük kullanım + CR kredi.
-- **Hata Merkezi**: her hata sınıflandırılır, imzayla saklanır, geçmiş
-  çözümler aranır, Türkçe öneriler sunulur.
-- **Durum İzleme Ajanı**: kullanıcı başlatmalı 30 dk izleme (5 dk
-  aralıkla; başlangıç dahil 7 kontrol), duyuru sayfası değişiklik tespiti,
-  maliyetsiz sağlık uçları, isteğe bağlı gerçek model testi, kesin/tahmin
-  ayrımlı Türkçe rapor; yarım kalan izlemeye devam seçeneği.
-- **Güvenlik**: anahtar yalnız Credential Manager'da; HTTPS zorunlu;
-  telemetri yok; veriler `%LOCALAPPDATA%` altında.
-- **Kurtarma kuralları**: 503 'sağlıklı endpoint yok' sağlayıcı kaynaklı
-  sayılır (en fazla 3 otomatik tekrar, Retry-After'a uyum); belirsiz
-  sonuçta otomatik tekrar YOK — `/v1/requests/{id}` sorgulanır.
+```
+┌ Sol menü ───────┬ Oturum ─────────────────────────────┬ Sağ panel ─────┐
+│ + Yeni oturum   │ Başlık · proje klasörü · git dalı   │ Görevler        │
+│ Ara             │                                     │ Değişiklikler   │
+│ Bugün / Dün …   │  Kullanıcı mesajı                   │ Dosyalar        │
+│  oturumlar      │  EVREN: düşünce · yanıt (Markdown)  │ Terminal        │
+│                 │   ✓ Okundu: src/app.py              │                 │
+│ Modeller, Kota, │   ✎ Düzenlenecek (+3 −1) [diff]     │                 │
+│ Durum İzleme,   │     [Onayla] [Hep izin ver] [Reddet]│                 │
+│ Hata Merkezi …  │ ┌ Yazma kutusu: @dosya, /komut ───┐ │                 │
+│ Ayarlar         │ │ 📎  Onaylı ▾  glm-5.3 ▾      ⬆ │ │                 │
+└─────────────────┴─────────────────────────────────────┴─────────────────┘
+```
+
+## Özellikler
+
+- **Kod ajanı**: dosya listeleme, okuma, regex arama, glob, dosya yazma,
+  birebir metin değiştirerek düzenleme, PowerShell komutu çalıştırma ve
+  görev listesi araçları. Her şey seçili proje klasörüyle sınırlıdır.
+- **Çalışma modları**: *Plan* (salt okunur, plan çıkarır), *Onaylı* (her
+  değişiklik ve komut için onay), *Otomatik düzenleme* (dosyalar onaysız,
+  komutlar onaylı). Komutlar hiçbir modda kendiliğinden çalışmaz.
+- **Onay kutuları**: değişiklik uygulanmadan önce renkli diff; komutlar
+  çalışmadan önce gösterilir. "Bu oturumda hep izin ver" ve reddetme notu.
+- **Geri alma**: ajanın her dosya değişikliği kaydedilir; sağ paneldeki
+  *Değişiklikler* sekmesinden tek tek veya topluca geri alınır.
+- **Sohbet deneyimi**: akışlı yanıt, Markdown + sözdizimi renklendirme,
+  muhakeme modellerinin düşünce süreci (katlanabilir), mesajı düzenleyip
+  yeniden gönderme, kopyalama, oturum arama/sabitleme/dışa aktarma.
+- **Komutlar**: `/init` (EVREN.md proje hafızası), `/ozet` (uzun konuşmayı
+  özetle), `/plan`, `/onayli`, `/otomatik`, `/model`, `/yeni`, `/yardim`;
+  mesajda `@yol/dosya` ile dosya ekleme.
+- **Araç protokolü**: OpenAI uyumlu yerel function calling; model
+  reddederse (400/422) otomatik olarak metin protokolüne geçilir.
+- **Modern arayüz**: koyu/açık tema, kendi simge seti, ortalanmış okuma
+  sütunu, klavye kısayolları (Enter, Shift+Enter, Esc, Ctrl+N/B/J/K/L/,).
+- **Aşama 1'den gelenler**: Modeller, Kullanım/Kota, Hata Merkezi (Türkçe
+  kurtarma önerileri), EVREN Durum İzleme Ajanı, bağlantı testi, tanılama.
+- **Güvenlik**: anahtar yalnızca Credential Manager'da; HTTPS zorunlu;
+  telemetri yok; veriler `%LOCALAPPDATA%\EVREN-Model-Studio` altında.
 
 ## Belgeler
 
-- Kurulum: docs/INSTALLATION.md
-- Proje durumu: docs/PROJECT_STATE.md | Görev listesi: docs/TASK_CHECKLIST.md
-- Kararlar: docs/DECISIONS.md | Değişiklikler: docs/CHANGELOG.md
+- Kurulum: docs/INSTALLATION.md · Güvenlik: docs/SECURITY.md
+- Proje durumu: docs/PROJECT_STATE.md · Görevler: docs/TASK_CHECKLIST.md
+- Kararlar: docs/DECISIONS.md · Değişiklikler: docs/CHANGELOG.md
 - Bilgi tabanı: docs/knowledge/ (API uyumluluğu, model yetenekleri, hata
   kataloğu, kurtarma rehberi, sınırlamalar, dersler, durum geçmişi)
-- Güvenlik: docs/SECURITY.md
 
 ## Test
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -q              # 53 birim testi
-.\.venv\Scripts\python.exe tests\smoke_ui.py         # arayüz dumanı
+.\.venv\Scripts\python.exe -m pytest -q              # birim + arayüz akış testleri
+.\.venv\Scripts\python.exe tests\smoke_ui.py         # arayüz duman testi
 .\.venv\Scripts\python.exe -u tests\e2e_real_api.py  # gerçek API (anahtar gerekir)
 ```
-
-## Durum
-
-Aşama 1 (MVP) tamamlandı. Code Studio AI özellikleri Aşama 2'de; özel
-görev modelleri (görsel/OCR/ASR/...) Aşama 3'te; Windows paketleme Aşama
-4'te. Ayrıntılı ve dürüst durum: docs/TASK_CHECKLIST.md.
 
 ## Lisans
 
 MIT — bkz. [LICENSE](LICENSE). Bağımlılıklar: PySide6 (LGPLv3), httpx
-(BSD), keyring (MIT).
-
+(BSD), keyring (MIT), Markdown (BSD), Pygments (BSD).

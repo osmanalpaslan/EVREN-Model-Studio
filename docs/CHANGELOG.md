@@ -1,5 +1,45 @@
 # Değişiklik Günlüğü
 
+## 0.2.0 — 2026-10-16 (Aşama 2: Kod ajanı çalışma alanı)
+
+### Eklendi
+
+- Kod ajanı (`src/evren_studio/agent/`): proje klasörüyle sınırlı 8 araç
+  (list_files, read_file, search_files, find_files, write_file, edit_file,
+  run_command, update_todos), izin politikası (Plan / Onaylı / Otomatik
+  düzenleme), ajan döngüsü (adım sınırı, iptal, bağlam kısaltma).
+- API istemcisinde araç çağrısı: `tools` gönderimi, akışlı/akışsız
+  `tool_calls` birleştirme; yerel araç reddedilirse metin protokolüne
+  (`<arac_cagrisi>`) otomatik geçiş.
+- Yeni arayüz: oturum listeli sol menü, karşılama ekranı, Markdown +
+  sözdizimi renklendirmeli akış, düşünce bloğu, araç kartları, diff'li onay
+  kutuları, sağ panel (Görevler, Değişiklikler + geri alma, Dosyalar,
+  Terminal), mod/model seçicili yazma kutusu, koyu/açık tema, simgeler.
+- Eğik çizgi komutları (/init, /ozet, /plan, /onayli, /otomatik, /model,
+  /yeni, /disa-aktar, /yardim) ve `@dosya` ekleme; mesajı düzenleyip
+  yeniden gönderme.
+- Veritabanı şema v2: `sessions`, `session_messages`, `file_changes`;
+  v1 sohbetleri otomatik olarak klasörsüz oturumlara kopyalanır (eski
+  tablolar silinmez).
+- Komutlar projedeki `.venv`'i otomatik kullanır (PATH başına eklenir).
+- Yakalanmamış hatalar `%LOCALAPPDATA%\EVREN-Model-Studio\logs\crash.log`
+  dosyasına yazılır ve Türkçe uyarı gösterilir.
+- 51 yeni test (araçlar, izinler, metin protokolü, ajan döngüsü, istemci
+  araç çağrısı, oturum veritabanı, arayüz uçtan uca onay akışı).
+
+### Düzeltildi
+
+- 7 kaynak dosyada çift kodlanmış (mojibake) Türkçe metinler: arayüzde
+  "YanÄ±t bekleniyorâ€¦" gibi görünüyordu.
+- Ayarlar açılışta hiç okunmuyordu (`ConfigStore.load()` çağrılmıyordu).
+- `secrets.py` `.gitignore` nedeniyle depoya hiç girmemişti (0.1.x düzeltmesi).
+- Açılışta model listesi ana iş parçacığında çekilip arayüzü donduruyordu.
+
+### Kaldırıldı
+
+- Eski Chat, Code Studio ve Sohbetler sayfaları (yerini oturum çalışma
+  alanı aldı).
+
 ## 0.1.0 — 2026-10-15 (Aşama 1 MVP)
 
 ### Eklendi

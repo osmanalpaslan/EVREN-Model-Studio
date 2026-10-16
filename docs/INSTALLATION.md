@@ -32,15 +32,36 @@ cd C:\Projects\AI-Atolye\EVREN-Model-Studio
 
 ## İlk kullanım
 
-1. Uygulama açılınca **Ayarlar** sayfasına gidin.
-2. **API Anahtarı** alanına EVREN anahtarınızı yapıştırıp **Kaydet**e
+1. Karşılama ekranındaki **Anahtar gir** düğmesine (veya sol alttaki
+   **Ayarlar**'a) tıklayın; EVREN anahtarınızı yapıştırıp **Kaydet**e
    basın. Anahtar Windows Credential Manager'da saklanır; ekranda asla
-   tam görünmez.
-3. **API Bağlantı Testi** sayfasından bağlantıyı doğrulayın.
-4. **Chat** sayfasında model seçip sohbet edin. Yanıtlar akış halinde
-   gelir, mesajlar bilgisayarınızda saklanır.
-5. Sağlayıcı sorunu şüphesinde **EVREN Durum İzleme** sayfasından 30
+   tam görünmez. Her bilgisayarda bir kez girilir.
+2. Sol menüden **Bağlantı Testi** ile bağlantıyı doğrulayın.
+3. **Yeni oturum** → karşılama ekranında **proje klasörünü** seçin (kod
+   ajanı) veya **Klasörsüz sohbet** ile genel sohbet edin.
+4. Yazma kutusunun altından çalışma modunu (Plan / Onaylı / Otomatik
+   düzenleme) ve modeli seçin; görevi yazıp Enter'a basın.
+5. Ajanın önerdiği değişiklikleri onay kutusundan inceleyin; sağ paneldeki
+   **Değişiklikler** sekmesinden istediğiniz an geri alın.
+6. İlk kez çalıştığınız projede `/init` yazarak EVREN.md proje hafızasını
+   oluşturun.
+7. Sağlayıcı sorunu şüphesinde **EVREN Durum İzleme** sayfasından 30
    dakikalık izlemeyi başlatın.
+
+## Yeni bir bilgisayarda geliştirmeye devam etme
+
+```powershell
+cd C:\Projects\AI-Atolye
+gh repo clone osmanalpaslan/EVREN-Model-Studio
+cd EVREN-Model-Studio
+& "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+API anahtarı ve yerel veriler (oturumlar, hata kayıtları) bilgisayarlar
+arasında taşınmaz; anahtarı yeni bilgisayarda yeniden girin.
 
 ## Testleri çalıştırma
 

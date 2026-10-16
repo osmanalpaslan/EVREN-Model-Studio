@@ -51,6 +51,8 @@ class ChatResult:
     routed_model: str | None = None
     finish_reason: str | None = None
     usage: dict[str, Any] = field(default_factory=dict)
+    # Yerel araç çağrıları: [{"id", "name", "arguments" (JSON metni)}]
+    tool_calls: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -390,10 +392,14 @@ class EvrenClient:
              max_tokens: int | None = None, stream: bool = False,
              cancel: CancelToken | None = None,
              on_delta: Callable[[str, str], None] | None = None,
-             on_reasoning: Callable[[str], None] | None = None) -> ChatResult:
+             on_reasoning: Callable[[str], None] | None = None,
+             tools: list[dict[str, Any]] | None = None,
+             tool_choice: str | None = None) -> ChatResult:
         """Chat Completion; stream=True ise SSE parçaları geri çağrıyla iletilir.
 
         İptal: cancel bayrağı gönderim öncesi ve her akış parçasında denetlenir.
+        tools verilirse OpenAI uyumlu function calling istenir; araç çağrıları
+        ChatResult.tool_calls içinde döner (akışta parçalar birleştirilir).
         """
         if cancel is not None and cancel.cancelled:
             return ChatResult(model=model, finish_reason="cancelled_by_user")
@@ -402,6 +408,9 @@ class EvrenClient:
                                 "stream": bool(stream)}
         if max_tokens is not None:
             body["max_tokens"] = max_tokens
+        if tools:
+            body["tools"] = tools
+            body["tool_choice"] = tool_choice or "auto"
 
         extra = {"Accept": "text/event-stream"} if stream else None
         resp = self._request("POST", "/v1/chat/completions", json_body=body,
@@ -420,14 +429,24 @@ class EvrenClient:
         msg = choice.get("message") or {}
         usage = data.get("usage") or {}
         evren_usage = usage.get("evren") or {}
+        calls = []
+        for i, tc in enumerate(msg.get("tool_calls") or []):
+            fn = tc.get("function") or {}
+            args = fn.get("arguments")
+            if isinstance(args, dict):
+                args = json.dumps(args, ensure_ascii=False)
+            calls.append({"id": tc.get("id") or f"call_{i}",
+                          "name": fn.get("name") or "",
+                          "arguments": args or ""})
         return ChatResult(
             content=msg.get("content") or "",
-            reasoning=msg.get("reasoning") or "",
+            reasoning=msg.get("reasoning") or msg.get("reasoning_content") or "",
             model=data.get("model", ""),
             request_id=data.get("id"),
             routed_model=evren_usage.get("routed_model"),
             finish_reason=choice.get("finish_reason"),
             usage=usage,
+            tool_calls=calls,
         )
 
     def _consume_stream(self, resp: httpx.Response, model: str,
@@ -439,11 +458,23 @@ class EvrenClient:
         result = ChatResult(model=model)
         content_parts: list[str] = []
         reasoning_parts: list[str] = []
+        # index → {"id", "name", "arguments"(parçalar)}
+        call_parts: dict[int, dict[str, Any]] = {}
+
+        def collect_calls() -> list[dict[str, str]]:
+            out = []
+            for idx in sorted(call_parts):
+                c = call_parts[idx]
+                out.append({"id": c["id"] or f"call_{idx}", "name": c["name"],
+                            "arguments": "".join(c["arguments"])})
+            return out
+
         try:
             for line in resp.iter_lines():
                 if cancel is not None and cancel.cancelled:
                     result.content = "".join(content_parts)
                     result.reasoning = "".join(reasoning_parts)
+                    result.tool_calls = collect_calls()
                     result.finish_reason = "cancelled_by_user"
                     return result
                 if not line or not line.startswith("data:"):
@@ -465,7 +496,19 @@ class EvrenClient:
                         result.usage = chunk["usage"]
                     continue
                 delta = choices[0].get("delta") or {}
-                r_text = delta.get("reasoning")
+                for tc in delta.get("tool_calls") or []:
+                    idx = tc.get("index", len(call_parts))
+                    slot = call_parts.setdefault(idx, {"id": "", "name": "", "arguments": []})
+                    if tc.get("id"):
+                        slot["id"] = tc["id"]
+                    fn = tc.get("function") or {}
+                    if fn.get("name"):
+                        slot["name"] += fn["name"]
+                    if fn.get("arguments"):
+                        args = fn["arguments"]
+                        slot["arguments"].append(
+                            args if isinstance(args, str) else json.dumps(args, ensure_ascii=False))
+                r_text = delta.get("reasoning") or delta.get("reasoning_content")
                 if r_text:
                     reasoning_parts.append(r_text)
                     if on_reasoning:
@@ -490,4 +533,5 @@ class EvrenClient:
             resp.close()
         result.content = "".join(content_parts)
         result.reasoning = "".join(reasoning_parts)
+        result.tool_calls = collect_calls()
         return result

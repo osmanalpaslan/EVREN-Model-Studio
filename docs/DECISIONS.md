@@ -16,10 +16,19 @@
 | 12 | Otomatik model değiştirme varsayılan KAPALI | Kullanıcı güveni + yanlış modele geçiş riski | 2026-10-15 |
 | 13 | İzleme ajanı kullanıcı başlatmalı | Sonsuz arka plan izleme izinsiz kurulmaz; 30 dk/5 dk planı | 2026-10-15 |
 | 14 | Duyuru izleme hedefi = genel ana sayfa | Duyuru API'si 401/giriş gerektiriyor; URL kullanıcı tarafından değiştirilebilir | 2026-10-15 |
-| 15 | Mesajlar QPlainTextEdit (Markdown yok) | MVP sadeliği; hata yüzeyini küçültür; Aşama 2'de zenginleştirilir | 2026-10-15 |
-| 16 | Komut çalıştırma MVP'de YOK | Güvenlik: onaylı ve sınırlı tasarım Aşama 2'de | 2026-10-15 |
+| 15 | Mesajlar QPlainTextEdit (Markdown yok) — **#25 ile değişti** | MVP sadeliği; hata yüzeyini küçültür; Aşama 2'de zenginleştirildi | 2026-10-15 |
+| 16 | Komut çalıştırma MVP'de YOK — **#23 ile değişti** | Güvenlik: onaylı ve sınırlı tasarım Aşama 2'de eklendi | 2026-10-15 |
 | 17 | SQLite check_same_thread=False + RLock | İzleme ajanı ayrı iş parçacığında (ders #5) | 2026-10-15 |
 | 18 | Ücretsiz/yerel araçlar dışında sağlayıcı YOK | Kullanım güvenliği; tüm istekler yalnız EVREN'e | 2026-10-15 |
+| 19 | Arayüz oturum tabanlı (Claude Code benzeri): sol menü + akış + sağ panel | Kullanıcı isteği; sohbet ve kod çalışması tek yerde; 11 ayrı sayfa yerine tek çalışma alanı | 2026-10-16 |
+| 20 | Ajan çekirdeği Qt'den bağımsız paket (`agent/`) | Arayüzsüz test edilebilir; döngü, araçlar, izinler ayrı modüller | 2026-10-16 |
+| 21 | Yerel function calling + metin protokolü geri dönüşü | EVREN şemasında `tools` var ama gerçek tur doğrulanmadı; reddedilirse (400/422) `<arac_cagrisi>` bloklarıyla devam | 2026-10-16 |
+| 22 | Yazma araçları "hazırla → onay → uygula" | Diff onaydan önce gösterilir; onay beklerken değişen dosyanın üzerine yazılmaz | 2026-10-16 |
+| 23 | Komutlar hiçbir modda onaysız çalışmaz | Güvenlik; yalnızca kullanıcının izin verdiği öneklere ve zincirsiz komutlara oturum izni | 2026-10-16 |
+| 24 | Dosya değişiklikleri DB'de önce/sonra içerikle saklanır | Git'ten bağımsız geri alma; git deposu olmayan projelerde de çalışır | 2026-10-16 |
+| 25 | Markdown (python-markdown) + Pygments, QTextBrowser | Saf Python, küçük, BSD lisanslı; Qt zengin metniyle uyumlu satır içi stiller | 2026-10-16 |
+| 26 | Şema v2: eski `chats/messages` silinmez, oturumlara kopyalanır | Geri dönüşü olmayan veri kaybını önler | 2026-10-16 |
+| 27 | run.bat `pythonw` + crash.log | Konsol penceresi açılmaz; hatalar kaybolmaz | 2026-10-16 |
 
 ## Değerlendirilip reddedilenler
 

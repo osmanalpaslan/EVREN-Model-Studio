@@ -1,4 +1,4 @@
-﻿"""API baÄŸlantÄ± testi sayfasÄ±."""
+"""API bağlantı testi sayfası."""
 from __future__ import annotations
 
 from PySide6.QtWidgets import QLabel, QPlainTextEdit, QPushButton
@@ -10,25 +10,25 @@ from .workers import Task
 
 
 class ConnectionPage(BasePage):
-    title = "API BaÄŸlantÄ± Testi"
+    title = "API Bağlantı Testi"
 
     def __init__(self, ctx, parent=None):
         super().__init__(ctx, parent)
         c, l = card()
         l.addWidget(QLabel(
-            "Bu test kimlik doÄŸrulamasÄ±z saÄŸlÄ±k uÃ§larÄ±nÄ±, model listesini ve "
-            "kota ucunu sÄ±rayla dener. GerÃ§ek model Ã§aÄŸrÄ±sÄ± yapÄ±lmaz; token "
+            "Bu test kimlik doğrulamasız sağlık uçlarını, model listesini ve "
+            "kota ucunu sırayla dener. Gerçek model çağrısı yapılmaz; token "
             "harcanmaz."
         ))
-        self.result = kv_row("SonuÃ§:", "-")
+        self.result = kv_row("Sonuç:", "-")
         l.addWidget(self.result)
-        self.run_btn = QPushButton("BaÄŸlantÄ± Testini BaÅŸlat")
+        self.run_btn = QPushButton("Bağlantı Testini Başlat")
         self.run_btn.clicked.connect(self.run)
         l.addWidget(self.run_btn)
         self.root.addWidget(c)
 
         c2, l2 = card()
-        l2.addWidget(QLabel("Test gÃ¼nlÃ¼ÄŸÃ¼"))
+        l2.addWidget(QLabel("Test günlüğü"))
         self.log = QPlainTextEdit()
         self.log.setReadOnly(True)
         self.log.setMaximumHeight(360)
@@ -44,14 +44,14 @@ class ConnectionPage(BasePage):
     def run(self) -> None:
         self.run_btn.setEnabled(False)
         self.log.clear()
-        self._append(f"Uygulama sÃ¼rÃ¼mÃ¼: {__version__}")
+        self._append(f"Uygulama sürümü: {__version__}")
         self._append(f"API adresi: {self.ctx.settings.base_url}")
         self._append(f"Anahtar (maskeli): {mask_api_key(self.ctx.api_key()) or 'YOK'}")
 
         def job():
             if not self.ctx.has_api_key():
                 raise PermissionError(
-                    "API anahtarÄ± tanÄ±mlÄ± deÄŸil. Ayarlar sayfasÄ±ndan girin."
+                    "API anahtarı tanımlı değil. Ayarlar sayfasından girin."
                 )
             client = self.ctx.make_client(log_sink=lambda m: None)
             try:
@@ -59,14 +59,14 @@ class ConnectionPage(BasePage):
                 out.append("healthz: " + str(client.healthz()))
                 out.append("readyz: " + str(client.readyz()))
                 models = client.list_models()
-                out.append(f"models: {len(models)} model eriÅŸilebilir")
+                out.append(f"models: {len(models)} model erişilebilir")
                 quota = client.get_quota()
                 out.append(
                     f"quota: seviye={quota.level}, kalan_kredi={quota.remaining_cr} CR"
                 )
                 terms = client.terms_status()
                 out.append(
-                    f"terms: sÃ¼rÃ¼m={terms.get('current_version')}, "
+                    f"terms: sürüm={terms.get('current_version')}, "
                     f"kabul_durumu={terms.get('accepted')}"
                 )
                 return out
@@ -75,14 +75,14 @@ class ConnectionPage(BasePage):
 
         def done(lines):
             for line in lines:
-                self._append("BAÅARILI â€” " + line)
+                self._append("BAŞARILI — " + line)
             self.result.findChildren(QLabel)[1].setText(
-                f"BAÄLANTI SAÄLAM ({len(lines)} adÄ±m)"
+                f"BAĞLANTI SAĞLAM ({len(lines)} adım)"
             )
             self.run_btn.setEnabled(True)
 
         def fail(exc):
-            self._append(f"BAÅARISIZ â€” {exc}")
+            self._append(f"BAŞARISIZ — {exc}")
             self.result.findChildren(QLabel)[1].setText(f"HATA: {exc}")
             self.run_btn.setEnabled(True)
 

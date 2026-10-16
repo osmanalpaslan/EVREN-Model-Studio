@@ -1,0 +1,1069 @@
+"""Oturum görünümü: başlık çubuğu, karşılama ekranı, akış ve yazma kutusu.
+
+Ajan arka plan iş parçacığında çalışır; `AgentBridge` olayları Qt
+sinyalleriyle ana iş parçacığına taşır. Onay isteyen her işlem ilgili araç
+kartının içinde onay kutusu olarak gösterilir.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+from pathlib import Path
+from typing import Any
+
+from PySide6.QtCore import QObject, QSize, Qt, Signal
+from PySide6.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QStackedWidget,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ..agent import prompts
+from ..agent.permissions import MODES, SessionPermissions
+from ..agent.runner import (
+    AgentEvents,
+    AgentRunner,
+    ApprovalRequest,
+    ToolCall,
+    ToolResult,
+    estimate_tokens,
+    to_api_messages,
+)
+from ..agent.tools import FileChange, ToolBox, ToolError, Workspace
+from ..api.client import CancelToken
+from ..api.errors import ApiError, ErrorKind
+from . import icons, theme
+from .composer import SLASH_COMMANDS, Composer
+from .transcript import (
+    COLUMN_WIDTH,
+    AssistantMessageWidget,
+    ErrorCard,
+    NoteWidget,
+    ToolCallWidget,
+    Transcript,
+    UserMessageWidget,
+    faint_label,
+    icon_button,
+)
+from .workers import Task
+
+ATTACH_OPEN = "<ekli_dosyalar>"
+ATTACH_CLOSE = "</ekli_dosyalar>"
+MENTION_RE = re.compile(r"(?<!\S)@([^\s]+)")
+MAX_ATTACH_BYTES = 100 * 1024
+
+
+def split_attachments(content: str) -> tuple[str, list[str]]:
+    """Kayıtlı kullanıcı mesajından görünen metni ve ekli dosya adlarını ayırır."""
+    if ATTACH_OPEN not in content:
+        return content, []
+    text, _, rest = content.partition("\n\n" + ATTACH_OPEN)
+    names = re.findall(r"^### (.+)$", rest, re.M)
+    return text, names
+
+
+class AgentBridge(QObject, AgentEvents):
+    """AgentEvents → Qt sinyalleri (iş parçacığından ana iş parçacığına)."""
+
+    sig_text = Signal(str)
+    sig_reasoning = Signal(str)
+    sig_step = Signal(int)
+    sig_message = Signal(object)
+    sig_tool_started = Signal(object, str)
+    sig_tool_output = Signal(object, str)
+    sig_tool_finished = Signal(object, object)
+    sig_approval = Signal(object)
+    sig_todos = Signal(object)
+    sig_file = Signal(object, object)
+    sig_protocol = Signal(str, str)
+    sig_status = Signal(str)
+
+    def __init__(self):
+        QObject.__init__(self)
+
+    def text_delta(self, text: str) -> None: self.sig_text.emit(text)
+    def reasoning_delta(self, text: str) -> None: self.sig_reasoning.emit(text)
+    def step_started(self, step: int) -> None: self.sig_step.emit(step)
+    def message_saved(self, message: dict) -> None: self.sig_message.emit(message)
+    def tool_started(self, call: ToolCall, title: str) -> None: self.sig_tool_started.emit(call, title)
+    def tool_output(self, call: ToolCall, chunk: str) -> None: self.sig_tool_output.emit(call, chunk)
+    def tool_finished(self, call: ToolCall, result: ToolResult) -> None: self.sig_tool_finished.emit(call, result)
+    def approval_needed(self, request: ApprovalRequest) -> None: self.sig_approval.emit(request)
+    def todos_changed(self, todos: list) -> None: self.sig_todos.emit(todos)
+    def file_changed(self, change_id, change: FileChange) -> None: self.sig_file.emit(change_id, change)
+    def protocol_changed(self, protocol: str, reason: str) -> None: self.sig_protocol.emit(protocol, reason)
+    def status(self, text: str) -> None: self.sig_status.emit(text)
+
+
+# ---- karşılama ekranı ------------------------------------------------------------
+
+
+class WelcomeView(QWidget):
+    suggestion = Signal(str)
+    workspace_changed = Signal(object)    # str | None
+    open_settings = Signal()
+
+    # (başlık, kısa açıklama, istem)
+    AGENT_SUGGESTIONS = [
+        ("Projeyi tanı", "Amacı, mimariyi ve önemli dosyaları özetler",
+         "Bu projeyi incele; amacını, mimarisini ve önemli dosyalarını kısaca anlat."),
+        ("Testleri çalıştır", "Testleri bulur, çalıştırır ve hataları açıklar",
+         "Projenin testlerini bul ve çalıştır; başarısız olanların nedenini açıkla ve düzeltme öner."),
+        ("Proje hafızası (/init)", "EVREN.md oluşturur; sonraki oturumlar projeyi hatırlar", "/init"),
+        ("İyileştirme planı", "Plan modunda inceler, dosyalara dokunmaz",
+         "/plan Kod tabanını incele ve öncelikli iyileştirmeler için adım adım bir plan hazırla."),
+    ]
+    CHAT_SUGGESTIONS = [
+        ("Kavram açıkla", "Örnekli, sade bir anlatım",
+         "Python'da async/await nasıl çalışır? Basit bir örnekle anlat."),
+        ("Metin düzenle", "Daha akıcı ve resmi bir Türkçe",
+         "Aşağıdaki metni daha akıcı ve resmi bir Türkçeyle yeniden yaz:\n\n"),
+        ("Kod incele", "Hataları ve iyileştirmeleri bulur",
+         "Şu kodu incele ve hataları açıkla:\n\n"),
+        ("Yol haritası", "Adım adım uygulanabilir plan",
+         "Küçük bir masaüstü uygulaması geliştirmek için adım adım bir yol haritası hazırla."),
+    ]
+
+    def __init__(self, ctx, parent=None):
+        super().__init__(parent)
+        self.ctx = ctx
+        self.workspace: str | None = None
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(24, 24, 24, 12)
+        outer.addStretch(2)
+        col_host = QHBoxLayout()
+        col_host.addStretch(1)
+        col = QWidget()
+        col.setMaximumWidth(COLUMN_WIDTH - 60)
+        cl = QVBoxLayout(col)
+        cl.setSpacing(14)
+        logo = QLabel()
+        logo.setPixmap(icons.pixmap("spark", theme.current().accent, 40))
+        logo.setAlignment(Qt.AlignCenter)
+        cl.addWidget(logo)
+        title = QLabel("Bugün ne üzerinde çalışalım?")
+        title.setProperty("role", "title")
+        title.setAlignment(Qt.AlignCenter)
+        cl.addWidget(title)
+        self.subtitle = QLabel("")
+        self.subtitle.setProperty("role", "dim")
+        self.subtitle.setAlignment(Qt.AlignCenter)
+        self.subtitle.setWordWrap(True)
+        cl.addWidget(self.subtitle)
+
+        ws_row = QHBoxLayout()
+        ws_row.addStretch(1)
+        self.ws_btn = QToolButton()
+        self.ws_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.ws_btn.setPopupMode(QToolButton.InstantPopup)
+        self.ws_btn.setIconSize(QSize(16, 16))
+        self.ws_btn.setCursor(Qt.PointingHandCursor)
+        self.ws_menu = QMenu(self)
+        self.ws_menu.aboutToShow.connect(self._fill_menu)
+        self.ws_btn.setMenu(self.ws_menu)
+        ws_row.addWidget(self.ws_btn)
+        ws_row.addStretch(1)
+        cl.addLayout(ws_row)
+
+        self.key_card = QFrame()
+        self.key_card.setObjectName("InfoCard")
+        kl = QHBoxLayout(self.key_card)
+        kl.setContentsMargins(14, 10, 10, 10)
+        ki = QLabel()
+        ki.setPixmap(icons.pixmap("alert", theme.current().warning, 16))
+        kl.addWidget(ki)
+        kt = QLabel("API anahtarı tanımlı değil. Başlamak için EVREN anahtarınızı girin; "
+                    "anahtar Windows Credential Manager'da saklanır.")
+        kt.setWordWrap(True)
+        kl.addWidget(kt, 1)
+        kb = QPushButton("Anahtar gir")
+        kb.setProperty("variant", "primary")
+        kb.clicked.connect(self.open_settings.emit)
+        kl.addWidget(kb)
+        cl.addWidget(self.key_card)
+
+        self.grid = QGridLayout()
+        self.grid.setSpacing(10)
+        cl.addLayout(self.grid)
+        col_host.addWidget(col, 10)
+        col_host.addStretch(1)
+        outer.addLayout(col_host)
+        outer.addStretch(3)
+        self.set_workspace(ctx.settings.code_workdir if ctx.settings.code_workdir and Path(ctx.settings.code_workdir).is_dir() else None)
+
+    def refresh(self) -> None:
+        self.key_card.setVisible(not self.ctx.has_api_key())
+
+    def set_workspace(self, ws: str | None) -> None:
+        self.workspace = ws
+        if ws:
+            self.ws_btn.setIcon(icons.icon("folder", theme.current().accent, 16))
+            self.ws_btn.setText(f"  {Path(ws).name}   ▾")
+            self.ws_btn.setToolTip(ws)
+            self.subtitle.setText(
+                "Kod ajanı bu klasörde dosya okuyabilir, düzenleyebilir ve onayınızla komut "
+                "çalıştırabilir. Değişiklikleri sağ paneldeki “Değişiklikler” sekmesinden geri alabilirsiniz.")
+        else:
+            self.ws_btn.setIcon(icons.icon("message", size=16))
+            self.ws_btn.setText("  Klasörsüz sohbet   ▾")
+            self.ws_btn.setToolTip("Bir proje klasörü seçerek kod ajanını etkinleştirin")
+            self.subtitle.setText("Genel sohbet: dosya erişimi yoktur. Kod üzerinde çalışmak için bir "
+                                  "proje klasörü seçin.")
+        self._fill_suggestions()
+        self.refresh()
+
+    def _fill_suggestions(self) -> None:
+        while self.grid.count():
+            item = self.grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        items = self.AGENT_SUGGESTIONS if self.workspace else self.CHAT_SUGGESTIONS
+        p = theme.current()
+        for i, (head, desc, prompt) in enumerate(items):
+            b = QPushButton()
+            b.setObjectName("SuggestionCard")
+            b.setCursor(Qt.PointingHandCursor)
+            b.setFixedHeight(68)
+            bl = QVBoxLayout(b)
+            bl.setContentsMargins(14, 10, 14, 10)
+            bl.setSpacing(2)
+            t = QLabel(head)
+            t.setStyleSheet(f"font-weight: 600; color: {p.text};")
+            d = QLabel(desc)
+            d.setProperty("role", "dim")
+            for lab in (t, d):
+                lab.setAttribute(Qt.WA_TransparentForMouseEvents)
+                bl.addWidget(lab)
+            b.clicked.connect(lambda _=False, pr=prompt: self.suggestion.emit(pr))
+            self.grid.addWidget(b, i // 2, i % 2)
+
+    def _fill_menu(self) -> None:
+        self.ws_menu.clear()
+        recent = [p for p in self.ctx.settings.recent_workspaces if Path(p).is_dir()]
+        if recent:
+            sec = self.ws_menu.addAction("Son klasörler")
+            sec.setEnabled(False)
+            for p in recent[:8]:
+                self.ws_menu.addAction(icons.icon("folder", size=15), f"{Path(p).name}   —   {p}",
+                                       lambda pp=p: self._choose(pp))
+            self.ws_menu.addSeparator()
+        self.ws_menu.addAction(icons.icon("plus", size=15), "Klasör seç…", self._browse)
+        self.ws_menu.addAction(icons.icon("message", size=15), "Klasörsüz sohbet", lambda: self._choose(None))
+
+    def _browse(self) -> None:
+        d = QFileDialog.getExistingDirectory(self, "Proje klasörü seç", self.workspace or str(Path.home()))
+        if d:
+            self._choose(str(Path(d)))
+
+    def _choose(self, ws: str | None) -> None:
+        if ws:
+            self.ctx.settings.remember_workspace(ws)
+            self.ctx.save_settings()
+        self.set_workspace(ws)
+        self.workspace_changed.emit(ws)
+
+
+# ---- oturum görünümü ------------------------------------------------------------------
+
+
+class SessionView(QWidget):
+    sessions_changed = Signal()
+    session_opened = Signal(object)        # int | None
+    page_requested = Signal(str)
+    toggle_sidebar = Signal()
+    toggle_panel = Signal()
+
+    def __init__(self, ctx, panel, parent=None):
+        super().__init__(parent)
+        self.ctx = ctx
+        self.panel = panel
+        self.session_id: int | None = None
+        self.workspace: str | None = None
+        self.mode = ctx.settings.agent_mode if ctx.settings.agent_mode in MODES else "onayli"
+        self.model = ctx.settings.default_model
+        self.running = False
+        self.cancel_token: CancelToken | None = None
+        self.runner: AgentRunner | None = None
+        self.bridge: AgentBridge | None = None
+        self.current: AssistantMessageWidget | None = None
+        self.tool_widgets: dict[str, ToolCallWidget] = {}
+        self.perms: dict[int, SessionPermissions] = {}
+        self.edit_from: int | None = None
+        self._pending_approvals: list[ApprovalRequest] = []
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        lay.addWidget(self._build_header())
+        self.stack = QStackedWidget()
+        self.welcome = WelcomeView(ctx)
+        self.welcome.suggestion.connect(self._suggestion)
+        self.welcome.workspace_changed.connect(self._welcome_ws)
+        self.welcome.open_settings.connect(lambda: self.page_requested.emit("settings"))
+        self.transcript = Transcript()
+        self.stack.addWidget(self.welcome)
+        self.stack.addWidget(self.transcript)
+        lay.addWidget(self.stack, 1)
+
+        host = QHBoxLayout()
+        host.setContentsMargins(24, 6, 24, 12)
+        host.addStretch(1)
+        self.composer = Composer()
+        self.composer.setMaximumWidth(COLUMN_WIDTH)
+        self.composer.submitted.connect(self.send)
+        self.composer.stop_requested.connect(self.stop)
+        self.composer.mode_changed.connect(self.set_mode)
+        self.composer.model_changed.connect(self.set_model)
+        self.composer.attach_requested.connect(self.attach_files)
+        self.composer.edit.send_with_enter = ctx.settings.send_with_enter
+        host.addWidget(self.composer, 100)
+        host.addStretch(1)
+        lay.addLayout(host)
+
+        self.panel.files.attach_requested.connect(lambda rel: self.composer.edit.insert_at_cursor(f"@{rel} "))
+        self.panel.changes.changed.connect(lambda: None)
+        self.refresh_models()
+        self.new_session()
+
+    # ---- başlık çubuğu ----
+
+    def _build_header(self) -> QWidget:
+        bar = QFrame()
+        bar.setObjectName("HeaderBar")
+        bar.setFixedHeight(48)
+        h = QHBoxLayout(bar)
+        h.setContentsMargins(12, 0, 10, 0)
+        h.setSpacing(6)
+        self.sidebar_btn = icon_button("panel-left", "Kenar çubuğunu göster (Ctrl+B)", 17)
+        self.sidebar_btn.clicked.connect(self.toggle_sidebar.emit)
+        self.sidebar_btn.setVisible(False)
+        h.addWidget(self.sidebar_btn)
+        self.title_btn = QToolButton()
+        self.title_btn.setProperty("variant", "chip")
+        self.title_btn.setStyleSheet("font-weight: 600;")
+        self.title_btn.setToolTip("Yeniden adlandırmak için tıklayın")
+        self.title_btn.clicked.connect(self.rename)
+        h.addWidget(self.title_btn)
+        self.ws_chip = QToolButton()
+        self.ws_chip.setProperty("variant", "chip")
+        self.ws_chip.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.ws_chip.setIconSize(QSize(15, 15))
+        self.ws_chip.clicked.connect(self._open_ws)
+        h.addWidget(self.ws_chip)
+        self.branch_chip = QToolButton()
+        self.branch_chip.setProperty("variant", "chip")
+        self.branch_chip.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.branch_chip.setIcon(icons.icon("branch", size=15))
+        self.branch_chip.setIconSize(QSize(15, 15))
+        self.branch_chip.setToolTip("Git dalı")
+        h.addWidget(self.branch_chip)
+        h.addStretch(1)
+        self.more_btn = icon_button("more", "Oturum işlemleri", 17)
+        self.more_btn.setPopupMode(QToolButton.InstantPopup)
+        m = QMenu(self)
+        m.addAction(icons.icon("map", size=15), "EVREN.md proje hafızası oluştur (/init)", lambda: self.send("/init"))
+        m.addAction(icons.icon("refresh", size=15), "Konuşmayı özetle (/ozet)", lambda: self.send("/ozet"))
+        m.addAction(icons.icon("download", size=15), "Markdown olarak dışa aktar", self.export)
+        m.addSeparator()
+        m.addAction(icons.icon("trash", theme.current().danger, 15), "Oturumu sil", self.delete_current)
+        self.more_btn.setMenu(m)
+        h.addWidget(self.more_btn)
+        self.panel_btn = icon_button("panel-right", "Sağ paneli aç/kapat (Ctrl+J)", 17)
+        self.panel_btn.clicked.connect(self.toggle_panel.emit)
+        h.addWidget(self.panel_btn)
+        return bar
+
+    def _update_header(self) -> None:
+        title = "Yeni oturum"
+        if self.session_id:
+            row = self.ctx.db.get_session(self.session_id)
+            if row:
+                title = row["title"]
+        self.title_btn.setText(title[:60])
+        ws = self.workspace if self.session_id else self.welcome.workspace
+        if ws:
+            self.ws_chip.setIcon(icons.icon("folder", size=15))
+            self.ws_chip.setText(Path(ws).name)
+            self.ws_chip.setToolTip(f"{ws}\nDosya Gezgini'nde açmak için tıklayın")
+            self.ws_chip.setVisible(True)
+            branch = Workspace(ws).git_branch() if Path(ws).is_dir() else None
+            self.branch_chip.setText(branch or "")
+            self.branch_chip.setVisible(bool(branch))
+        else:
+            self.ws_chip.setIcon(icons.icon("message", size=15))
+            self.ws_chip.setText("Sohbet")
+            self.ws_chip.setToolTip("Klasörsüz sohbet — dosya erişimi yok")
+            self.ws_chip.setVisible(True)
+            self.branch_chip.setVisible(False)
+        self.more_btn.setEnabled(self.session_id is not None)
+
+    def _open_ws(self) -> None:
+        ws = self.workspace if self.session_id else self.welcome.workspace
+        if ws and os.name == "nt":
+            subprocess.Popen(["explorer", ws])
+
+    def set_sidebar_hidden(self, hidden: bool) -> None:
+        self.sidebar_btn.setVisible(hidden)
+
+    # ---- modeller ----
+
+    def refresh_models(self) -> None:
+        items = []
+        for m in self.ctx.chat_models():
+            desc = []
+            if m.supports_tools:
+                desc.append("araç")
+            if m.supports_vision:
+                desc.append("görsel")
+            if m.context_length:
+                desc.append(f"{m.context_length // 1000}k")
+            if m.id == "auto":
+                desc = ["yönlendirici"]
+            items.append((m.id, " · ".join(desc), m.supports_tools))
+        if not items:
+            items = [(self.model, "", True)]
+        ids = [i[0] for i in items]
+        if self.model not in ids and ids:
+            self.model = self.ctx.settings.default_model if self.ctx.settings.default_model in ids else ids[0]
+        self.composer.set_models(items, self.model)
+        self._update_context()
+
+    # ---- oturum yönetimi ----
+
+    def new_session(self) -> None:
+        if self.running:
+            QMessageBox.information(self, "Ajan çalışıyor", "Önce çalışan işlemi durdurun (Esc).")
+            return
+        self.session_id = None
+        self.workspace = None
+        self.edit_from = None
+        self.mode = self.ctx.settings.agent_mode if self.ctx.settings.agent_mode in MODES else "onayli"
+        self.model = self.ctx.settings.default_model
+        self.refresh_models()
+        self.composer.set_mode(self.mode)
+        self.transcript.clear()
+        self.tool_widgets.clear()
+        self.welcome.refresh()
+        self.stack.setCurrentWidget(self.welcome)
+        self.composer.set_agentic(self.welcome.workspace is not None)
+        self.panel.set_session(None, self.welcome.workspace, [])
+        self._update_header()
+        self._update_context()
+        self.session_opened.emit(None)
+        self.composer.focus()
+
+    def open_session(self, session_id: int) -> None:
+        if self.running and session_id != self.session_id:
+            QMessageBox.information(self, "Ajan çalışıyor",
+                                    "Başka oturuma geçmeden önce çalışan işlemi durdurun (Esc).")
+            self.session_opened.emit(self.session_id)
+            return
+        row = self.ctx.db.get_session(session_id)
+        if not row:
+            return
+        self.session_id = session_id
+        self.workspace = row["workspace"]
+        self.mode = row["mode"] if row["mode"] in MODES else "onayli"
+        self.model = row["model"]
+        self.edit_from = None
+        self.refresh_models()
+        self.composer.set_model(self.model)
+        self.composer.set_mode(self.mode)
+        self.composer.set_agentic(self.workspace is not None)
+        self.stack.setCurrentWidget(self.transcript)
+        self.render_history(self.ctx.db.get_session_messages(session_id))
+        self.panel.set_session(session_id, self.workspace, self.ctx.db.get_session_todos(session_id))
+        self._update_header()
+        self._update_context()
+        self.session_opened.emit(session_id)
+        if self.workspace and not Path(self.workspace).is_dir():
+            self.transcript.add(NoteWidget(f"Proje klasörü bulunamadı: {self.workspace}", "alert"))
+
+    def render_history(self, messages: list[dict]) -> None:
+        self.transcript.clear()
+        self.tool_widgets.clear()
+        agentic = self.workspace is not None
+        last_assistant: AssistantMessageWidget | None = None
+        for m in messages:
+            role = m["role"]
+            if role == "user":
+                text, attached = split_attachments(m["content"] or "")
+                w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), m["id"])
+                w.text = text
+                w.edit_requested.connect(self.edit_message)
+                self.transcript.add(w)
+                last_assistant = None
+            elif role == "assistant":
+                w = AssistantMessageWidget(m.get("model") or "", agentic)
+                meta = m.get("meta") or {}
+                w.finalize(m["content"] or "", m.get("reasoning") if self.ctx.settings.show_reasoning else None,
+                           meta.get("finish_reason"), m.get("model"))
+                for c in m.get("tool_calls") or []:
+                    tw = w.add_tool(c["id"], c["name"], _parse_args(c.get("arguments")))
+                    self.tool_widgets[c["id"]] = tw
+                if not w.has_visible_content():
+                    w.status.setText("(boş yanıt)")
+                    w.status.setVisible(True)
+                self.transcript.add(w)
+                last_assistant = w
+            elif role == "tool":
+                meta = m.get("meta") or {}
+                tw = self.tool_widgets.get(m.get("tool_call_id") or "")
+                if tw is not None:
+                    tw.set_result(not meta.get("error"), meta.get("summary") or "",
+                                  {**meta, "error_text": m["content"] if meta.get("error") else None})
+                else:
+                    self.transcript.add(NoteWidget(m["content"][:300], "alert"))
+            elif role == "summary":
+                w = AssistantMessageWidget("özet", False)
+                w.finalize("**Konuşma özeti** — bu noktadan önceki mesajlar modele özet olarak gönderilir.\n\n"
+                           + (m["content"] or ""))
+                self.transcript.add(w)
+        self.current = None
+        self.transcript.scroll_to_bottom()
+
+    def _ensure_session(self, first_text: str) -> int:
+        if self.session_id is not None:
+            return self.session_id
+        ws = self.welcome.workspace
+        title = first_text.strip().splitlines()[0][:60] if first_text.strip() else "Yeni oturum"
+        sid = self.ctx.db.create_session(self.model, ws, self.mode, title=title)
+        self.session_id = sid
+        self.workspace = ws
+        self.stack.setCurrentWidget(self.transcript)
+        self.panel.set_session(sid, ws, [])
+        self._update_header()
+        self.sessions_changed.emit()
+        self.session_opened.emit(sid)
+        return sid
+
+    def rename(self) -> None:
+        if not self.session_id:
+            return
+        row = self.ctx.db.get_session(self.session_id)
+        title, ok = QInputDialog.getText(self, "Oturumu adlandır", "Yeni ad:", text=row["title"])
+        if ok and title.strip():
+            self.ctx.db.update_session(self.session_id, title=title.strip())
+            self._update_header()
+            self.sessions_changed.emit()
+
+    def export(self, session_id: int | None = None) -> None:
+        sid = session_id or self.session_id
+        if not sid:
+            return
+        path, _ = QFileDialog.getSaveFileName(self, "Oturumu dışa aktar", f"evren-oturum-{sid}.md",
+                                              "Markdown (*.md)")
+        if path:
+            Path(path).write_text(self.ctx.db.export_session_markdown(sid), encoding="utf-8")
+
+    def delete_current(self) -> None:
+        if self.session_id:
+            self.delete_session(self.session_id)
+
+    def delete_session(self, sid: int) -> None:
+        if self.running and sid == self.session_id:
+            QMessageBox.information(self, "Ajan çalışıyor", "Önce çalışan işlemi durdurun.")
+            return
+        if QMessageBox.question(
+            self, "Oturumu sil",
+            "Bu oturum ve tüm mesajları silinecek. Proje dosyalarınız etkilenmez. Devam edilsin mi?",
+        ) != QMessageBox.Yes:
+            return
+        self.ctx.db.delete_session(sid)
+        self.perms.pop(sid, None)
+        if sid == self.session_id:
+            self.new_session()
+        self.sessions_changed.emit()
+
+    def _welcome_ws(self, ws: str | None) -> None:
+        self.composer.set_agentic(ws is not None)
+        self.panel.set_session(None, ws, [])
+        self._update_header()
+
+    def _suggestion(self, prompt: str) -> None:
+        if prompt.startswith("/plan "):
+            self.set_mode("plan")
+            self.composer.set_mode("plan")
+            prompt = prompt[len("/plan "):]
+        if prompt == "/init":
+            self.send(prompt)
+            return
+        # Öneriyi gönderilmeden önce düzenlenebilsin diye yazma kutusuna koy
+        self.composer.set_text(prompt)
+
+    # ---- mod / model ----
+
+    def set_mode(self, mode: str) -> None:
+        if mode not in MODES:
+            return
+        self.mode = mode
+        if self.runner is not None:
+            self.runner.mode = mode       # sonraki araç kararından itibaren geçerli
+        if self.session_id:
+            self.ctx.db.update_session(self.session_id, mode=mode)
+
+    def set_model(self, model: str) -> None:
+        self.model = model
+        if self.session_id:
+            self.ctx.db.update_session(self.session_id, model=model)
+        self._update_context()
+
+    def _update_context(self) -> None:
+        if not self.session_id:
+            self.composer.set_context(0, None)
+            return
+        msgs = self.ctx.db.get_session_messages(self.session_id)
+        info = self.ctx.model_info(self.model)
+        self.composer.set_context(estimate_tokens(to_api_messages("", msgs, "native")),
+                                  info.context_length if info else None)
+
+    # ---- dosya ekleme ----
+
+    def attach_files(self) -> None:
+        ws = self.workspace if self.session_id else self.welcome.workspace
+        if not ws:
+            return
+        files, _ = QFileDialog.getOpenFileNames(self, "Mesaja dosya ekle", ws)
+        root = Path(ws).resolve()
+        for f in files:
+            p = Path(f).resolve()
+            if p.is_relative_to(root):
+                self.composer.edit.insert_at_cursor(f"@{p.relative_to(root).as_posix()} ")
+            else:
+                QMessageBox.warning(self, "Proje dışı dosya", f"{f} proje klasörü dışında; eklenmedi.")
+
+    def _expand_mentions(self, text: str, ws: str | None) -> str:
+        if not ws:
+            return text
+        try:
+            workspace = Workspace(ws)
+        except ToolError:
+            return text
+        tb = ToolBox(workspace)
+        blocks = []
+        seen = set()
+        for m in MENTION_RE.finditer(text):
+            rel = m.group(1).rstrip(".,;:)")
+            if rel in seen:
+                continue
+            seen.add(rel)
+            try:
+                p = workspace.resolve(rel)
+                if not p.is_file() or p.stat().st_size > MAX_ATTACH_BYTES:
+                    continue
+                content = tb.load_text(p).text
+            except (ToolError, OSError):
+                continue
+            lang = p.suffix.lstrip(".")
+            blocks.append(f"### {workspace.rel(p)}\n```{lang}\n{content}\n```")
+        if not blocks:
+            return text
+        return text + "\n\n" + ATTACH_OPEN + "\n" + "\n\n".join(blocks) + "\n" + ATTACH_CLOSE
+
+    # ---- gönderme ----
+
+    def send(self, text: str) -> None:
+        text = text.strip()
+        if not text:
+            return
+        if text.startswith("/"):
+            if self._command(text):
+                return
+        if self.running:
+            return
+        if not self.ctx.has_api_key():
+            self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome)
+            self.welcome.refresh()
+            QMessageBox.warning(self, "API anahtarı yok",
+                                "Önce Ayarlar sayfasından EVREN API anahtarınızı girin.")
+            self.composer.set_text(text)
+            return
+        if not self.model:
+            QMessageBox.warning(self, "Model seçilmedi", "Lütfen bir model seçin.")
+            return
+        visible, _att = split_attachments(text)
+        sid = self._ensure_session(visible)
+        if self.edit_from is not None:
+            self.ctx.db.delete_session_messages_from(sid, self.edit_from)
+            self.edit_from = None
+            self.render_history(self.ctx.db.get_session_messages(sid))
+        content = self._expand_mentions(text, self.workspace)
+        msg_id = self.ctx.db.add_session_message(sid, "user", content)
+        _, attached = split_attachments(content)
+        w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), msg_id)
+        w.text = text
+        w.edit_requested.connect(self.edit_message)
+        self.transcript.add(w)
+        self.transcript.scroll_to_bottom()
+        self.sessions_changed.emit()
+        self.start_run()
+
+    def edit_message(self, message_id: int, text: str) -> None:
+        if self.running or not message_id:
+            return
+        self.edit_from = message_id
+        self.composer.set_text(text)
+        self.transcript.add(NoteWidget(
+            "Mesajı düzenliyorsunuz: gönderdiğinizde bu mesaj ve sonrası yeniden oluşturulur "
+            "(dosya değişiklikleri otomatik geri alınmaz).", "pencil"))
+
+    def _command(self, text: str) -> bool:
+        cmd, _, arg = text.partition(" ")
+        cmd = cmd.lower()
+        if cmd not in SLASH_COMMANDS:
+            return False
+        if cmd == "/yeni":
+            self.new_session()
+        elif cmd in ("/plan", "/onayli", "/otomatik"):
+            mode = cmd[1:]
+            self.set_mode(mode)
+            self.composer.set_mode(mode)
+            self._note(f"Mod: {MODES[mode]}")
+            if arg.strip():
+                self.send(arg)
+        elif cmd == "/model":
+            ids = [m.id for m in self.ctx.chat_models()]
+            if arg.strip() in ids or (not ids and arg.strip()):
+                self.set_model(arg.strip())
+                self.composer.set_model(arg.strip())
+                self._note(f"Model: {arg.strip()}")
+            else:
+                self._note("Kullanım: /model <ad>. Mevcut: " + ", ".join(ids or ["(liste yüklenmedi)"]))
+        elif cmd == "/init":
+            ws = self.workspace if self.session_id else self.welcome.workspace
+            if not ws:
+                self._note("/init için bir proje klasörü seçin.")
+            else:
+                self.send(prompts.INIT_PROMPT)
+        elif cmd == "/ozet":
+            self.compact()
+        elif cmd == "/disa-aktar":
+            self.export()
+        elif cmd == "/yardim":
+            self._show_help()
+        return True
+
+    def _note(self, text: str, icon_name: str = "dot") -> None:
+        if self.stack.currentWidget() is not self.transcript:
+            if not self.session_id:
+                QMessageBox.information(self, "EVREN Studio", text)
+                return
+            self.stack.setCurrentWidget(self.transcript)
+        self.transcript.add(NoteWidget(text, icon_name))
+
+    def _show_help(self) -> None:
+        lines = ["**Komutlar**", ""]
+        lines += [f"- `{c}` — {d}" for c, d in SLASH_COMMANDS.items()]
+        lines += ["", "**Kısayollar**", "",
+                  "- `Enter` gönder, `Shift+Enter` yeni satır, `Esc` durdur",
+                  "- `Ctrl+N` yeni oturum, `Ctrl+B` kenar çubuğu, `Ctrl+J` sağ panel, `Ctrl+K` oturum ara",
+                  "- Mesajda `@yol/dosya.py` yazarak dosya içeriğini ekleyin",
+                  "", "**Modlar**", "",
+                  "- **Plan**: yalnızca okur, plan çıkarır",
+                  "- **Onaylı**: her değişiklik ve komut için onay ister",
+                  "- **Otomatik düzenleme**: dosyaları onaysız düzenler, komutlar için onay ister"]
+        if self.stack.currentWidget() is not self.transcript:
+            self.stack.setCurrentWidget(self.transcript)
+        w = AssistantMessageWidget("yardım")
+        w.finalize("\n".join(lines))
+        self.transcript.add(w)
+
+    # ---- ajan çalıştırma ----
+
+    def start_run(self) -> None:
+        sid = self.session_id
+        if sid is None:
+            return
+        history = self.ctx.db.get_session_messages(sid)
+        ws = None
+        if self.workspace:
+            try:
+                ws = Workspace(self.workspace)
+            except ToolError as exc:
+                self.transcript.add(ErrorCard("Proje klasörüne erişilemiyor", [str(exc)]))
+                return
+        row = self.ctx.db.get_session(sid)
+        protocol = row["protocol"] if row and row["protocol"] else self.ctx.resolve_protocol(self.model)
+        if self.ctx.settings.tool_protocol != "otomatik":
+            protocol = self.ctx.resolve_protocol(self.model)
+        info = self.ctx.model_info(self.model)
+        self.cancel_token = CancelToken()
+        self.bridge = AgentBridge()
+        b = self.bridge
+        b.sig_step.connect(self._on_step)
+        b.sig_text.connect(self._on_text)
+        b.sig_reasoning.connect(self._on_reasoning)
+        b.sig_message.connect(self._on_message)
+        b.sig_tool_started.connect(self._on_tool_started)
+        b.sig_tool_output.connect(self._on_tool_output)
+        b.sig_tool_finished.connect(self._on_tool_finished)
+        b.sig_approval.connect(self._on_approval)
+        b.sig_todos.connect(self._on_todos)
+        b.sig_file.connect(lambda _id, _c: self.panel.changes.refresh())
+        b.sig_protocol.connect(self._on_protocol)
+        b.sig_status.connect(lambda t: self._note(t, "alert"))
+        s = self.ctx.settings
+        perms = self.perms.setdefault(sid, SessionPermissions())
+        client = self.ctx.make_client(log_sink=lambda m: None)
+        self.runner = AgentRunner(
+            client, self.model, session_id=sid, store=self.ctx.db, events=b,
+            workspace=ws, mode=self.mode, protocol=protocol,
+            allow_protocol_fallback=(s.tool_protocol == "otomatik"),
+            permissions=perms, cancel=self.cancel_token, stream=s.stream_responses,
+            max_steps=s.agent_max_steps, command_timeout=s.command_timeout_seconds,
+            output_limit=s.tool_output_limit,
+            context_tokens=info.context_length if info else None,
+        )
+        runner = self.runner
+        self.running = True
+        self.composer.set_running(True)
+        self._pending_approvals.clear()
+
+        def job():
+            try:
+                return runner.run(history)
+            finally:
+                client.close()
+
+        Task(job, on_done=self._on_done, on_error=self._on_fail).start()
+
+    def stop(self) -> None:
+        if not self.running or self.cancel_token is None:
+            return
+        self.cancel_token.cancel()
+        for req in self._pending_approvals:
+            req.resolve(ApprovalRequest.DENY)
+        if self.current is not None:
+            self.current.start_waiting("Durduruluyor")
+
+    # -- olaylar --
+
+    def _on_step(self, step: int) -> None:
+        if self.current is not None and not self.current.has_visible_content():
+            self.current.setVisible(False)
+        self.current = AssistantMessageWidget(self.model, self.workspace is not None)
+        self.current.start_waiting("Düşünüyor" if step == 1 else "Devam ediyor")
+        self.transcript.add(self.current)
+
+    def _on_text(self, delta: str) -> None:
+        if self.current is not None:
+            self.current.append_text(delta)
+
+    def _on_reasoning(self, delta: str) -> None:
+        if self.current is not None and self.ctx.settings.show_reasoning:
+            self.current.append_reasoning(delta)
+
+    def _on_message(self, msg: dict) -> None:
+        role = msg.get("role")
+        if role == "assistant" and self.current is not None:
+            meta = msg.get("meta") or {}
+            self.current.finalize(msg.get("content") or "", msg.get("reasoning") if self.ctx.settings.show_reasoning else None,
+                                  meta.get("finish_reason"), msg.get("model"))
+            for c in msg.get("tool_calls") or []:
+                tw = self.current.add_tool(c["id"], c["name"], _parse_args(c.get("arguments")))
+                self.tool_widgets[c["id"]] = tw
+            if not self.current.has_visible_content():
+                self.current.status.setText("(boş yanıt — model içerik üretmedi)")
+                self.current.status.setVisible(True)
+        elif role == "tool" and msg.get("name") == "arac_cagrisi":
+            self.transcript.add(NoteWidget(msg.get("content", "")[:300], "alert"))
+        elif role == "tool":
+            tw = self.tool_widgets.get(msg.get("tool_call_id") or "")
+            meta = msg.get("meta") or {}
+            if tw is not None and not tw.finished:
+                # yürütülmeden sonuçlanan (iptal, bilinmeyen araç vb.)
+                tw.set_result(not meta.get("error"), meta.get("summary") or "",
+                              {**meta, "error_text": msg.get("content") if meta.get("error") else None})
+        self._update_context()
+
+    def _on_tool_started(self, call: ToolCall, title: str) -> None:
+        tw = self.tool_widgets.get(call.id)
+        if tw is not None:
+            tw.set_running(title)
+        if call.name == "run_command":
+            self.panel.terminal.log_command(call.arguments.get("command", ""))
+
+    def _on_tool_output(self, call: ToolCall, chunk: str) -> None:
+        tw = self.tool_widgets.get(call.id)
+        if tw is not None:
+            tw.append_output(chunk)
+        self.panel.terminal.log_output(chunk)
+
+    def _on_tool_finished(self, call: ToolCall, result: ToolResult) -> None:
+        tw = self.tool_widgets.get(call.id)
+        if tw is not None:
+            tw.set_result(result.ok, result.summary,
+                          {**result.extra, "error_text": None if result.ok else result.content})
+
+    def _on_approval(self, req: ApprovalRequest) -> None:
+        tw = self.tool_widgets.get(req.call.id)
+        if tw is None and self.current is not None:
+            tw = self.current.add_tool(req.call.id, req.call.name, req.call.arguments)
+            self.tool_widgets[req.call.id] = tw
+        self._pending_approvals.append(req)
+        if tw is not None:
+            tw.show_approval(req, lambda _d: self._pending_approvals.remove(req)
+                             if req in self._pending_approvals else None)
+        self.transcript.scroll_to_bottom()
+        QApplication.alert(self.window(), 0)
+
+    def _on_todos(self, todos: list) -> None:
+        self.panel.todos.set_todos(todos)
+
+    def _on_protocol(self, protocol: str, reason: str) -> None:
+        if self.session_id:
+            self.ctx.db.update_session(self.session_id, protocol=protocol)
+        self._note(reason, "refresh")
+
+    def _finish(self) -> None:
+        self.running = False
+        self.composer.set_running(False)
+        self.runner = None
+        if self.current is not None:
+            self.current.stop_waiting()
+            if not self.current.has_visible_content():
+                self.current.setVisible(False)
+        self.current = None
+        self._pending_approvals.clear()
+        self.panel.changes.refresh()
+        self.sessions_changed.emit()
+        self._update_header()
+        self._update_context()
+
+    def _on_done(self, outcome) -> None:
+        self._finish()
+        if outcome.stopped == "cancelled":
+            self._note("Durduruldu. Devam etmek için yeni bir mesaj gönderin.", "stop")
+        elif outcome.stopped == "max_steps":
+            pass  # durum notu runner tarafından gönderildi
+        if self.session_id:
+            self.panel.todos.set_todos(self.ctx.db.get_session_todos(self.session_id))
+
+    def _on_fail(self, exc: Exception) -> None:
+        self._finish()
+        if isinstance(exc, ApiError):
+            open_mon = self.ctx.db.get_open_monitor_session()
+            monitor_state = f"izleme #{open_mon['id']} çalışıyor" if open_mon else "izleme kapalı"
+            error_id = self.ctx.recovery.record_error(
+                exc, monitor_state=monitor_state, context=f"session_id={self.session_id}")
+            advice = self.ctx.recovery.advise(exc)
+            lines = [str(exc), "", f"Olası kaynak: {advice.source_guess}"]
+            lines += [f"{i}. {s}" for i, s in enumerate(advice.recommended_steps, 1)]
+            actions = [("Hata Merkezi", lambda: self.page_requested.emit("errors"))]
+            if exc.kind == ErrorKind.AUTH:
+                actions.insert(0, ("Anahtarı güncelle", lambda: self.page_requested.emit("settings")))
+            elif exc.kind == ErrorKind.UNKNOWN_RESULT:
+                actions.insert(0, ("Kontrollü yeniden dene", self._retry_confirm))
+            else:
+                actions.insert(0, ("Yeniden dene", self.start_run))
+            if exc.kind in (ErrorKind.SERVER_UNAVAILABLE, ErrorKind.SERVER_ERROR):
+                actions.append(("Durum İzleme", lambda: self.page_requested.emit("monitor")))
+            card = ErrorCard(f"İstek başarısız (kayıt #{error_id}) — {exc.kind.value}", lines, actions)
+            self.transcript.add(card)
+            if exc.kind == ErrorKind.UNKNOWN_RESULT:
+                self._query_unknown(exc, card)
+        else:
+            self.transcript.add(ErrorCard("Beklenmeyen yerel hata", [f"{type(exc).__name__}: {exc}"],
+                                          [("Yeniden dene", self.start_run)]))
+        self.transcript.scroll_to_bottom()
+
+    def _retry_confirm(self) -> None:
+        if QMessageBox.question(
+            self, "Belirsiz sonuç",
+            "Önceki isteğin sunucuda tamamlanıp tamamlanmadığı bilinmiyor. Yeniden göndermek "
+            "aynı işi iki kez yaptırabilir. Yine de yeniden denensin mi?",
+        ) == QMessageBox.Yes:
+            self.start_run()
+
+    def _query_unknown(self, exc: ApiError, card: ErrorCard) -> None:
+        def job():
+            client = self.ctx.make_client()
+            try:
+                return client.resolve_unknown_request(exc.request_id)
+            finally:
+                client.close()
+
+        def done(status):
+            terminal = status.get("execution_terminal", "unknown")
+            note = status.get("note", "")
+            card.append_line(f"\nİstek durumu: {terminal}" + (f" — {note}" if note else ""))
+
+        Task(job, on_done=done, on_error=lambda e: card.append_line(
+            "\nİstek durumu sorgulanamadı; sonuç belirsiz kaldı.")).start()
+
+    # ---- özetleme ----
+
+    def compact(self) -> None:
+        if not self.session_id or self.running:
+            self._note("Özetlenecek bir oturum yok veya ajan çalışıyor.")
+            return
+        msgs = self.ctx.db.get_session_messages(self.session_id)
+        if len(msgs) < 4:
+            self._note("Konuşma henüz özetlenecek kadar uzun değil.")
+            return
+        api = to_api_messages(prompts.build_chat_system(), msgs, "text")
+        api.append({"role": "user", "content": prompts.COMPACT_PROMPT})
+        model = self.model
+        sid = self.session_id
+        self.running = True
+        self.composer.set_running(True)
+        self.cancel_token = CancelToken()
+        token = self.cancel_token
+        waiting = AssistantMessageWidget("özet")
+        waiting.start_waiting("Konuşma özetleniyor")
+        self.transcript.add(waiting)
+
+        def job():
+            client = self.ctx.make_client()
+            try:
+                return client.chat(model, api, stream=False, cancel=token)
+            finally:
+                client.close()
+
+        def done(result):
+            waiting.deleteLater()
+            self.running = False
+            self.composer.set_running(False)
+            if result.finish_reason == "cancelled_by_user" or not (result.content or "").strip():
+                self._note("Özet oluşturulamadı.", "alert")
+                return
+            self.ctx.db.add_session_message(sid, "summary", result.content.strip(), model=result.model)
+            self.render_history(self.ctx.db.get_session_messages(sid))
+            self._update_context()
+
+        def fail(exc):
+            waiting.deleteLater()
+            self.running = False
+            self.composer.set_running(False)
+            self.transcript.add(ErrorCard("Özetleme başarısız", [str(exc)]))
+
+        Task(job, on_done=done, on_error=fail).start()
+
+    def shutdown(self) -> None:
+        if self.running and self.cancel_token is not None:
+            self.cancel_token.cancel()
+            for req in self._pending_approvals:
+                req.resolve(ApprovalRequest.DENY)
+
+
+def _parse_args(raw: Any) -> dict:
+    if isinstance(raw, dict):
+        return raw
+    try:
+        v = json.loads(raw) if raw else {}
+        return v if isinstance(v, dict) else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}

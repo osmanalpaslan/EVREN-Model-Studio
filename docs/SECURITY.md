@@ -27,17 +27,39 @@
 - HTTPS + sertifika doğrulama her zaman açık (`verify=True`).
 - Sertifikayı devre dışı bırakan seçenek YOKTUR.
 
-## Kod çalıştırma güvenliği (MVP)
+## Kod ajanı güvenliği (Aşama 2)
 
-- MVP'de komut çalıştırma ÖZELLİĞİ YOKTUR.
-- Code Studio düzenlemeleri yalnızca kullanıcının açtığı proje klasörüyle
-  sınırlıdır; 2 MB üstü ve ikili görünümlü dosyalar açılmaz; proje kökü
-  dışına semolik bağlantıyla çıkış engellenir.
-- Kaydetme her zaman açık kullanıcı onayı ister.
+- **Sınır**: tüm araçlar oturumun proje klasörüyle sınırlıdır. Yollar
+  çözülür; `..` veya sembolik bağlantıyla kök dışına çıkan yollar reddedilir.
+  `.git` klasörüne doğrudan yazılamaz. İkili ve 512 KB üstü dosyalar
+  okunmaz; 2 MB üstü içerik yazılmaz.
+- **Model çıktısı komut değildir**: yerel `tool_calls` veya metin
+  protokolündeki bloklar ayrıştırılır, araç adı ve parametreleri
+  doğrulanır, izin politikasından geçer. Bilinmeyen araçlar reddedilir.
+- **Komutlar hiçbir modda onaysız çalışmaz.** Kullanıcı tek tek onaylar ya da
+  "bu oturumda hep izin ver" ile belirli bir komut önekine (örn.
+  `python -m pytest`) izin verir. `; && || | > < ` $(` içeren zincirli
+  komutlar önek iznine rağmen HER ZAMAN sorulur. Oturum izinleri yalnızca
+  bellekte tutulur; uygulama kapanınca silinir.
+- **Dosya değişiklikleri**: Onaylı modda her değişiklik diff ile gösterilir.
+  Otomatik düzenleme modu kullanıcı seçimidir. Onay beklerken dosya
+  dışarıdan değişirse üzerine yazılmaz. Her değişikliğin önceki/sonraki
+  içeriği yerel veritabanına kaydedilir ve geri alınabilir.
+- **Komut ortamı**: proje kökünde, zaman aşımıyla (varsayılan 120 sn) ve
+  `CREATE_NO_WINDOW` ile çalışır; zaman aşımında süreç ağacı sonlandırılır.
+  Projede `.venv` varsa PATH başına eklenir. Çıktı kısaltılarak modele
+  gönderilir — **komut çıktıları ve okunan dosyalar EVREN'e gönderilir**;
+  gizli bilgi içeren dosyaları ajana okutmayın.
+- **İstem kuralları**: ajan istemi gizli bilgi toplamayı/göndermeyi ve proje
+  dışına çıkmayı yasaklar; bu kurallar teknik engellerin YERİNE değil
+  ÜSTÜNE uygulanır.
+- Dosyalar sekmesindeki elle kaydetme her zaman açık onay ister.
 
 ## Repo hijyeni
 
-- `.gitignore`: `.venv`, `data/`, `*.db`, `logs/*.log`, `.env`, `secrets*`.
+- `.gitignore`: `.venv`, `data/`, `*.db`, `logs/*.log`, `.env`, `secrets*`
+  (istisna: `src/evren_studio/secrets.py` — anahtar içermeyen kasa erişim
+  kodu; bu istisna olmadan dosya depoya girmiyordu).
 - Secret taraması: `git grep -IiE "(evren_ll|api[_-]?key|token)" -- src`
   boş dönmelidir; commit öncesi kontrol edilir.
 - Veritabanı ve ayar dosyaları LOCALAPPDATA'da, depo DIŞINDADIR.

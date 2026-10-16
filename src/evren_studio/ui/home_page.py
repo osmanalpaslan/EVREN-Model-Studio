@@ -9,7 +9,7 @@ from .workers import Task
 
 
 class HomePage(BasePage):
-    title = "Ana Sayfa — Sistem Durumu"
+    title = "Sistem Durumu"
 
     def __init__(self, ctx, parent=None):
         super().__init__(ctx, parent)
@@ -45,7 +45,7 @@ class HomePage(BasePage):
             "yardımı sunan yerel bir Windows uygulamasıdır. Sohbetleriniz ve "
             "hata kayıtları yalnızca bu bilgisayarda saklanır. Her API "
             "isteği, mesaj içeriğinizi EVREN sunucularına gönderir.\n\n"
-            "Sol menüden Chat, Modeller ve Ayarlar bölümlerini kullanabilirsiniz."
+            "Sol menüden oturum başlatabilir; Modeller, Kota ve Ayarlar sayfalarını açabilirsiniz."
         )
         info.setWordWrap(True)
         l2.addWidget(info)

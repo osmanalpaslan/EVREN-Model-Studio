@@ -1,189 +1,203 @@
-"""Ana pencere: sol menü + sayfa yığını."""
+"""Ana pencere: sol menü | oturum çalışma alanı (veya araç sayfası) | sağ panel."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
-    QListWidget,
-    QListWidgetItem,
+    QApplication,
+    QInputDialog,
     QMainWindow,
+    QSplitter,
     QStackedWidget,
     QWidget,
 )
 
 from .. import __version__
+from . import icons, theme
 from .app_context import AppContext
-from .chat_page import ChatPage
-from .code_studio_page import CodeStudioPage
 from .connection_page import ConnectionPage
 from .errors_page import ErrorsPage
 from .help_page import HelpPage
-from .history_page import HistoryPage
 from .home_page import HomePage
 from .models_page import ModelsPage
 from .monitor_page import MonitorPage
+from .session_view import SessionView
 from .settings_page import SettingsPage
+from .side_panel import SidePanel
+from .sidebar import Sidebar
 from .usage_page import UsagePage
-
-NAV_ITEMS = [
-    ("Ana Sayfa", "home"),
-    ("Chat", "chat"),
-    ("Code Studio", "code"),
-    ("Modeller", "models"),
-    ("API Bağlantı Testi", "connection"),
-    ("Kullanım / Kota", "usage"),
-    ("Sohbetler ve Projeler", "history"),
-    ("Hata Merkezi", "errors"),
-    ("EVREN Durum İzleme", "monitor"),
-    ("Ayarlar", "settings"),
-    ("Yardım ve Tanılama", "help"),
-]
-
-STYLE = """
-QWidget { font-size: 10pt; }
-#pageTitle { font-size: 15pt; font-weight: 600; }
-#dim { color: #9aa4b2; }
-QListWidget#nav {
-    background: #141a26; color: #d7dde6; border: none;
-    padding: 8px 4px; font-size: 10.5pt;
-}
-QListWidget#nav::item {
-    padding: 10px 14px; border-radius: 8px; margin: 2px 6px;
-}
-QListWidget#nav::item:selected { background: #2a3f6f; color: #ffffff; }
-QListWidget#nav::item:hover { background: #1d2739; }
-QFrame#card {
-    background: #1a2233; border-radius: 10px;
-    border: 1px solid #263145;
-}
-QPlainTextEdit, QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
-    background: #141a26; color: #e4e9f0; border: 1px solid #2c3a52;
-    border-radius: 6px; padding: 4px;
-}
-QPlainTextEdit#msgBody { background: #10151f; color: #dbe4f0; }
-QPushButton {
-    background: #2a3f6f; color: #ffffff; border: none;
-    border-radius: 6px; padding: 7px 14px;
-}
-QPushButton:hover { background: #35508c; }
-QPushButton:disabled { background: #232c3d; color: #6b7686; }
-QTableWidget {
-    background: #141a26; color: #d7dde6; gridline-color: #263145;
-    border: 1px solid #263145; border-radius: 6px;
-}
-QHeaderView::section {
-    background: #1a2233; color: #9aa4b2; border: none; padding: 6px;
-}
-QProgressBar {
-    background: #141a26; border: 1px solid #2c3a52; border-radius: 6px;
-    text-align: center; color: #d7dde6;
-}
-QProgressBar::chunk { background: #2a3f6f; border-radius: 5px; }
-QLabel { color: #d7dde6; }
-QScrollArea { background: transparent; }
-QSplitter::handle { background: #263145; }
-QCheckBox { color: #d7dde6; }
-QTreeView { background: #141a26; color: #d7dde6; border: 1px solid #263145; }
-"""
-
-DARK_BG = "#0d1119"
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.ctx = AppContext()
-        self.setWindowTitle(f"EVREN Model Studio {__version__}")
-        self.resize(1280, 820)
+        s = self.ctx.settings
+        app = QApplication.instance()
+        if app is not None:
+            theme.apply_theme(app, s.theme, s.font_size)
+        self.setWindowTitle("EVREN Studio")
+        self.setWindowIcon(icons.icon("spark", theme.current().accent, 32))
+        self.resize(1440, 900)
+        self.setMinimumSize(900, 600)
 
-        central = QWidget()
-        central.setObjectName("central")
-        layout = QHBoxLayout(central)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setObjectName("Root")
+        self.splitter.setHandleWidth(1)
+        self.splitter.setChildrenCollapsible(False)
 
-        # Sol menü
-        nav_host = QWidget()
-        nav_host.setObjectName("navHost")
-        nav_lay = QHBoxLayout(nav_host)
-        nav_lay.setContentsMargins(0, 0, 0, 0)
-        self.nav = QListWidget()
-        self.nav.setObjectName("nav")
-        self.nav.setFixedWidth(232)
-        for label, _key in NAV_ITEMS:
-            self.nav.addItem(QListWidgetItem(label))
-        self.nav.setCurrentRow(0)
-        nav_lay.addWidget(self.nav)
-        layout.addWidget(nav_host)
-
-        # Sayfa yığını
-        self.stack = QStackedWidget()
-        layout.addWidget(self.stack, 1)
+        self.sidebar = Sidebar(self.ctx)
+        self.panel = SidePanel(self.ctx)
+        self.center = QStackedWidget()
+        self.center.setObjectName("CenterStack")
+        self.session = SessionView(self.ctx, self.panel)
+        self.center.addWidget(self.session)
 
         self.pages: dict[str, QWidget] = {}
         self._build_pages()
-        self.nav.currentRowChanged.connect(self._switch)
 
-        self.setCentralWidget(central)
-        self.setStyleSheet(STYLE)
-        self.setStyleSheet(
-            self.styleSheet()
-            + f" QWidget {{ background: {DARK_BG}; }}"
-            + " QListWidget#nav, QTreeView::branch { background: #141a26; }"
-        )
+        self.splitter.addWidget(self.sidebar)
+        self.splitter.addWidget(self.center)
+        self.splitter.addWidget(self.panel)
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
+        self.splitter.setStretchFactor(2, 0)
+        self.setCentralWidget(self.splitter)
+        self._sizes_applied = False
+
+        # bağlantılar
+        self.sidebar.new_session.connect(self.new_session)
+        self.sidebar.session_selected.connect(self.open_session)
+        self.sidebar.session_action.connect(self._session_action)
+        self.sidebar.page_requested.connect(self.show_page)
+        self.sidebar.collapse_requested.connect(self.toggle_sidebar)
+        self.session.sessions_changed.connect(self.sidebar.refresh)
+        self.session.session_opened.connect(self.sidebar.set_current)
+        self.session.page_requested.connect(self.show_page)
+        self.session.toggle_sidebar.connect(self.toggle_sidebar)
+        self.session.toggle_panel.connect(self.toggle_panel)
+        self.ctx.on_models_changed(self.session.refresh_models)
+
+        self._shortcuts()
+        self.sidebar.setVisible(s.sidebar_visible)
+        self.session.set_sidebar_hidden(not s.sidebar_visible)
+        self.panel.setVisible(s.panel_visible)
+        self.show_sessions()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._sizes_applied:
+            self._sizes_applied = True
+            total = max(self.width(), 900)
+            side, panel = 264, 360
+            self.splitter.setSizes([side, max(total - side - panel, 420), panel])
+
+    # ---- sayfalar ----
 
     def _build_pages(self) -> None:
         def add(key: str, page: QWidget) -> None:
             self.pages[key] = page
-            self.stack.addWidget(page)
+            self.center.addWidget(page)
 
         add("home", HomePage(self.ctx))
-        add("chat", ChatPage(self.ctx))
-        add("code", CodeStudioPage(self.ctx))
         add("models", ModelsPage(self.ctx))
         add("connection", ConnectionPage(self.ctx))
         add("usage", UsagePage(self.ctx))
-        add("history", HistoryPage(self.ctx, open_chat_callback=self._open_chat))
         add("errors", ErrorsPage(self.ctx))
         add("monitor", MonitorPage(self.ctx))
-        add("settings", SettingsPage(self.ctx))
+        settings = SettingsPage(self.ctx)
+        settings.settings_saved.connect(self._settings_saved)
+        add("settings", settings)
         add("help", HelpPage(self.ctx))
 
-        # Chat sayfasına ilk model listesini yüklemeyi dene
-        try:
-            if self.ctx.has_api_key():
-                client = self.ctx.make_client()
-                try:
-                    models = client.list_models()
-                    self.pages["chat"].set_models(models)
-                finally:
-                    client.close()
-        except Exception:
-            pass  # anahtar yoksa/erişilemezse Model sayfasından yenilenebilir
-
-    def _switch(self, row: int) -> None:
-        key = NAV_ITEMS[row][1]
-        page = self.pages[key]
+    def show_page(self, key: str) -> None:
+        page = self.pages.get(key)
+        if page is None:
+            return
         if hasattr(page, "refresh"):
             try:
                 page.refresh()
             except TypeError:
                 pass
-        self.stack.setCurrentWidget(page)
+        self.center.setCurrentWidget(page)
+        self.sidebar.set_page(key)
+        self.panel.setVisible(False)
 
-    def _open_chat(self, chat_id: int) -> None:
-        # Sohbetler sayfasından Chat sayfasına geç
-        for i, (_label, key) in enumerate(NAV_ITEMS):
-            if key == "chat":
-                self.nav.setCurrentRow(i)
-        self.pages["chat"].load_chat(chat_id)
+    def show_sessions(self) -> None:
+        self.center.setCurrentWidget(self.session)
+        self.sidebar.set_page(None)
+        self.sidebar.set_current(self.session.session_id)
+        self.panel.setVisible(self.ctx.settings.panel_visible)
+        self.session.welcome.refresh()
+
+    def new_session(self) -> None:
+        self.show_sessions()
+        self.session.new_session()
+
+    def open_session(self, sid: int) -> None:
+        self.show_sessions()
+        self.session.open_session(sid)
+
+    def _session_action(self, action: str, sid: int) -> None:
+        db = self.ctx.db
+        if action == "rename":
+            row = db.get_session(sid)
+            title, ok = QInputDialog.getText(self, "Oturumu adlandır", "Yeni ad:", text=row["title"])
+            if ok and title.strip():
+                db.update_session(sid, title=title.strip())
+                if sid == self.session.session_id:
+                    self.session._update_header()
+        elif action == "pin":
+            row = db.get_session(sid)
+            db.update_session(sid, pinned=0 if row["pinned"] else 1)
+        elif action == "export":
+            self.session.export(sid)
+        elif action == "delete":
+            self.session.delete_session(sid)
+        self.sidebar.refresh()
+
+    # ---- görünüm ----
+
+    def toggle_sidebar(self) -> None:
+        vis = not self.sidebar.isVisible()
+        self.sidebar.setVisible(vis)
+        self.session.set_sidebar_hidden(not vis)
+        self.ctx.settings.sidebar_visible = vis
+
+    def toggle_panel(self) -> None:
+        if self.center.currentWidget() is not self.session:
+            self.show_sessions()
+            return
+        vis = not self.panel.isVisible()
+        self.panel.setVisible(vis)
+        self.ctx.settings.panel_visible = vis
+
+    def _shortcuts(self) -> None:
+        def sc(seq: str, fn) -> None:
+            s = QShortcut(QKeySequence(seq), self)
+            s.setContext(Qt.WindowShortcut)
+            s.activated.connect(fn)
+
+        sc("Ctrl+N", self.new_session)
+        sc("Ctrl+B", self.toggle_sidebar)
+        sc("Ctrl+J", self.toggle_panel)
+        sc("Ctrl+K", lambda: (self.sidebar.setVisible(True), self.sidebar.search.setFocus()))
+        sc("Ctrl+L", lambda: (self.show_sessions(), self.session.composer.focus()))
+        sc("Ctrl+,", lambda: self.show_page("settings"))
+        sc("Esc", self.session.stop)
+
+    def _settings_saved(self) -> None:
+        s = self.ctx.settings
+        app = QApplication.instance()
+        if app is not None:
+            icons.clear_cache()
+            theme.apply_theme(app, s.theme, s.font_size)
+        self.session.composer.edit.send_with_enter = s.send_with_enter
 
     def closeEvent(self, event) -> None:
-        # İzleme ajanı çalışıyorsa kalan süreyi kaydet (devam seçeneği için)
+        self.session.shutdown()
         monitor = self.pages.get("monitor")
-        if monitor and monitor.agent and monitor.agent.is_running():
+        if monitor and getattr(monitor, "agent", None) and monitor.agent.is_running():
             monitor.agent.stop(status="app_closed")
         self.ctx.save_settings()
         self.ctx.close()
