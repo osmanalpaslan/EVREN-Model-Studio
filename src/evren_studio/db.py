@@ -1,10 +1,10 @@
-﻿"""SQLite yerel veritabanÄ±.
+"""SQLite yerel veritabanı.
 
 Tablolar:
-- chats / messages : sohbet geÃ§miÅŸi
-- error_records    : kalÄ±cÄ± hata kayÄ±tlarÄ± (hata kataloÄŸunun veri boyutu)
-- monitor_sessions / monitor_checks : izleme ajanÄ± olaylarÄ±
-- model_health     : model baÅŸÄ±na son test ve saÄŸlÄ±k durumu
+- chats / messages : sohbet geçmişi
+- error_records    : kalıcı hata kayıtları (hata kataloğunun veri boyutu)
+- monitor_sessions / monitor_checks : izleme ajanı olayları
+- model_health     : model başına son test ve sağlık durumu
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -89,11 +89,64 @@ CREATE TABLE IF NOT EXISTS model_health (
     last_error TEXT,
     latency_ms INTEGER
 );
+CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL DEFAULT 'Yeni oturum',
+    workspace TEXT,
+    model TEXT NOT NULL,
+    mode TEXT NOT NULL DEFAULT 'onayli',
+    protocol TEXT,
+    todos TEXT,
+    pinned INTEGER NOT NULL DEFAULT 0,
+    legacy_chat_id INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS session_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL DEFAULT '',
+    reasoning TEXT,
+    tool_calls TEXT,
+    tool_call_id TEXT,
+    name TEXT,
+    meta TEXT,
+    model TEXT,
+    request_id TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_session_messages ON session_messages(session_id, id);
+CREATE TABLE IF NOT EXISTS file_changes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    turn_id INTEGER,
+    path TEXT NOT NULL,
+    before_text TEXT,
+    after_text TEXT,
+    reverted INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 """
 
 
 def utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+class _Result:
+    """Kilit altında okunmuş sorgu sonucu (sqlite3.Cursor'un kullanılan kısmı)."""
+
+    def __init__(self, lastrowid: int | None, rowcount: int, rows: list):
+        self.lastrowid = lastrowid
+        self.rowcount = rowcount
+        self._rows = rows
+
+    def fetchall(self) -> list:
+        return self._rows
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
 
 
 @dataclass
@@ -117,7 +170,7 @@ class ErrorRecord:
 
 
 class Database:
-    """TÃ¼m yerel veri eriÅŸimi bu sÄ±nÄ±ftan geÃ§er."""
+    """Tüm yerel veri erişimi bu sınıftan geçer."""
 
     def __init__(self, db_path: Path):
         self.path = db_path
@@ -127,15 +180,47 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         self._exec("PRAGMA foreign_keys = ON")
         self._script(SCHEMA)
+        row = self._exec("SELECT value FROM meta WHERE key='schema_version'").fetchone()
+        version = int(row["value"]) if row else None
+        if version is not None and version < 2:
+            self._migrate_chats_to_sessions()
         self._exec(
-            "INSERT OR IGNORE INTO meta(key, value) VALUES('schema_version', ?)",
+            "INSERT INTO meta(key, value) VALUES('schema_version', ?)"
+            " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
             (str(SCHEMA_VERSION),),
         )
         self._commit()
 
-    def _exec(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
+    def _migrate_chats_to_sessions(self) -> None:
+        """v1 → v2: eski sohbetleri klasörsüz oturum olarak kopyalar (eskiler silinmez)."""
+        for chat in self._exec("SELECT * FROM chats ORDER BY id").fetchall():
+            exists = self._exec(
+                "SELECT 1 FROM sessions WHERE legacy_chat_id=?", (chat["id"],)
+            ).fetchone()
+            if exists:
+                continue
+            cur = self._exec(
+                "INSERT INTO sessions(title, workspace, model, mode, legacy_chat_id,"
+                " created_at, updated_at) VALUES(?, NULL, ?, 'onayli', ?, ?, ?)",
+                (chat["title"], chat["model"], chat["id"], chat["created_at"],
+                 chat["updated_at"]),
+            )
+            sid = cur.lastrowid
+            self._exec(
+                "INSERT INTO session_messages(session_id, role, content, reasoning,"
+                " model, request_id, created_at)"
+                " SELECT ?, role, content, reasoning, model, request_id, created_at"
+                " FROM messages WHERE chat_id=? ORDER BY id",
+                (sid, chat["id"]),
+            )
+
+    def _exec(self, sql: str, params: tuple = ()) -> "_Result":
+        # Satırlar kilit altında okunur: ajan iş parçacığı yazarken arayüz
+        # iş parçacığı güvenle okuyabilir.
         with self._lock:
-            return self.conn.execute(sql, params)
+            cur = self.conn.execute(sql, params)
+            rows = cur.fetchall() if cur.description else []
+            return _Result(cur.lastrowid, cur.rowcount, rows)
 
     def _commit(self) -> None:
         with self._lock:
@@ -208,7 +293,7 @@ class Database:
             "SELECT * FROM messages WHERE chat_id=? ORDER BY id", (chat_id,)
         ).fetchall()
 
-    # ---- Hata kayÄ±tlarÄ± ----------------------------------------------
+    # ---- Hata kayıtları ----------------------------------------------
 
     def add_error(self, rec: ErrorRecord) -> int:
         if not rec.created_at:
@@ -242,7 +327,7 @@ class Database:
         ).fetchall()
 
     def find_similar_errors(self, signature: str, limit: int = 5) -> list[sqlite3.Row]:
-        """AynÄ± imzalÄ± geÃ§miÅŸ hatalarÄ± bulur (kurtarma rehberi aramasÄ±)."""
+        """Aynı imzalı geçmiş hataları bulur (kurtarma rehberi araması)."""
         return self._exec(
             "SELECT * FROM error_records WHERE signature=? ORDER BY id DESC LIMIT ?",
             (signature, limit),
@@ -258,7 +343,7 @@ class Database:
         self._commit()
         return cur.rowcount
 
-    # ---- Ä°zleme ajanÄ± -------------------------------------------------
+    # ---- İzleme ajanı -------------------------------------------------
 
     def start_monitor_session(self, target_url: str, interval_minutes: int,
                               duration_minutes: int) -> int:
@@ -278,7 +363,7 @@ class Database:
         self._commit()
 
     def get_open_monitor_session(self) -> sqlite3.Row | None:
-        """Uygulama kapandÄ±ysa kaldÄ±ÄŸÄ± izlemeyi bulur (devam seÃ§eneÄŸi iÃ§in)."""
+        """Uygulama kapandıysa kaldığı izlemeyi bulur (devam seçeneği için)."""
         return self._exec(
             "SELECT * FROM monitor_sessions WHERE status='running' ORDER BY id DESC LIMIT 1"
         ).fetchone()
@@ -317,7 +402,7 @@ class Database:
             "SELECT * FROM monitor_checks WHERE session_id=? ORDER BY id", (session_id,)
         ).fetchall()
 
-    # ---- Model saÄŸlÄ±ÄŸÄ± --------------------------------------------------
+    # ---- Model sağlığı --------------------------------------------------
 
     def upsert_model_health(self, model: str, healthy: bool,
                             http_status: int | None = None, error: str | None = None,
@@ -340,7 +425,7 @@ class Database:
     def all_model_health(self) -> list[sqlite3.Row]:
         return self._exec("SELECT * FROM model_health ORDER BY model").fetchall()
 
-    # ---- DÄ±ÅŸa aktarma -----------------------------------------------------
+    # ---- Dışa aktarma -----------------------------------------------------
 
     def export_chat_markdown(self, chat_id: int) -> str:
         chat = self._exec("SELECT * FROM chats WHERE id=?", (chat_id,)).fetchone()
@@ -350,13 +435,174 @@ class Database:
             f"# {chat['title']}",
             "",
             f"- Model: {chat['model']}",
-            f"- OluÅŸturulma: {chat['created_at']}",
+            f"- Oluşturulma: {chat['created_at']}",
             "",
         ]
-        role_labels = {"user": "KullanÄ±cÄ±", "assistant": "Asistan", "system": "Sistem"}
+        role_labels = {"user": "Kullanıcı", "assistant": "Asistan", "system": "Sistem"}
         for msg in self.get_messages(chat_id):
             lines.append(f"## {role_labels.get(msg['role'], msg['role'])}")
             lines.append("")
             lines.append(msg["content"] or "")
             lines.append("")
         return "\n".join(lines)
+
+    # ---- Oturumlar (sohbet + kod ajanı) -------------------------------------
+
+    def create_session(self, model: str, workspace: str | None = None,
+                       mode: str = "onayli", title: str = "Yeni oturum") -> int:
+        now = utcnow_iso()
+        cur = self._exec(
+            "INSERT INTO sessions(title, workspace, model, mode, created_at, updated_at)"
+            " VALUES(?,?,?,?,?,?)",
+            (title, workspace, model, mode, now, now),
+        )
+        self._commit()
+        return int(cur.lastrowid)
+
+    def get_session(self, session_id: int) -> sqlite3.Row | None:
+        return self._exec("SELECT * FROM sessions WHERE id=?", (session_id,)).fetchone()
+
+    def list_sessions(self, search: str = "", limit: int = 500) -> list[sqlite3.Row]:
+        if search:
+            like = f"%{search}%"
+            return self._exec(
+                "SELECT * FROM sessions WHERE title LIKE ? OR workspace LIKE ?"
+                " OR id IN (SELECT session_id FROM session_messages WHERE content LIKE ?)"
+                " ORDER BY pinned DESC, updated_at DESC LIMIT ?",
+                (like, like, like, limit),
+            ).fetchall()
+        return self._exec(
+            "SELECT * FROM sessions ORDER BY pinned DESC, updated_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+
+    def update_session(self, session_id: int, **fields: Any) -> None:
+        allowed = {"title", "workspace", "model", "mode", "protocol", "pinned"}
+        sets = {k: v for k, v in fields.items() if k in allowed}
+        if not sets:
+            return
+        cols = ", ".join(f"{k}=?" for k in sets)
+        self._exec(
+            f"UPDATE sessions SET {cols}, updated_at=? WHERE id=?",
+            (*sets.values(), utcnow_iso(), session_id),
+        )
+        self._commit()
+
+    def delete_session(self, session_id: int) -> None:
+        self._exec("DELETE FROM sessions WHERE id=?", (session_id,))
+        self._commit()
+
+    def set_session_todos(self, session_id: int, todos: list[dict]) -> None:
+        self._exec(
+            "UPDATE sessions SET todos=?, updated_at=? WHERE id=?",
+            (json.dumps(todos, ensure_ascii=False), utcnow_iso(), session_id),
+        )
+        self._commit()
+
+    def get_session_todos(self, session_id: int) -> list[dict]:
+        row = self.get_session(session_id)
+        if not row or not row["todos"]:
+            return []
+        try:
+            return json.loads(row["todos"])
+        except json.JSONDecodeError:
+            return []
+
+    def add_session_message(self, session_id: int, role: str, content: str, *,
+                            reasoning: str | None = None,
+                            tool_calls: list[dict] | None = None,
+                            tool_call_id: str | None = None,
+                            name: str | None = None,
+                            meta: dict | None = None,
+                            model: str | None = None,
+                            request_id: str | None = None) -> int:
+        now = utcnow_iso()
+        cur = self._exec(
+            "INSERT INTO session_messages(session_id, role, content, reasoning, tool_calls,"
+            " tool_call_id, name, meta, model, request_id, created_at)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                session_id, role, content or "", reasoning,
+                json.dumps(tool_calls, ensure_ascii=False) if tool_calls else None,
+                tool_call_id, name,
+                json.dumps(meta, ensure_ascii=False) if meta else None,
+                model, request_id, now,
+            ),
+        )
+        self._exec("UPDATE sessions SET updated_at=? WHERE id=?", (now, session_id))
+        self._commit()
+        return int(cur.lastrowid)
+
+    def get_session_messages(self, session_id: int) -> list[dict[str, Any]]:
+        rows = self._exec(
+            "SELECT * FROM session_messages WHERE session_id=? ORDER BY id", (session_id,)
+        ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            for key in ("tool_calls", "meta"):
+                if d.get(key):
+                    try:
+                        d[key] = json.loads(d[key])
+                    except json.JSONDecodeError:
+                        d[key] = None
+            out.append(d)
+        return out
+
+    def delete_session_messages_from(self, session_id: int, message_id: int) -> None:
+        """Bir mesajdan itibaren sonrasını siler (mesajı düzenleyip yeniden gönderme)."""
+        self._exec(
+            "DELETE FROM session_messages WHERE session_id=? AND id>=?",
+            (session_id, message_id),
+        )
+        self._commit()
+
+    def add_file_change(self, session_id: int, turn_id: int | None, rel_path: str,
+                        before: str | None, after: str | None) -> int:
+        cur = self._exec(
+            "INSERT INTO file_changes(session_id, turn_id, path, before_text, after_text,"
+            " created_at) VALUES(?,?,?,?,?,?)",
+            (session_id, turn_id, rel_path, before, after, utcnow_iso()),
+        )
+        self._commit()
+        return int(cur.lastrowid)
+
+    def list_file_changes(self, session_id: int) -> list[sqlite3.Row]:
+        return self._exec(
+            "SELECT * FROM file_changes WHERE session_id=? ORDER BY id", (session_id,)
+        ).fetchall()
+
+    def get_file_change(self, change_id: int) -> sqlite3.Row | None:
+        return self._exec("SELECT * FROM file_changes WHERE id=?", (change_id,)).fetchone()
+
+    def mark_change_reverted(self, change_id: int) -> None:
+        self._exec("UPDATE file_changes SET reverted=1 WHERE id=?", (change_id,))
+        self._commit()
+
+    def export_session_markdown(self, session_id: int) -> str:
+        s = self.get_session(session_id)
+        if not s:
+            return ""
+        lines = [f"# {s['title']}", "", f"- Model: {s['model']}"]
+        if s["workspace"]:
+            lines.append(f"- Proje: `{s['workspace']}`")
+        lines += [f"- Oluşturulma: {s['created_at']}", ""]
+        labels = {"user": "Kullanıcı", "assistant": "Asistan", "summary": "Özet"}
+        for m in self.get_session_messages(session_id):
+            if m["role"] == "tool":
+                summary = (m.get("meta") or {}).get("summary") or m.get("name")
+                lines += [f"> Araç: {summary}", ""]
+                continue
+            lines += [f"## {labels.get(m['role'], m['role'])}", "", m["content"] or ""]
+            for c in m.get("tool_calls") or []:
+                lines.append(f"- araç çağrısı: `{c.get('name')}` {c.get('arguments', '')[:200]}")
+            lines.append("")
+        return "\n".join(lines)
+
+    def wipe_user_data(self) -> None:
+        self._script(
+            "DELETE FROM session_messages; DELETE FROM file_changes; DELETE FROM sessions;"
+            " DELETE FROM messages; DELETE FROM chats;"
+            " DELETE FROM error_records; DELETE FROM monitor_checks;"
+            " DELETE FROM monitor_sessions; DELETE FROM model_health;"
+        )
+        self._commit()

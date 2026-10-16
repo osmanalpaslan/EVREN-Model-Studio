@@ -58,9 +58,25 @@ class Settings:
     monitor_test_model: str = "glm-5.3"
     data_dir: str = ""
     code_workdir: str = ""
+    # ---- kod ajanı / çalışma alanı ----
+    agent_mode: str = "onayli"              # plan | onayli | otomatik
+    tool_protocol: str = "otomatik"         # otomatik | yerel | metin
+    agent_max_steps: int = 40
+    command_timeout_seconds: int = 120
+    tool_output_limit: int = 20000
+    recent_workspaces: list[str] = field(default_factory=list)
+    show_reasoning: bool = True
+    sidebar_visible: bool = True
+    panel_visible: bool = True
+    send_with_enter: bool = True
 
     def resolved_data_dir(self) -> Path:
         return Path(self.data_dir) if self.data_dir else default_data_dir()
+
+    def remember_workspace(self, path: str) -> None:
+        items = [p for p in self.recent_workspaces if p.lower() != path.lower()]
+        self.recent_workspaces = [path] + items[:9]
+        self.code_workdir = path
 
 
 class ConfigStore:

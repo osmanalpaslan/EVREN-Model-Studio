@@ -1,5 +1,9 @@
 # Öğrenilen Dersler
 
+> **2026-10-16 itibarıyla yeni geliştirme dersleri `docs/ai-memory/`
+> altında (incidents/ + RULES.md) tutulur — bkz. AGENTS.md.** Bu dosya
+> eski kayıtları ve uygulamanın EVREN API davranışıyla ilgili dersleri saklar.
+
 > Tarih sırasıyla; her madde kanıtıyla birlikte. Aynı hatayı tekrar
 > işlememek için yazılır.
 
@@ -50,3 +54,28 @@
 9. **MockTransport stream**: `httpx.Response(200, content=iter(...))` SSE
    benzetimi için yeterlidir; akış kopması `ReadTimeout` fırlatarak
    doğal biçimde simüle edilir.
+
+10. **PowerShell 5.1 kodlama tuzağı (mojibake)**: `Get-Content` ve
+    `Set-Content` varsayılan olarak ANSI (cp1254) kullanır. UTF-8 bir
+    dosya bu komutlarla okunup yazılınca Türkçe karakterler "Ä±, ÅŸ, â€¦" (kodlama-ornegi)
+    biçimine bozulur ve dosya BOM'lu kaydedilir. Kanıt: 0.1.0'da 7 kaynak
+    dosya bu durumdaydı; arayüzde "YanÄ±t bekleniyorâ€¦" görünüyordu (kodlama-ornegi).
+    Çözüm: dosyaları Python veya düzenleyiciyle yazın; PowerShell'de
+    zorunluysa `[IO.File]::WriteAllText(yol, metin, (New-Object
+    System.Text.UTF8Encoding $false))` kullanın. Bozuk dosyalar cp1252 →
+    UTF-8 ters dönüşümüyle onarıldı.
+
+11. **`.gitignore` kalıpları kaynak kodu da yutabilir**: `secrets*` kalıbı
+    `src/evren_studio/secrets.py` modülünü dışladı; dosya hiç commit
+    edilmedi ve temiz klonda uygulama açılmadı. Çözüm: `!yol` istisnası ve
+    yeni makinede temiz klonla test. Kontrol: `git check-ignore -v <dosya>`.
+
+12. **Ayar yükleme hiç çağrılmıyordu**: `AppContext` her açılışta
+    `Settings()` varsayılanlarını kullanıyordu; kaydedilen ayarlar
+    görünmüyordu. Ders: "kaydet" testi tek başına yetmez; uygulama
+    bağlamının ayarları gerçekten okuduğu da test edilmeli.
+
+13. **Silinmiş widget'a zamanlayıcı**: `QTimer.singleShot(0, self._fit)`
+    widget `deleteLater` ile silindikten sonra tetiklenince "Internal C++
+    object already deleted" hatası verir. Çözüm: bağlam nesneli biçim
+    `QTimer.singleShot(0, self, self._fit)` — nesne silinince iptal olur.

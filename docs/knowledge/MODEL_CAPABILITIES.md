@@ -34,12 +34,35 @@
 - **Model listesi/kota/şart durumu**: 16 model, kota seviyesi ok, şartlar
   kabul edilmiş (2026-10-15).
 
+## Araç çağrısı gerçek testi (2026-10-16, `tests/e2e_agent_real_api.py`)
+
+Görev: geçici projede PLAN modunda "app.py'yi read_file ile oku, GIZLI_SAYI
+değerini yaz". Her model iki protokolle: yerel (`tools` / akışta
+`delta.tool_calls`) ve metin (`<arac_cagrisi>` blokları). Süreler tek
+denemedir, ağ ve yüke göre değişir.
+
+| Model | Yerel tools | Süre | Metin protokolü | Süre | Not |
+|---|---|---|---|---|---|
+| glm-5.3 | ✅ | 3,7 sn | ✅ | 7,3 sn | yönlendirme: zai/glm-5.3-fp8 |
+| deepseek-v4.1-flash | ✅ | 18,8 sn | ✅ | 34,1 sn | en yavaş |
+| deepseek-v4-flash | ✅ | 1,6 sn | ✅ | 4,4 sn | arayüz e2e'de Onaylı düzenleme ✅ |
+| qwen3.8-flash-next | ✅ | 4,2 sn | ✅ | 2,3 sn | önce list_files çağırdı |
+| mimo-v2.6-pro | ✅ | 5,0 sn | ✅ | 30,4 sn | |
+| gemma-4-31b | ✅ | 9,2 sn | ✅ | 9,8 sn | |
+| qwen3-vl-30b | ✅ | 0,6 sn | ✅ | 0,7 sn | |
+| auto | ✅ | 2,1 sn | ✅ | 0,6 sn | kayıtta `tools: false` olmasına rağmen yerel çalıştı |
+
+Sonuç: 16/16 senaryo geçti. `role: tool` mesajları kabul ediliyor; çok
+araçlı yanıtlar (list_files + read_file) doğru işleniyor. Dosya yazma
+(edit_file) gerçek arayüzde deepseek-v4-flash ile doğrulandı
+(`tests/e2e_ui_real_api.py`, 14/14).
+
 ## Doğrulanmamışlar (⬜ — canlı istekle test edilmedi)
 
 - Görsel girdi (qwen3-vl-30b, gemma-4-31b, ...): yetenek bayrağı kayıt
   defterinden; gerçek görsel gönderilerek test EDİLMEDİ.
-- Araç çağrısı (tools=true modeller): şemada `tools` geçiyor; gerçek
-  function-calling turu test EDİLMEDİ.
+- Araç çağrısıyla komut çalıştırma (run_command) ve çok adımlı uzun görevler
+  gerçek modellerle ayrıca denenmedi (okuma ve düzenleme denendi).
 - OCR, ASR, embedding, rerank, guard, systemone: uç noktalar şemada var;
   gerçek istekle test EDİLMEDİ.
 - `response_format` (yapılandırılmış çıktı): bayraklar kayıtta var; test

@@ -10,7 +10,7 @@
 | `/healthz` | GET | Gerekmez | ✅ Test edildi | `{"status":"ok"}` — liveness; maliyetsiz |
 | `/readyz` | GET | Gerekmez | ✅ Test edildi | `{"status":"ready"}` — readiness |
 | `/v1/models` | GET | Bearer | ✅ Test edildi | 16 model; yetenek/fiyat içerir |
-| `/v1/chat/completions` | POST | Bearer | ✅ Test edildi | OpenAI uyumlu; `stream` SSE; `evren_tools` uzantısı |
+| `/v1/chat/completions` | POST | Bearer | ✅ Test edildi | OpenAI uyumlu; `stream` SSE; `evren_tools` uzantısı; **`tools`/`tool_calls` 8 sohbet modelinde doğrulandı (2026-10-16, bkz. MODEL_CAPABILITIES)** |
 | `/v1/quota` | GET | Bearer | ✅ Test edildi | 5 dk pencere + günlük + CR kredi |
 | `/v1/requests/{id}` | GET | Bearer | ✅ Test edildi | `execution_terminal`, `charge_terminal` |
 | `/v1/terms/status` | GET | Bearer | ✅ Test edildi | Sürüm 1, kabul edilmiş |

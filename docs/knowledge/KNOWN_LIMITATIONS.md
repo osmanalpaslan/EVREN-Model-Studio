@@ -8,33 +8,44 @@
 - Görsel girdi, OCR, ASR, embedding, rerank, guard, systemone uçları gerçek
   istekle test EDİLMEDİ (şema incelemesi yapıldı) → uygulama arayüzünde
   yokturlar; Aşama 3.
-- Araç çağrısı (function calling): model kayıt defterinde bayrak var
-  (glm-5.3, deepseek-*, mimo, qwen3.8, gemma, qwen3-vl) ama gerçek tur
-  test EDİLMEDİ → Code Studio otonom ajanı bu nedenle Aşama 2'de.
+- Araç çağrısı: 2026-10-16'da 8 sohbet modelinde okuma turuyla DOĞRULANDI
+  (MODEL_CAPABILITIES.md). Komut çalıştırma ve uzun çok adımlı görevler gerçek
+  modellerle ayrıca denenmedi.
 - `response_format` (yapılandırılmış çıktı): test EDİLMEDİ.
 - Akış yanıtındaki `chatcmpl-...` kimliğinin `/v1/requests/{id}` ile
   eşleşmesi garanti DEĞİL; belirsizlik durumunda akışsız istek kimlikleri
   tercih edilir.
 
-## Uygulama sınırları (MVP — Aşama 1)
+## Uygulama sınırları (Aşama 2)
 
-- **Code Studio**: yalnızca proje açma + dosya ağacı + düzenleyici +
-  kaydetme çalışır. Kod üretme, diff ile onaylı uygulama, test çalıştırma,
-  görev listesi, geri alma AŞAMA 2.
-- **Markdown render**: mesajlar düz metin (QPlainTextEdit) gösterilir;
-  zengin Markdown/kod vurgulama Aşama 2'de.
-- **Muhakeme akışı**: glm-5.3 `reasoning` içeriği akış sırasında
-  GÖSTERİLMEZ (yalnızca kaydedilir) — arayüz kalabalığını önlemek için.
-- **Sohbet başlığı**: ilk mesajdan otomatik türetilir.
+- **Kod ajanı gerçek EVREN ile kısmen doğrulandı** (2026-10-16): okuma
+  araçları 8 modelde, onaylı dosya düzenleme + geri alma deepseek-v4-flash
+  ile gerçek arayüzde. Komut çalıştırma ve uzun görevler gerçek modelle
+  denenmedi.
+- **Süre göstergesi**: her model çağrısının süresi kaydedilir; "tur toplamı"
+  yalnızca kayıtlı adım sürelerinin toplamıdır (araç ve onay bekleme süresi
+  canlı sayaçta görünür, kalıcı toplamda yoktur).
+- **Bağlam yönetimi**: token sayımı tahminidir (≈3,5 karakter/token).
+  Bağlamın %70'i aşılınca eski araç çıktıları modele kısaltılmış gönderilir;
+  tam özet için `/ozet` elle çalıştırılır (otomatik özetleme yok).
+- **Komutlar**: etkileşimli (girdi bekleyen) komutlar desteklenmez
+  (stdin kapalı); uzun süren sunucular zaman aşımında sonlandırılır.
+- **Geri alma**: yalnızca ajanın araçlarla yaptığı değişiklikler kaydedilir;
+  ajanın çalıştırdığı komutların (örn. `git checkout`, formatlayıcı)
+  dosyalarda yaptığı değişiklikler geri alınamaz.
+- **Git**: yalnızca dal adı gösterilir; durum/diff/commit arayüzü yok.
+- **Tema değişikliği**: bazı bileşenler renklerini oluşturulurken alır;
+  tema değişikliği tam olarak uygulamanın yeniden başlatılmasıyla uygulanır.
+- **Görsel ekleme**: yazma kutusundan görsel/ekran görüntüsü gönderme yok
+  (Aşama 3).
+- **Sohbet başlığı**: ilk mesajdan otomatik türetilir; sonradan
+  değiştirilebilir.
 - **Duyurular**: platform duyuru API'si giriş gerektirir → izlenen sayfa
   genel ana sayfadır; SPA olduğundan içerik değişikliği sınırlı algılanır
   (başlık/meta/gövde metni + sayfa erişilebilirliği izlenir). Ayarlardan
   farklı URL seçilebilir.
 - **Paketleme**: EXE kurulumu yok (Aşama 4); `run.bat` ile kaynak koddan
   çalışır.
-- **Onaylı komut çalıştırma**: MVP'de komut çalıştırma YOKTUR; bu bir
-  güvenlik tercihidir. Aşama 2'de kullanıcı onaylı, proje diziniyle
-  sınırlı tasarımla eklenecek.
 - **Yerel ay yedekleme**: yok; veriler `%LOCALAPPDATA%` altındadır,
   Ayarlar'dan JSON dışa aktarılabilir.
 

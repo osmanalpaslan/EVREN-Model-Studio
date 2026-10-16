@@ -1,0 +1,722 @@
+"""Oturum akışı bileşenleri: mesajlar, düşünce bloğu, araç kartları, onaylar."""
+from __future__ import annotations
+
+from typing import Any, Callable
+
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QTextBlockFormat, QTextCursor
+from PySide6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPlainTextEdit,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ..agent import textproto
+from . import icons, theme
+from .markdown_view import MarkdownView
+
+COLUMN_WIDTH = 860
+
+TOOL_ICONS = {
+    "list_files": "folder", "read_file": "file", "search_files": "search",
+    "find_files": "search", "write_file": "pencil", "edit_file": "pencil",
+    "run_command": "terminal", "update_todos": "list", "arac_cagrisi": "alert",
+}
+
+
+def icon_button(name: str, tip: str, size: int = 16, checkable: bool = False) -> QToolButton:
+    b = QToolButton()
+    b.setProperty("variant", "icon")
+    b.setIcon(icons.icon(name, size=size))
+    b.setIconSize(QSize(size, size))
+    b.setToolTip(tip)
+    b.setCursor(Qt.PointingHandCursor)
+    b.setCheckable(checkable)
+    return b
+
+
+def _retain(w: QWidget) -> QWidget:
+    sp = w.sizePolicy()
+    sp.setRetainSizeWhenHidden(True)
+    w.setSizePolicy(sp)
+    return w
+
+
+def faint_label(text: str = "", role: str = "faint") -> QLabel:
+    lab = QLabel(text)
+    lab.setProperty("role", role)
+    return lab
+
+
+def format_duration(seconds: float | None) -> str:
+    """8.4 → '8,4 sn', 72 → '1 dk 12 sn' (Türkçe ondalık virgül)."""
+    if seconds is None:
+        return ""
+    if seconds < 60:
+        return f"{seconds:.1f} sn".replace(".", ",")
+    m, s = divmod(int(round(seconds)), 60)
+    return f"{m} dk {s:02d} sn"
+
+
+def model_display(model: str | None, routed: str | None = None, requested: str | None = None) -> str:
+    """'auto → qwen3.8-flash-next' gibi yönlendirmeyi de gösteren model adı."""
+    shown = model or requested or ""
+    if routed and requested and routed != requested:
+        return f"{requested} → {routed}"
+    return shown
+
+
+# ---- kod / diff görünümleri ---------------------------------------------------
+
+
+class CodeView(QPlainTextEdit):
+    def __init__(self, text: str = "", max_lines: int = 18, parent=None, auto_height: bool = True):
+        super().__init__(parent)
+        self.setObjectName("CodeView")
+        self.setReadOnly(True)
+        self.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.setFont(theme.code_font(9))
+        self.max_lines = max_lines
+        self.auto_height = auto_height
+        self.setPlainText(text)
+        self._fit()
+
+    def setPlainText(self, text: str) -> None:  # noqa: N802 (Qt adı)
+        super().setPlainText(text)
+        self._fit()
+
+    def append_raw(self, text: str) -> None:
+        cur = self.textCursor()
+        cur.movePosition(QTextCursor.End)
+        cur.insertText(text)
+        self._fit()
+        sb = self.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+    def _fit(self) -> None:
+        if not self.auto_height:
+            return
+        overflow = self.blockCount() > self.max_lines
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded if overflow else Qt.ScrollBarAlwaysOff)
+        lines = max(1, min(self.blockCount(), self.max_lines))
+        lh = self.fontMetrics().lineSpacing()
+        self.setFixedHeight(int(lines * lh + 24 + (14 if overflow else 0)))
+
+
+class DiffView(CodeView):
+    def __init__(self, diff: str, max_lines: int = 22, parent=None, auto_height: bool = True):
+        super().__init__("", max_lines, parent, auto_height)
+        self.setObjectName("DiffView")
+        self.set_diff(diff)
+
+    def set_diff(self, diff: str) -> None:
+        lines = [ln for ln in diff.splitlines() if not ln.startswith(("--- ", "+++ "))]
+        self.setPlainText("\n".join(lines) or "(fark yok)")
+        p = theme.current()
+        block = self.document().firstBlock()
+        while block.isValid():
+            t = block.text()
+            fmt = QTextBlockFormat()
+            if t.startswith("+"):
+                fmt.setBackground(QColor(p.add_bg))
+            elif t.startswith("-"):
+                fmt.setBackground(QColor(p.del_bg))
+            elif t.startswith("@@"):
+                fmt.setForeground(QColor(p.hunk))
+            else:
+                block = block.next()
+                continue
+            cur = QTextCursor(block)
+            cur.setBlockFormat(fmt)
+            block = block.next()
+
+
+# ---- akış kabı -------------------------------------------------------------------------
+
+
+class Transcript(QScrollArea):
+    """Ortalanmış, en fazla COLUMN_WIDTH genişliğinde mesaj sütunu."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWidgetResizable(True)
+        self.setFrameShape(QFrame.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        host = QWidget()
+        host.setObjectName("TranscriptHost")
+        hl = QHBoxLayout(host)
+        hl.setContentsMargins(24, 20, 24, 28)
+        self.col = QWidget()
+        self.col.setMaximumWidth(COLUMN_WIDTH)
+        self.lay = QVBoxLayout(self.col)
+        self.lay.setContentsMargins(0, 0, 0, 0)
+        self.lay.setSpacing(18)
+        self.lay.addStretch(1)
+        hl.addStretch(1)
+        hl.addWidget(self.col, 100)
+        hl.addStretch(1)
+        self.setWidget(host)
+        self._stick = True
+        sb = self.verticalScrollBar()
+        sb.rangeChanged.connect(self._on_range)
+        sb.valueChanged.connect(self._on_value)
+
+    def _on_range(self, _min: int, maximum: int) -> None:
+        if self._stick:
+            self.verticalScrollBar().setValue(maximum)
+
+    def _on_value(self, value: int) -> None:
+        self._stick = value >= self.verticalScrollBar().maximum() - 48
+
+    def add(self, w: QWidget) -> QWidget:
+        self.lay.insertWidget(self.lay.count() - 1, w)
+        return w
+
+    def clear(self) -> None:
+        while self.lay.count() > 1:
+            item = self.lay.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self._stick = True
+
+    def scroll_to_bottom(self) -> None:
+        self._stick = True
+        QTimer.singleShot(0, self, lambda: self.verticalScrollBar().setValue(
+            self.verticalScrollBar().maximum()))
+
+
+# ---- mesajlar ---------------------------------------------------------------------------
+
+
+class UserMessageWidget(QWidget):
+    edit_requested = Signal(int, str)
+
+    def __init__(self, text: str, message_id: int | None = None, parent=None):
+        super().__init__(parent)
+        self.message_id = message_id
+        self.text = text
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(2)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        bubble = QFrame()
+        bubble.setObjectName("UserBubble")
+        bubble.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        bl = QVBoxLayout(bubble)
+        bl.setContentsMargins(14, 10, 14, 10)
+        body = QLabel(text)
+        body.setWordWrap(True)
+        body.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        body.setTextFormat(Qt.PlainText)
+        body.setMaximumWidth(int(COLUMN_WIDTH * 0.82))
+        bl.addWidget(body)
+        row.addWidget(bubble)
+        lay.addLayout(row)
+        actions = QHBoxLayout()
+        actions.addStretch(1)
+        self.copy_btn = _retain(icon_button("copy", "Kopyala", 14))
+        self.copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(self.text))
+        self.edit_btn = _retain(icon_button("pencil", "Düzenle ve yeniden gönder", 14))
+        self.edit_btn.clicked.connect(
+            lambda: self.edit_requested.emit(self.message_id or 0, self.text))
+        for b in (self.edit_btn, self.copy_btn):
+            b.setVisible(False)
+            actions.addWidget(b)
+        lay.addLayout(actions)
+
+    def enterEvent(self, e) -> None:
+        self.copy_btn.setVisible(True)
+        self.edit_btn.setVisible(self.message_id is not None)
+        super().enterEvent(e)
+
+    def leaveEvent(self, e) -> None:
+        self.copy_btn.setVisible(False)
+        self.edit_btn.setVisible(False)
+        super().leaveEvent(e)
+
+
+class ThinkingBlock(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(4)
+        self.toggle = QToolButton()
+        self.toggle.setProperty("variant", "chip")
+        self.toggle.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.toggle.setIcon(icons.icon("bulb", size=14))
+        self.toggle.setCursor(Qt.PointingHandCursor)
+        self.toggle.clicked.connect(self._flip)
+        lay.addWidget(self.toggle, 0, Qt.AlignLeft)
+        self.box = QFrame()
+        self.box.setObjectName("ThinkingBox")
+        bl = QVBoxLayout(self.box)
+        bl.setContentsMargins(12, 2, 4, 2)
+        self.text = QLabel()
+        self.text.setWordWrap(True)
+        self.text.setProperty("role", "dim")
+        self.text.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.text.setTextFormat(Qt.PlainText)
+        bl.addWidget(self.text)
+        self.box.setVisible(False)
+        lay.addWidget(self.box)
+        self._raw = ""
+        self._live = True
+        self._update_title()
+
+    def _flip(self) -> None:
+        self.box.setVisible(not self.box.isVisible())
+        self._update_title()
+
+    def _update_title(self) -> None:
+        arrow = "▾" if self.box.isVisible() else "▸"
+        label = "Düşünüyor…" if self._live else "Düşünce süreci"
+        self.toggle.setText(f"{label}  {arrow}")
+
+    def append(self, text: str) -> None:
+        self._raw += text
+        self.text.setText(self._raw[-6000:])
+
+    def set_text(self, text: str) -> None:
+        self._raw = text
+        self.text.setText(text[-20000:])
+
+    def finish(self) -> None:
+        self._live = False
+        self._update_title()
+
+
+class AssistantMessageWidget(QWidget):
+    def __init__(self, model: str = "", agentic: bool = False, parent=None):
+        super().__init__(parent)
+        self.agentic = agentic
+        self._raw = ""
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(8)
+        head = QHBoxLayout()
+        head.setSpacing(6)
+        logo = QLabel()
+        logo.setPixmap(icons.pixmap("spark", theme.current().accent, 16))
+        head.addWidget(logo)
+        name = QLabel("EVREN")
+        name.setStyleSheet("font-weight: 600;")
+        head.addWidget(name)
+        self.model_label = faint_label(model)
+        head.addWidget(self.model_label)
+        head.addStretch(1)
+        self.copy_btn = _retain(icon_button("copy", "Yanıtı kopyala", 14))
+        self.copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(self._raw))
+        self.copy_btn.setVisible(False)
+        head.addWidget(self.copy_btn)
+        lay.addLayout(head)
+
+        self.thinking = ThinkingBlock()
+        self.thinking.setVisible(False)
+        lay.addWidget(self.thinking)
+        self.body = MarkdownView()
+        self.body.setVisible(False)
+        lay.addWidget(self.body)
+        self.status = faint_label("")
+        lay.addWidget(self.status)
+        self.tools = QVBoxLayout()
+        self.tools.setSpacing(6)
+        lay.addLayout(self.tools)
+        # Kalıcı alt bilgi: "glm-5.3 · 8,4 sn"
+        self.footer = faint_label("")
+        self.footer.setVisible(False)
+        lay.addWidget(self.footer)
+
+        self._model = model
+        self._t0: float | None = None
+        self._clock = QTimer(self)
+        self._clock.setInterval(500)
+        self._clock.timeout.connect(self._tick_clock)
+
+        self._render_timer = QTimer(self)
+        self._render_timer.setSingleShot(True)
+        self._render_timer.setInterval(70)
+        self._render_timer.timeout.connect(self._render)
+        self._dots = 0
+        self._wait_timer = QTimer(self)
+        self._wait_timer.setInterval(400)
+        self._wait_timer.timeout.connect(self._tick)
+
+    def enterEvent(self, e) -> None:
+        self.copy_btn.setVisible(bool(self._raw))
+        super().enterEvent(e)
+
+    def leaveEvent(self, e) -> None:
+        self.copy_btn.setVisible(False)
+        super().leaveEvent(e)
+
+    # -- canlı süre --
+
+    def start_clock(self, model: str) -> None:
+        import time
+
+        self._model = model
+        self._t0 = time.monotonic()
+        self._tick_clock()
+        self._clock.start()
+
+    def _tick_clock(self) -> None:
+        import time
+
+        if self._t0 is None:
+            return
+        elapsed = time.monotonic() - self._t0
+        self.model_label.setText(f"{self._model}  ·  {format_duration(elapsed)}")
+
+    def stop_clock(self) -> float | None:
+        import time
+
+        self._clock.stop()
+        if self._t0 is None:
+            return None
+        elapsed = time.monotonic() - self._t0
+        self._t0 = None
+        return elapsed
+
+    def set_footer(self, text: str) -> None:
+        self.footer.setText(text)
+        self.footer.setVisible(bool(text))
+
+    # -- canlı akış --
+
+    def start_waiting(self, text: str = "Yanıt bekleniyor") -> None:
+        self._wait_text = text
+        self._dots = 0
+        self._tick()
+        self._wait_timer.start()
+
+    def _tick(self) -> None:
+        self._dots = (self._dots + 1) % 4
+        self.status.setText(getattr(self, "_wait_text", "") + "." * self._dots)
+        self.status.setVisible(True)
+
+    def stop_waiting(self) -> None:
+        self._wait_timer.stop()
+        self.status.setVisible(False)
+
+    def append_text(self, delta: str) -> None:
+        self._raw += delta
+        if not self._render_timer.isActive():
+            self._render_timer.start()
+
+    def append_reasoning(self, delta: str) -> None:
+        self.thinking.setVisible(True)
+        self.thinking.append(delta)
+
+    def _render(self) -> None:
+        shown = textproto.display_text(self._raw) if self.agentic else self._raw
+        if shown.strip():
+            self.stop_waiting()
+            self.body.setVisible(True)
+            self.body.set_markdown(shown)
+
+    # -- tamamlanmış --
+
+    def finalize(self, content: str, reasoning: str | None = None,
+                 finish_reason: str | None = None, model: str | None = None,
+                 duration: float | None = None) -> None:
+        self._render_timer.stop()
+        self.stop_waiting()
+        live = self.stop_clock()
+        if duration is None:
+            duration = live
+        self._raw = content or ""
+        if model:
+            self._model = model
+            self.model_label.setText(model)
+        if duration is not None and (model or self._model):
+            self.set_footer(f"{model or self._model}  ·  {format_duration(duration)}")
+        if reasoning:
+            self.thinking.setVisible(True)
+            self.thinking.set_text(reasoning)
+        self.thinking.finish()
+        if self._raw.strip():
+            self.body.setVisible(True)
+            self.body.set_markdown(self._raw)
+        else:
+            self.body.setVisible(False)
+        note = ""
+        if finish_reason == "length":
+            note = "Yanıt uzunluk sınırında kesildi (finish_reason: length)."
+        elif finish_reason == "cancelled_by_user":
+            note = "Yanıt durduruldu."
+        if note:
+            self.status.setText(note)
+            self.status.setVisible(True)
+
+    def has_visible_content(self) -> bool:
+        return bool(self._raw.strip()) or self.thinking.isVisible() or self.tools.count() > 0
+
+    def add_tool(self, call_id: str, name: str, args: dict[str, Any]) -> "ToolCallWidget":
+        w = ToolCallWidget(call_id, name, args)
+        self.tools.addWidget(w)
+        return w
+
+
+# ---- araç kartı ve onay ----------------------------------------------------------------------
+
+
+class ApprovalWidget(QFrame):
+    decided = Signal(str)
+
+    def __init__(self, request: Any, parent=None):
+        super().__init__(parent)
+        self.setObjectName("ApprovalBox")
+        self.request = request
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 10, 12, 12)
+        lay.setSpacing(8)
+        title = QLabel(request.title)
+        title.setStyleSheet("font-weight: 600;")
+        lay.addWidget(title)
+        if request.kind == "write" and request.change is not None:
+            lay.addWidget(DiffView(request.detail, max_lines=24))
+        else:
+            lay.addWidget(CodeView(f"PS> {request.detail}", max_lines=6))
+            lay.addWidget(faint_label("Komut proje klasöründe çalışır. Çıktısı modele gönderilir."))
+        self.feedback = QLineEdit()
+        self.feedback.setPlaceholderText("İsteğe bağlı not: reddediyorsanız neyi farklı yapmalı?")
+        lay.addWidget(self.feedback)
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        allow = QPushButton("Onayla")
+        allow.setProperty("variant", "primary")
+        allow.setIcon(icons.icon("check", theme.current().on_accent, 16))
+        allow.clicked.connect(lambda: self._decide("allow"))
+        if request.kind == "write":
+            session_text = "Bu oturumda tüm düzenlemelere izin ver"
+        else:
+            session_text = f"“{request.prefix}” komutlarına bu oturumda izin ver"
+        always = QPushButton(session_text)
+        always.setProperty("variant", "ghost")
+        always.clicked.connect(lambda: self._decide("allow_session"))
+        deny = QPushButton("Reddet")
+        deny.setProperty("variant", "danger")
+        deny.clicked.connect(lambda: self._decide("deny"))
+        row.addWidget(allow)
+        row.addWidget(always)
+        row.addStretch(1)
+        row.addWidget(deny)
+        lay.addLayout(row)
+        allow.setFocus()
+
+    def _decide(self, decision: str) -> None:
+        self.request.resolve(decision, self.feedback.text())
+        self.decided.emit(decision)
+
+
+class ToolCallWidget(QFrame):
+    def __init__(self, call_id: str, name: str, args: dict[str, Any], parent=None):
+        super().__init__(parent)
+        self.setObjectName("ToolCard")
+        self.call_id = call_id
+        self.name = name
+        self.args = args
+        self.finished = False
+        self._output_view: CodeView | None = None
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(10, 6, 8, 6)
+        lay.setSpacing(6)
+        head = QHBoxLayout()
+        head.setSpacing(8)
+        self.icon = QLabel()
+        self.icon.setPixmap(icons.pixmap(TOOL_ICONS.get(name, "dot"), None, 15))
+        head.addWidget(self.icon)
+        self.title = QLabel(self._initial_title())
+        self.title.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.title.setMinimumWidth(100)
+        self.title.setWordWrap(False)
+        head.addWidget(self.title, 1)
+        self.state = faint_label("")
+        head.addWidget(self.state)
+        self.expand = icon_button("chevron-right", "Ayrıntılar", 14)
+        self.expand.clicked.connect(self.toggle_details)
+        self.expand.setVisible(False)
+        head.addWidget(self.expand)
+        lay.addLayout(head)
+        self.details = QWidget()
+        self.details_lay = QVBoxLayout(self.details)
+        self.details_lay.setContentsMargins(0, 0, 0, 2)
+        self.details_lay.setSpacing(6)
+        self.details.setVisible(False)
+        lay.addWidget(self.details)
+        self.approval_host = QVBoxLayout()
+        lay.addLayout(self.approval_host)
+        self.set_state("queued")
+
+    def _initial_title(self) -> str:
+        a = self.args
+        return {
+            "list_files": f"Klasör: {a.get('path') or '.'}",
+            "read_file": f"Oku: {a.get('path', '')}",
+            "search_files": f"Ara: “{a.get('pattern', '')}”",
+            "find_files": f"Bul: {a.get('pattern', '')}",
+            "write_file": f"Yaz: {a.get('path', '')}",
+            "edit_file": f"Düzenle: {a.get('path', '')}",
+            "run_command": f"Komut: {a.get('command', '')}",
+            "update_todos": "Görev listesi",
+        }.get(self.name, self.name)
+
+    def set_state(self, state: str, text: str = "") -> None:
+        p = theme.current()
+        self.setProperty("state", "pending" if state == "approval" else state)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        labels = {"queued": "sırada", "running": "çalışıyor…", "approval": "onay bekliyor",
+                  "ok": "", "error": "hata", "denied": "reddedildi"}
+        self.state.setText(text or labels.get(state, ""))
+        color = {"ok": p.success, "error": p.danger, "denied": p.warning}.get(state)
+        if color:
+            self.state.setStyleSheet(f"color: {color};")
+            mark = {"ok": "check", "error": "x", "denied": "x"}[state]
+            self.icon.setPixmap(icons.pixmap(mark, color, 15))
+        else:
+            self.state.setStyleSheet("")
+
+    def toggle_details(self, force: bool | None = None) -> None:
+        show = (not self.details.isVisible()) if force is None else force
+        self.details.setVisible(show)
+        self.expand.setIcon(icons.icon("chevron-down" if show else "chevron-right", size=14))
+
+    def set_running(self, title: str | None = None) -> None:
+        if title:
+            self.title.setText(title)
+        self.set_state("running")
+        if self.name == "run_command":
+            self._ensure_output()
+            self.toggle_details(True)
+
+    def _ensure_output(self) -> CodeView:
+        if self._output_view is None:
+            self._output_view = CodeView("", max_lines=14)
+            self.details_lay.addWidget(self._output_view)
+            self.expand.setVisible(True)
+        return self._output_view
+
+    def append_output(self, chunk: str) -> None:
+        self._ensure_output().append_raw(chunk)
+
+    def show_approval(self, request: Any, on_decided: Callable[[str], None] | None = None) -> None:
+        self.set_state("approval")
+        box = ApprovalWidget(request)
+
+        def done(decision: str) -> None:
+            box.setVisible(False)
+            box.deleteLater()
+            if decision == "deny":
+                self.set_state("denied")
+            else:
+                self.set_state("running", "onaylandı")
+            if on_decided:
+                on_decided(decision)
+
+        box.decided.connect(done)
+        self.approval_host.addWidget(box)
+
+    def set_result(self, ok: bool, summary: str, meta: dict[str, Any]) -> None:
+        self.finished = True
+        if summary:
+            self.title.setText(summary)
+            self.title.setToolTip(summary)
+        if meta.get("denied"):
+            self.set_state("denied")
+        else:
+            self.set_state("ok" if ok else "error")
+        # Ayrıntılar: diff, komut çıktısı, okuma çıktısı veya hata
+        for i in reversed(range(self.details_lay.count())):
+            w = self.details_lay.itemAt(i).widget()
+            if w is not None and w is not self._output_view:
+                w.deleteLater()
+        if meta.get("diff"):
+            self.details_lay.addWidget(DiffView(meta["diff"]))
+            self.expand.setVisible(True)
+        elif self.name == "run_command":
+            out = meta.get("output")
+            view = self._ensure_output()
+            if out is not None and not view.toPlainText().strip():
+                view.setPlainText(out.strip() or "(çıktı yok)")
+            code = meta.get("exit_code")
+            if code is not None:
+                self.state.setText(f"çıkış {code}" + (f" · {meta.get('duration')} sn" if meta.get("duration") else ""))
+        elif meta.get("todos"):
+            lines = []
+            for t in meta["todos"]:
+                mark = {"completed": "✓", "in_progress": "◐"}.get(t["status"], "○")
+                lines.append(f"{mark} {t['content']}")
+            self.details_lay.addWidget(CodeView("\n".join(lines), max_lines=12))
+            self.expand.setVisible(True)
+        elif meta.get("output"):
+            self.details_lay.addWidget(CodeView(meta["output"], max_lines=14))
+            self.expand.setVisible(True)
+        if not ok and meta.get("error_text"):
+            lab = faint_label(meta["error_text"], "dim")
+            lab.setWordWrap(True)
+            self.details_lay.addWidget(lab)
+            self.expand.setVisible(True)
+
+
+# ---- bilgi ve hata kartları ---------------------------------------------------------------------
+
+
+class NoteWidget(QWidget):
+    def __init__(self, text: str, icon_name: str = "dot", parent=None):
+        super().__init__(parent)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addStretch(1)
+        ic = QLabel()
+        ic.setPixmap(icons.pixmap(icon_name, theme.current().text_faint, 14))
+        lay.addWidget(ic)
+        lab = faint_label(text)
+        lab.setWordWrap(True)
+        lay.addWidget(lab)
+        lay.addStretch(1)
+
+
+class ErrorCard(QFrame):
+    def __init__(self, title: str, lines: list[str],
+                 actions: list[tuple[str, Callable[[], None]]] | None = None, parent=None):
+        super().__init__(parent)
+        self.setObjectName("ErrorCard")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(14, 12, 14, 12)
+        lay.setSpacing(6)
+        head = QHBoxLayout()
+        ic = QLabel()
+        ic.setPixmap(icons.pixmap("alert", theme.current().danger, 16))
+        head.addWidget(ic)
+        t = QLabel(title)
+        t.setStyleSheet("font-weight: 600;")
+        t.setWordWrap(True)
+        head.addWidget(t, 1)
+        lay.addLayout(head)
+        self.body = QLabel("\n".join(lines))
+        self.body.setWordWrap(True)
+        self.body.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        lay.addWidget(self.body)
+        if actions:
+            row = QHBoxLayout()
+            for label, cb in actions:
+                b = QPushButton(label)
+                b.clicked.connect(cb)
+                row.addWidget(b)
+            row.addStretch(1)
+            lay.addLayout(row)
+
+    def append_line(self, text: str) -> None:
+        self.body.setText(self.body.text() + "\n" + text)

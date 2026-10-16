@@ -32,15 +32,27 @@
 - [x] İzleme kapanıp devam seçeneği — testli
 - [x] Ağ kesintisi sonrası yeniden açılma (yerel veriler korunur) — testli
 
-## Aşama 2 — Code Studio ⬜
+## Aşama 2 — Kod ajanı çalışma alanı 🟨
 
-- [ ] Dosya ağacı + düzenleyici + kaydetme ✅ (Aşama 1'de temel olarak)
-- [ ] Kod üretme/açıklama/hata analizi (onay akışlı)
-- [ ] Diff gösterimi + onayla dosyaya uygula
-- [ ] Git durumu, yedekleme, geri alma
-- [ ] Onaylı ve sınırlı test/komut çalıştırma
-- [ ] Görev listesi + kaldığı yerden devam
-- [ ] Değişiklik gerekçesi açıklama
+- [x] Oturum tabanlı yeni arayüz (sol menü, akış, yazma kutusu, sağ panel) — SMOKE_OK + ekran görüntüleri
+- [x] Koyu/açık tema, simge seti, Markdown + sözdizimi renklendirme
+- [x] Dosya ağacı + önizleme + elle düzenleme/kaydetme (Dosyalar sekmesi)
+- [x] Ajan araçları (oku/ara/bul/yaz/düzenle/komut/görev) — testli
+- [x] Diff gösterimi + onayla dosyaya uygula — testli (arayüz uçtan uca dahil)
+- [x] Geri alma (tekil/toplu, çakışma kontrolü) — testli
+- [x] Onaylı ve proje diziniyle sınırlı komut çalıştırma — testli
+- [x] Onaysız komut çalıştırmanın engellenmesi — testli
+- [x] Görev listesi + kaldığı yerden devam (oturumlar kalıcı) — testli
+- [x] Plan / Onaylı / Otomatik düzenleme modları — testli
+- [x] Mesajı düzenleyip yeniden gönderme, /komutlar, @dosya ekleme
+- [x] Uzun konuşma özetleme (/ozet) ve bağlam kısaltma — kısaltma testli
+- [x] Gerçek EVREN ile yerel araç çağrısı turu — 8 model × 2 protokol 16/16 (2026-10-16)
+- [x] Sohbet ekranında çalışan model ve süre göstergesi — testli
+- [x] Tıklanabilir `/` komut listesi ve `/model` seçici — testli
+- [x] Ayarlar: varsayılana döndür, tekerlek koruması — testli
+- [x] Tüm ekranlar için arayüz QA paketi + gerçek arayüz e2e (14/14)
+- [ ] Git durumu/diff görünümü ve commit önerisi
+- [ ] Değişiklik gerekçesi: ajan istemiyle isteniyor; ayrı arayüz yok
 
 ## Aşama 3 — Özel görev modelleri ⬜
 
@@ -49,7 +61,7 @@
 - [ ] ASR (qwen3-asr-1.7b gerçek testi)
 - [ ] Embedding/rerank gerçek testleri
 - [ ] Guard sınıflandırma gerçek testi
-- [ ] Araç çağrısı (function calling) gerçek testi
+- [x] Araç çağrısı (function calling) gerçek testi — bkz. MODEL_CAPABILITIES.md
 
 ## Aşama 4 — Paketleme ⬜
 
