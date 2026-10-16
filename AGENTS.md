@@ -67,7 +67,9 @@ durdurur. Her bilgisayarda bir kez kur:
   kod ajanı + sohbet. Ayrıntı: README.md, docs/PROJECT_STATE.md.
 - **Kurulum**: docs/INSTALLATION.md · **Çalıştır**: `run.bat` veya
   `.\.venv\Scripts\python.exe -m evren_studio`
-- **Test**: `.\.venv\Scripts\python.exe -m pytest -q` ·
+- **Test**: `.\.venv\Scripts\python.exe -m pytest -q` (birim + tüm ekranlar QA) ·
+  gerçek API (anahtar gerekir, R-13): `tests\e2e_real_api.py`,
+  `tests\e2e_agent_real_api.py`, `tests\e2e_ui_real_api.py` ·
   arayüz görsel kontrol: `tools/ui_screenshots.py` (bkz. R-05)
 - **Yapı**: `src/evren_studio/agent/` (Qt'siz ajan çekirdeği),
   `api/` (EVREN istemcisi), `ui/` (arayüz), `db.py` (SQLite),
@@ -84,10 +86,13 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-02** · .gitignore kalıbını kaynak dosyalara karşı doğrula — Yeni ignore kalıbından sonra `git check-ignore -v` ve `git ls-files -o -i --exclude-standard src` ile kaynak kodun dışlanmadığını kontrol et; mümkünse temiz klonda test et.
 - **R-03** · "Kaydediliyor" yetmez, okuma yolunu da test et — Bir ayar/veri kaydediliyorsa uygulamanın açılışta onu gerçekten okuduğunu uçtan uca test et.
 - **R-04** · Arayüz iş parçacığında ağ isteği yapma — Ağ/disk ağırlıklı işleri Task (arka plan iş parçacığı) ile çalıştır; Qt sinyalleriyle sonuç döndür.
-- **R-05** · Arayüz işini görmeden "tamamlandı" deme — Arayüz değişikliğinden sonra tools/ui_screenshots.py ile ekran görüntüsü alıp bak; duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
+- **R-05** · Arayüz işini görmeden "tamamlandı" deme — Arayüz değişikliğinden sonra tools/ui_screenshots.py ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) ekran görüntüsü alıp bak; duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
 - **R-06** · Gecikmeli Qt çağrısına bağlam nesnesi ver — QTimer.singleShot(ms, self, fn) biçimini kullan; widget silinince çağrı iptal olur.
 - **R-07** · Gerçek API ile doğrulanmamış yeteneği doğrulanmış gibi sunma — tools, görsel, OCR vb. yetenekleri gerçek istekle test etmeden "çalışıyor" yazma; sonucu docs/knowledge/MODEL_CAPABILITIES.md'ye işle.
 - **R-08** · Kararsız testte rastgele kod değiştirme — Zamanlamaya bağlı bir test yük altında düşerse önce tek başına tekrar çalıştır; kararsızlığı kayda bağla, ilgisiz kodu değiştirme.
 - **R-09** · Hafızayı oku, sonra besle — Her oturuma `tools/ai_memory.py baslangic` ile başla; kod değiştirdiysen oturum günlüğü yaz, `indeks` ve `denetle` çalıştır.
 - **R-10** · Kodlamayı test ile koru — Kaynak/doküman dosyalarında bozuk Türkçe (mojibake) ve .py dosyalarında BOM olmamalı; tests/test_source_hygiene.py bunu denetler, kapatma.
+- **R-11** · Qt bileşenini yalnızca ana iş parçacığından güncelle — Arka plan iş parçacığından gelen her geri çağrıyı QObject sinyaliyle ana iş parçacığına taşı; Task kullanırken workers.py'deki referans tutma düzenini bozma.
+- **R-12** · Fare tekerleği korumasını kaldırma — Yeni sayı/liste alanları ekleyince wheel_guard'ın onları kapsadığını varsay; korumayı kapatma, alan başına tekerlek davranışı ekleme.
+- **R-13** · API/ajan değişikliğinden sonra gerçek uçtan uca testleri çalıştır — api/ veya agent/ ya da oturum arayüzüne dokunduysan ve API anahtarı varsa tests/e2e_real_api.py, tests/e2e_agent_real_api.py ve tests/e2e_ui_real_api.py çalıştır; sonucu oturum günlüğüne yaz.
 <!-- KURALLAR:BITIR -->

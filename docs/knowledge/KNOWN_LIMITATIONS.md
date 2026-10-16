@@ -8,9 +8,9 @@
 - Görsel girdi, OCR, ASR, embedding, rerank, guard, systemone uçları gerçek
   istekle test EDİLMEDİ (şema incelemesi yapıldı) → uygulama arayüzünde
   yokturlar; Aşama 3.
-- Araç çağrısı (function calling): model kayıt defterinde bayrak var
-  (glm-5.3, deepseek-*, mimo, qwen3.8, gemma, qwen3-vl) ama gerçek tur
-  test EDİLMEDİ → Code Studio otonom ajanı bu nedenle Aşama 2'de.
+- Araç çağrısı: 2026-10-16'da 8 sohbet modelinde okuma turuyla DOĞRULANDI
+  (MODEL_CAPABILITIES.md). Komut çalıştırma ve uzun çok adımlı görevler gerçek
+  modellerle ayrıca denenmedi.
 - `response_format` (yapılandırılmış çıktı): test EDİLMEDİ.
 - Akış yanıtındaki `chatcmpl-...` kimliğinin `/v1/requests/{id}` ile
   eşleşmesi garanti DEĞİL; belirsizlik durumunda akışsız istek kimlikleri
@@ -18,11 +18,13 @@
 
 ## Uygulama sınırları (Aşama 2)
 
-- **Kod ajanı gerçek EVREN ile DOĞRULANMADI**: ajan döngüsü, araçlar ve
-  arayüz sahte model istemcisiyle test edildi. EVREN'in `tools` parametresini
-  gerçekten kabul edip `tool_calls` döndürdüğü bilinmiyor. Reddederse
-  (400/422) uygulama metin protokolüne geçer; model metin protokolüne
-  uymazsa araçlar çalışmaz (yanıt düz metin kalır).
+- **Kod ajanı gerçek EVREN ile kısmen doğrulandı** (2026-10-16): okuma
+  araçları 8 modelde, onaylı dosya düzenleme + geri alma deepseek-v4-flash
+  ile gerçek arayüzde. Komut çalıştırma ve uzun görevler gerçek modelle
+  denenmedi.
+- **Süre göstergesi**: her model çağrısının süresi kaydedilir; "tur toplamı"
+  yalnızca kayıtlı adım sürelerinin toplamıdır (araç ve onay bekleme süresi
+  canlı sayaçta görünür, kalıcı toplamda yoktur).
 - **Bağlam yönetimi**: token sayımı tahminidir (≈3,5 karakter/token).
   Bağlamın %70'i aşılınca eski araç çıktıları modele kısaltılmış gönderilir;
   tam özet için `/ozet` elle çalıştırılır (otomatik özetleme yok).

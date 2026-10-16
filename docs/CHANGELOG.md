@@ -33,8 +33,28 @@
   `tools/ai_memory.py`, git ön-commit kancası, `test_ai_memory.py` ve
   `test_source_hygiene.py`. Uygulama ajanı EVREN.md + AGENTS.md'yi birlikte okur.
 
+- Sohbet ekranında çalışan model ve süre: yazma kutusunun üstünde canlı
+  durum çubuğu (model · etkinlik · süre · adım), yanıt başlığında canlı sayaç,
+  her yanıtın altında kalıcı "model · süre" ve çok adımlı turlarda tur
+  toplamı; `auto` için yönlendirilen model (`auto → …`).
+- `/` ile açılan tıklanabilir komut listesi (fare, ↑↓, Enter, Esc);
+  `/model` seçilince tıklanabilir model listesi.
+- Ayarlar: "Varsayılanlara döndür", her alanın yanında varsayılan değer,
+  üstte Kaydet; sayfa açılınca değerler yeniden yüklenir.
+- Uygulama geneli fare tekerleği koruması (odaksız alan değişmez).
+- Gerçek API uçtan uca testleri: `tests/e2e_agent_real_api.py` (8 model,
+  2 protokol), `tests/e2e_ui_real_api.py` (gerçek arayüz, 14 kontrol);
+  arayüz QA paketi `tests/test_ui_pages.py` (tüm ekranlar, iş parçacığı
+  uyarısı denetimi).
+
 ### Düzeltildi
 
+- Durum İzleme sayfası arayüzü arka plan iş parçacığından güncelliyordu
+  (çökme/donma riski); durdurma arayüzü 10 sn'ye kadar donduruyordu.
+- Arka plan görevlerinin sonucu, görev nesnesi çöpe giderse kaybolabiliyordu.
+- Ayarlar fare tekerleğiyle farkında olmadan değişiyordu.
+- Esc, açık komut listesini kapatmıyordu; LLM'lerin boş satırsız yazdığı
+  Markdown listeleri paragraf görünüyordu.
 - 7 kaynak dosyada çift kodlanmış (mojibake) Türkçe metinler: arayüzde
   "YanÄ±t bekleniyorâ€¦" gibi görünüyordu (kodlama-ornegi).
 - Ayarlar açılışta hiç okunmuyordu (`ConfigStore.load()` çağrılmıyordu).

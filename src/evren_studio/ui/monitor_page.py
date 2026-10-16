@@ -16,8 +16,22 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from PySide6.QtCore import QObject, Signal
+
 from ..monitor import MonitorAgent
 from .base_page import BasePage, card, kv_row
+
+
+class _MonitorBridge(QObject):
+    """İzleme iş parçacığındaki geri çağrıları ana (arayüz) iş parçacığına taşır.
+
+    Qt bileşenleri yalnızca ana iş parçacığından güncellenebilir; aksi halde
+    uygulama rastgele çöker veya donar.
+    """
+
+    check = Signal(object)
+    state = Signal(str)
+    finished = Signal(object)
 
 
 class MonitorPage(BasePage):
@@ -40,7 +54,6 @@ class MonitorPage(BasePage):
         ))
         self.url_row = kv_row("İzlenen sayfa:", ctx.settings.announcement_url)
         l.addWidget(self.url_row)
-        l.addWidget(QLabel("Kalan süre: -"))
 
         opts = QHBoxLayout()
         self.real_test = QCheckBox("Gerçek model testi yap (token harcar)")
@@ -186,6 +199,10 @@ class MonitorPage(BasePage):
             self.report.setPlainText(self.agent.report_markdown(report_obj))
             client.close()
 
+        self._bridge = _MonitorBridge(self)
+        self._bridge.check.connect(on_check)
+        self._bridge.state.connect(on_state)
+        self._bridge.finished.connect(on_finished)
         self.agent = MonitorAgent(
             db=self.ctx.db,
             target_url=self.ctx.settings.announcement_url,
@@ -194,13 +211,25 @@ class MonitorPage(BasePage):
             client=client,
             real_model_test=self.real_test.isChecked(),
             test_model=self.test_model_btn.text(),
-            on_check=on_check,
-            on_finished=on_finished,
-            on_state_change=on_state,
+            on_check=self._bridge.check.emit,
+            on_finished=self._bridge.finished.emit,
+            on_state_change=self._bridge.state.emit,
         )
         self.agent.start()
         self.state_row.findChildren(QLabel)[1].setText("başlatıldı…")
 
+    def refresh(self) -> None:
+        """Sayfa açılırken Ayarlar'da değişen duyuru adresini yansıt."""
+        if not (self.agent and self.agent.is_running()):
+            self.url_row.findChildren(QLabel)[1].setText(self.ctx.settings.announcement_url)
+
     def stop(self) -> None:
         if self.agent and self.agent.is_running():
-            self.agent.stop()
+            self.state_row.findChildren(QLabel)[1].setText("durduruluyor…")
+            self.stop_btn.setEnabled(False)
+            agent = self.agent
+            # join() arayüzü dondurmasın diye durdurma arka planda yapılır;
+            # durum ve rapor sinyallerle gelir.
+            import threading
+
+            threading.Thread(target=agent.stop, daemon=True).start()

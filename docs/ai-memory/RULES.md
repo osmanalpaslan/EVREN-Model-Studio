@@ -34,9 +34,9 @@
 - **Kaynak:** 2026-10-15-acilista-senkron-model-yukleme-arayuzu-donduruyordu
 
 ### R-05 · Arayüz işini görmeden "tamamlandı" deme
-- **Kural:** Arayüz değişikliğinden sonra tools/ui_screenshots.py ile ekran görüntüsü alıp bak; duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
+- **Kural:** Arayüz değişikliğinden sonra tools/ui_screenshots.py ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) ekran görüntüsü alıp bak; duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
 - **Neden:** Duman testi SMOKE_OK verirken arayüzde bozuk metinler ve eksik Code Studio vardı; belgeler "tamamlandı" diyordu.
-- **Kaynak:** 2026-10-15-duman-testi-bozuk-arayuzu-yakalamadi, 2026-10-15-code-studio-ajan-ozellikleri-eksikti
+- **Kaynak:** 2026-10-15-duman-testi-bozuk-arayuzu-yakalamadi, 2026-10-15-code-studio-ajan-ozellikleri-eksikti, 2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk
 
 ### R-06 · Gecikmeli Qt çağrısına bağlam nesnesi ver
 - **Kural:** QTimer.singleShot(ms, self, fn) biçimini kullan; widget silinince çağrı iptal olur.
@@ -62,3 +62,18 @@
 - **Kural:** Kaynak/doküman dosyalarında bozuk Türkçe (mojibake) ve .py dosyalarında BOM olmamalı; tests/test_source_hygiene.py bunu denetler, kapatma.
 - **Neden:** Bozulma gözden kaçtı ve depoya girdi; otomatik denetim olmadan tekrar eder.
 - **Kaynak:** 2026-10-15-cift-kodlanmis-turkce-metinler-mojibake, 2026-10-15-duman-testi-bozuk-arayuzu-yakalamadi
+
+### R-11 · Qt bileşenini yalnızca ana iş parçacığından güncelle
+- **Kural:** Arka plan iş parçacığından gelen her geri çağrıyı QObject sinyaliyle ana iş parçacığına taşı; Task kullanırken workers.py'deki referans tutma düzenini bozma.
+- **Neden:** İzleme sayfası arayüzü iş parçacığından güncelliyordu (Qt uyarısı, rastgele çökme riski); referanssız görevlerin sonucu kaybolabiliyordu.
+- **Kaynak:** 2026-10-16-izleme-sayfasi-arayuzu-arka-plan-is-parcacigindan-guncelliyordu, 2026-10-16-arka-plan-gorevine-referans-tutulmuyordu
+
+### R-12 · Fare tekerleği korumasını kaldırma
+- **Kural:** Yeni sayı/liste alanları ekleyince wheel_guard'ın onları kapsadığını varsay; korumayı kapatma, alan başına tekerlek davranışı ekleme.
+- **Neden:** Kullanıcı ayarları kaydırırken farkında olmadan değiştiriyordu.
+- **Kaynak:** 2026-10-16-ayarlar-fare-tekerlegiyle-farkinda-olmadan-degisiyordu
+
+### R-13 · API/ajan değişikliğinden sonra gerçek uçtan uca testleri çalıştır
+- **Kural:** api/ veya agent/ ya da oturum arayüzüne dokunduysan ve API anahtarı varsa tests/e2e_real_api.py, tests/e2e_agent_real_api.py ve tests/e2e_ui_real_api.py çalıştır; sonucu oturum günlüğüne yaz.
+- **Neden:** Sahte istemcili testler gerçek sağlayıcı davranışını kanıtlamaz; araç çağrısı ancak gerçek testle doğrulandı.
+- **Kaynak:** 2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi

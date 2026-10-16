@@ -57,6 +57,24 @@ def faint_label(text: str = "", role: str = "faint") -> QLabel:
     return lab
 
 
+def format_duration(seconds: float | None) -> str:
+    """8.4 → '8,4 sn', 72 → '1 dk 12 sn' (Türkçe ondalık virgül)."""
+    if seconds is None:
+        return ""
+    if seconds < 60:
+        return f"{seconds:.1f} sn".replace(".", ",")
+    m, s = divmod(int(round(seconds)), 60)
+    return f"{m} dk {s:02d} sn"
+
+
+def model_display(model: str | None, routed: str | None = None, requested: str | None = None) -> str:
+    """'auto → qwen3.8-flash-next' gibi yönlendirmeyi de gösteren model adı."""
+    shown = model or requested or ""
+    if routed and requested and routed != requested:
+        return f"{requested} → {routed}"
+    return shown
+
+
 # ---- kod / diff görünümleri ---------------------------------------------------
 
 
@@ -314,6 +332,16 @@ class AssistantMessageWidget(QWidget):
         self.tools = QVBoxLayout()
         self.tools.setSpacing(6)
         lay.addLayout(self.tools)
+        # Kalıcı alt bilgi: "glm-5.3 · 8,4 sn"
+        self.footer = faint_label("")
+        self.footer.setVisible(False)
+        lay.addWidget(self.footer)
+
+        self._model = model
+        self._t0: float | None = None
+        self._clock = QTimer(self)
+        self._clock.setInterval(500)
+        self._clock.timeout.connect(self._tick_clock)
 
         self._render_timer = QTimer(self)
         self._render_timer.setSingleShot(True)
@@ -331,6 +359,38 @@ class AssistantMessageWidget(QWidget):
     def leaveEvent(self, e) -> None:
         self.copy_btn.setVisible(False)
         super().leaveEvent(e)
+
+    # -- canlı süre --
+
+    def start_clock(self, model: str) -> None:
+        import time
+
+        self._model = model
+        self._t0 = time.monotonic()
+        self._tick_clock()
+        self._clock.start()
+
+    def _tick_clock(self) -> None:
+        import time
+
+        if self._t0 is None:
+            return
+        elapsed = time.monotonic() - self._t0
+        self.model_label.setText(f"{self._model}  ·  {format_duration(elapsed)}")
+
+    def stop_clock(self) -> float | None:
+        import time
+
+        self._clock.stop()
+        if self._t0 is None:
+            return None
+        elapsed = time.monotonic() - self._t0
+        self._t0 = None
+        return elapsed
+
+    def set_footer(self, text: str) -> None:
+        self.footer.setText(text)
+        self.footer.setVisible(bool(text))
 
     # -- canlı akış --
 
@@ -368,12 +428,19 @@ class AssistantMessageWidget(QWidget):
     # -- tamamlanmış --
 
     def finalize(self, content: str, reasoning: str | None = None,
-                 finish_reason: str | None = None, model: str | None = None) -> None:
+                 finish_reason: str | None = None, model: str | None = None,
+                 duration: float | None = None) -> None:
         self._render_timer.stop()
         self.stop_waiting()
+        live = self.stop_clock()
+        if duration is None:
+            duration = live
         self._raw = content or ""
         if model:
+            self._model = model
             self.model_label.setText(model)
+        if duration is not None and (model or self._model):
+            self.set_footer(f"{model or self._model}  ·  {format_duration(duration)}")
         if reasoning:
             self.thinking.setVisible(True)
             self.thinking.set_text(reasoning)

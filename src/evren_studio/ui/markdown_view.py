@@ -44,9 +44,32 @@ def _highlight(code: str, lang: str | None, p: theme.Palette) -> str:
     return re.sub(r"background-color:\s*#[0-9a-fA-F]{3,8};?", "", out).rstrip("\n")
 
 
+_LIST_LINE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
+_FENCE_LINE = re.compile(r"^\s*(```|~~~)")
+
+
+def normalize_llm_markdown(text: str) -> str:
+    """Modellerin sık yaptığı biçim hatasını düzeltir: liste öğesinden önce boş
+    satır olmaması (python-markdown bu durumda listeyi paragrafa katar).
+    Kod blokları içine dokunmaz."""
+    out: list[str] = []
+    in_fence = False
+    prev = ""
+    for line in (text or "").split("\n"):
+        if _FENCE_LINE.match(line):
+            if not in_fence and prev.strip():
+                out.append("")
+            in_fence = not in_fence
+        elif not in_fence and _LIST_LINE.match(line) and prev.strip() and not _LIST_LINE.match(prev):
+            out.append("")
+        out.append(line)
+        prev = line
+    return "\n".join(out)
+
+
 def render_markdown(text: str, p: theme.Palette | None = None) -> str:
     p = p or theme.current()
-    body = md.markdown(text or "", extensions=["fenced_code", "tables", "sane_lists"],
+    body = md.markdown(normalize_llm_markdown(text), extensions=["fenced_code", "tables", "sane_lists"],
                        output_format="html")
     code_family = theme.code_font_family()
 

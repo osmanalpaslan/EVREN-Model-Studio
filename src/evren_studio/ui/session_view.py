@@ -13,7 +13,9 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QObject, QSize, Qt, Signal
+import time
+
+from PySide6.QtCore import QObject, QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -56,7 +58,9 @@ from .transcript import (
     Transcript,
     UserMessageWidget,
     faint_label,
+    format_duration,
     icon_button,
+    model_display,
 )
 from .workers import Task
 
@@ -303,6 +307,14 @@ class SessionView(QWidget):
         self.perms: dict[int, SessionPermissions] = {}
         self.edit_from: int | None = None
         self._pending_approvals: list[ApprovalRequest] = []
+        # Çalışma süresi / model göstergesi
+        self.run_model = ""
+        self._run_t0: float | None = None
+        self._run_step = 0
+        self._run_activity = ""
+        self._run_timer = QTimer(self)
+        self._run_timer.setInterval(500)
+        self._run_timer.timeout.connect(self._tick_run)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -497,9 +509,20 @@ class SessionView(QWidget):
         self.tool_widgets.clear()
         agentic = self.workspace is not None
         last_assistant: AssistantMessageWidget | None = None
+        turn = {"total": 0.0, "steps": 0}
+
+        def close_turn() -> None:
+            # Çok adımlı turlarda son yanıtın altına tur toplamını yaz
+            if last_assistant is not None and turn["steps"] > 1 and turn["total"] > 0:
+                base = last_assistant.footer.text()
+                last_assistant.set_footer(
+                    f"{base}  ·  tur toplamı {format_duration(turn['total'])}, {turn['steps']} adım")
+            turn["total"], turn["steps"] = 0.0, 0
+
         for m in messages:
             role = m["role"]
             if role == "user":
+                close_turn()
                 text, attached = split_attachments(m["content"] or "")
                 w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), m["id"])
                 w.text = text
@@ -507,10 +530,14 @@ class SessionView(QWidget):
                 self.transcript.add(w)
                 last_assistant = None
             elif role == "assistant":
-                w = AssistantMessageWidget(m.get("model") or "", agentic)
                 meta = m.get("meta") or {}
+                shown = model_display(m.get("model"), meta.get("routed_model"), meta.get("requested_model"))
+                w = AssistantMessageWidget(shown, agentic)
                 w.finalize(m["content"] or "", m.get("reasoning") if self.ctx.settings.show_reasoning else None,
-                           meta.get("finish_reason"), m.get("model"))
+                           meta.get("finish_reason"), shown, meta.get("duration_s"))
+                if meta.get("duration_s") is not None:
+                    turn["total"] += float(meta["duration_s"])
+                turn["steps"] += 1
                 for c in m.get("tool_calls") or []:
                     tw = w.add_tool(c["id"], c["name"], _parse_args(c.get("arguments")))
                     self.tool_widgets[c["id"]] = tw
@@ -532,6 +559,7 @@ class SessionView(QWidget):
                 w.finalize("**Konuşma özeti** — bu noktadan önceki mesajlar modele özet olarak gönderilir.\n\n"
                            + (m["content"] or ""))
                 self.transcript.add(w)
+        close_turn()
         self.current = None
         self.transcript.scroll_to_bottom()
 
@@ -736,7 +764,9 @@ class SessionView(QWidget):
                 self.send(arg)
         elif cmd == "/model":
             ids = [m.id for m in self.ctx.chat_models()]
-            if arg.strip() in ids or (not ids and arg.strip()):
+            if not arg.strip():
+                self.composer.set_text("/model ")     # tıklanabilir model listesini aç
+            elif arg.strip() in ids or (not ids and arg.strip()):
                 self.set_model(arg.strip())
                 self.composer.set_model(arg.strip())
                 self._note(f"Model: {arg.strip()}")
@@ -831,6 +861,12 @@ class SessionView(QWidget):
         self.running = True
         self.composer.set_running(True)
         self._pending_approvals.clear()
+        self.run_model = self.model
+        self._run_t0 = time.monotonic()
+        self._run_step = 0
+        self._run_activity = "başlatılıyor"
+        self._run_timer.start()
+        self._tick_run()
 
         def job():
             try:
@@ -854,9 +890,24 @@ class SessionView(QWidget):
     def _on_step(self, step: int) -> None:
         if self.current is not None and not self.current.has_visible_content():
             self.current.setVisible(False)
+        self._run_step = step
+        self._run_activity = "yanıt üretiyor"
         self.current = AssistantMessageWidget(self.model, self.workspace is not None)
         self.current.start_waiting("Düşünüyor" if step == 1 else "Devam ediyor")
+        self.current.start_clock(self.run_model or self.model)
         self.transcript.add(self.current)
+        self._tick_run()
+
+    # -- çalışma durum çubuğu: hangi LLM, ne kadar süredir --
+
+    def _tick_run(self) -> None:
+        if not self.running or self._run_t0 is None:
+            return
+        elapsed = time.monotonic() - self._run_t0
+        parts = [f"{self.run_model}  {self._run_activity}", format_duration(elapsed)]
+        if self._run_step > 1:
+            parts.append(f"adım {self._run_step}")
+        self.composer.set_run_status("  ·  ".join(parts))
 
     def _on_text(self, delta: str) -> None:
         if self.current is not None:
@@ -870,8 +921,10 @@ class SessionView(QWidget):
         role = msg.get("role")
         if role == "assistant" and self.current is not None:
             meta = msg.get("meta") or {}
+            shown = model_display(msg.get("model"), meta.get("routed_model"), meta.get("requested_model"))
             self.current.finalize(msg.get("content") or "", msg.get("reasoning") if self.ctx.settings.show_reasoning else None,
-                                  meta.get("finish_reason"), msg.get("model"))
+                                  meta.get("finish_reason"), shown, meta.get("duration_s"))
+            self._run_activity = "araç çalıştırıyor" if msg.get("tool_calls") else "yanıt üretiyor"
             for c in msg.get("tool_calls") or []:
                 tw = self.current.add_tool(c["id"], c["name"], _parse_args(c.get("arguments")))
                 self.tool_widgets[c["id"]] = tw
@@ -893,6 +946,8 @@ class SessionView(QWidget):
         tw = self.tool_widgets.get(call.id)
         if tw is not None:
             tw.set_running(title)
+        self._run_activity = title[:60]
+        self._tick_run()
         if call.name == "run_command":
             self.panel.terminal.log_command(call.arguments.get("command", ""))
 
@@ -914,9 +969,16 @@ class SessionView(QWidget):
             tw = self.current.add_tool(req.call.id, req.call.name, req.call.arguments)
             self.tool_widgets[req.call.id] = tw
         self._pending_approvals.append(req)
+        self._run_activity = "onayınızı bekliyor"
+        self._tick_run()
         if tw is not None:
-            tw.show_approval(req, lambda _d: self._pending_approvals.remove(req)
-                             if req in self._pending_approvals else None)
+            def decided(_d: str, r=req) -> None:
+                if r in self._pending_approvals:
+                    self._pending_approvals.remove(r)
+                self._run_activity = "çalışıyor"
+                self._tick_run()
+
+            tw.show_approval(req, decided)
         self.transcript.scroll_to_bottom()
         QApplication.alert(self.window(), 0)
 
@@ -930,18 +992,37 @@ class SessionView(QWidget):
 
     def _finish(self) -> None:
         self.running = False
+        self._run_timer.stop()
+        total = time.monotonic() - self._run_t0 if self._run_t0 is not None else None
+        self._run_t0 = None
         self.composer.set_running(False)
         self.runner = None
         if self.current is not None:
             self.current.stop_waiting()
+            self.current.stop_clock()
             if not self.current.has_visible_content():
                 self.current.setVisible(False)
+        # Turun özeti son görünür yanıtın altına: "glm-5.3 · 8,4 sn · tur toplamı 31 sn, 3 adım"
+        last = self._last_visible_assistant()
+        if last is not None and total is not None and self._run_step > 1:
+            base = last.footer.text() or self.run_model
+            last.set_footer(f"{base}  ·  tur toplamı {format_duration(total)}, {self._run_step} adım")
         self.current = None
         self._pending_approvals.clear()
         self.panel.changes.refresh()
         self.sessions_changed.emit()
         self._update_header()
         self._update_context()
+
+    def _last_visible_assistant(self) -> AssistantMessageWidget | None:
+        lay = self.transcript.lay
+        for i in range(lay.count() - 1, -1, -1):
+            w = lay.itemAt(i).widget()
+            if isinstance(w, UserMessageWidget):
+                return None
+            if isinstance(w, AssistantMessageWidget) and w.isVisibleTo(self.transcript):
+                return w
+        return None
 
     def _on_done(self, outcome) -> None:
         self._finish()

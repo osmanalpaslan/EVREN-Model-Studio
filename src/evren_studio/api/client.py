@@ -490,6 +490,8 @@ class EvrenClient:
                     continue
                 if chunk.get("id") and not result.request_id:
                     result.request_id = str(chunk["id"])
+                if chunk.get("usage"):
+                    result.usage = chunk["usage"]
                 choices = chunk.get("choices") or []
                 if not choices:
                     if chunk.get("usage"):
@@ -534,4 +536,7 @@ class EvrenClient:
         result.content = "".join(content_parts)
         result.reasoning = "".join(reasoning_parts)
         result.tool_calls = collect_calls()
+        evren_usage = (result.usage or {}).get("evren") or {}
+        if evren_usage.get("routed_model"):
+            result.routed_model = evren_usage["routed_model"]
         return result

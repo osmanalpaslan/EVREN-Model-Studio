@@ -230,6 +230,12 @@ QSplitter::handle:horizontal {{ width: 1px; }}
 QSplitter::handle:vertical {{ height: 1px; }}
 
 /* ---- sohbet alanı ---- */
+QListWidget#CommandPopup {{ background: {p.surface}; border: 1px solid {p.border_strong};
+                            border-radius: 12px; padding: 4px; }}
+QListWidget#CommandPopup::item {{ padding: 5px 8px; border-radius: 7px; min-height: 20px; }}
+QListWidget#CommandPopup::item:hover {{ background: {p.hover}; }}
+QListWidget#CommandPopup::item:selected {{ background: {p.accent_soft}; color: {p.text}; }}
+QFrame#RunBar {{ background: {p.accent_soft}; border: 1px solid {p.border}; border-radius: 10px; }}
 QFrame#Composer {{ background: {p.surface}; border: 1px solid {p.border_strong}; border-radius: 16px; }}
 QFrame#Composer[focus="true"] {{ border-color: {p.accent}; }}
 QPlainTextEdit#ComposerEdit {{ background: transparent; border: none; padding: 4px 2px; }}

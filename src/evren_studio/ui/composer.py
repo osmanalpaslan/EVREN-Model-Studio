@@ -1,4 +1,5 @@
-"""Mesaj yazma kutusu: çok satırlı giriş, mod ve model seçici, gönder/durdur."""
+"""Mesaj yazma kutusu: çok satırlı giriş, komut/model seçim listesi,
+mod ve model seçici, çalışma durum çubuğu, gönder/durdur."""
 from __future__ import annotations
 
 from PySide6.QtCore import QSize, Qt, Signal
@@ -7,6 +8,8 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMenu,
     QPlainTextEdit,
     QPushButton,
@@ -19,18 +22,24 @@ from ..agent.permissions import MODE_HINTS, MODES
 from . import icons, theme
 
 SLASH_COMMANDS = {
-    "/yeni": "Yeni oturum başlat",
+    "/model": "Modeli değiştir — listeden seçin",
     "/plan": "Plan moduna geç (salt okunur)",
-    "/onayli": "Onaylı moda geç",
+    "/onayli": "Onaylı moda geç (her değişiklik için onay)",
     "/otomatik": "Otomatik düzenleme moduna geç",
-    "/model": "Modeli değiştir: /model glm-5.3",
     "/init": "Projeyi inceleyip EVREN.md proje hafızası oluştur",
     "/ozet": "Uzun konuşmayı özetleyip bağlamı küçült",
+    "/yeni": "Yeni oturum başlat",
     "/disa-aktar": "Oturumu Markdown olarak dışa aktar",
     "/yardim": "Komutları ve kısayolları göster",
 }
-
+COMMAND_ICONS = {
+    "/model": "cpu", "/plan": "map", "/onayli": "shield", "/otomatik": "pencil",
+    "/init": "spark", "/ozet": "refresh", "/yeni": "plus", "/disa-aktar": "download",
+    "/yardim": "help",
+}
 MODE_ICONS = {"plan": "map", "onayli": "shield", "otomatik": "pencil"}
+ROLE_VALUE = Qt.UserRole + 1
+ROLE_KIND = Qt.UserRole + 2     # "command" | "model"
 
 
 class ComposerEdit(QPlainTextEdit):
@@ -41,11 +50,14 @@ class ComposerEdit(QPlainTextEdit):
         super().__init__(parent)
         self.setObjectName("ComposerEdit")
         self.send_with_enter = True
-        self.setTabChangesFocus(True)
+        self.popup_keys = None      # Composer: tuş → seçim listesi işledi mi?
+        self.setTabChangesFocus(False)
         self.document().contentsChanged.connect(self._grow)
         self._grow()
 
     def keyPressEvent(self, e: QKeyEvent) -> None:
+        if self.popup_keys is not None and self.popup_keys(e):
+            return
         if e.key() in (Qt.Key_Return, Qt.Key_Enter):
             mods = e.modifiers()
             if self.send_with_enter and not (mods & Qt.ShiftModifier):
@@ -56,6 +68,9 @@ class ComposerEdit(QPlainTextEdit):
                 return
         if e.key() == Qt.Key_Escape:
             self.escape.emit()
+            return
+        if e.key() == Qt.Key_Tab:
+            self.focusNextChild()
             return
         super().keyPressEvent(e)
 
@@ -86,15 +101,41 @@ class Composer(QWidget):
         self._model = ""
         self._mode = "onayli"
         self._agentic = True
+        self._models: list[tuple[str, str, bool]] = []
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(6)
 
-        self.hint = QLabel()
-        self.hint.setProperty("role", "faint")
-        self.hint.setWordWrap(True)
-        self.hint.setVisible(False)
-        outer.addWidget(self.hint)
+        # ---- komut / model seçim listesi (tıklanabilir) ----
+        self.popup = QListWidget()
+        self.popup.setObjectName("CommandPopup")
+        self.popup.setVisible(False)
+        self.popup.setMouseTracking(True)
+        self.popup.setIconSize(QSize(16, 16))
+        self.popup.setFocusPolicy(Qt.NoFocus)
+        self.popup.itemClicked.connect(self._accept_item)
+        outer.addWidget(self.popup)
+        self.popup_title = QLabel()
+        self.popup_title.setProperty("role", "faint")
+        self.popup_title.setVisible(False)
+        outer.insertWidget(0, self.popup_title)
+
+        # ---- çalışma durum çubuğu: model + süre ----
+        self.run_bar = QFrame()
+        self.run_bar.setObjectName("RunBar")
+        rl = QHBoxLayout(self.run_bar)
+        rl.setContentsMargins(12, 5, 12, 5)
+        rl.setSpacing(8)
+        self.run_dot = QLabel()
+        self.run_dot.setPixmap(icons.pixmap("dot", theme.current().accent, 12))
+        rl.addWidget(self.run_dot)
+        self.run_text = QLabel()
+        rl.addWidget(self.run_text, 1)
+        self.run_hint = QLabel("Esc ile durdur")
+        self.run_hint.setProperty("role", "faint")
+        rl.addWidget(self.run_hint)
+        self.run_bar.setVisible(False)
+        outer.addWidget(self.run_bar)
 
         self.frame = QFrame()
         self.frame.setObjectName("Composer")
@@ -106,6 +147,7 @@ class Composer(QWidget):
         self.edit.submit.connect(self._submit)
         self.edit.escape.connect(self.stop_requested.emit)
         self.edit.textChanged.connect(self._on_text)
+        self.edit.popup_keys = self._popup_key
         self.edit.installEventFilter(self)
         fl.addWidget(self.edit)
 
@@ -132,6 +174,7 @@ class Composer(QWidget):
         row.addWidget(self.mode_btn)
 
         self.model_btn = self._chip("cpu", "model")
+        self.model_btn.setToolTip("Modeli değiştir (veya /model yazın)")
         self.model_btn.setPopupMode(QToolButton.InstantPopup)
         self.model_menu = QMenu(self)
         self.model_btn.setMenu(self.model_menu)
@@ -176,7 +219,7 @@ class Composer(QWidget):
             self.frame.style().polish(self.frame)
         return super().eventFilter(obj, event)
 
-    # -- durum --
+    # ---- durum ----------------------------------------------------------
 
     def set_agentic(self, agentic: bool) -> None:
         self._agentic = agentic
@@ -202,11 +245,13 @@ class Composer(QWidget):
 
     def set_models(self, models: list, current: str) -> None:
         """models: [(id, açıklama, araç_destekli)]"""
+        self._models = list(models)
         self.model_menu.clear()
         group = QActionGroup(self.model_menu)
         for mid, desc, tools in models:
             label = mid + (f"   ·  {desc}" if desc else "")
             act = QAction(label, self.model_menu)
+            act.setData(mid)
             act.setCheckable(True)
             act.setChecked(mid == current)
             act.setToolTip("Yerel araç çağrısı destekli" if tools else "Metin protokolü ile çalışır")
@@ -219,21 +264,32 @@ class Composer(QWidget):
         self._model = model
         self.model_btn.setText(model or "model seçin")
         for act in self.model_menu.actions():
-            act.setChecked(act.text().split("   ·")[0] == model)
+            act.setChecked(act.data() == model)
         if emit:
             self.model_changed.emit(model)
 
     def model(self) -> str:
         return self._model
 
+    def model_ids(self) -> list[str]:
+        return [m[0] for m in self._models]
+
     def set_running(self, running: bool) -> None:
         self._running = running
+        if not running:
+            self.set_run_status(None)
         self._update_send()
+
+    def set_run_status(self, text: str | None) -> None:
+        """Yazma kutusunun üstündeki durum çubuğu: 'glm-5.3 çalışıyor · 0:12 · adım 2'."""
+        self.run_bar.setVisible(bool(text))
+        self.run_text.setText(text or "")
 
     def set_context(self, used_tokens: int, limit: int | None) -> None:
         if not used_tokens:
             self.context_label.setText("")
             return
+
         def k(n: int) -> str:
             return f"{n / 1000:.1f}k" if n < 100_000 else f"{n // 1000}k"
         if limit:
@@ -257,16 +313,118 @@ class Composer(QWidget):
             self.send_btn.setToolTip("Gönder (Enter) — yeni satır: Shift+Enter")
             self.send_btn.setEnabled(has_text)
 
+    # ---- komut / model seçim listesi -------------------------------------
+
     def _on_text(self) -> None:
         self._update_send()
+        self._refresh_popup()
+
+    def _refresh_popup(self) -> None:
         text = self.edit.toPlainText()
-        if text.startswith("/") and "\n" not in text:
-            word = text.split(" ")[0]
-            matches = [f"{c}  —  {d}" for c, d in SLASH_COMMANDS.items() if c.startswith(word)]
-            self.hint.setText("\n".join(matches) if matches else "Bilinmeyen komut. /yardim yazın.")
-            self.hint.setVisible(True)
-        else:
-            self.hint.setVisible(False)
+        if not text.startswith("/") or "\n" in text:
+            self.hide_popup()
+            return
+        low = text.lower()
+        if low.startswith("/model ") or low == "/model ":
+            self._show_models(low[len("/model "):].strip())
+            return
+        word = low.split(" ")[0]
+        if " " in low:          # komut yazıldı, argüman giriliyor: listeyi kapat
+            self.hide_popup()
+            return
+        self.popup.clear()
+        for cmd, desc in SLASH_COMMANDS.items():
+            if cmd.startswith(word):
+                it = QListWidgetItem(icons.icon(COMMAND_ICONS.get(cmd, "dot"), size=16),
+                                     f"{cmd}    {desc}")
+                it.setData(ROLE_VALUE, cmd)
+                it.setData(ROLE_KIND, "command")
+                self.popup.addItem(it)
+        if self.popup.count() == 0:
+            it = QListWidgetItem("Eşleşen komut yok — /yardim yazın")
+            it.setFlags(Qt.NoItemFlags)
+            self.popup.addItem(it)
+        self._open_popup("Komutlar  ·  tıklayın veya ↑↓ + Enter")
+
+    def _show_models(self, filt: str = "") -> None:
+        self.popup.clear()
+        for mid, desc, tools in self._models:
+            if filt and filt not in mid.lower():
+                continue
+            mark = "✓ " if mid == self._model else "    "
+            it = QListWidgetItem(icons.icon("cpu", size=16), f"{mark}{mid}" + (f"    {desc}" if desc else ""))
+            it.setData(ROLE_VALUE, mid)
+            it.setData(ROLE_KIND, "model")
+            it.setToolTip("Yerel araç çağrısı destekli" if tools else "Metin protokolü ile çalışır")
+            self.popup.addItem(it)
+        if self.popup.count() == 0:
+            it = QListWidgetItem("Eşleşen model yok")
+            it.setFlags(Qt.NoItemFlags)
+            self.popup.addItem(it)
+        self._open_popup("Model seçin  ·  tıklayın veya ↑↓ + Enter")
+        for i in range(self.popup.count()):
+            if self.popup.item(i).data(ROLE_VALUE) == self._model:
+                self.popup.setCurrentRow(i)
+                break
+
+    def _open_popup(self, title: str) -> None:
+        self.popup_title.setText(title)
+        self.popup_title.setVisible(True)
+        rows = max(1, min(self.popup.count(), 9))
+        row_h = max(self.popup.sizeHintForRow(0), 24) if self.popup.count() else 30
+        self.popup.setFixedHeight(rows * (row_h + 2) + 14)
+        self.popup.setVisible(True)
+        if self.popup.currentRow() < 0 and self.popup.count():
+            self.popup.setCurrentRow(0)
+
+    def hide_popup(self) -> None:
+        self.popup.setVisible(False)
+        self.popup_title.setVisible(False)
+
+    def popup_visible(self) -> bool:
+        return self.popup.isVisible()
+
+    def _popup_key(self, e: QKeyEvent) -> bool:
+        if not self.popup.isVisible():
+            return False
+        key = e.key()
+        if key in (Qt.Key_Down, Qt.Key_Up):
+            n = self.popup.count()
+            if n:
+                row = self.popup.currentRow()
+                row = (row + (1 if key == Qt.Key_Down else -1)) % n
+                self.popup.setCurrentRow(row)
+            return True
+        if key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Tab) and not (e.modifiers() & Qt.ShiftModifier):
+            item = self.popup.currentItem()
+            if item is not None and item.flags() & Qt.ItemIsEnabled:
+                self._accept_item(item)
+                return True
+            return False
+        if key == Qt.Key_Escape:
+            self.hide_popup()
+            return True
+        return False
+
+    def _accept_item(self, item: QListWidgetItem) -> None:
+        kind = item.data(ROLE_KIND)
+        value = item.data(ROLE_VALUE)
+        if not kind:
+            return
+        if kind == "model":
+            self.edit.clear()
+            self.hide_popup()
+            self.set_model(value, emit=True)
+            self.edit.setFocus()
+            return
+        if value == "/model":
+            self.set_text("/model ")      # model listesine geç
+            return
+        self.edit.clear()
+        self.hide_popup()
+        self.submitted.emit(value)
+
+    # ---- gönderme -----------------------------------------------------------
 
     def _on_send_clicked(self) -> None:
         if self._running:
@@ -275,12 +433,13 @@ class Composer(QWidget):
             self._submit()
 
     def _submit(self) -> None:
-        if self._running:
+        if self._running and not self.edit.toPlainText().strip().startswith("/"):
             return
         text = self.edit.toPlainText().strip()
         if not text:
             return
         self.edit.clear()
+        self.hide_popup()
         self.submitted.emit(text)
 
     def set_text(self, text: str) -> None:

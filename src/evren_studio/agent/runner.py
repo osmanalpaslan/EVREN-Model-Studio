@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -340,6 +341,7 @@ class AgentRunner:
             step += 1
             outcome.steps = step
             self.events.step_started(step)
+            t0 = time.monotonic()
             try:
                 result = self._call_model(history)
             except ApiError as exc:
@@ -364,13 +366,20 @@ class AgentRunner:
             calls = [ToolCall.from_raw(c) for c in raw_calls] if self.agentic else []
 
             cancelled = result.finish_reason == "cancelled_by_user"
+            duration = round(time.monotonic() - t0, 1)
+            routed = getattr(result, "routed_model", None)
+            meta: dict[str, Any] = {"duration_s": duration, "requested_model": self.model}
+            if result.finish_reason:
+                meta["finish_reason"] = result.finish_reason
+            if routed and routed != self.model:
+                meta["routed_model"] = routed
             self._save(
                 history, "assistant", content,
                 reasoning=result.reasoning or None,
                 tool_calls=[c.to_raw() for c in calls] or None,
-                model=getattr(result, "routed_model", None) or result.model or self.model,
+                model=routed or self.model,
                 request_id=result.request_id,
-                meta={"finish_reason": result.finish_reason} if result.finish_reason else None,
+                meta=meta,
             )
             outcome.last_text = content
             if cancelled:

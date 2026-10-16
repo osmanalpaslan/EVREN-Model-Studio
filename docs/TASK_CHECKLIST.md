@@ -46,7 +46,11 @@
 - [x] Plan / Onaylı / Otomatik düzenleme modları — testli
 - [x] Mesajı düzenleyip yeniden gönderme, /komutlar, @dosya ekleme
 - [x] Uzun konuşma özetleme (/ozet) ve bağlam kısaltma — kısaltma testli
-- [ ] **Gerçek EVREN ile yerel araç çağrısı turu** (anahtar gerekir)
+- [x] Gerçek EVREN ile yerel araç çağrısı turu — 8 model × 2 protokol 16/16 (2026-10-16)
+- [x] Sohbet ekranında çalışan model ve süre göstergesi — testli
+- [x] Tıklanabilir `/` komut listesi ve `/model` seçici — testli
+- [x] Ayarlar: varsayılana döndür, tekerlek koruması — testli
+- [x] Tüm ekranlar için arayüz QA paketi + gerçek arayüz e2e (14/14)
 - [ ] Git durumu/diff görünümü ve commit önerisi
 - [ ] Değişiklik gerekçesi: ajan istemiyle isteniyor; ayrı arayüz yok
 
@@ -57,7 +61,7 @@
 - [ ] ASR (qwen3-asr-1.7b gerçek testi)
 - [ ] Embedding/rerank gerçek testleri
 - [ ] Guard sınıflandırma gerçek testi
-- [ ] Araç çağrısı (function calling) gerçek testi (kod ajanı hazır; bkz. Aşama 2)
+- [x] Araç çağrısı (function calling) gerçek testi — bkz. MODEL_CAPABILITIES.md
 
 ## Aşama 4 — Paketleme ⬜
 

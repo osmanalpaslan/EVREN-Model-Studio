@@ -78,7 +78,9 @@ bitirirken hafızayı besler; git kancası ve testler bunu denetler.
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q              # birim + arayüz akış testleri
 .\.venv\Scripts\python.exe tests\smoke_ui.py         # arayüz duman testi
-.\.venv\Scripts\python.exe -u tests\e2e_real_api.py  # gerçek API (anahtar gerekir)
+.\.venv\Scripts\python.exe -u tests\e2e_real_api.py        # gerçek API (anahtar gerekir)
+.\.venv\Scripts\python.exe -u tests\e2e_agent_real_api.py  # gerçek modellerle ajan araç turu
+.\.venv\Scripts\python.exe -u tests\e2e_ui_real_api.py     # gerçek arayüz + gerçek API senaryosu
 ```
 
 ## Lisans

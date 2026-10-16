@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
-from . import icons, theme
+from . import icons, theme, wheel_guard
 from .app_context import AppContext
 from .connection_page import ConnectionPage
 from .errors_page import ErrorsPage
@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
         if app is not None:
             theme.apply_theme(app, s.theme, s.font_size)
+            wheel_guard.install(app)
         self.setWindowTitle("EVREN Studio")
         self.setWindowIcon(icons.icon("spark", theme.current().accent, 32))
         self.resize(1440, 900)
@@ -184,7 +185,15 @@ class MainWindow(QMainWindow):
         sc("Ctrl+K", lambda: (self.sidebar.setVisible(True), self.sidebar.search.setFocus()))
         sc("Ctrl+L", lambda: (self.show_sessions(), self.session.composer.focus()))
         sc("Ctrl+,", lambda: self.show_page("settings"))
-        sc("Esc", self.session.stop)
+        sc("Esc", self._escape)
+
+    def _escape(self) -> None:
+        """Esc: önce açık komut/model listesini kapatır, yoksa çalışan ajanı durdurur."""
+        comp = self.session.composer
+        if comp.popup_visible():
+            comp.hide_popup()
+        else:
+            self.session.stop()
 
     def _settings_saved(self) -> None:
         s = self.ctx.settings
@@ -193,6 +202,11 @@ class MainWindow(QMainWindow):
             icons.clear_cache()
             theme.apply_theme(app, s.theme, s.font_size)
         self.session.composer.edit.send_with_enter = s.send_with_enter
+        self.sidebar.refresh()
+        self.session.refresh_models()
+        self.session.welcome.refresh()
+        if self.session.session_id and not self.ctx.db.get_session(self.session.session_id):
+            self.session.new_session()   # veriler silindiyse
 
     def closeEvent(self, event) -> None:
         self.session.shutdown()

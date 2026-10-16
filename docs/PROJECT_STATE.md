@@ -22,7 +22,7 @@
 |---|---|
 | 0 — Araştırma | ✅ TAMAMLANDI |
 | 1 — Çalışan MVP | ✅ TAMAMLANDI |
-| 2 — Kod ajanı çalışma alanı | 🟨 UYGULANDI, sahte modelle test edildi; gerçek EVREN ile araç turu DOĞRULANMADI |
+| 2 — Kod ajanı çalışma alanı | ✅ UYGULANDI; gerçek EVREN ile araç turu 8 modelde doğrulandı (2026-10-16) |
 | 3 — Özel görev modelleri | ⬜ BAŞLAMADI |
 | 4 — Paketleme | ⬜ BAŞLAMADI |
 
@@ -39,7 +39,11 @@
 - Dosya değişikliği kaydı + geri alma (tekil, toplu, çakışmada onaylı zorlama).
 - Arayüz uçtan uca: mesaj → araç kartı → onay kutusu → dosya değişir →
   Değişiklikler paneli → oturum yeniden açılınca aynı çizim → geri alma.
-- Testler: 104/104 geçti (53 eski + 51 yeni). SMOKE_OK.
+- Testler: 116/116 geçti (tüm ekranlar için arayüz QA paketi dahil). SMOKE_OK.
+- Gerçek API: `tests/e2e_real_api.py` E2E_OK; `tests/e2e_agent_real_api.py`
+  16/16 (8 model × 2 protokol); `tests/e2e_ui_real_api.py` 14/14.
+- Sohbet ekranında canlı model + süre, tıklanabilir `/` komut ve `/model`
+  listesi, Ayarlar'da varsayılana döndürme ve tekerlek koruması.
 
 ## Ortak geliştirici hafızası
 
@@ -49,11 +53,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
-1. **Gerçek EVREN ile araç turu testi** (anahtar gerekir): glm-5.3 ve
-   deepseek-v4.1-flash ile `tools` gönderimi; yanıt `tool_calls` dönüyor mu,
-   400/422 mi? Sonucu MODEL_CAPABILITIES.md ve API_COMPATIBILITY.md'ye yaz.
-2. Gerçek kullanımda onay kutusu, uzun komut çıktısı ve bağlam göstergesini
-   gözden geçir; gerekirse `tests/e2e_real_api.py`'ye araç senaryosu ekle.
+1. Gerçek modellerle komut çalıştırma (run_command) ve uzun çok adımlı
+   görev senaryosu ekle (`tests/e2e_ui_real_api.py`).
+2. `auto` için protokol seçimini gözden geçir: kayıtta `tools: false` ama
+   yerel araç çağrısı çalışıyor.
 3. Git entegrasyonu (durum/diff görünümü, ajan değişikliklerini commit'leme
    önerisi) — şu an yalnızca dal adı gösteriliyor.
 4. Görsel girdi (Aşama 3): qwen3-vl-30b ile ekran görüntüsü ekleme.

@@ -43,12 +43,26 @@
   - Silinmiş widget'a `QTimer.singleShot` çağrısı (2026-10-16-qtimer-silinmis-widgeta-cagri).
   - Dar sağ panelde sekme metinleri ilk denemede kesildi/çakıştı; ekran
     görüntüsüyle yakalanıp düzeltildi.
-  - Gerçek API anahtarı olmadan çalıştığı için ajanın EVREN ile araç turu
-    doğrulanamadı (2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi).
+  - İlk oturumda anahtar yoktu; araç turu aynı gün kullanıcının anahtarıyla
+    doğrulandı (2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi, çözüldü).
+  - Pencere düzeyi Esc kısayolunun alt bileşeni gölgelemesi
+    (2026-10-16-esc-kisayolu-komut-listesini-kapatmiyordu) — kendi testiyle yakaladı.
+  - Bash heredoc ile Python'a Türkçe betik verince karakterler bozuldu
+    (R-01 benzeri): Türkçe içerikli betikleri dosyaya yazıp çalıştır.
 - **Ortam notları**: Claude Code'un geçici (scratchpad) klasörü bazı
   süreçlerce görülmeyebilir; geçici betikleri git'e girmeyen `build/`
   altına koy. Silme komutları (Remove-Item) izin katmanınca
   engellenebilir; gerekmedikçe silme.
+
+## EVREN modelleri (uygulama içi kod ajanı olarak) — ölçüm
+
+2026-10-16 gerçek API testi (`tests/e2e_agent_real_api.py`): 8 sohbet
+modelinin hepsi yerel araç çağrısı ve metin protokolüyle okuma görevini
+geçti. Hızlı ve tutarlı: deepseek-v4-flash, qwen3-vl-30b, auto,
+qwen3.8-flash-next. Yavaş: deepseek-v4.1-flash (~19-34 sn), mimo-v2.6-pro
+metin protokolünde (~30 sn). glm-5.3 muhakeme modelidir (düşünce süreci
+gösterilir). Bazı modeller kısa sorulara gereksiz güvenlik notu ekliyor
+(mimo, deepseek-v4.1-flash). Tablo: docs/knowledge/MODEL_CAPABILITIES.md.
 
 ## EVREN Studio'nun kendi ajanı (uygulama içi)
 
