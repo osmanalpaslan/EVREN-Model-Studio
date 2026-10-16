@@ -1,5 +1,19 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Varsayılan motor auto, seçimler hatırlanır
+
+### Değişti
+
+- **Varsayılan motor `auto`** (EVREN yönlendiricisi): yeni oturumlar auto ile
+  açılır; model seçicide EVREN grubunun en üstünde "önerilen". Mevcut
+  kurulumlarda eski varsayılan glm-5.3 bir kez auto'ya çevrilir (ayar sürümü 2);
+  başka bir model seçilmişse dokunulmaz. Onay modu varsayılanı değişmedi (Manuel).
+- **Son seçim hatırlanır**: sohbet ekranında seçilen motor ve onay modu (seçici
+  veya /model, /plan, /otomatik … komutları) kaydedilir; siz yeniden
+  değiştirene kadar yeni oturumlar onunla açılır, uygulama güncellemeleri bunu değiştirmez.
+- auto için ölçülen değerler: 262k bağlam + yerel araç çağrısı (kayıttaki
+  32768 / tools:false yanlış çıktı). Otomatik özet artık auto'da erken çalışmaz.
+
 ## Yayınlanmamış — Ortak hafıza: GitHub eşitleme
 
 ### Eklendi

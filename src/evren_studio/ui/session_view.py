@@ -480,7 +480,9 @@ class SessionView(QWidget):
 
     def refresh_models(self) -> None:
         items = []
-        for m in self.ctx.chat_models():
+        # auto (önerilen varsayılan) EVREN grubunun en üstünde
+        models = sorted(self.ctx.chat_models(), key=lambda m: (m.provider != "evren", m.id != "auto"))
+        for m in models:
             desc = []
             if m.supports_tools:
                 desc.append("araç")
@@ -489,7 +491,7 @@ class SessionView(QWidget):
             if m.context_length:
                 desc.append(f"{m.context_length // 1000}k")
             if m.id == "auto":
-                desc = ["yönlendirici"]
+                desc = ["önerilen · görevine göre modeli seçer"]
             if m.provider != "evren":
                 desc = [d for d in desc if d != "araç"] + [price_hint(m.id)]
             enabled = m.provider == "evren" or self.ctx.has_provider_key(m.provider)
@@ -704,6 +706,17 @@ class SessionView(QWidget):
             self.runner.mode = mode       # sonraki araç kararından itibaren geçerli
         if self.session_id:
             self.ctx.db.update_session(self.session_id, mode=mode)
+        self._remember(agent_mode=mode)
+
+    def _remember(self, **values) -> None:
+        """Kullanıcının son seçimi (motor / onay modu) yeni oturumlarda da gelir;
+        kullanıcı yeniden değiştirene kadar korunur (kullanıcı kararı, 2026-10-16)."""
+        s = self.ctx.settings
+        changed = {k: v for k, v in values.items() if getattr(s, k) != v}
+        if changed:
+            for k, v in changed.items():
+                setattr(s, k, v)
+            self.ctx.save_settings()
 
     def set_model(self, model: str) -> None:
         provider = self.ctx.provider_of(model)
@@ -720,6 +733,7 @@ class SessionView(QWidget):
         self.model = model
         if self.session_id:
             self.ctx.db.update_session(self.session_id, model=model, provider=provider)
+        self._remember(default_model=model)
         self._update_context()
 
     # ---- ücretli sağlayıcı bütçesi ----

@@ -38,6 +38,8 @@
 | 34 | Sağlayıcı durumu (`_provider_state`) mesaj meta'sında saklanıp aynen geri gönderilir | Şifreli reasoning / imzalı thinking blokları araç turlarında zorunlu; EVREN'e gitmeden silinir | 2026-10-16 |
 | 35 | Ücretli sağlayıcılarda aylık bütçe: %80 uyarı, sınırda her istekten önce onay (varsayılan $5) | Kullanıcı kararı; kalan kredi API'den okunamadığı için yerel tahmin; ücretli hizmet onay kuralı | 2026-10-16 |
 | 36 | Ücretli model kataloğu statik ve tarihli (`PRICES_AS_OF`) | `/v1/models` fiyat/yetenek vermiyor; doğrulanmamış = `verified=False` (R-17) | 2026-10-16 |
+| 37 | Varsayılan motor `auto`; eski varsayılan glm-5.3 bir kez taşınır | Kullanıcı kararı; eski sürüm varsayılanı dosyaya yazdığı için bilinçli seçimden ayırt edilemedi, kullanıcı taşımayı onayladı | 2026-10-16 |
+| 38 | Sohbette seçilen motor ve onay modu kalıcı varsayılan olur | Kullanıcı kararı: "her değişiklik ben değiştirene kadar korunsun"; Otomatik mod da hatırlanır | 2026-10-16 |
 
 ## Değerlendirilip reddedilenler
 

@@ -36,13 +36,34 @@ TASK_LABELS = {
 }
 
 
+SETTINGS_VERSION = 2
+# Eski sürümün varsayılanı: kullanıcı değiştirmediyse yeni varsayılana taşınır.
+_OLD_DEFAULT_MODEL = "glm-5.3"
+
+
+def migrate_raw(raw: dict[str, Any]) -> dict[str, Any]:
+    """config.json'u güncel sürüme taşır (yalnız eski VARSAYILAN değerleri değiştirir)."""
+    version = raw.get("settings_version", 1)
+    if not isinstance(version, int):
+        version = 1
+    if version < 2 and raw.get("default_model", _OLD_DEFAULT_MODEL) == _OLD_DEFAULT_MODEL:
+        # Eski sürüm varsayılanı her zaman dosyaya yazıyordu; glm-5.3 bilerek seçilmiş
+        # olabilir ama ayırt edilemez. Kullanıcı kararı (2026-10-16): varsayılan auto.
+        raw["default_model"] = "auto"
+    raw["settings_version"] = max(version, SETTINGS_VERSION)
+    return raw
+
+
 @dataclass
 class Settings:
     """Kalıcı uygulama ayarları (API anahtarı HARİÇ)."""
 
     base_url: str = DEFAULT_BASE_URL
     announcement_url: str = DEFAULT_ANNOUNCEMENT_URL
-    default_model: str = "glm-5.3"
+    # "auto" = EVREN yönlendiricisi her istek için uygun modeli seçer (2026-10-16
+    # ölçümü: gemma-4-31b / qwen3.8-flash-next'e yönlendirdi). Kullanıcı model
+    # seçiciden veya Ayarlar'dan değiştirebilir.
+    default_model: str = "auto"
     task_model_preferences: dict[str, str] = field(default_factory=dict)
     auto_model_switch: bool = False
     timeout_seconds: float = 120.0
@@ -79,6 +100,8 @@ class Settings:
     sidebar_visible: bool = True
     panel_visible: bool = True
     send_with_enter: bool = True
+    # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
+    settings_version: int = SETTINGS_VERSION
 
     def resolved_data_dir(self) -> Path:
         return Path(self.data_dir) if self.data_dir else default_data_dir()
@@ -104,6 +127,9 @@ class ConfigStore:
         except (json.JSONDecodeError, OSError):
             # Bozuk dosya: varsayılanlarla devam, dosyayı olduğu gibi bırak.
             return Settings()
+        if not isinstance(raw, dict):
+            return Settings()
+        raw = migrate_raw(raw)
         known = {f for f in Settings.__dataclass_fields__}
         filtered = {k: v for k, v in raw.items() if k in known}
         return Settings(**filtered)

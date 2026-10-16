@@ -50,8 +50,8 @@ PROTOCOLS = (
     ("yerel", "Yerel function calling (tools)"),
     ("metin", "Metin protokolü (<arac_cagrisi> blokları)"),
 )
-FALLBACK_MODEL_IDS = ["glm-5.3", "deepseek-v4.1-flash", "deepseek-v4-flash", "mimo-v2.6-pro",
-                      "qwen3.8-flash-next", "gemma-4-31b", "auto"]
+FALLBACK_MODEL_IDS = ["auto", "glm-5.3", "deepseek-v4.1-flash", "deepseek-v4-flash", "mimo-v2.6-pro",
+                      "qwen3.8-flash-next", "gemma-4-31b"]
 
 
 def section(text: str) -> QLabel:
@@ -197,6 +197,8 @@ class SettingsPage(BasePage):
         self.default_model = QComboBox()
         self.default_model.setEditable(True)
         l.addWidget(kv_row_widget("Varsayılan model:", self.default_model, d.default_model))
+        l.addWidget(hint("Sohbet ekranında seçtiğiniz motor ve onay modu burada varsayılan olarak "
+                         "kaydedilir; siz yeniden değiştirene kadar yeni oturumlar onunla açılır."))
         self.auto_switch = QCheckBox("Hata durumunda otomatik model değiştirme (önerilmez)")
         l.addWidget(self.auto_switch)
         l.addWidget(hint(f"Varsayılan: {'açık' if d.auto_model_switch else 'kapalı'}"))
