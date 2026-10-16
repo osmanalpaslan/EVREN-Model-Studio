@@ -30,12 +30,14 @@ class ErrorKind(enum.Enum):
     VALIDATION = "geçersiz_istek"
     NETWORK = "ağ_hatası"
     UNKNOWN_RESULT = "belirsiz_sonuç"
+    QUOTA_EXHAUSTED = "kredi_bitti"      # ücretli sağlayıcı: kredi/harcama sınırı (tekrar YOK)
     UNKNOWN = "bilinmeyen"
 
 
 STATUS_MAP = {
     400: ErrorKind.VALIDATION,
     401: ErrorKind.AUTH,
+    402: ErrorKind.QUOTA_EXHAUSTED,   # Anthropic billing_error
     403: ErrorKind.AUTH,
     404: ErrorKind.NOT_FOUND,
     408: ErrorKind.TIMEOUT,
@@ -45,6 +47,7 @@ STATUS_MAP = {
     500: ErrorKind.SERVER_ERROR,
     502: ErrorKind.SERVER_ERROR,
     503: ErrorKind.SERVER_UNAVAILABLE,
+    529: ErrorKind.SERVER_UNAVAILABLE,  # Anthropic overloaded_error
     504: ErrorKind.SERVER_ERROR,
 }
 
@@ -60,7 +63,13 @@ RETRYABLE_KINDS = {
 TURKCE_ACIKLAMALAR = {
     ErrorKind.AUTH: (
         "API anahtarı reddedildi veya bu işlem için yetkiniz yok. "
-        "Anahtarın doğru ve aktif olduğunu EVREN panelinden kontrol edin."
+        "Anahtarın doğru ve aktif olduğunu sağlayıcının panelinden (EVREN, "
+        "OpenAI veya Anthropic) kontrol edin."
+    ),
+    ErrorKind.QUOTA_EXHAUSTED: (
+        "Sağlayıcı hesabınızda kredi bitti veya harcama sınırına ulaşıldı. "
+        "Sağlayıcı panelinden kredi yükleyin ya da limiti artırın. Tekrar "
+        "denemek işe yaramaz; otomatik tekrar yapılmaz."
     ),
     ErrorKind.NOT_FOUND: (
         "İstenen model veya adres bulunamadı. Model adını model listesinden "

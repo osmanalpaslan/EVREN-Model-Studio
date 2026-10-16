@@ -34,6 +34,10 @@
 | 30 | Korumalı dosyalar her modda sorulur; gizli dosya okuma da sorulur | Claude Code'daki korumalı yollar; .env içeriği EVREN'e gitmesin | 2026-10-16 |
 | 31 | Otomatik özet: mesajdan önce + tur içinde yalnız güvenli noktada; eşik min(%75, 100k), sert min(%90, ×1,5) | İş yarıda kesilmez; özet isteği sığar; büyük bağlamda yavaşlık ve günlük kota korunur | 2026-10-16 |
 | 32 | Özet modeli varsayılan deepseek-v4-flash, akışlı istek | Gerçek ölçüm: aynı özet glm-5.3 153 sn / deepseek-v4-flash 41 sn, kalite eşdeğer; akışsız istek glm-5.3'te koptu | 2026-10-16 |
+| 33 | OpenAI için Responses API, Anthropic için yerel Messages API | Chat Completions yeni GPT'lerde reasoning + araç birlikte çalışmıyor; Anthropic uyumluluk katmanı "üretim için değil", thinking yok | 2026-10-16 |
+| 34 | Sağlayıcı durumu (`_provider_state`) mesaj meta'sında saklanıp aynen geri gönderilir | Şifreli reasoning / imzalı thinking blokları araç turlarında zorunlu; EVREN'e gitmeden silinir | 2026-10-16 |
+| 35 | Ücretli sağlayıcılarda aylık bütçe: %80 uyarı, sınırda her istekten önce onay (varsayılan $5) | Kullanıcı kararı; kalan kredi API'den okunamadığı için yerel tahmin; ücretli hizmet onay kuralı | 2026-10-16 |
+| 36 | Ücretli model kataloğu statik ve tarihli (`PRICES_AS_OF`) | `/v1/models` fiyat/yetenek vermiyor; doğrulanmamış = `verified=False` (R-17) | 2026-10-16 |
 
 ## Değerlendirilip reddedilenler
 

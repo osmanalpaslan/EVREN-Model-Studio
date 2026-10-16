@@ -111,7 +111,8 @@ def test_v1_sohbetleri_oturuma_tasinir(tmp_path):
     db3 = Database(path)
     assert len(db3.list_sessions()) == 1
     version = db3._exec("SELECT value FROM meta WHERE key='schema_version'").fetchone()["value"]
-    assert version == "2"
+    assert version == "3"
+    assert db3.list_sessions()[0]["provider"] == "evren", "eski oturumlar EVREN sayılmalı"
     db3.close()
     assert sqlite3.connect(path).execute("SELECT COUNT(*) FROM chats").fetchone()[0] == 1, \
         "eski tablo silinmemeli"

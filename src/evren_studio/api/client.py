@@ -53,6 +53,36 @@ class ChatResult:
     usage: dict[str, Any] = field(default_factory=dict)
     # Yerel araç çağrıları: [{"id", "name", "arguments" (JSON metni)}]
     tool_calls: list[dict[str, str]] = field(default_factory=list)
+    # Sağlayıcıya özel, sonraki istekte AYNEN geri gönderilmesi gereken durum
+    # (OpenAI şifreli reasoning öğeleri, Anthropic thinking blokları). Ajan
+    # bunu mesaj meta'sında saklar; to_api_messages "_provider_state" olarak taşır.
+    provider_state: dict[str, Any] = field(default_factory=dict)
+
+    def token_usage(self) -> dict[str, int]:
+        return normalize_usage(self.usage)
+
+
+def normalize_usage(usage: dict[str, Any] | None) -> dict[str, int]:
+    """Sağlayıcıdan bağımsız kullanım: input_tokens, output_tokens, cached_tokens.
+
+    Chat Completions (prompt_tokens/completion_tokens), Responses
+    (input_tokens/output_tokens, input_tokens_details.cached_tokens) ve
+    Anthropic (input_tokens/output_tokens/cache_read_input_tokens) biçimlerini tanır.
+    """
+    u = usage or {}
+    inp = u.get("input_tokens", u.get("prompt_tokens")) or 0
+    out = u.get("output_tokens", u.get("completion_tokens")) or 0
+    details = u.get("input_tokens_details") or u.get("prompt_tokens_details") or {}
+    cached = details.get("cached_tokens") or u.get("cache_read_input_tokens") or 0
+    # Anthropic'te input_tokens önbellekli/yazılan kısmı İÇERMEZ; toplam girdiye ekle
+    if "cache_read_input_tokens" in u or "cache_creation_input_tokens" in u:
+        inp = inp + (u.get("cache_read_input_tokens") or 0) + (u.get("cache_creation_input_tokens") or 0)
+    return {"input_tokens": int(inp), "output_tokens": int(out), "cached_tokens": int(cached)}
+
+
+def strip_internal(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """'_' ile başlayan iç alanları (ör. _provider_state) API'ye göndermeden siler."""
+    return [{k: v for k, v in m.items() if not k.startswith("_")} for m in messages]
 
 
 @dataclass
@@ -66,6 +96,7 @@ class ModelInfo:
     free_until: str | None = None
     prompt_token_price: float | None = None
     completion_token_price: float | None = None
+    provider: str = "evren"
 
     @property
     def supports_chat(self) -> bool:
@@ -404,7 +435,7 @@ class EvrenClient:
         if cancel is not None and cancel.cancelled:
             return ChatResult(model=model, finish_reason="cancelled_by_user")
 
-        body: dict[str, Any] = {"model": model, "messages": messages,
+        body: dict[str, Any] = {"model": model, "messages": strip_internal(messages),
                                 "stream": bool(stream)}
         if max_tokens is not None:
             body["max_tokens"] = max_tokens

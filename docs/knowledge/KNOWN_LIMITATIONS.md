@@ -57,6 +57,19 @@
 - **Yerel ay yedekleme**: yok; veriler `%LOCALAPPDATA%` altındadır,
   Ayarlar'dan JSON dışa aktarılabilir.
 
+## Ücretli sağlayıcılar (OpenAI, Anthropic)
+
+- Gerçek anahtarla **doğrulanmadı**; yalnızca belgelere göre yazıldı ve sahte
+  HTTP testleriyle sınandı.
+- Harcama **tahminidir**: uzun bağlam fiyat kademeleri (OpenAI >272K, bazı
+  Claude modelleri) ve önbelleğe yazma ücreti hesaba katılmaz; fiyatlar
+  2026-10-16 tarihlidir.
+- Kalan kredi API'den okunamaz; Kullanım/Kota ve EVREN Durum İzleme
+  ekranları yalnız EVREN içindir.
+- "Sonuç belirsiz" durumunda istek durumu sorgulanamaz (EVREN'e özgü uç).
+- OpenAI'de reasoning özeti yalnız model gönderirse görünür; Anthropic
+  "extended thinking" ayrıca açılmaz (modelin varsayılanı).
+
 ## Sağlayıcıya bağlı sınırlar
 
 - `free_until: 2026-11-01` — sonrası için fiyatlandırma bilinmiyor.

@@ -39,6 +39,25 @@ COMMAND_ICONS = {
     "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/disa-aktar": "download",
     "/yardim": "help",
 }
+FOOTER_SENT_TO = {"evren": "EVREN API'sine", "openai": "OpenAI'ye (ücretli)",
+                  "anthropic": "Anthropic'e (ücretli)"}
+
+# Model seçicideki sağlayıcı başlıkları
+GROUP_TITLES = {
+    "evren": "EVREN · ücretsiz",
+    "openai": "OpenAI · ücretli · doğrulanmadı",
+    "anthropic": "Anthropic · ücretli · doğrulanmadı",
+}
+
+
+def _norm_item(item: tuple) -> tuple:
+    """(id, açıklama, araç[, sağlayıcı, etkin]) → 5'li demet (eski 3'lü biçim de kabul)."""
+    mid, desc, tools = item[0], item[1], item[2]
+    provider = item[3] if len(item) > 3 else "evren"
+    enabled = item[4] if len(item) > 4 else True
+    return mid, desc, tools, provider, enabled
+
+
 MODE_ICONS = {"manuel": "shield", "kabul": "pencil", "plan": "map", "auto": "spark"}
 # Eğik çizgi komutu → mod anahtarı (/onayli eski ad, gizli takma ad)
 MODE_COMMANDS = {"/manuel": "manuel", "/onayli": "manuel", "/kabul": "kabul",
@@ -106,7 +125,7 @@ class Composer(QWidget):
         self._model = ""
         self._mode = "manuel"
         self._agentic = True
-        self._models: list[tuple[str, str, bool]] = []
+        self._models: list[tuple[str, str, bool, str, bool]] = []
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(6)
@@ -248,17 +267,28 @@ class Composer(QWidget):
         return self._mode
 
     def set_models(self, models: list, current: str) -> None:
-        """models: [(id, açıklama, araç_destekli)]"""
-        self._models = list(models)
+        """models: [(id, açıklama, araç_destekli, sağlayıcı, etkin)] — sağlayıcıya göre gruplanır."""
+        self._models = [_norm_item(m) for m in models]
         self.model_menu.clear()
         group = QActionGroup(self.model_menu)
-        for mid, desc, tools in models:
+        last_provider = None
+        for mid, desc, tools, provider, enabled in self._models:
+            if provider != last_provider:
+                self.model_menu.addSection(GROUP_TITLES.get(provider, provider))
+                last_provider = provider
             label = mid + (f"   ·  {desc}" if desc else "")
+            if not enabled:
+                label += "   (anahtar gerekli)"
             act = QAction(label, self.model_menu)
             act.setData(mid)
             act.setCheckable(True)
             act.setChecked(mid == current)
-            act.setToolTip("Yerel araç çağrısı destekli" if tools else "Metin protokolü ile çalışır")
+            if not enabled:
+                act.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar")
+            elif provider != "evren":
+                act.setToolTip("Ücretli model; harcama aylık bütçeye sayılır (tahmini)")
+            else:
+                act.setToolTip("Yerel araç çağrısı destekli" if tools else "Metin protokolü ile çalışır")
             act.triggered.connect(lambda _=False, m=mid: self.set_model(m, emit=True))
             group.addAction(act)
             self.model_menu.addAction(act)
@@ -267,6 +297,9 @@ class Composer(QWidget):
     def set_model(self, model: str, emit: bool = False) -> None:
         self._model = model
         self.model_btn.setText(model or "model seçin")
+        provider = next((m[3] for m in self._models if m[0] == model), "evren")
+        self.footer.setText("Yapay zekâ hata yapabilir; önemli değişiklikleri gözden geçirin. "
+                            f"Mesajlar ve dosya içerikleri {FOOTER_SENT_TO.get(provider, provider)} gönderilir.")
         for act in self.model_menu.actions():
             act.setChecked(act.data() == model)
         if emit:
@@ -368,16 +401,29 @@ class Composer(QWidget):
 
     def _show_models(self, filt: str = "") -> None:
         self.popup.clear()
-        for mid, desc, tools in self._models:
+        last_provider = None
+        for mid, desc, tools, provider, enabled in self._models:
             if filt and filt not in mid.lower():
                 continue
+            if provider != last_provider:
+                head = QListWidgetItem(GROUP_TITLES.get(provider, provider))
+                head.setFlags(Qt.NoItemFlags)       # başlık: seçilemez
+                f = head.font()
+                f.setBold(True)
+                head.setFont(f)
+                self.popup.addItem(head)
+                last_provider = provider
             mark = "✓ " if mid == self._model else "    "
-            it = QListWidgetItem(icons.icon("cpu", size=16), f"{mark}{mid}" + (f"    {desc}" if desc else ""))
+            text = f"{mark}{mid}" + (f"    {desc}" if desc else "") + ("" if enabled else "    (anahtar gerekli)")
+            it = QListWidgetItem(icons.icon("cpu", size=16), text)
             it.setData(ROLE_VALUE, mid)
             it.setData(ROLE_KIND, "model")
-            it.setToolTip("Yerel araç çağrısı destekli" if tools else "Metin protokolü ile çalışır")
+            it.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar" if not enabled
+                          else ("Ücretli model" if provider != "evren"
+                                else ("Yerel araç çağrısı destekli" if tools else "Metin protokolü ile çalışır")))
             self.popup.addItem(it)
-        if self.popup.count() == 0:
+        if not any(self.popup.item(i).data(ROLE_KIND) == "model" for i in range(self.popup.count())):
+            self.popup.clear()
             it = QListWidgetItem("Eşleşen model yok")
             it.setFlags(Qt.NoItemFlags)
             self.popup.addItem(it)
@@ -394,8 +440,11 @@ class Composer(QWidget):
         row_h = max(self.popup.sizeHintForRow(0), 24) if self.popup.count() else 30
         self.popup.setFixedHeight(rows * (row_h + 2) + 14)
         self.popup.setVisible(True)
-        if self.popup.currentRow() < 0 and self.popup.count():
-            self.popup.setCurrentRow(0)
+        if self.popup.currentRow() < 0:
+            for i in range(self.popup.count()):
+                if self.popup.item(i).flags() & Qt.ItemIsEnabled:
+                    self.popup.setCurrentRow(i)
+                    break
 
     def hide_popup(self) -> None:
         self.popup.setVisible(False)
@@ -410,10 +459,13 @@ class Composer(QWidget):
         key = e.key()
         if key in (Qt.Key_Down, Qt.Key_Up):
             n = self.popup.count()
-            if n:
-                row = self.popup.currentRow()
-                row = (row + (1 if key == Qt.Key_Down else -1)) % n
-                self.popup.setCurrentRow(row)
+            step = 1 if key == Qt.Key_Down else -1
+            row = self.popup.currentRow()
+            for _ in range(n):
+                row = (row + step) % n
+                if self.popup.item(row).flags() & Qt.ItemIsEnabled:
+                    self.popup.setCurrentRow(row)
+                    break
             return True
         if key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Tab) and not (e.modifiers() & Qt.ShiftModifier):
             item = self.popup.currentItem()

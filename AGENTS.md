@@ -98,4 +98,5 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-14** · Eski izin anahtarını asla daha yetkili moda çevirme — Mod/izin adlarını değiştirirken yeni anahtar kullan; eski değerleri normalize_mode ile eşdeğer veya daha kısıtlı moda eşle ve bunu test et.
 - **R-15** · Özelliğin hangi dalda olduğunu kullanıcıya söyle — Kullanıcıya bir özelliği "hazır" diye anlatırken birleştirilmemiş bir dalda/PR'da olup olmadığını ve diğer bilgisayarlarda nasıl güncelleneceğini belirt.
 - **R-16** · Uzun sürebilecek model çağrısını akışlı yap — Özet gibi uzun sürebilecek model çağrılarını stream=True ile yap; akışsız çağrıyı yalnız kısa, deterministik işler için kullan.
+- **R-17** · Ücretli sağlayıcı fiyatını ve doğrulama durumunu tarihli tut — api/providers.py'deki fiyatları değiştirirken PRICES_AS_OF'u güncelle, kaynağı yaz; gerçek istekle denenmemiş sağlayıcıyı verified=False bırak ve arayüzde "doğrulanmadı" ile "tahmini" ifadelerini kaldırma.
 <!-- KURALLAR:BITIR -->

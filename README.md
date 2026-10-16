@@ -54,6 +54,9 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
   mesajda `@yol/dosya` ile dosya ekleme.
 - **Araç protokolü**: OpenAI uyumlu yerel function calling; model
   reddederse (400/422) otomatik olarak metin protokolüne geçilir.
+- **Ücretli sağlayıcılar (isteğe bağlı, doğrulanmadı)**: kendi OpenAI veya
+  Anthropic API anahtarınızla GPT/Claude modelleri; gruplu model seçici,
+  Ayarlar'da adım adım anahtar rehberi ve aylık bütçe (varsayılan $5, tahmini).
 - **Modern arayüz**: koyu/açık tema, kendi simge seti, ortalanmış okuma
   sütunu, klavye kısayolları (Enter, Shift+Enter, Esc, Ctrl+N/B/J/K/L/,).
 - **Aşama 1'den gelenler**: Modeller, Kullanım/Kota, Hata Merkezi (Türkçe

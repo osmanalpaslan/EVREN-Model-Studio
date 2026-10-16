@@ -15,7 +15,7 @@ def main() -> int:
         print("FAIL: anahtar yok")
         return 1
     client = EvrenClient("https://evren-llmapi.ssyz.org.tr/v1", key,
-                         timeout=60.0, max_retries=2)
+                         timeout=180.0, max_retries=2)
     failures = []
 
     # 1) sağlık
