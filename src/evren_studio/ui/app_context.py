@@ -31,8 +31,26 @@ FALLBACK_MODELS = [
     _m("qwen3.8-flash-next", 262144, True, True),
     _m("gemma-4-31b", 262144, True, True),
     _m("qwen3-vl-30b", 262144, True, True, "vision_chat"),
-    _m("auto", 32768, False),
+    _m("auto", 262144, True),
 ]
+
+# Kayıttaki değeri gerçek ölçümle çelişen EVREN modelleri (R-07):
+# auto kaydı 32768 bağlam ve tools:false diyor; ancak 2026-10-16'da 108k token'lık
+# istek kabul edildi (gemma-4-31b / qwen3.8-flash-next'e, ikisi de 262k, yönlendirdi)
+# ve yerel araç çağrısı iki protokolde de çalıştı. docs/knowledge/MODEL_CAPABILITIES.md
+MEASURED_OVERRIDES: dict[str, dict] = {
+    "auto": {"context_length": 262144, "tools": True},
+}
+
+
+def apply_measured(m: ModelInfo) -> ModelInfo:
+    o = MEASURED_OVERRIDES.get(m.id)
+    if o and m.provider == "evren":
+        if o.get("context_length"):
+            m.context_length = o["context_length"]
+        if "tools" in o:
+            m.capabilities = {**(m.capabilities or {}), "tools": o["tools"]}
+    return m
 
 
 class AppContext:
@@ -66,7 +84,7 @@ class AppContext:
     def set_models(self, models: list[ModelInfo]) -> None:
         if not models:
             return
-        self.models = list(models)
+        self.models = [apply_measured(m) for m in models]
         self.models_live = True
         for cb in list(self._model_listeners):
             cb()

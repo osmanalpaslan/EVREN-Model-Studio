@@ -9,7 +9,7 @@
 | Model | Görev | Bağlam | Araç çağrısı | Görsel | Notlar |
 |---|---|---|---|---|---|
 | glm-5.3 | chat | 524288 | ✓ | ✗ | Muhakeme modeli; `reasoning` alanı; düşük max_tokens'ta içerik boş kalır |
-| auto | chat | 32768 | ✗ | ✗ | YÖNLENDİRİCİ — gerçek istekte qwen3.8-flash-next'e gitti; ayrı uzman model DEĞİL |
+| auto | chat | 32768* | ✗* | ✗ | YÖNLENDİRİCİ; *kayıt yanlış: ölçümde 108k token kabul etti, yerel araç çalışıyor → uygulama 262144 + araç kullanır (aşağıya bakın). **Uygulamanın varsayılan modeli** |
 | deepseek-v4-flash | chat | 1048576 | ✓ | ✗ | |
 | deepseek-v4.1-flash | chat | 1048576 | ✓ | ✓ | |
 | mimo-v2.6-pro | chat | 1048576 | ✓ | ✓ | |
@@ -33,6 +33,19 @@
   routed_model).
 - **Model listesi/kota/şart durumu**: 16 model, kota seviyesi ok, şartlar
   kabul edilmiş (2026-10-15).
+
+## auto bağlam ölçümü (2026-10-16, `build/probe_auto_ctx.py`)
+
+| Girdi | Yönlendirilen | Sonuç |
+|---|---|---|
+| ~21,8k token | google/gemma-4-31b | doğru yanıt, 8,0 sn |
+| ~54k token | qwen/qwen3.8-flash-next | doğru yanıt, 3,3 sn |
+| ~108k token | qwen/qwen3.8-flash-next | kabul edildi; max_tokens=200 ile içerik boş (neden doğrulanmadı) |
+
+Sonuç: kayıttaki 32768 sınırı uygulanmıyor; yönlendirilen modeller 262k.
+Uygulama auto için 262144 bağlam + yerel araç kullanır
+(`ui/app_context.py::MEASURED_OVERRIDES`). Aynı gün `e2e_agent_real_api.py auto`
+2/2, `e2e_ui_real_api.py auto` 15/15.
 
 ## Araç çağrısı gerçek testi (2026-10-16, `tests/e2e_agent_real_api.py`)
 

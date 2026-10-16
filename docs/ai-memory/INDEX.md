@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 24 · Açık/izlenen: 2 · Oturum: 9 · Kural: 18
+Kayıt: 25 · Açık/izlenen: 2 · Oturum: 10 · Kural: 18
 
 ## Açık ve izlenen kayıtlar
 
@@ -32,6 +32,7 @@ Kayıt: 24 · Açık/izlenen: 2 · Oturum: 9 · Kural: 18
 | 2026-10-16 | [2026-10-16-duzenleme-modu-gizli-ve-yapilandirma-dosyalarini-korumuyordu](incidents/2026-10-16-duzenleme-modu-gizli-ve-yapilandirma-dosyalarini-korumuyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Düzenleme modu gizli ve yapılandırma dosyalarını korumuyordu |
 | 2026-10-16 | [2026-10-16-dosya-yazimindan-hemen-sonra-gecici-errno-22-kilidi](incidents/2026-10-16-dosya-yazimindan-hemen-sonra-gecici-errno-22-kilidi.md) | ortam | dusuk | kabul-edildi | Claude Code (masaüstü) | Dosya yazımından hemen sonra geçici Errno 22 kilidi |
 | 2026-10-16 | [2026-10-16-ayarlar-fare-tekerlegiyle-farkinda-olmadan-degisiyordu](incidents/2026-10-16-ayarlar-fare-tekerlegiyle-farkinda-olmadan-degisiyordu.md) | hata | orta | cozuldu | Kilo Code (VS Code eklentisi) | Ayarlar fare tekerleğiyle farkında olmadan değişiyordu |
+| 2026-10-16 | [2026-10-16-auto-kaydi-32768-baglam-ve-tools-false-diyor-olcum-celisiyor](incidents/2026-10-16-auto-kaydi-32768-baglam-ve-tools-false-diyor-olcum-celisiyor.md) | yanlis-iddia | orta | cozuldu | Claude Code (masaüstü) | auto kaydı 32768 bağlam ve tools:false diyor; ölçüm çelişiyor |
 | 2026-10-16 | [2026-10-16-arka-plan-gorevine-referans-tutulmuyordu](incidents/2026-10-16-arka-plan-gorevine-referans-tutulmuyordu.md) | risk | orta | cozuldu | Kilo Code (VS Code eklentisi) | Arka plan görevine (Task) referans tutulmuyordu |
 | 2026-10-15 | [2026-10-15-gitignore-secrets-kalibi-kaynak-modulu-disladi](incidents/2026-10-15-gitignore-secrets-kalibi-kaynak-modulu-disladi.md) | hata | kritik | cozuldu | Kilo Code (VS Code eklentisi) | .gitignore `secrets*` kalıbı kaynak modülü depodan dışladı |
 | 2026-10-15 | [2026-10-15-duman-testi-bozuk-arayuzu-yakalamadi](incidents/2026-10-15-duman-testi-bozuk-arayuzu-yakalamadi.md) | yanlis-iddia | yuksek | cozuldu | Kilo Code (VS Code eklentisi) | Duman testi bozuk arayüzü yakalamadı; belgeler "tamamlandı" diyordu |
@@ -44,6 +45,7 @@ Kayıt: 24 · Açık/izlenen: 2 · Oturum: 9 · Kural: 18
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-16 | [2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan](sessions/2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Varsayılan motor auto; son seçilen motor ve mod hatırlanır |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact](sessions/2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik özet (auto-compact) |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba](sessions/2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik mod, korumalı dosyalar, klasör bağlama |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-ortak-gelistirici-hafizasi-yapisi](sessions/2026-10-16-claude-code-masaustu-ortak-gelistirici-hafizasi-yapisi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Ortak geliştirici hafızası yapısı |

@@ -68,8 +68,8 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
    `verified=True` ve MODEL_CAPABILITIES.md güncelle.
 1. Gerçek modellerle komut çalıştırma (run_command) ve uzun çok adımlı
    görev senaryosu ekle (`tests/e2e_ui_real_api.py`).
-2. `auto` için protokol seçimini gözden geçir: kayıtta `tools: false` ama
-   yerel araç çağrısı çalışıyor.
+2. ~~`auto` için protokol seçimi~~ — ÇÖZÜLDÜ (2026-10-16): ölçülen değerler
+   (262k + yerel araç) uygulanıyor; auto artık varsayılan motor.
 3. Git entegrasyonu (durum/diff görünümü, ajan değişikliklerini commit'leme
    önerisi) — şu an yalnızca dal adı gösteriliyor.
 4. Görsel girdi (Aşama 3): qwen3-vl-30b ile ekran görüntüsü ekleme.
