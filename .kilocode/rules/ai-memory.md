@@ -1,0 +1,14 @@
+# Kilo Code kuralı: ortak hafıza
+
+Bu depoda çalışmadan önce kök dizindeki **AGENTS.md** dosyasını okuyup
+uygula. Ortak geliştirici hafızası `docs/ai-memory/` klasöründedir.
+
+Zorunlu adımlar (ayrıntı AGENTS.md'de):
+1. Başlarken: `.\.venv\Scripts\python.exe tools\ai_memory.py baslangic`
+   çıktısını oku (kurallar, açık sorunlar, önceki motorların notları).
+2. Hata/eksik bulunca: `tools\ai_memory.py kayit ...` ile kayıt aç.
+3. Bitirirken: `tools\ai_memory.py oturum ...` ile oturum günlüğü yaz,
+   gerekiyorsa RULES.md'ye kural ekle, `tools\ai_memory.py indeks` ve
+   `tools\ai_memory.py denetle` + `pytest -q` çalıştır.
+
+Bu dosyayı genişletme; tüm talimatlar AGENTS.md'de tutulur.

@@ -27,10 +27,16 @@
 - 51 yeni test (araçlar, izinler, metin protokolü, ajan döngüsü, istemci
   araç çağrısı, oturum veritabanı, arayüz uçtan uca onay akışı).
 
+- Ortak geliştirici hafızası: `AGENTS.md` protokolü, motor giriş dosyaları
+  (CLAUDE.md, GEMINI.md, Copilot, Cursor, Kilo, Roo, Cline, Windsurf),
+  `docs/ai-memory/` (kurallar, kayıtlar, oturum günlükleri, motor profilleri),
+  `tools/ai_memory.py`, git ön-commit kancası, `test_ai_memory.py` ve
+  `test_source_hygiene.py`. Uygulama ajanı EVREN.md + AGENTS.md'yi birlikte okur.
+
 ### Düzeltildi
 
 - 7 kaynak dosyada çift kodlanmış (mojibake) Türkçe metinler: arayüzde
-  "YanÄ±t bekleniyorâ€¦" gibi görünüyordu.
+  "YanÄ±t bekleniyorâ€¦" gibi görünüyordu (kodlama-ornegi).
 - Ayarlar açılışta hiç okunmuyordu (`ConfigStore.load()` çağrılmıyordu).
 - `secrets.py` `.gitignore` nedeniyle depoya hiç girmemişti (0.1.x düzeltmesi).
 - Açılışta model listesi ana iş parçacığında çekilip arayüzü donduruyordu.

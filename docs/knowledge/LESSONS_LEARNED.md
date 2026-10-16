@@ -1,5 +1,9 @@
 # Öğrenilen Dersler
 
+> **2026-10-16 itibarıyla yeni geliştirme dersleri `docs/ai-memory/`
+> altında (incidents/ + RULES.md) tutulur — bkz. AGENTS.md.** Bu dosya
+> eski kayıtları ve uygulamanın EVREN API davranışıyla ilgili dersleri saklar.
+
 > Tarih sırasıyla; her madde kanıtıyla birlikte. Aynı hatayı tekrar
 > işlememek için yazılır.
 
@@ -53,9 +57,9 @@
 
 10. **PowerShell 5.1 kodlama tuzağı (mojibake)**: `Get-Content` ve
     `Set-Content` varsayılan olarak ANSI (cp1254) kullanır. UTF-8 bir
-    dosya bu komutlarla okunup yazılınca Türkçe karakterler "Ä±, ÅŸ, â€¦"
+    dosya bu komutlarla okunup yazılınca Türkçe karakterler "Ä±, ÅŸ, â€¦" (kodlama-ornegi)
     biçimine bozulur ve dosya BOM'lu kaydedilir. Kanıt: 0.1.0'da 7 kaynak
-    dosya bu durumdaydı; arayüzde "YanÄ±t bekleniyorâ€¦" görünüyordu.
+    dosya bu durumdaydı; arayüzde "YanÄ±t bekleniyorâ€¦" görünüyordu (kodlama-ornegi).
     Çözüm: dosyaları Python veya düzenleyiciyle yazın; PowerShell'de
     zorunluysa `[IO.File]::WriteAllText(yol, metin, (New-Object
     System.Text.UTF8Encoding $false))` kullanın. Bozuk dosyalar cp1252 →

@@ -57,7 +57,9 @@ cd EVREN-Model-Studio
 & "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe tools\ai_memory.py kanca-kur   # ortak hafıza git kancası
 .\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe tools\ai_memory.py baslangic   # önceki motorların notları
 ```
 
 API anahtarı ve yerel veriler (oturumlar, hata kayıtları) bilgisayarlar

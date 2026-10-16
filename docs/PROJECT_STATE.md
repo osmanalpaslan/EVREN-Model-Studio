@@ -41,6 +41,12 @@
   Değişiklikler paneli → oturum yeniden açılınca aynı çizim → geri alma.
 - Testler: 104/104 geçti (53 eski + 51 yeni). SMOKE_OK.
 
+## Ortak geliştirici hafızası
+
+Her motor oturuma `.\.venv\Scripts\python.exe tools\ai_memory.py baslangic`
+ile başlar, bitirirken `docs/ai-memory/` altına oturum günlüğü ve gerekirse
+kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX.md.
+
 ## Sıradaki iş
 
 1. **Gerçek EVREN ile araç turu testi** (anahtar gerekir): glm-5.3 ve

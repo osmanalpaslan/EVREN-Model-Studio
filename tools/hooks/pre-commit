@@ -1,0 +1,12 @@
+#!/bin/sh
+# Ortak geliştirici hafızası kancası (AGENTS.md protokolü).
+# Kurulum: python tools/ai_memory.py kanca-kur   (git config core.hooksPath tools/hooks)
+ROOT="$(git rev-parse --show-toplevel)"
+if [ -x "$ROOT/.venv/Scripts/python.exe" ]; then
+  PY="$ROOT/.venv/Scripts/python.exe"
+elif [ -x "$ROOT/.venv/bin/python" ]; then
+  PY="$ROOT/.venv/bin/python"
+else
+  PY="python"
+fi
+exec "$PY" "$ROOT/tools/ai_memory.py" kanca

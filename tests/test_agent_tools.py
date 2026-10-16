@@ -55,9 +55,15 @@ def test_git_dali_okunur(ws):
 
 def test_proje_hafizasi(ws, tmp_path):
     assert ws.project_memory() == (None, "")
+    (tmp_path / "CLAUDE.md").write_text("yalnız claude", encoding="utf-8")
+    assert ws.project_memory()[0] == "CLAUDE.md"
     (tmp_path / "EVREN.md").write_text("Testler: pytest", encoding="utf-8")
     name, text = ws.project_memory()
     assert name == "EVREN.md" and "pytest" in text
+    (tmp_path / "AGENTS.md").write_text("Önce tools/ai_memory.py baslangic", encoding="utf-8")
+    name, text = ws.project_memory()
+    assert name == "EVREN.md + AGENTS.md"
+    assert "pytest" in text and "ai_memory" in text and "yalnız claude" not in text
 
 
 # ---- okuma -------------------------------------------------------------------

@@ -56,6 +56,15 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
 - **Güvenlik**: anahtar yalnızca Credential Manager'da; HTTPS zorunlu;
   telemetri yok; veriler `%LOCALAPPDATA%\EVREN-Model-Studio` altında.
 
+## Yapay zekâ motorlarıyla geliştirme
+
+Bu depoyu hangi motorla geliştirirseniz geliştirin (Claude Code, Kilo Code,
+Cursor, Copilot, Codex, Gemini, EVREN Studio ajanı…) motor önce **AGENTS.md**
+protokolünü okur. Ortak geliştirici hafızası `docs/ai-memory/` altındadır:
+önceki motorların hataları, eksikler, nedenleri, çözümleri, kurallar ve
+oturum günlükleri. Her motor işe `tools/ai_memory.py baslangic` ile başlar ve
+bitirirken hafızayı besler; git kancası ve testler bunu denetler.
+
 ## Belgeler
 
 - Kurulum: docs/INSTALLATION.md · Güvenlik: docs/SECURITY.md

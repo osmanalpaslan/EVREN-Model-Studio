@@ -288,16 +288,32 @@ class Workspace:
         return text[:10]
 
     def project_memory(self, limit: int = 20_000) -> tuple[str | None, str]:
-        """EVREN.md (yoksa AGENTS.md / CLAUDE.md) içeriğini döndürür."""
-        for name in ("EVREN.md", "AGENTS.md", "CLAUDE.md"):
-            f = self.root / name
-            if f.is_file():
-                try:
-                    data = f.read_bytes()[:limit * 2]
-                except OSError:
-                    continue
-                return name, decode_bytes(data).text[:limit]
-        return None, ""
+        """Proje talimatlarını döndürür: EVREN.md ve AGENTS.md birlikte okunur.
+
+        AGENTS.md birçok kod ajanının ortak standardıdır; bu depoda ortak
+        geliştirici hafızası protokolünü taşır. İkisi de yoksa CLAUDE.md denenir.
+        """
+        names = [n for n in ("EVREN.md", "AGENTS.md") if (self.root / n).is_file()]
+        if not names and (self.root / "CLAUDE.md").is_file():
+            names = ["CLAUDE.md"]
+        parts: list[str] = []
+        used: list[str] = []
+        budget = limit
+        for name in names:
+            try:
+                data = (self.root / name).read_bytes()[:limit * 2]
+            except OSError:
+                continue
+            text = decode_bytes(data).text.strip()
+            if not text or budget <= 0:
+                continue
+            chunk = text[:budget]
+            parts.append(f"## {name}\n{chunk}" if len(names) > 1 else chunk)
+            used.append(name)
+            budget -= len(chunk)
+        if not parts:
+            return None, ""
+        return " + ".join(used), "\n\n".join(parts)
 
 
 def _walk(root: Path, start: Path):
