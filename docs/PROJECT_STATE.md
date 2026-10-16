@@ -6,6 +6,8 @@
 ## Konum ve sınırlar
 
 - Proje: `C:\Projects\AI-Atolye\EVREN-Model-Studio`
+- Uzak depo: https://github.com/osmanalpaslan/EVREN-Model-Studio (ÖZEL,
+  `origin/master`; 2026-10-16'da oluşturuldu ve push edildi)
 - Bağımsız Git deposu ✅, Python 3.12.10 venv (`.venv`) ✅
 - Alpnex/DepoWise'a DOKUNULMADI. Tüm işlemler proje klasörü içinde.
 - Veriler: `%LOCALAPPDATA%\EVREN-Model-Studio\` (config.json + evren.db).
