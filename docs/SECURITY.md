@@ -3,10 +3,14 @@
 ## API anahtarı yaşam döngüsü
 
 - **Saklama**: yalnızca Windows Credential Manager (`keyring`).
-  Kayıt adı: `EVREN-Model-Studio` / `evren_api_key`.
+  Kayıt adı: `EVREN-Model-Studio` / `evren_api_key`; isteğe bağlı ücretli
+  sağlayıcılar için `openai_api_key` ve `anthropic_api_key` (aynı kasada).
+- Claude Pro/Max veya ChatGPT abonelik oturumları KULLANILMAZ; yalnızca
+  kullanıcının kendi Console/Platform API anahtarları.
 - **YASAK olanlar**: kaynak kodu, config.json, loglar, hata kayıtları,
   Git geçmişi, istemci hata gövdeleri, üçüncü taraf servisler.
-- **Gösterim**: daima maskeli (`evren_ll...dGXQ` biçimi).
+- **Gösterim**: daima maskeli (`evren_ll...dGXQ` biçimi). Maskeleme
+  `sk-…`, `sk-proj-…`, `sk-ant-…` anahtarlarını ve `x-api-key` başlığını da kapsar.
 - **Silme**: Ayarlar > Anahtarı Sil (Credential Manager kaydı silinir).
 - Credential Manager kullanılamazsa düz metne SESSİZCE GEÇİLMEZ; açık hata
   gösterilir.
@@ -17,8 +21,12 @@
   ve ilk kullanımda belirtilir).
 - Sohbetler, hata kayıtları ve izleme verileri YALNIZCA yerel SQLite'ta
   tutulur; hiçbir telemetri/analitik YOKTUR.
-- Tek dış ağ adresi: kullanıcının yapılandırdığı EVREN API'si + izlenen
-  duyuru sayfası. Başka sağlayıcıya istek YAPILMAZ.
+- Dış ağ adresleri: kullanıcının yapılandırdığı EVREN API'si + izlenen
+  duyuru sayfası. Kullanıcı OpenAI/Anthropic anahtarı girip o sağlayıcının
+  modelini seçerse, o oturumun mesajları ve ajanın okuduğu dosya içerikleri
+  `api.openai.com` / `api.anthropic.com` adresine gider (ücretli). Yazma
+  kutusunun altındaki not hangi sağlayıcıya gönderildiğini gösterir.
+- OpenAI isteklerinde `store:false` gönderilir (yanıt sunucuda saklanmaz).
 - Hata kayıtlarına anahtar/token/kişisel veri YAZILMAZ; mesaj bağlamı
   ilk 60 karakterle sınırlıdır; hata gövdeleri maskelemeye tabidir.
 

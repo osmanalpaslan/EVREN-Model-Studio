@@ -93,3 +93,7 @@
 - **Neden:** glm-5.3 uzun düşünürken akışsız istekte bağlantı koptu ("sonuç belirsiz").
 - **Kaynak:** 2026-10-16-glm-5-3-akissiz-ozet-isteginde-baglanti-koptu
 
+### R-17 · Ücretli sağlayıcı fiyatını ve doğrulama durumunu tarihli tut
+- **Kural:** api/providers.py'deki fiyatları değiştirirken PRICES_AS_OF'u güncelle, kaynağı yaz; gerçek istekle denenmemiş sağlayıcıyı verified=False bırak ve arayüzde "doğrulanmadı" ile "tahmini" ifadelerini kaldırma.
+- **Neden:** OpenAI/Anthropic entegrasyonu anahtarsız, belgelerden yazıldı; fiyatlar değişir ve bütçe yalnızca tahmindir.
+- **Kaynak:** 2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma

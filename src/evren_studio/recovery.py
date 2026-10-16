@@ -51,6 +51,12 @@ PLAYBOOK = {
         "sorgusu (GET /v1/requests/{id}) yapılacak; sonuç yine belirsizse "
         "kullanıcıya kontrollü tekrar seçeneği sunulur."
     ),
+    ErrorKind.QUOTA_EXHAUSTED: (
+        "Ücretli sağlayıcı: panelden kredi yükleyin veya harcama limitini "
+        "artırın (OpenAI: Settings > Limits/Billing, Anthropic: Settings > "
+        "Billing). Bekleyip tekrar denemek sorunu çözmez. Ücretsiz EVREN "
+        "modellerine geçebilirsiniz."
+    ),
     ErrorKind.NOT_FOUND: (
         "Model listesini yenileyin; model kaldırılmış olabilir. "
         "Model adını listeden seçtiğinizden emin olun."
@@ -98,6 +104,7 @@ SOURCE_BY_KIND = {
     ErrorKind.NOT_FOUND: "model kaydı / adres",
     ErrorKind.REQUEST_TOO_LARGE: "istemci tarafında çok büyük istek",
     ErrorKind.VALIDATION: "istemci ile model sözleşmesi uyumsuzluğu",
+    ErrorKind.QUOTA_EXHAUSTED: "sağlayıcı hesabı (kredi/harcama sınırı)",
     ErrorKind.UNKNOWN: "bilinmiyor",
 }
 

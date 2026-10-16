@@ -1,7 +1,7 @@
 # Proje Durumu
 
 > Oturum kesilirse çalışmaya bu dosyadan devam edilir.
-> Son güncelleme: 2026-10-16 (Aşama 2 — kod ajanı çalışma alanı)
+> Son güncelleme: 2026-10-16 (OpenAI/Anthropic sağlayıcıları — `feat/saglayicilar` dalı)
 
 ## Konum ve sınırlar
 
@@ -45,6 +45,16 @@
 - Sohbet ekranında canlı model + süre, tıklanabilir `/` komut ve `/model`
   listesi, Ayarlar'da varsayılana döndürme ve tekerlek koruması.
 
+## Ücretli sağlayıcılar (dal: `feat/saglayicilar`, birleştirilmedi)
+
+- OpenAI (Responses) ve Anthropic (Messages) istemcileri, gruplu model seçici,
+  Ayarlar > Ücretli Sağlayıcılar, aylık bütçe ($5 varsayılan, tahmini).
+- Durum: **sahte testlerle** doğrulandı (`tests/test_providers.py`, 28 test);
+  gerçek anahtarla DOĞRULANMADI (kayıt: 2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma).
+- Doğrulamak için: anahtarı Ayarlar'a girip
+  `.\.venv\Scripts\python.exe tests\e2e_providers_real_api.py --evet`.
+- Tüm test paketi: 202/202. EVREN gerçek testleri (R-13): E2E_OK, ajan 6/6, arayüz 15/15.
+
 ## Ortak geliştirici hafızası
 
 Her motor oturuma `.\.venv\Scripts\python.exe tools\ai_memory.py baslangic`
@@ -53,6 +63,8 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+0. OpenAI/Anthropic'i gerçek anahtarla doğrula; geçerse `api/providers.py`'de
+   `verified=True` ve MODEL_CAPABILITIES.md güncelle.
 1. Gerçek modellerle komut çalıştırma (run_command) ve uzun çok adımlı
    görev senaryosu ekle (`tests/e2e_ui_real_api.py`).
 2. `auto` için protokol seçimini gözden geçir: kayıtta `tools: false` ama

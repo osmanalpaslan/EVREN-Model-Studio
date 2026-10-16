@@ -72,6 +72,9 @@ class Settings:
     # Özeti üreten model ("" = oturumun modeli). Ölçüm 2026-10-16: aynı özet
     # glm-5.3 ile 153 sn, deepseek-v4-flash ile 41 sn, kalite eşdeğer.
     auto_compact_model: str = "deepseek-v4-flash"
+    # Ücretli sağlayıcılar (OpenAI/Anthropic) için aylık TAHMİNİ bütçe (USD, tüm sağlayıcılar toplamı)
+    monthly_budget_usd: float = 5.0
+    budget_enforce: bool = True             # sınıra gelince her yeni istekten önce onay iste
     show_reasoning: bool = True
     sidebar_visible: bool = True
     panel_visible: bool = True

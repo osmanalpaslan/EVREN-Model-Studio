@@ -47,6 +47,8 @@ from ..agent.runner import (
 )
 from ..agent.tools import FileChange, ToolBox, ToolError, Workspace
 from ..api.client import CancelToken
+from ..api.providers import PROVIDERS, estimate_cost, price_hint
+from ..budget import current_state
 from ..api.errors import ApiError, ErrorKind
 from . import icons, theme
 from .composer import MODE_COMMANDS, SLASH_COMMANDS, Composer
@@ -317,6 +319,8 @@ class SessionView(QWidget):
         self._run_timer.setInterval(500)
         self._run_timer.timeout.connect(self._tick_run)
         self._auto_resumes = 0          # bu kullanıcı mesajından beri otomatik devam sayısı
+        self._budget_override = ""      # "YYYY-MM": kullanıcı bu ay bütçe aşımını onayladı
+        self._budget_warned = ""        # "YYYY-MM": %80 uyarısı gösterildi
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -486,9 +490,12 @@ class SessionView(QWidget):
                 desc.append(f"{m.context_length // 1000}k")
             if m.id == "auto":
                 desc = ["yönlendirici"]
-            items.append((m.id, " · ".join(desc), m.supports_tools))
+            if m.provider != "evren":
+                desc = [d for d in desc if d != "araç"] + [price_hint(m.id)]
+            enabled = m.provider == "evren" or self.ctx.has_provider_key(m.provider)
+            items.append((m.id, " · ".join(d for d in desc if d), m.supports_tools, m.provider, enabled))
         if not items:
-            items = [(self.model, "", True)]
+            items = [(self.model, "", True, "evren", True)]
         ids = [i[0] for i in items]
         if self.model not in ids and ids:
             self.model = self.ctx.settings.default_model if self.ctx.settings.default_model in ids else ids[0]
@@ -618,7 +625,8 @@ class SessionView(QWidget):
             return self.session_id
         ws = self.welcome.workspace
         title = first_text.strip().splitlines()[0][:60] if first_text.strip() else "Yeni oturum"
-        sid = self.ctx.db.create_session(self.model, ws, self.mode, title=title)
+        sid = self.ctx.db.create_session(self.model, ws, self.mode, title=title,
+                                         provider=self.ctx.provider_of(self.model))
         self.session_id = sid
         self.workspace = ws
         self.stack.setCurrentWidget(self.transcript)
@@ -698,10 +706,62 @@ class SessionView(QWidget):
             self.ctx.db.update_session(self.session_id, mode=mode)
 
     def set_model(self, model: str) -> None:
+        provider = self.ctx.provider_of(model)
+        if provider != "evren" and not self.ctx.has_provider_key(provider):
+            name = PROVIDERS[provider].name
+            self.composer.set_model(self.model)          # seçimi geri al
+            if QMessageBox.question(
+                self, f"{name} anahtarı gerekli",
+                f"{model} bir {name} modelidir ve ücretlidir. Kullanmak için {name} API "
+                "anahtarınızı Ayarlar > Sağlayıcılar bölümüne girin. Ayarlar açılsın mı?",
+            ) == QMessageBox.Yes:
+                self.page_requested.emit("settings")
+            return
         self.model = model
         if self.session_id:
-            self.ctx.db.update_session(self.session_id, model=model)
+            self.ctx.db.update_session(self.session_id, model=model, provider=provider)
         self._update_context()
+
+    # ---- ücretli sağlayıcı bütçesi ----
+
+    @staticmethod
+    def _month() -> str:
+        from datetime import datetime, timezone
+
+        return datetime.now(timezone.utc).strftime("%Y-%m")
+
+    def _budget_state(self):
+        s = self.ctx.settings
+        return current_state(self.ctx.db, s.monthly_budget_usd, s.budget_enforce)
+
+    def _budget_blocks(self, provider: str) -> bool:
+        if provider == "evren" or self._budget_override == self._month():
+            return False
+        return self._budget_state().exceeded
+
+    def _ask_budget(self) -> bool:
+        st = self._budget_state()
+        ok = QMessageBox.question(
+            self, "Aylık bütçe doldu",
+            f"Ücretli sağlayıcılar için aylık bütçeye ulaşıldı ({st.text()}). Bu tahmindir; "
+            "gerçek harcama için sağlayıcı panelinize bakın.\n\nBu ay bu sınırı aşarak devam "
+            "edilsin mi? (Bütçeyi Ayarlar > Sağlayıcılar'dan değiştirebilirsiniz.)",
+        ) == QMessageBox.Yes
+        if ok:
+            self._budget_override = self._month()
+        return ok
+
+    def _record_cost(self, model: str, usage: dict | None) -> None:
+        provider = self.ctx.provider_of(model)
+        if provider == "evren" or not usage:
+            return
+        cost = estimate_cost(model, usage)
+        self.ctx.db.add_usage_cost(provider, model, usage, cost, self.session_id)
+        st = self._budget_state()
+        if st.warn and self._budget_warned != self._month():
+            self._budget_warned = self._month()
+            self._note(f"Ücretli kullanım bütçesinin %{int(st.ratio * 100)}'i kullanıldı ({st.text()}). "
+                       "Tahminidir; bütçe Ayarlar > Sağlayıcılar'dan değiştirilebilir.", "gauge")
 
     def _policy(self) -> CompactPolicy:
         s = self.ctx.settings
@@ -785,11 +845,16 @@ class SessionView(QWidget):
                 return
         if self.running:
             return
-        if not self.ctx.has_api_key():
+        provider = self.ctx.provider_of(self.model)
+        if not self.ctx.has_provider_key(provider):
             self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome)
             self.welcome.refresh()
+            name = PROVIDERS.get(provider).name if provider in PROVIDERS else provider
             QMessageBox.warning(self, "API anahtarı yok",
-                                "Önce Ayarlar sayfasından EVREN API anahtarınızı girin.")
+                                f"Önce Ayarlar sayfasından {name} API anahtarınızı girin.")
+            self.composer.set_text(text)
+            return
+        if self._budget_blocks(provider) and not self._ask_budget():
             self.composer.set_text(text)
             return
         if not self.model:
@@ -933,7 +998,16 @@ class SessionView(QWidget):
         b.sig_status.connect(lambda t: self._note(t, "alert"))
         s = self.ctx.settings
         perms = self.perms.setdefault(sid, SessionPermissions())
-        client = self.ctx.make_client(log_sink=lambda m: None)
+        provider = self.ctx.provider_of(self.model)
+        try:
+            client = self.ctx.make_client_for(provider, log_sink=lambda m: None)
+        except RuntimeError as exc:
+            self.transcript.add(ErrorCard("İstemci oluşturulamadı", [str(exc)],
+                                          [("Ayarlar", lambda: self.page_requested.emit("settings"))]))
+            return
+
+        def before_call(_step: int):
+            return "budget" if self._budget_blocks(provider) else None
         self.runner = AgentRunner(
             client, self.model, session_id=sid, store=self.ctx.db, events=b,
             workspace=ws, mode=self.mode, protocol=protocol,
@@ -944,6 +1018,7 @@ class SessionView(QWidget):
             context_tokens=info.context_length if info else None,
             hard_context_limit=(self._policy().hard_limit(info.context_length if info else None)
                                 if s.auto_compact else None),
+            before_model_call=before_call if provider != "evren" else None,
         )
         runner = self.runner
         self.running = True
@@ -992,7 +1067,9 @@ class SessionView(QWidget):
         if not self.running or self._run_t0 is None:
             return
         elapsed = time.monotonic() - self._run_t0
-        parts = [f"{self.run_model}  {self._run_activity}", format_duration(elapsed)]
+        prov = self.ctx.provider_of(self.run_model)
+        name = f"{PROVIDERS[prov].name} · {self.run_model}" if prov != "evren" else self.run_model
+        parts = [f"{name}  {self._run_activity}", format_duration(elapsed)]
         if self._run_step > 1:
             parts.append(f"adım {self._run_step}")
         self.composer.set_run_status("  ·  ".join(parts))
@@ -1013,6 +1090,7 @@ class SessionView(QWidget):
             self.current.finalize(msg.get("content") or "", msg.get("reasoning") if self.ctx.settings.show_reasoning else None,
                                   meta.get("finish_reason"), shown, meta.get("duration_s"))
             self._run_activity = "araç çalıştırıyor" if msg.get("tool_calls") else "yanıt üretiyor"
+            self._record_cost(meta.get("requested_model") or self.model, meta.get("usage"))
             for c in msg.get("tool_calls") or []:
                 tw = self.current.add_tool(c["id"], c["name"], _parse_args(c.get("arguments")))
                 self.tool_widgets[c["id"]] = tw
@@ -1118,6 +1196,12 @@ class SessionView(QWidget):
             self._note("Durduruldu. Devam etmek için yeni bir mesaj gönderin.", "stop")
         elif outcome.stopped == "max_steps":
             pass  # durum notu runner tarafından gönderildi
+        elif outcome.stopped == "budget":
+            if self._ask_budget():
+                self.start_run()          # geçmiş araç sonuçlarıyla biter; kaldığı yerden sürer
+            else:
+                self._note("Aylık bütçe nedeniyle durduruldu. Bütçeyi Ayarlar > Sağlayıcılar'dan "
+                           "artırabilir veya ücretsiz bir EVREN modeline geçebilirsiniz.", "stop")
         elif outcome.stopped == "context_limit":
             if self._auto_resumes < MAX_AUTO_RESUMES:
                 self._auto_resumes += 1
@@ -1140,13 +1224,21 @@ class SessionView(QWidget):
             lines = [str(exc), "", f"Olası kaynak: {advice.source_guess}"]
             lines += [f"{i}. {s}" for i, s in enumerate(advice.recommended_steps, 1)]
             actions = [("Hata Merkezi", lambda: self.page_requested.emit("errors"))]
+            prov = self.ctx.provider_of(exc.model or self.model)
+            if prov in PROVIDERS and PROVIDERS[prov].paid:
+                from PySide6.QtCore import QUrl
+                from PySide6.QtGui import QDesktopServices
+
+                billing = PROVIDERS[prov].billing_url
+                actions.append((f"{PROVIDERS[prov].name} paneli",
+                                lambda u=billing: QDesktopServices.openUrl(QUrl(u))))
             if exc.kind == ErrorKind.AUTH:
                 actions.insert(0, ("Anahtarı güncelle", lambda: self.page_requested.emit("settings")))
             elif exc.kind == ErrorKind.UNKNOWN_RESULT:
                 actions.insert(0, ("Kontrollü yeniden dene", self._retry_confirm))
-            else:
+            elif exc.kind != ErrorKind.QUOTA_EXHAUSTED:   # kredi bitince tekrar işe yaramaz
                 actions.insert(0, ("Yeniden dene", self.start_run))
-            if exc.kind in (ErrorKind.SERVER_UNAVAILABLE, ErrorKind.SERVER_ERROR):
+            if exc.kind in (ErrorKind.SERVER_UNAVAILABLE, ErrorKind.SERVER_ERROR) and prov == "evren":
                 actions.append(("Durum İzleme", lambda: self.page_requested.emit("monitor")))
             card = ErrorCard(f"İstek başarısız (kayıt #{error_id}) — {exc.kind.value}", lines, actions)
             self.transcript.add(card)
@@ -1166,8 +1258,10 @@ class SessionView(QWidget):
             self.start_run()
 
     def _query_unknown(self, exc: ApiError, card: ErrorCard) -> None:
+        provider = self.ctx.provider_of(exc.model or self.model)
+
         def job():
-            client = self.ctx.make_client()
+            client = self.ctx.make_client_for(provider)
             try:
                 return client.resolve_unknown_request(exc.request_id)
             finally:
@@ -1219,7 +1313,7 @@ class SessionView(QWidget):
             self.composer.set_running(False)
 
         def job():
-            client = self.ctx.make_client()
+            client = self.ctx.make_client_for(self.ctx.provider_of(model))
             try:
                 return summarize(client, model, msgs, focus=focus, context_tokens=ctx_tokens, cancel=token)
             finally:
@@ -1244,6 +1338,7 @@ class SessionView(QWidget):
                 if then and result.finish_reason != "cancelled_by_user":
                     then()
                 return
+            self._record_cost(model, result.token_usage())
             meta = {"auto": auto, "duration_s": round(time.monotonic() - t0, 1)}
             if reason:
                 meta["reason"] = reason

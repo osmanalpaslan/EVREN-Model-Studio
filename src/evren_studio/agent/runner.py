@@ -215,6 +215,9 @@ def to_api_messages(system: str, history: list[dict], protocol: str) -> list[dic
             calls = m.get("tool_calls") or []
             if protocol == "native":
                 entry: dict[str, Any] = {"role": "assistant", "content": content}
+                state = (m.get("meta") or {}).get("provider_state")
+                if state:
+                    entry["_provider_state"] = state   # istemciler kullanır, EVREN siler
                 if calls:
                     entry["tool_calls"] = [
                         {"id": c["id"], "type": "function",
@@ -271,7 +274,8 @@ class AgentRunner:
                  max_steps: int = DEFAULT_MAX_STEPS,
                  command_timeout: int = 120, output_limit: int = 20_000,
                  context_tokens: int | None = None, turn_id: int | None = None,
-                 hard_context_limit: int | None = None):
+                 hard_context_limit: int | None = None,
+                 before_model_call: Any = None):
         self.client = client
         self.model = model
         self.session_id = session_id
@@ -292,6 +296,9 @@ class AgentRunner:
         # tahmini token sayısını aşarsa tur "context_limit" ile durur; arayüz
         # özetleyip otomatik devam eder (compaction.py).
         self.hard_context_limit = hard_context_limit
+        # Her model çağrısından ÖNCE çağrılır; None → devam, metin → tur o
+        # nedenle durur (ör. "budget": aylık bütçe doldu, arayüz onay ister).
+        self.before_model_call = before_model_call
         self.toolbox = (
             ToolBox(workspace, command_timeout=command_timeout, output_limit=output_limit,
                     skip_file=is_sensitive_read)
@@ -355,6 +362,11 @@ class AgentRunner:
                 break
             step += 1
             outcome.steps = step
+            if self.before_model_call is not None:
+                stop = self.before_model_call(step)
+                if stop:
+                    outcome.stopped = stop
+                    break
             self.events.step_started(step)
             t0 = time.monotonic()
             try:
@@ -388,6 +400,12 @@ class AgentRunner:
                 meta["finish_reason"] = result.finish_reason
             if routed and routed != self.model:
                 meta["routed_model"] = routed
+            token_usage = result.token_usage() if hasattr(result, "token_usage") else {}
+            if any(token_usage.values()):
+                meta["usage"] = token_usage
+            state = getattr(result, "provider_state", None)
+            if state:
+                meta["provider_state"] = state
             self._save(
                 history, "assistant", content,
                 reasoning=result.reasoning or None,

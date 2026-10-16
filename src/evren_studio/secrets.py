@@ -11,10 +11,21 @@ from typing import Any
 
 SERVICE_NAME = "EVREN-Model-Studio"
 KEY_NAME = "evren_api_key"
+# Sağlayıcı başına Credential Manager kayıt adı (hepsi aynı SERVICE_NAME altında)
+KEY_NAMES = {
+    "evren": KEY_NAME,
+    "openai": "openai_api_key",
+    "anthropic": "anthropic_api_key",
+}
 MASK_TOKEN = "***MASKED***"
 
 # Metin içinde geçebilecek EVREN anahtarları ve Bearer başlıkları
-_KEY_PATTERN = re.compile(r"evren_llm_[A-Za-z0-9_\-]{6,}")
+_KEY_PATTERN = re.compile(
+    r"evren_llm_[A-Za-z0-9_\-]{6,}"          # EVREN
+    r"|sk-ant-[A-Za-z0-9_\-]{8,}"            # Anthropic (sk-ant-api03-…, sk-ant-admin01-…)
+    r"|sk-(?:proj-|admin-|svcacct-)?[A-Za-z0-9_\-]{16,}"  # OpenAI
+)
+_HEADER_PATTERN = re.compile(r"(x-api-key[\"']?\s*[:=]\s*[\"']?)[A-Za-z0-9_\-\.]{6,}", re.IGNORECASE)
 _BEARER_PATTERN = re.compile(r"(Bearer\s+)[A-Za-z0-9_\-\.]{6,}", re.IGNORECASE)
 
 # Testlerde sahte kasa enjekte etmek için; None → gerçek keyring
@@ -35,26 +46,32 @@ def _kr() -> Any:
     return keyring
 
 
-def save_api_key(key: str) -> None:
+def _key_name(provider: str) -> str:
+    if provider not in KEY_NAMES:
+        raise ValueError(f"Bilinmeyen sağlayıcı: {provider}")
+    return KEY_NAMES[provider]
+
+
+def save_api_key(key: str, provider: str = "evren") -> None:
     """Anahtarı Credential Manager'a yazar. Boş anahtar reddedilir."""
     key = (key or "").strip()
     if not key:
         raise ValueError("API anahtarı boş olamaz.")
-    _kr().set_password(SERVICE_NAME, KEY_NAME, key)
+    _kr().set_password(SERVICE_NAME, _key_name(provider), key)
 
 
-def load_api_key() -> str | None:
+def load_api_key(provider: str = "evren") -> str | None:
     """Kayıtlı anahtarı döndürür; yoksa None."""
-    value = _kr().get_password(SERVICE_NAME, KEY_NAME)
+    value = _kr().get_password(SERVICE_NAME, _key_name(provider))
     return value or None
 
 
-def delete_api_key() -> bool:
+def delete_api_key(provider: str = "evren") -> bool:
     """Anahtarı siler. Kayıt yoksa False döner, hata fırlatmaz."""
     import keyring.errors
 
     try:
-        _kr().delete_password(SERVICE_NAME, KEY_NAME)
+        _kr().delete_password(SERVICE_NAME, _key_name(provider))
     except keyring.errors.PasswordDeleteError:
         return False
     return True
@@ -76,5 +93,6 @@ def mask_secret(text: str, key: str | None = None) -> str:
     if key:
         text = text.replace(key, MASK_TOKEN)
     text = _KEY_PATTERN.sub(MASK_TOKEN, text)
+    text = _HEADER_PATTERN.sub(lambda m: m.group(1) + MASK_TOKEN, text)
     text = _BEARER_PATTERN.sub(lambda m: m.group(1) + MASK_TOKEN, text)
     return text

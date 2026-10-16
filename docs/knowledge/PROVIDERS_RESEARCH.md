@@ -137,6 +137,21 @@ Yeni tokenizer aynı metinde ~%30 daha fazla token üretir (maliyet tahmininde d
 5. EVREN'e özel ekranlar (Kota, İzleme, istek durumu) diğer sağlayıcılarda gizlenmeli.
 6. Fiyat/model tabloları statik ve tarihli tutulmalı; sonraki motorlar güncellemeli.
 
+## 5. Uygulama notları (2026-10-16, `feat/saglayicilar`)
+
+- İstemciler: `api/openai_client.py` (POST /v1/responses, `store:false`,
+  `include:["reasoning.encrypted_content"]`), `api/anthropic_client.py`
+  (POST /v1/messages, `x-api-key`, `anthropic-version: 2023-06-01`,
+  `max_tokens` zorunlu, temperature gönderilmez).
+- Ajan iç mesajları OpenAI Chat biçiminde kalır; dönüşüm istemcide yapılır.
+  Sağlayıcıya özel ham çıktı `ChatResult.provider_state` → mesaj meta'sı →
+  `_provider_state` ile bir sonraki istekte aynen geri gider.
+- Hata eşleme: 402/billing_error, 429 insufficient_quota ve
+  enforced_spend_limit_reached → `QUOTA_EXHAUSTED` (tekrar yok); 529 →
+  geçici (tekrar edilebilir).
+- Katalog ve fiyatlar: `api/providers.py` (`PRICES_AS_OF`, `verified=False`).
+- Doğrulama betiği: `tests/e2e_providers_real_api.py --evet`.
+
 ## Kaynaklar
 
 OpenAI: developers.openai.com/api/docs/{pricing, models, models/gpt-6-astra,

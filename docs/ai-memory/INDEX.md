@@ -2,12 +2,13 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 20 · Açık/izlenen: 1 · Oturum: 7 · Kural: 16
+Kayıt: 23 · Açık/izlenen: 2 · Oturum: 8 · Kural: 17
 
 ## Açık ve izlenen kayıtlar
 
 | Önem | Kayıt | Tür | Alan | Başlık |
 |---|---|---|---|---|
+| yuksek | [2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma](incidents/2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma.md) | risk | api | OpenAI ve Anthropic entegrasyonu gerçek anahtarla doğrulanmadı |
 | dusuk | [2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz](incidents/2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz.md) | hata | test/izleme | İzleme döngüsü testi zamanlamaya bağlı ve kararsız |
 
 ## Tüm kayıtlar (yeniden eskiye)
@@ -16,6 +17,7 @@ Kayıt: 20 · Açık/izlenen: 1 · Oturum: 7 · Kural: 16
 |---|---|---|---|---|---|---|
 | 2026-10-16 | [2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu](incidents/2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu.md) | surec | dusuk | cozuldu | Claude Code (masaüstü) | Test paketi silinmeyen pencerelerle yavaşlıyordu |
 | 2026-10-16 | [2026-10-16-qtimer-silinmis-widgeta-cagri](incidents/2026-10-16-qtimer-silinmis-widgeta-cagri.md) | hata | orta | cozuldu | Claude Code (masaüstü) | QTimer.singleShot silinmiş widget'ı çağırdı |
+| 2026-10-16 | [2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma](incidents/2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | OpenAI ve Anthropic entegrasyonu gerçek anahtarla doğrulanmadı |
 | 2026-10-16 | [2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk](incidents/2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk.md) | ortam | dusuk | kabul-edildi | Claude Code (masaüstü) | Offscreen ekran görüntülerinde yazılar kutucuk görünüyor |
 | 2026-10-16 | [2026-10-16-llm-markdown-listeleri-paragraf-gorunuyordu](incidents/2026-10-16-llm-markdown-listeleri-paragraf-gorunuyordu.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | LLM'lerin boş satırsız yazdığı listeler paragraf olarak görünüyordu |
 | 2026-10-16 | [2026-10-16-kullanici-dosya-erisimi-yok-yaniti-aldi](incidents/2026-10-16-kullanici-dosya-erisimi-yok-yaniti-aldi.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Kullanıcı uygulamada "dosya düzenleme erişimim yok" yanıtı aldı |
@@ -25,7 +27,9 @@ Kayıt: 20 · Açık/izlenen: 1 · Oturum: 7 · Kural: 16
 | 2026-10-16 | [2026-10-16-glm-5-3-akissiz-ozet-isteginde-baglanti-koptu](incidents/2026-10-16-glm-5-3-akissiz-ozet-isteginde-baglanti-koptu.md) | hata | orta | cozuldu | Claude Code (masaüstü) | glm-5.3 akışsız özet isteğinde bağlantı koptu |
 | 2026-10-16 | [2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi](incidents/2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi.md) | risk | yuksek | cozuldu | Claude Code (masaüstü) | EVREN API'de araç çağrısı (tools) gerçek istekle doğrulanmadı |
 | 2026-10-16 | [2026-10-16-esc-kisayolu-komut-listesini-kapatmiyordu](incidents/2026-10-16-esc-kisayolu-komut-listesini-kapatmiyordu.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Esc kısayolu komut listesini kapatmıyordu |
+| 2026-10-16 | [2026-10-16-e2e-real-api-60-sn-zaman-asimi-glm-5-3-icin-dar](incidents/2026-10-16-e2e-real-api-60-sn-zaman-asimi-glm-5-3-icin-dar.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | e2e_real_api 60 sn zaman aşımı glm-5.3 için dar |
 | 2026-10-16 | [2026-10-16-duzenleme-modu-gizli-ve-yapilandirma-dosyalarini-korumuyordu](incidents/2026-10-16-duzenleme-modu-gizli-ve-yapilandirma-dosyalarini-korumuyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Düzenleme modu gizli ve yapılandırma dosyalarını korumuyordu |
+| 2026-10-16 | [2026-10-16-dosya-yazimindan-hemen-sonra-gecici-errno-22-kilidi](incidents/2026-10-16-dosya-yazimindan-hemen-sonra-gecici-errno-22-kilidi.md) | ortam | dusuk | kabul-edildi | Claude Code (masaüstü) | Dosya yazımından hemen sonra geçici Errno 22 kilidi |
 | 2026-10-16 | [2026-10-16-ayarlar-fare-tekerlegiyle-farkinda-olmadan-degisiyordu](incidents/2026-10-16-ayarlar-fare-tekerlegiyle-farkinda-olmadan-degisiyordu.md) | hata | orta | cozuldu | Kilo Code (VS Code eklentisi) | Ayarlar fare tekerleğiyle farkında olmadan değişiyordu |
 | 2026-10-16 | [2026-10-16-arka-plan-gorevine-referans-tutulmuyordu](incidents/2026-10-16-arka-plan-gorevine-referans-tutulmuyordu.md) | risk | orta | cozuldu | Kilo Code (VS Code eklentisi) | Arka plan görevine (Task) referans tutulmuyordu |
 | 2026-10-15 | [2026-10-15-gitignore-secrets-kalibi-kaynak-modulu-disladi](incidents/2026-10-15-gitignore-secrets-kalibi-kaynak-modulu-disladi.md) | hata | kritik | cozuldu | Kilo Code (VS Code eklentisi) | .gitignore `secrets*` kalıbı kaynak modülü depodan dışladı |
@@ -42,6 +46,7 @@ Kayıt: 20 · Açık/izlenen: 1 · Oturum: 7 · Kural: 16
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact](sessions/2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik özet (auto-compact) |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba](sessions/2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik mod, korumalı dosyalar, klasör bağlama |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-ortak-gelistirici-hafizasi-yapisi](sessions/2026-10-16-claude-code-masaustu-ortak-gelistirici-hafizasi-yapisi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Ortak geliştirici hafızası yapısı |
+| 2026-10-16 | [2026-10-16-claude-code-masaustu-openai-ve-anthropic-saglayicilari-butce](sessions/2026-10-16-claude-code-masaustu-openai-ve-anthropic-saglayicilari-butce.md) | Claude Code (masaüstü) / claude-opus-5-5 | kismi | OpenAI ve Anthropic sağlayıcıları, aylık bütçe |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-model-ve-sure-gostergesi-tiklanabilir-ko](sessions/2026-10-16-claude-code-masaustu-model-ve-sure-gostergesi-tiklanabilir-ko.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Model ve süre göstergesi, tıklanabilir komutlar, ayarlar ve tam QA |
 | 2026-10-16 | [2026-10-16-claude-code-kod-ajani-calisma-alani-ve-yeni-arayuz](sessions/2026-10-16-claude-code-kod-ajani-calisma-alani-ve-yeni-arayuz.md) | Claude Code (masaüstü) / claude-opus-5-5 | kismi | Kod ajanı çalışma alanı ve yeni arayüz (0.2.0, PR #2) |
 | 2026-10-16 | [2026-10-16-claude-code-ikinci-bilgisayar-kurulumu-ve-secrets-duzeltmesi](sessions/2026-10-16-claude-code-ikinci-bilgisayar-kurulumu-ve-secrets-duzeltmesi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | İkinci bilgisayarda kurulum ve secrets.py düzeltmesi |
@@ -65,3 +70,4 @@ Kayıt: 20 · Açık/izlenen: 1 · Oturum: 7 · Kural: 16
 - **R-14** · Eski izin anahtarını asla daha yetkili moda çevirme
 - **R-15** · Özelliğin hangi dalda olduğunu kullanıcıya söyle
 - **R-16** · Uzun sürebilecek model çağrısını akışlı yap
+- **R-17** · Ücretli sağlayıcı fiyatını ve doğrulama durumunu tarihli tut

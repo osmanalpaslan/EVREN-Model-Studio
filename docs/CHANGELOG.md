@@ -1,5 +1,34 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — OpenAI ve Anthropic sağlayıcıları (doğrulanmadı)
+
+### Eklendi
+
+- **Ücretli sağlayıcılar (isteğe bağlı)**: OpenAI (Responses API) ve Anthropic
+  (Messages API) istemcileri; sohbet ve kod ajanı (yerel araç çağrısı) ikisinde
+  de çalışır. OpenAI şifreli reasoning öğeleri ve Anthropic thinking blokları
+  araç turlarında aynen geri gönderilir. **Gerçek anahtarla doğrulanmadı.**
+- **Gruplu model seçici**: "EVREN · ücretsiz", "OpenAI · ücretli · doğrulanmadı",
+  "Anthropic · ücretli · doğrulanmadı" başlıkları; fiyat ipucu; anahtarı
+  olmayan sağlayıcının modelleri "(anahtar gerekli)" — seçilirse Ayarlar'a yönlendirir.
+- **Ayarlar > Ücretli Sağlayıcılar**: anahtar kaydet/sil/doğrula (Credential
+  Manager), adım adım anahtar alma rehberi, panel bağlantıları (anahtarlar,
+  kredi, kullanım, belgeler), veri/kredi notları.
+- **Aylık bütçe (varsayılan $5, tüm ücretli sağlayıcılar toplamı)**: harcama
+  token sayıları ve tarihli fiyatlarla tahmin edilir; %80'de bir kez uyarı,
+  sınırda her yeni istekten (ajan adımı dahil) önce onay. Ayarlar'da "bu ayki
+  tahmini harcama".
+- Hata türü "Kredi bitti" (402, 429 insufficient_quota, enforced_spend_limit):
+  tekrar denenmez, hata kartında sağlayıcı paneli düğmesi. 529 = geçici aşırı yük.
+- Şema v3: `usage_costs` tablosu, `sessions.provider`.
+- `tests/test_providers.py` (28 sahte test), `tests/e2e_providers_real_api.py`
+  (ücretli, `--evet` bayrağıyla).
+
+### Değişti
+
+- Yazma kutusunun altındaki not, verinin gönderildiği sağlayıcıyı gösterir.
+- `tests/e2e_real_api.py` zaman aşımı 60 → 180 sn (glm-5.3 bugün 24–56 sn).
+
 ## Yayınlanmamış — Otomatik özet (auto-compact)
 
 ### Eklendi

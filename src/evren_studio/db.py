@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -117,6 +117,18 @@ CREATE TABLE IF NOT EXISTS session_messages (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_session_messages ON session_messages(session_id, id);
+CREATE TABLE IF NOT EXISTS usage_costs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    session_id INTEGER,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    cached_tokens INTEGER NOT NULL DEFAULT 0,
+    cost_usd REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS ix_usage_costs_time ON usage_costs(created_at);
 CREATE TABLE IF NOT EXISTS file_changes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -184,6 +196,10 @@ class Database:
         version = int(row["value"]) if row else None
         if version is not None and version < 2:
             self._migrate_chats_to_sessions()
+        # v3: oturum başına sağlayıcı (eski oturumlar EVREN)
+        cols = {r["name"] for r in self._exec("PRAGMA table_info(sessions)").fetchall()}
+        if "provider" not in cols:
+            self._exec("ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT 'evren'")
         self._exec(
             "INSERT INTO meta(key, value) VALUES('schema_version', ?)"
             " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -449,12 +465,13 @@ class Database:
     # ---- Oturumlar (sohbet + kod ajanı) -------------------------------------
 
     def create_session(self, model: str, workspace: str | None = None,
-                       mode: str = "manuel", title: str = "Yeni oturum") -> int:
+                       mode: str = "manuel", title: str = "Yeni oturum",
+                       provider: str = "evren") -> int:
         now = utcnow_iso()
         cur = self._exec(
-            "INSERT INTO sessions(title, workspace, model, mode, created_at, updated_at)"
-            " VALUES(?,?,?,?,?,?)",
-            (title, workspace, model, mode, now, now),
+            "INSERT INTO sessions(title, workspace, model, mode, provider, created_at, updated_at)"
+            " VALUES(?,?,?,?,?,?,?)",
+            (title, workspace, model, mode, provider, now, now),
         )
         self._commit()
         return int(cur.lastrowid)
@@ -476,7 +493,7 @@ class Database:
         ).fetchall()
 
     def update_session(self, session_id: int, **fields: Any) -> None:
-        allowed = {"title", "workspace", "model", "mode", "protocol", "pinned"}
+        allowed = {"title", "workspace", "model", "mode", "protocol", "pinned", "provider"}
         sets = {k: v for k, v in fields.items() if k in allowed}
         if not sets:
             return
@@ -598,9 +615,32 @@ class Database:
             lines.append("")
         return "\n".join(lines)
 
+    # ---- Tahmini maliyet (ücretli sağlayıcılar) -----------------------------
+
+    def add_usage_cost(self, provider: str, model: str, usage: dict[str, int], cost_usd: float,
+                       session_id: int | None = None) -> int:
+        cur = self._exec(
+            "INSERT INTO usage_costs(created_at, session_id, provider, model, input_tokens,"
+            " output_tokens, cached_tokens, cost_usd) VALUES(?,?,?,?,?,?,?,?)",
+            (utcnow_iso(), session_id, provider, model, int(usage.get("input_tokens") or 0),
+             int(usage.get("output_tokens") or 0), int(usage.get("cached_tokens") or 0), float(cost_usd)),
+        )
+        self._commit()
+        return int(cur.lastrowid)
+
+    def month_spend(self, month_prefix: str | None = None) -> dict[str, float]:
+        """{sağlayıcı: USD} — month_prefix 'YYYY-MM' (UTC); varsayılan bu ay."""
+        prefix = month_prefix or utcnow_iso()[:7]
+        rows = self._exec(
+            "SELECT provider, SUM(cost_usd) AS total FROM usage_costs WHERE created_at LIKE ?"
+            " GROUP BY provider", (prefix + "%",),
+        ).fetchall()
+        return {r["provider"]: float(r["total"] or 0) for r in rows}
+
     def wipe_user_data(self) -> None:
         self._script(
             "DELETE FROM session_messages; DELETE FROM file_changes; DELETE FROM sessions;"
+            " DELETE FROM usage_costs;"
             " DELETE FROM messages; DELETE FROM chats;"
             " DELETE FROM error_records; DELETE FROM monitor_checks;"
             " DELETE FROM monitor_sessions; DELETE FROM model_health;"

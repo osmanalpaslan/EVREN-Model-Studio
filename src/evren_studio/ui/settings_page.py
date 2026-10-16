@@ -1,10 +1,12 @@
-"""Ayarlar sayfası: anahtar yönetimi, bağlantı, model, ajan, görünüm, veri.
+"""Ayarlar sayfası: anahtar yönetimi, sağlayıcılar, bağlantı, model, ajan, görünüm, veri.
 
 - Her alanın yanında varsayılan değer yazar.
 - "Varsayılanlara döndür" tüm ayarları önerilen değerlere çeker (API anahtarı,
   veri klasörü ve son proje listesi korunur); kaydetmeden önce onay ister.
 - Sayfa her açıldığında değerler güncel ayarlardan yeniden yüklenir.
 - Fare tekerleği odaklanmamış alanları değiştirmez (bkz. wheel_guard.py).
+- "Ücretli Sağlayıcılar" kartı: OpenAI/Anthropic anahtarları (yine Credential
+  Manager), adım adım alma rehberi, panel bağlantıları ve aylık bütçe (tahmini).
 """
 from __future__ import annotations
 
@@ -32,8 +34,13 @@ from PySide6.QtWidgets import (
 from .. import __version__
 from ..agent.permissions import MODE_HINTS, MODES
 from ..config import Settings, default_data_dir
+from ..api.providers import PRICES_AS_OF, PROVIDERS
+from ..budget import current_state, format_usd
 from ..secrets import delete_api_key, load_api_key, mask_api_key, save_api_key
 from .base_page import BasePage, card, kv_row
+from .workers import Task
+
+PAID_PROVIDERS = ("openai", "anthropic")
 
 DEFAULTS = Settings()
 # Varsayılana dönerken KORUNAN alanlar (kullanıcının verisi/konumu)
@@ -77,6 +84,10 @@ def kv_row_widget(label: str, widget: QWidget, default: str | None = None) -> QW
     return w
 
 
+def link(text: str, url: str) -> str:
+    return f'<a href="{url}">{text}</a>'
+
+
 def kv_row_with(label: str, widget: QWidget, extra: QWidget) -> QWidget:
     w = kv_row_widget(label, widget)
     w.layout().addWidget(extra)
@@ -108,7 +119,7 @@ class SettingsPage(BasePage):
 
         # ---- API anahtarı ----
         c, l = card()
-        l.addWidget(section("API Anahtarı (Windows Credential Manager)"))
+        l.addWidget(section("EVREN API Anahtarı (Windows Credential Manager)"))
         l.addWidget(hint(
             "Anahtar kaynak koda, ayar dosyasına veya loglara yazılmaz; Windows'un kimlik "
             "bilgisi kasasında saklanır ve maskeli gösterilir. “Varsayılanlara döndür” "
@@ -135,6 +146,39 @@ class SettingsPage(BasePage):
         row.addWidget(save_btn)
         row.addWidget(del_btn)
         l.addLayout(row)
+        col.addWidget(c)
+
+        # ---- ücretli sağlayıcılar ----
+        self._prov: dict[str, dict] = {}
+        c, l = card()
+        l.addWidget(section("Ücretli Sağlayıcılar (isteğe bağlı)"))
+        l.addWidget(hint(
+            "EVREN ücretsizdir. OpenAI veya Anthropic modellerini de kullanmak isterseniz kendi "
+            "ücretli API anahtarınızı girin; anahtarlar EVREN anahtarı gibi Windows Credential "
+            "Manager'da saklanır. Bu modellere gönderdiğiniz mesajlar ve proje dosyası içerikleri "
+            "o şirketin sunucularına gider. Bu iki entegrasyon belgelere göre yazıldı, henüz "
+            "gerçek anahtarla doğrulanmadı."))
+        for pid in PAID_PROVIDERS:
+            l.addWidget(self._provider_block(pid))
+
+        # bütçe
+        l.addWidget(section("Aylık bütçe (ücretli sağlayıcıların toplamı)"))
+        self.budget = QDoubleSpinBox()
+        self.budget.setRange(0, 10_000)
+        self.budget.setDecimals(2)
+        self.budget.setSingleStep(1)
+        self.budget.setPrefix("$ ")
+        l.addWidget(kv_row_widget("Aylık sınır:", self.budget, f"${d.monthly_budget_usd:.0f}"))
+        self.budget_enforce = QCheckBox("Sınıra ulaşınca her yeni istekten önce onay iste (önerilir)")
+        l.addWidget(self.budget_enforce)
+        self.spend_label = QLabel()
+        self.spend_label.setWordWrap(True)
+        l.addWidget(self.spend_label)
+        l.addWidget(hint(
+            f"Harcama, yanıtlardaki token sayıları ve {PRICES_AS_OF} tarihli fiyat listesiyle "
+            "TAHMİN edilir; %80'de bir kez uyarılır. Gerçek tutar ve kalan kredi için sağlayıcı "
+            "panelindeki Usage sayfasına bakın (kalan kredi API'den okunamıyor). Sağlayıcı "
+            "panelinde ayrıca bir harcama sınırı koymanız önerilir."))
         col.addWidget(c)
 
         # ---- bağlantı ----
@@ -313,6 +357,10 @@ class SettingsPage(BasePage):
         self.theme.setCurrentText(s.theme if s.theme in ("koyu", "açık") else "koyu")
         self.font_size.setValue(s.font_size)
         self.retention.setValue(s.error_log_retention_days)
+        self.budget.setValue(s.monthly_budget_usd)
+        self.budget_enforce.setChecked(s.budget_enforce)
+        self._refresh_provider_rows()
+        self._refresh_spend(s)
 
     def _collect(self, s: Settings) -> None:
         s.base_url = self.base_url.text().strip() or DEFAULTS.base_url
@@ -338,6 +386,8 @@ class SettingsPage(BasePage):
         s.theme = self.theme.currentText()
         s.font_size = int(self.font_size.value())
         s.error_log_retention_days = int(self.retention.value())
+        s.monthly_budget_usd = float(self.budget.value())
+        s.budget_enforce = self.budget_enforce.isChecked()
 
     def changed_fields(self) -> list[str]:
         """Varsayılandan farklı olan ayarların adları (bilgi amaçlı)."""
@@ -402,6 +452,139 @@ class SettingsPage(BasePage):
             delete_api_key()
             self.ctx.api_key(refresh=True)
             self.key_row.findChildren(QLabel)[1].setText("yok")
+
+    # ---- ücretli sağlayıcılar ----------------------------------------------
+
+    def _provider_block(self, pid: str) -> QWidget:
+        info = PROVIDERS[pid]
+        box = QWidget()
+        v = QVBoxLayout(box)
+        v.setContentsMargins(0, 6, 0, 6)
+        v.setSpacing(6)
+        badge = "" if info.verified else "  ·  doğrulanmadı"
+        title = QLabel(f"<b>{info.name}</b>  <span style='color:#d9a441'>ücretli{badge}</span>")
+        v.addWidget(title)
+        steps = "".join(f"<li>{s}</li>" for s in info.steps)
+        how = QLabel(f"Anahtar nasıl alınır:<ol style='margin-top:2px'>{steps}</ol>")
+        how.setWordWrap(True)
+        how.setProperty("role", "dim")
+        v.addWidget(how)
+        links = QLabel(" · ".join([
+            link("API anahtarları", info.keys_url),
+            link("Kredi / faturalama", info.billing_url),
+            link("Kullanım", info.usage_url),
+            link("Belgeler", info.docs_url),
+        ]))
+        links.setOpenExternalLinks(True)
+        v.addWidget(links)
+        for n in info.notes:
+            v.addWidget(hint("• " + n))
+        key_row = kv_row(f"Kayıtlı {info.name} anahtarı:", "yok")
+        v.addWidget(key_row)
+        row = QHBoxLayout()
+        inp = QLineEdit()
+        inp.setEchoMode(QLineEdit.Password)
+        inp.setPlaceholderText(f"{info.name} API anahtarı ({info.key_prefix}…) yapıştırın")
+        save_btn = QPushButton("Kaydet")
+        save_btn.clicked.connect(lambda _=False, p=pid: self.save_provider_key(p))
+        test_btn = QPushButton("Bağlantıyı doğrula")
+        test_btn.setToolTip("Model listesini ister (ücretsiz bir istek; token harcamaz)")
+        test_btn.clicked.connect(lambda _=False, p=pid: self.verify_provider(p))
+        del_btn = QPushButton("Sil")
+        del_btn.setProperty("variant", "danger")
+        del_btn.clicked.connect(lambda _=False, p=pid: self.delete_provider_key(p))
+        row.addWidget(inp, 1)
+        for b in (save_btn, test_btn, del_btn):
+            row.addWidget(b)
+        v.addLayout(row)
+        status = QLabel("")
+        status.setWordWrap(True)
+        status.setProperty("role", "dim")
+        v.addWidget(status)
+        self._prov[pid] = {"key_label": key_row.findChildren(QLabel)[1], "input": inp,
+                           "status": status, "test": test_btn}
+        return box
+
+    def _refresh_provider_rows(self) -> None:
+        for pid, w in self._prov.items():
+            key = self.ctx.provider_key(pid, refresh=True)
+            w["key_label"].setText(mask_api_key(key) if key else "yok")
+
+    def _refresh_spend(self, s: Settings | None = None) -> None:
+        s = s or self.ctx.settings
+        spend = self.ctx.db.month_spend()
+        st = current_state(self.ctx.db, s.monthly_budget_usd, s.budget_enforce)
+        per = ", ".join(f"{PROVIDERS[p].name} {format_usd(v)}" for p, v in spend.items() if p in PROVIDERS)
+        self.spend_label.setText(f"<b>Bu ayki tahmini harcama:</b> {st.text().replace('bu ay tahmini ', '')}"
+                                 + (f"  ({per})" if per else ""))
+
+    def save_provider_key(self, pid: str) -> None:
+        w = self._prov[pid]
+        key = w["input"].text().strip()
+        name = PROVIDERS[pid].name
+        if not key:
+            QMessageBox.warning(self, "Boş Anahtar", f"{name} anahtar alanı boş.")
+            return
+        if not key.startswith(PROVIDERS[pid].key_prefix):
+            if QMessageBox.question(
+                self, "Anahtar biçimi",
+                f"{name} anahtarları genellikle “{PROVIDERS[pid].key_prefix}” ile başlar. "
+                "Yine de kaydedilsin mi?",
+            ) != QMessageBox.Yes:
+                return
+        try:
+            save_api_key(key, pid)
+        except Exception as exc:
+            QMessageBox.critical(
+                self, "Güvenli Saklama Başarısız",
+                f"{name} anahtarı Windows Credential Manager'a yazılamadı:\n{exc}\n\n"
+                "Düz metin dosyaya geçilmez.")
+            return
+        w["input"].clear()
+        self._refresh_provider_rows()
+        w["key_label"].setText(w["key_label"].text() + " (güncellendi)")
+        w["status"].setText("Kaydedildi. “Bağlantıyı doğrula” ile deneyebilirsiniz.")
+        self.settings_saved.emit()       # model seçicide bu sağlayıcının modelleri açılır
+
+    def delete_provider_key(self, pid: str) -> None:
+        name = PROVIDERS[pid].name
+        if QMessageBox.question(
+            self, "Anahtarı Sil", f"{name} API anahtarı Windows Credential Manager'dan silinsin mi?",
+        ) != QMessageBox.Yes:
+            return
+        delete_api_key(pid)
+        self._refresh_provider_rows()
+        self._prov[pid]["status"].setText("")
+        self.settings_saved.emit()
+
+    def verify_provider(self, pid: str) -> None:
+        w = self._prov[pid]
+        name = PROVIDERS[pid].name
+        if not self.ctx.has_provider_key(pid):
+            w["status"].setText(f"Önce {name} anahtarını kaydedin.")
+            return
+        w["status"].setText("Bağlanılıyor…")
+        w["test"].setEnabled(False)
+
+        def job():
+            client = self.ctx.make_client_for(pid)
+            try:
+                return client.list_models()
+            finally:
+                close = getattr(client, "close", None)
+                if close:
+                    close()
+
+        def done(models):
+            w["test"].setEnabled(True)
+            ids = ", ".join(m.id for m in models[:6]) or "katalogdaki model bulunamadı"
+            w["status"].setText(f"✓ Bağlantı başarılı — kullanılabilir modeller: {ids}")
+
+        def fail(exc):
+            w["test"].setEnabled(True)
+            w["status"].setText(f"✗ Bağlantı başarısız: {exc}")
+
+        Task(job, on_done=done, on_error=fail).start()
 
     def browse_data_dir(self) -> None:
         d = QFileDialog.getExistingDirectory(self, "Veri klasörü seç")
