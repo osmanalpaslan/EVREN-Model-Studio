@@ -38,6 +38,10 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
   için onay), *Düzenlemeleri kabul et* (dosyalar onaysız, komutlar onaylı),
   *Plan* (salt okunur), *Otomatik* (hiçbir işlem için onay istenmez:
   tüm düzenlemeler, komutlar ve dosya okumaları onaysız; durdurmak için Esc).
+- **Ortam denetimi**: proje klasörü bağlanınca gereken programlar (Node, pnpm,
+  yarn, Python, uv, Git, Go, Rust, .NET, Java) denetlenir; eksikler Ayarlar'daki
+  seçime göre *Otomatik* (sormadan) veya *Manuel* (Kur / Şimdi değil bildirimi)
+  winget veya npm ile kurulur. Ajan da gerektiğinde `install_program` ile ister.
 - **Otomatik özet (auto-compact)**: uzun konuşmalar, bağlam eşiğine (%75,
   en fazla 100k token) gelince mesajdan önce özetlenir; uzun görevlerde güvenli
   noktada özetleyip kendiliğinden devam eder. Elle: `/compact [odak]`.

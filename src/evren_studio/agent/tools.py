@@ -144,6 +144,17 @@ TOOL_SPECS: list[ToolSpec] = [
         }, ["command"]),
     ),
     ToolSpec(
+        "install_program", EXEC,
+        "Projenin ihtiyaç duyduğu, bilgisayarda eksik bir programı kurar (winget/npm ile, "
+        "yalnız bilinen listeden: git, python, uv, node, pnpm, yarn, go, rust, dotnet, java). "
+        "Ayara göre sorulmadan kurulur ya da kullanıcıya sorulur. Kurulumu run_command ile "
+        "kendin yapmaya çalışma.",
+        _obj({
+            "name": {"type": "string", "description": "Program adı, örn. 'pnpm', 'node', 'go'"},
+            "reason": {"type": "string", "description": "Neden gerekli (kullanıcıya gösterilir)"},
+        }, ["name"]),
+    ),
+    ToolSpec(
         "update_todos", META,
         "Çok adımlı işler için görev listesini günceller. Her çağrıda listenin "
         "TAMAMINI gönder; aynı anda yalnızca bir görev in_progress olmalı.",

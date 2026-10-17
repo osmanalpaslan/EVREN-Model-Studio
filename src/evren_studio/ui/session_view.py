@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..agent import prompts
+from ..agent import environment, prompts
 from ..agent.compaction import MAX_AUTO_RESUMES, CompactPolicy, needs_compaction, summarize
 from ..agent.permissions import MODES, SessionPermissions, normalize_mode
 from ..agent.runner import (
@@ -56,6 +56,7 @@ from .transcript import (
     COLUMN_WIDTH,
     AssistantMessageWidget,
     ErrorCard,
+    InstallCard,
     NoteWidget,
     ToolCallWidget,
     Transcript,
@@ -310,6 +311,7 @@ class SessionView(QWidget):
         self.perms: dict[int, SessionPermissions] = {}
         self.edit_from: int | None = None
         self._pending_approvals: list[ApprovalRequest] = []
+        self._env_checked: set[tuple] = set()       # (oturum, klasör) başına bir ortam denetimi
         # Çalışma süresi / model göstergesi
         self.run_model = ""
         self._run_t0: float | None = None
@@ -471,6 +473,7 @@ class SessionView(QWidget):
         self.sessions_changed.emit()
         self._note(f"Bu oturum artık “{Path(folder).name}” klasörüne bağlı. Ajan dosyaları "
                    f"okuyabilir; düzenleme ve komutlar {MODES[self.mode]} moduna göre sorulur.", "folder")
+        self._env_check(folder)
         return True
 
     def set_sidebar_hidden(self, hidden: bool) -> None:
@@ -554,6 +557,8 @@ class SessionView(QWidget):
         self.session_opened.emit(session_id)
         if self.workspace and not Path(self.workspace).is_dir():
             self.transcript.add(NoteWidget(f"Proje klasörü bulunamadı: {self.workspace}", "alert"))
+        elif self.workspace:
+            self._env_check(self.workspace)
 
     def render_history(self, messages: list[dict]) -> None:
         self.transcript.clear()
@@ -636,6 +641,8 @@ class SessionView(QWidget):
         self._update_header()
         self.sessions_changed.emit()
         self.session_opened.emit(sid)
+        if ws:
+            self._env_check(ws)
         return sid
 
     def rename(self) -> None:
@@ -1038,6 +1045,7 @@ class SessionView(QWidget):
             stall_retry_body=({"reasoning_effort": "none"}
                               if provider == "evren" and info and (info.capabilities or {}).get("reasoning_effort")
                               else None),
+            install_mode=s.install_mode,
         )
         runner = self.runner
         self.running = True
@@ -1379,6 +1387,73 @@ class SessionView(QWidget):
                 self.transcript.add(ErrorCard("Özetleme başarısız", [str(exc)]))
 
         Task(job, on_done=done, on_error=fail).start()
+
+    # ---- ortam denetimi (eksik program) ----
+
+    def _env_check(self, ws: str | None) -> None:
+        """Proje klasörünün gerektirdiği programları arka planda denetler (R-04).
+
+        Eksik varsa: Ayarlar > Eksik program kurulumu "otomatik" → hemen kurulur,
+        "manuel" → Kur / Şimdi değil kartı (kullanıcı kararı 2026-10-17).
+        """
+        if not ws or not Path(ws).is_dir():
+            return
+        key = (self.session_id, str(Path(ws)).lower())
+        if key in self._env_checked:
+            return
+        self._env_checked.add(key)
+        sid = self.session_id
+
+        def done(statuses) -> None:
+            if sid != self.session_id or not statuses:
+                return
+            missing = [st for st in statuses if not st.installed]
+            if not missing:
+                self._note("Ortam denetimi: " + environment.status_line(statuses), "check")
+                return
+            auto = self.ctx.settings.install_mode == "otomatik"
+            lines = [f"• {st.title} — gerekli ({st.reason}); kurulum: {environment.short_plan(st.key)}"
+                     for st in missing]
+            present = [st for st in statuses if st.installed]
+            if present:
+                lines.append("Kurulu olanlar: " + environment.status_line(present))
+            n = len(missing)
+            title = (f"Eksik program{'lar' if n > 1 else ''} otomatik kuruluyor (Ayarlar: Otomatik)" if auto
+                     else f"Bu proje için {n} program gerekli ve bilgisayarda kurulu değil. Kurulsun mu?")
+            card = InstallCard(title, lines, ask=not auto)
+            self.transcript.add(card)
+            keys = [st.key for st in missing]
+            if auto:
+                self._env_install(card, keys)
+            else:
+                card.install_requested.connect(lambda: self._env_install(card, keys))
+
+        Task(lambda: environment.check(Path(ws)), on_done=done, on_error=lambda _e: None).start()
+
+    def _env_install(self, card: InstallCard, keys: list[str]) -> None:
+        card.set_title("Programlar kuruluyor… (birkaç dakika sürebilir)")
+
+        def done(results) -> None:
+            for r in results:
+                title = environment.KNOWN_TOOLS[r.key].title if r.key in environment.KNOWN_TOOLS else r.key
+                if r.ok:
+                    text = f"✓ {title} kuruldu" + (f" ({r.version})" if r.version else "")
+                    if r.needs_restart:
+                        text += " — bulunamazsa EVREN Studio'yu yeniden başlatın"
+                else:
+                    last = (r.output or "").strip().splitlines()
+                    text = f"✗ {title} kurulamadı — {last[-1][:160] if last else r.command}"
+                card.append_line(text)
+            ok = all(r.ok for r in results)
+            card.set_title("Kurulum tamamlandı" if ok else "Kurulumda sorun çıktı")
+            if self.runner is not None:
+                self.runner._env_section = None
+
+        def fail(exc) -> None:
+            card.set_title("Kurulum başarısız")
+            card.append_line(str(exc))
+
+        Task(lambda: [environment.install(k) for k in keys], on_done=done, on_error=fail).start()
 
     def _auto_continue(self) -> None:
         """Güvenli noktada duran turu özetten sonra otomatik sürdürür."""

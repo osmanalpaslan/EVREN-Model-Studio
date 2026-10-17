@@ -371,7 +371,8 @@ class AgentRunner:
                  context_tokens: int | None = None, turn_id: int | None = None,
                  hard_context_limit: int | None = None,
                  before_model_call: Any = None,
-                 stall_retry_body: dict[str, Any] | None = None):
+                 stall_retry_body: dict[str, Any] | None = None,
+                 install_mode: str = "otomatik"):
         self.client = client
         self.model = model
         self.session_id = session_id
@@ -398,6 +399,10 @@ class AgentRunner:
         # Boş yanıttan sonra yapılan TEK yeniden denemede isteğe eklenecek alanlar
         # (ör. {"reasoning_effort": "none"}; yalnız modeli destekliyorsa verilir).
         self.stall_retry_body = stall_retry_body
+        # Ortam denetimi: "otomatik" → eksik program sorulmadan kurulur, "manuel" → sorulur.
+        # Ajanın çalışma modundan bağımsızdır (kullanıcı kararı 2026-10-17).
+        self.install_mode = install_mode if install_mode in ("otomatik", "manuel") else "otomatik"
+        self._env_section: str | None = None
         self._nudge: str | None = None          # sonraki çağrıya eklenecek geçici hatırlatma
         self._extra_body: dict[str, Any] | None = None
         self._writes: list[tuple[str, str | None, str | None]] = []  # (yol, önce, sonra) — son araç
@@ -421,8 +426,17 @@ class AgentRunner:
     def _system(self) -> str:
         if not self.agentic:
             return build_chat_system()
+        if self._env_section is None:
+            from . import environment
+
+            try:
+                self._env_section = environment.prompt_section(
+                    environment.quick_status(self.workspace.root), self.install_mode)
+            except OSError:
+                self._env_section = ""
         return build_agent_system(self.workspace, normalize_mode(self.mode), self._specs(),
-                                  text_protocol=(self.protocol == "text"))
+                                  text_protocol=(self.protocol == "text"),
+                                  env_section=self._env_section)
 
     def _cancelled(self) -> bool:
         return bool(self.cancel is not None and getattr(self.cancel, "cancelled", False))
@@ -689,7 +703,9 @@ class AgentRunner:
             return ToolResult(False, reason, "Plan modunda engellendi")
         self.events.tool_started(call, describe_call(call))
         try:
-            if spec.kind == READ:
+            if call.name == "install_program":
+                res = self._run_install(call)
+            elif spec.kind == READ:
                 res = self._run_read(call)
             elif spec.kind == META:
                 res = self._run_todos(call)
@@ -759,6 +775,8 @@ class AgentRunner:
                 self.perms.allow_all_writes = True
             elif kind == READ:
                 self.perms.allow_sensitive_reads = True
+            elif kind == "install":
+                self.perms.allow_installs = True
             elif prefix:
                 self.perms.command_prefixes.add(prefix)
         return decision in (ApprovalRequest.ALLOW, ApprovalRequest.ALLOW_SESSION), req.feedback
@@ -794,6 +812,58 @@ class AgentRunner:
             extra["auto_approved"] = True
         return ToolResult(True, f"{verb}: {change.rel_path} (+{added} −{removed} satır).",
                           f"{verb}: {change.rel_path}  +{added} −{removed}", extra)
+
+    def _run_install(self, call: ToolCall) -> ToolResult:
+        """Ortam denetimi: bilinen listedeki eksik programı ayara göre sorarak/sormadan kurar."""
+        from . import environment as envmod
+
+        name = str(_req(call.arguments, "name"))
+        key = envmod.normalize_tool(name)
+        if key is None:
+            known = ", ".join(sorted(envmod.KNOWN_TOOLS))
+            return ToolResult(False, f"'{name}' bilinen kurulum listesinde yok (kurulabilenler: {known}). "
+                              "Kullanıcıya bu programı kendisinin kurması gerektiğini söyle.",
+                              f"Bilinmeyen program: {name}")
+        tool = envmod.KNOWN_TOOLS[key]
+        exe = envmod.find_exe(tool)
+        if exe:
+            return ToolResult(True, f"{tool.title} zaten kurulu: {exe}", f"Zaten kurulu: {tool.title}")
+        plan = envmod.describe_plan(key)
+        reason = str(call.arguments.get("reason") or "").strip()
+        asked = False
+        if self.install_mode != "otomatik" and not self.perms.allow_installs:
+            asked = True
+            ok, feedback = self._approve(
+                call, "install", f"{tool.title} kurulsun mu?", plan,
+                reason=reason or "Proje bu programa ihtiyaç duyuyor; bilgisayarda kurulu değil.")
+            if not ok:
+                msg = (f"Kullanıcı {tool.title} kurulumunu reddetti. Program olmadan devam etmenin "
+                       "yolunu bul ya da kullanıcıya programı kendisinin kurabileceğini söyle.")
+                if feedback:
+                    msg += f" Kullanıcının notu: {feedback}"
+                return ToolResult(False, msg, f"Kurulum reddedildi: {tool.title}",
+                                  {"command": plan, "denied": True})
+        result = envmod.install(key, on_output=lambda chunk: self.events.tool_output(call, chunk),
+                                cancel=self.cancel)
+        self._env_section = None          # sonraki istemde güncel durum
+        steps = ("\n" + "\n".join(result.steps)) if result.steps else ""
+        if result.ok:
+            text = f"{tool.title} kuruldu" + (f" (sürüm {result.version})" if result.version else "") + "."
+            if result.needs_restart:
+                text += (" Kurulum başarılı ama program bu oturumda henüz bulunamıyor; gerekirse "
+                         "kullanıcıdan EVREN Studio'yu yeniden başlatmasını iste.")
+            if tool.npm_package and result.command.startswith("npm"):
+                text += (f" PowerShell'de `{tool.exes[0]}.cmd` olarak çağır (betik politikası "
+                         f"`{tool.exes[0]}.ps1` kabuğunu engelleyebilir).")
+            summary = f"Kuruldu: {tool.title}" + (f" {result.version}" if result.version else "")
+        else:
+            text = f"{tool.title} kurulamadı. Komut: {result.command or plan}"
+            summary = f"Kurulamadı: {tool.title}"
+        return ToolResult(result.ok, text + steps + ("\n" + result.output[-1500:] if result.output else ""),
+                          summary, {"command": result.command or plan,
+                                    "output": result.output[-4000:],
+                                    "auto_approved": not asked,
+                                    "auto_reason": "Program kurulumu: Otomatik" if not asked else ""})
 
     def _run_exec(self, call: ToolCall) -> ToolResult:
         command = _req(call.arguments, "command").strip()
@@ -843,5 +913,6 @@ def describe_call(call: ToolCall) -> str:
         "write_file": lambda: f"Yazılıyor: {a.get('path', '?')}",
         "edit_file": lambda: f"Düzenleniyor: {a.get('path', '?')}",
         "run_command": lambda: f"Komut: {a.get('command', '')}",
+        "install_program": lambda: f"Program kuruluyor: {a.get('name', '?')}",
         "update_todos": lambda: "Görev listesi güncelleniyor",
     }.get(call.name, lambda: call.name)()

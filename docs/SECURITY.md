@@ -81,6 +81,18 @@
   ÜSTÜNE uygulanır.
 - Dosyalar sekmesindeki elle kaydetme her zaman açık onay ister.
 
+## Program kurulumu (ortam denetimi)
+
+- Yalnız bilinen listeden (git, python, uv, node, pnpm, yarn, go, rust, dotnet,
+  java) ve yalnız resmi kaynaktan kurulur: Windows Paket Yöneticisi `winget`
+  (kimlikler 2026-10-17'de `winget show` ile doğrulandı) veya Node'un `npm -g`'si.
+  Listede olmayan program kurulmaz; model kurulum komutunu kendisi yazamaz.
+- Ayarlar > "Eksik program kurulumu": Otomatik (varsayılan, sormadan) / Manuel
+  (her kurulum için onay). Ajanın çalışma modundan bağımsızdır.
+- Makine kapsamlı kurulumlar Windows yönetici onayı (UAC) isteyebilir.
+- PowerShell betik politikası atlatılmaz (`-ExecutionPolicy Bypass` kullanılmaz);
+  npm araçları `.cmd` ile çağrılır.
+
 ## Repo hijyeni
 
 - `.gitignore`: `.venv`, `data/`, `*.db`, `logs/*.log`, `.env`, `secrets*`

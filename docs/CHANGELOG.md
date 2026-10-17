@@ -4,6 +4,10 @@
 
 ### Eklendi
 
+- **Ortam denetimi ve program kurulumu**: klasör bağlanınca gereken programlar
+  denetlenir; eksikler Ayarlar > "Eksik program kurulumu" seçimine göre Otomatik
+  (sormadan) veya Manuel ("Kurulsun mu?" bildirimi) kurulur. Ajan `install_program`
+  aracıyla da isteyebilir. Kurulum winget/npm ile, yalnız bilinen listeden.
 - **Döngü bekçisi**: ajan aynı aracı aynı parametrelerle (arada dosya değişmeden)
   ikinci kez çağırırsa modele uyarı gider, üçüncüde tur durur ve size bildirilir.
   Bir dosya bu tur içinde eski bir hâline geri dönerse (ileri-geri düzenleme)

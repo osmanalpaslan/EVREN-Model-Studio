@@ -116,6 +116,7 @@ class SessionPermissions:
 
     allow_all_writes: bool = False
     allow_sensitive_reads: bool = False
+    allow_installs: bool = False       # "bu oturumda program kurulumlarına izin ver"
     command_prefixes: set[str] = field(default_factory=set)
 
     def command_allowed(self, command: str) -> bool:

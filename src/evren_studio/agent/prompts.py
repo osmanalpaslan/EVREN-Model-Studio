@@ -64,7 +64,8 @@ def text_protocol_section(specs: list[ToolSpec]) -> str:
 
 
 def build_agent_system(workspace: Workspace, mode: str, specs: list[ToolSpec],
-                       text_protocol: bool, today: date | None = None) -> str:
+                       text_protocol: bool, today: date | None = None,
+                       env_section: str = "") -> str:
     today = today or date.today()
     branch = workspace.git_branch()
     mem_name, memory = workspace.project_memory()
@@ -88,6 +89,8 @@ def build_agent_system(workspace: Workspace, mode: str, specs: list[ToolSpec],
         "",
         AGENT_RULES,
     ]
+    if env_section:
+        parts.append(env_section)
     if mode == "plan":
         parts.append(PLAN_RULES)
     if text_protocol:

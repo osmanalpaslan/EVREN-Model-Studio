@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 33 · Açık/izlenen: 4 · Oturum: 11 · Kural: 19
+Kayıt: 34 · Açık/izlenen: 4 · Oturum: 12 · Kural: 19
 
 ## Açık ve izlenen kayıtlar
 
@@ -19,6 +19,7 @@ Kayıt: 33 · Açık/izlenen: 4 · Oturum: 11 · Kural: 19
 |---|---|---|---|---|---|---|
 | 2026-10-17 | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
 | 2026-10-17 | [2026-10-17-tur-basina-40-adim-buyuk-projede-dar](incidents/2026-10-17-tur-basina-40-adim-buyuk-projede-dar.md) | eksik | dusuk | cozuldu | Claude Code (masaüstü) | Tur başına 40 adım büyük projede dar |
+| 2026-10-17 | [2026-10-17-npm-ile-kurulan-araclarin-ps1-kabugu-powershell-betik-politi](incidents/2026-10-17-npm-ile-kurulan-araclarin-ps1-kabugu-powershell-betik-politi.md) | ortam | orta | cozuldu | Claude Code (masaüstü) | npm ile kurulan araçların .ps1 kabuğu PowerShell betik politikasına takılıyor |
 | 2026-10-17 | [2026-10-17-model-ayni-cumleleri-tekrar-tekrar-yazip-aracsiz-bitiriyordu](incidents/2026-10-17-model-ayni-cumleleri-tekrar-tekrar-yazip-aracsiz-bitiriyordu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Model aynı cümleleri tekrar tekrar yazıp araçsız bitiriyordu |
 | 2026-10-17 | [2026-10-17-evren-model-json-400-hatasi-kalici-metin-protokolune-geciriy](incidents/2026-10-17-evren-model-json-400-hatasi-kalici-metin-protokolune-geciriy.md) | hata | orta | cozuldu | Claude Code (masaüstü) | EVREN model JSON 400 hatası kalıcı metin protokolüne geçiriyordu |
 | 2026-10-17 | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | orta | izleniyor | Claude Code (masaüstü) | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
@@ -55,6 +56,7 @@ Kayıt: 33 · Açık/izlenen: 4 · Oturum: 11 · Kural: 19
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: ortam denetimi ve program kurulumu |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: döngü analizi ve döngü bekçisi |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan](sessions/2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Varsayılan motor auto; son seçilen motor ve mod hatırlanır |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact](sessions/2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik özet (auto-compact) |

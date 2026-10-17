@@ -88,6 +88,8 @@ class Settings:
     agent_mode: str = "manuel"              # manuel | kabul | plan | auto (eski: onayli/otomatik)
     tool_protocol: str = "otomatik"         # otomatik | yerel | metin
     agent_max_steps: int = 80
+    # Ortam denetimi: eksik program "otomatik" (sormadan) | "manuel" (sorarak) kurulur.
+    install_mode: str = "otomatik"
     command_timeout_seconds: int = 120
     tool_output_limit: int = 20000
     recent_workspaces: list[str] = field(default_factory=list)

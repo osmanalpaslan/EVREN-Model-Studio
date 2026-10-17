@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
+from ..agent.environment import INSTALL_MODES
 from ..agent.permissions import MODE_HINTS, MODES
 from ..config import Settings, default_data_dir
 from ..api.providers import PRICES_AS_OF, PROVIDERS
@@ -223,9 +224,9 @@ class SettingsPage(BasePage):
         c, l = card()
         l.addWidget(section("Kod Ajanı"))
         l.addWidget(hint(
-            "Kod ajanı yalnızca seçtiğiniz proje klasöründe çalışır. Komutlar hiçbir modda "
-            "onaysız çalışmaz; dosya değişiklikleri sağ paneldeki “Değişiklikler” "
-            "sekmesinden geri alınabilir."
+            "Kod ajanı yalnızca seçtiğiniz proje klasöründe çalışır. Otomatik modda hiçbir "
+            "işlem için onay istenmez; diğer modlarda komutlar sorulur. Dosya değişiklikleri "
+            "sağ paneldeki “Değişiklikler” sekmesinden geri alınabilir."
         ))
         self.agent_mode = QComboBox()
         for key, label in MODES.items():
@@ -238,6 +239,14 @@ class SettingsPage(BasePage):
         self.max_steps = QSpinBox()
         self.max_steps.setRange(5, 200)
         l.addWidget(kv_row_widget("Tur başına en fazla adım:", self.max_steps, str(d.agent_max_steps)))
+        self.install_mode = QComboBox()
+        for key, label in INSTALL_MODES.items():
+            self.install_mode.addItem(label, key)
+        l.addWidget(kv_row_widget("Eksik program kurulumu:", self.install_mode, INSTALL_MODES[d.install_mode]))
+        l.addWidget(hint(
+            "Proje klasörü bağlanınca gereken programlar (Node, pnpm, Python, Git, Go, .NET …) "
+            "denetlenir. Otomatik: eksik olan sorulmadan kurulur. Manuel: kurmadan önce sorulur. "
+            "Kurulum Windows Paket Yöneticisi (winget) veya npm ile, yalnız bilinen listeden yapılır."))
         self.cmd_timeout = QSpinBox()
         self.cmd_timeout.setRange(10, 1800)
         self.cmd_timeout.setSuffix(" sn")
@@ -345,6 +354,7 @@ class SettingsPage(BasePage):
         self.agent_mode.setCurrentIndex(max(0, self.agent_mode.findData(s.agent_mode)))
         self.tool_protocol.setCurrentIndex(max(0, self.tool_protocol.findData(s.tool_protocol)))
         self.max_steps.setValue(s.agent_max_steps)
+        self.install_mode.setCurrentIndex(max(0, self.install_mode.findData(s.install_mode)))
         self.cmd_timeout.setValue(s.command_timeout_seconds)
         self.output_limit.setValue(s.tool_output_limit)
         self.show_reasoning.setChecked(s.show_reasoning)
@@ -375,6 +385,7 @@ class SettingsPage(BasePage):
         s.agent_mode = self.agent_mode.currentData()
         s.tool_protocol = self.tool_protocol.currentData()
         s.agent_max_steps = int(self.max_steps.value())
+        s.install_mode = self.install_mode.currentData() or "otomatik"
         s.command_timeout_seconds = int(self.cmd_timeout.value())
         s.tool_output_limit = int(self.output_limit.value())
         s.show_reasoning = self.show_reasoning.isChecked()
