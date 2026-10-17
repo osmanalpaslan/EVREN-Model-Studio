@@ -1,5 +1,27 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Döngü önleme (ajan tekrara düşmesin)
+
+### Eklendi
+
+- **Döngü bekçisi**: ajan aynı aracı aynı parametrelerle (arada dosya değişmeden)
+  ikinci kez çağırırsa modele uyarı gider, üçüncüde tur durur ve size bildirilir.
+  Bir dosya bu tur içinde eski bir hâline geri dönerse (ileri-geri düzenleme)
+  aynı şekilde uyarı, tekrarında durma.
+- **Boş yanıt / "inceleyeyim" deyip durma**: model bir kez otomatik hatırlatılır;
+  boş yanıtta (düşünme bütçesi tükenmesi) destekleyen EVREN modelinde o deneme
+  düşünmesiz yapılır. Yine boşsa ekranda not çıkar.
+- **API anahtarı koruması**: commit'e anahtar giremez (tools/secret_scan.py,
+  ön-commit kancası ve test). Depoda/geçmişte anahtar olmadığı doğrulandı.
+
+### Değişti
+
+- Proje hafızası: kökte EVREN.md varsa ajana yalnız o verilir (uzun AGENTS.md
+  ajanı asıl işten uzaklaştırıyordu). Bu depoya kısa EVREN.md eklendi.
+- Ajan kuralları: tekrar etmeme, iki başarısızlıktan sonra yol değiştirme veya
+  durma, test dosyalarını değiştirmeme/kandırmama, yapmadığını yaptım dememe.
+- Ayrıntı ve ölçümler: docs/knowledge/LOOP_ANALYSIS.md.
+
 ## Yayınlanmamış — Varsayılan motor auto, seçimler hatırlanır
 
 ### Değişti

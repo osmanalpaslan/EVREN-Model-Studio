@@ -1033,6 +1033,11 @@ class SessionView(QWidget):
             hard_context_limit=(self._policy().hard_limit(info.context_length if info else None)
                                 if s.auto_compact else None),
             before_model_call=before_call if provider != "evren" else None,
+            # Boş yanıt (düşünme bütçesi tükendi) sonrası tek yeniden denemede düşünmeyi kapat;
+            # yalnız EVREN kaydı reasoning_effort desteği bildiren modellerde.
+            stall_retry_body=({"reasoning_effort": "none"}
+                              if provider == "evren" and info and (info.capabilities or {}).get("reasoning_effort")
+                              else None),
         )
         runner = self.runner
         self.running = True

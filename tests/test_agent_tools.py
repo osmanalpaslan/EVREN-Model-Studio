@@ -62,8 +62,12 @@ def test_proje_hafizasi(ws, tmp_path):
     assert name == "EVREN.md" and "pytest" in text
     (tmp_path / "AGENTS.md").write_text("Önce tools/ai_memory.py baslangic", encoding="utf-8")
     name, text = ws.project_memory()
-    assert name == "EVREN.md + AGENTS.md"
-    assert "pytest" in text and "ai_memory" in text and "yalnız claude" not in text
+    # EVREN.md varken ağır AGENTS.md eklenmez (döngü analizi 2026-10-17)
+    assert name == "EVREN.md"
+    assert "pytest" in text and "ai_memory" not in text and "yalnız claude" not in text
+    (tmp_path / "EVREN.md").unlink()
+    name, text = ws.project_memory()
+    assert name == "AGENTS.md" and "ai_memory" in text
 
 
 # ---- okuma -------------------------------------------------------------------

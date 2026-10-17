@@ -29,6 +29,11 @@ AGENT_RULES = """\
 - Otomatik modda yalnızca güvenli listedeki komutlar (git status/diff/log, testler, derleme, lint, dosya görüntüleme) onaysız çalışır; diğerleri kullanıcıya sorulur. Mümkünse işini güvenli komutlarla yap.
 - Proje klasörü dışına çıkma; parola, API anahtarı gibi gizli bilgileri okumaya, yazdırmaya veya dışarı göndermeye çalışma.
 - Araç sonuçlarını kendin uydurma; bir aracın sonucunu bilmeden devam etme.
+- Aynı aracı aynı parametrelerle, arada bir şey değişmeden tekrar çağırma; sonuç aynı olur. Bir dosyayı okuduysan içeriği sende var.
+- İki deneme başarısız olduysa aynı yolu üçüncü kez deneme: farklı bir yol bul ya da dur ve kullanıcıya neyin engel olduğunu açıkça yaz.
+- Testleri geçirmek için test dosyalarını değiştirme, testi kandıran (çağıranı algılayan, sonucu sabitleyen) kod yazma. Gereksinimler çelişiyorsa dur ve kullanıcıya bildir.
+- Yapmadığın veya doğrulamadığın bir şeyi yaptım deme; özetin gerçekte yaptığın değişikliklerle birebir uyuşmalı.
+- "İnceleyeyim/yapacağım" deyip durma: bir iş söylüyorsan aynı yanıtta aracını çağır.
 - Yanıtlarını Türkçe, kısa ve net yaz. İş bittiğinde ne yaptığını, neyi test ettiğini ve neyin doğrulanmadığını özetle.
 """
 
@@ -127,5 +132,6 @@ SUMMARY_SYSTEM = (
 AUTO_CONTINUE_PROMPT = (
     "[Otomatik devam] Bağlam sınırına yaklaşıldığı için önceki konuşma özetlendi "
     "(yukarıdaki özet). Görevine kaldığın yerden devam et; tamamlanan adımları "
-    "tekrarlama. Bir dosyanın güncel içeriğinden emin değilsen yeniden oku."
+    "tekrarlama; özette yapıldı denen okumaları ve komutları yeniden yapma. Yalnızca "
+    "düzenleyeceğin bir dosyanın güncel içeriği gerekiyorsa onu bir kez oku."
 )

@@ -74,3 +74,22 @@ def test_git_kaynak_dosyasini_yok_saymiyor():
     assert not ignored_src, (
         ".gitignore bu kaynak dosyalarını dışlıyor; depoya girmezler (R-02):\n"
         + "\n".join(ignored_src))
+
+
+def test_depoda_api_anahtari_yok(fake_keyring):
+    """İzlenen hiçbir dosyada API anahtarı biçiminde metin olmamalı (tools/secret_scan.py).
+
+    Depo herkese açık: anahtar yalnız Windows Credential Manager'da tutulur.
+    fake_keyring: testte gerçek anahtar okunmaz; biçim kalıpları denetlenir.
+    """
+    if shutil.which("git") is None:
+        pytest.skip("git yok")
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("secret_scan", ROOT / "tools" / "secret_scan.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    hits = [(p, n) for p, n, line in mod.added_lines(True)
+            if any((m := pat.search(line)) and not mod.FAKE_MARK.search(m.group(0))
+                   for pat in mod.PATTERNS)]
+    assert not hits, f"API anahtarına benzeyen metin: {hits}"

@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+- (2026-10-17, onaylı) Proje maratonu: arayüzle uzun gerçek projeler + uzun
+  oturumda döngü ölçümü; "ortam denetimi" (eksik programı winget + bilinen
+  listeyle onaysız kurma). Otomatik modda hiç onay istememe kararı bekliyor
+  (bkz. son oturum günlüğü). Döngü analizi: docs/knowledge/LOOP_ANALYSIS.md.
 0. OpenAI/Anthropic'i gerçek anahtarla doğrula; geçerse `api/providers.py`'de
    `verified=True` ve MODEL_CAPABILITIES.md güncelle.
 1. Gerçek modellerle komut çalıştırma (run_command) ve uzun çok adımlı
