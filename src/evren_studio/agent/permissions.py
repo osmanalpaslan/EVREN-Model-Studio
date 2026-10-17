@@ -5,13 +5,15 @@
 | manuel   | Manuel                   | okuma                            | her düzenleme ve komut               |
 | kabul    | Düzenlemeleri kabul et   | okuma + proje içi düzenleme      | komutlar, korumalı dosyalar          |
 | plan     | Plan                     | okuma                            | düzenleme ve komut ENGELLİ           |
-| auto     | Otomatik                 | okuma + düzenleme + güvenli komut| riskli/bilinmeyen komut, korumalı dosya |
+| auto     | Otomatik                 | her şey (okuma, düzenleme, komut)| hiçbir şey sorulmaz                  |
 
-Otomatik moddaki komut kararı yalnızca KURALLARLA verilir (commands.py):
-güvenli listedeki komutlar çalışır, riskli kalıplar ve bilinmeyen komutlar
-kullanıcıya sorulur. Model çıktısı hiçbir modda doğrudan çalıştırılmaz.
+Otomatik mod (kullanıcı kararı, 2026-10-17): HİÇBİR işlem için onay
+istenmez — riskli/tanınmayan komut, korumalı dosyaya yazma ve gizli dosya
+okuma dahil. commands.py sınıflandırması yalnız bilgi amaçlı gerekçe olarak
+karta yazılır. Proje klasörü dışına yazma yine engellidir (tools.py). Model
+çıktısı hiçbir modda doğrudan çalıştırılmaz; araçlardan geçer.
 
-Her modda (plan hariç) geçerli korumalar:
+Manuel ve "Düzenlemeleri kabul et" modlarında geçerli korumalar:
 - Korumalı dosyalara (.env, anahtar dosyaları, .vscode/, .github/workflows/ …)
   yazma her zaman sorulur.
 - Gizli bilgi taşıyabilecek dosyaları (.env, *.pem, id_rsa …) OKUMAK her zaman
@@ -40,8 +42,8 @@ MODE_HINTS: dict[str, str] = {
     "manuel": "Her dosya değişikliği ve komut için onayınızı ister.",
     "kabul": "Proje içindeki dosyaları onaysız düzenler; komutlar için onay ister.",
     "plan": "Yalnızca okur ve plan çıkarır; dosya değiştirmez, komut çalıştırmaz.",
-    "auto": "Düzenlemeleri ve güvenli komutları onaysız çalıştırır; riskli veya "
-            "tanınmayan komutlarda sorar.",
+    "auto": "Hiçbir şey için onay istemez: tüm düzenlemeler, komutlar ve dosya "
+            "okumaları onaysız çalışır.",
 }
 DEFAULT_MODE = "manuel"
 _LEGACY = {"onayli": "manuel", "otomatik": "kabul"}
@@ -114,6 +116,7 @@ class SessionPermissions:
 
     allow_all_writes: bool = False
     allow_sensitive_reads: bool = False
+    allow_installs: bool = False       # "bu oturumda program kurulumlarına izin ver"
     command_prefixes: set[str] = field(default_factory=set)
 
     def command_allowed(self, command: str) -> bool:
@@ -132,6 +135,11 @@ def decide(mode: str, kind: str, perms: SessionPermissions,
     """(karar, gerekçe). Gerekçe arayüzde ve modele giden mesajda kullanılır."""
     mode = normalize_mode(mode)
     if kind == META:
+        return Decision.ALLOW, ""
+    if mode == "auto" and kind in (READ, WRITE, EXEC):
+        # Kullanıcı kararı (2026-10-17): Otomatik modda hiçbir işlem sorulmaz.
+        if kind == EXEC and command:
+            return Decision.ALLOW, f"Otomatik mod: {classify_command(command, root).reason}"
         return Decision.ALLOW, ""
     if kind == READ:
         if path and is_sensitive_read(path) and not perms.allow_sensitive_reads:

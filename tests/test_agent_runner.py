@@ -234,7 +234,8 @@ def test_yerel_arac_reddedilirse_metne_gecer(db, proj):
 
 
 def test_adim_siniri(db, proj):
-    responses = [ChatResult(tool_calls=[call("list_files", f"c{i}")]) for i in range(10)]
+    # Farklı parametreler: aynı çağrı tekrarı döngü bekçisine takılır (test_loop_guard.py)
+    responses = [ChatResult(tool_calls=[call("list_files", f"c{i}", depth=i + 1)]) for i in range(10)]
     client = FakeClient(responses)
     runner, history, _ = make_runner(db, client, proj, max_steps=3)
     out = runner.run(history)

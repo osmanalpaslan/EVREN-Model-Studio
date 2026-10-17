@@ -143,7 +143,9 @@ class OpenAIClient(EvrenClient):
              stream: bool = False, cancel: CancelToken | None = None,
              on_delta: Callable[[str, str], None] | None = None,
              on_reasoning: Callable[[str], None] | None = None,
-             tools: list[dict[str, Any]] | None = None, tool_choice: str | None = None) -> ChatResult:
+             tools: list[dict[str, Any]] | None = None, tool_choice: str | None = None,
+             extra_body: dict[str, Any] | None = None) -> ChatResult:
+        # extra_body EVREN'e özgüdür (reasoning_effort vb.); burada yok sayılır.
         if cancel is not None and cancel.cancelled:
             return ChatResult(model=model, finish_reason="cancelled_by_user")
         body = self.build_body(model, strip_internal_keep_state(messages), stream, tools, max_tokens)

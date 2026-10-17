@@ -102,3 +102,18 @@ kota sayfası `remaining_cr` gösterir.
 
 `SQLite model_health` tablosu: model başına son test zamanı, HTTP kodu,
 hata özeti, gecikme. Ayrıca bkz. `EVREN_STATUS_HISTORY.md`.
+
+## Düşünme ayarı, ajan davranışı ve döngü (2026-10-17, ayrıntı: LOOP_ANALYSIS.md)
+
+- `reasoning_effort: "none"` düşünmeyi kapatır (deepseek-v4-flash, qwen3.8-flash-next
+  gerçek istekle); destekleyenler kayıtta `capabilities.reasoning_effort=true`:
+  deepseek-v4-flash, deepseek-v4.1-flash, qwen3.8-flash-next, glm-5.3, mimo-v2.6-pro.
+  Düşünmesiz yanıt kalitesi düşebilir (qwen yanlış yanıt verdi); uygulama yalnız
+  boş yanıt kurtarmasında kullanır. `"low"` deepseek'te daha FAZLA düşündü.
+- `default_max_output_tokens` çoğunda 16384 (deepseek-v4.1-flash 65536); muhakeme
+  bu payı tüketirse içerik boş döner (`usage.evren.reasoning_budget_exhausted`).
+- **deepseek-v4.1-flash + metin protokolü + akış:** 5 denemenin 3'ünde araç bloğu
+  kayboldu, 2'sinde DSML artığı → bu modeli metin protokolüyle kullanma (yerel 5/5).
+- Çelişkili görevde dürüst durup bildirenler: deepseek-v4-flash, deepseek-v4.1-flash,
+  qwen3.8-flash-next, mimo-v2.6-pro. Test dosyasını değiştiren / testi kandıran:
+  auto, qwen3-vl-30b, gemma-4-31b (kural eklendikten sonra azaldı, sıfırlanmadı).

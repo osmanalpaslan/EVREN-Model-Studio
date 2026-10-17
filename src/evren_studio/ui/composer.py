@@ -26,7 +26,7 @@ SLASH_COMMANDS = {
     "/manuel": "Manuel mod: her değişiklik ve komut için onay",
     "/kabul": "Düzenlemeleri kabul et: dosyalar onaysız, komutlar onaylı",
     "/plan": "Plan modu: salt okunur, plan çıkarır",
-    "/otomatik": "Otomatik mod: düzenlemeler ve güvenli komutlar onaysız",
+    "/otomatik": "Otomatik mod: hiçbir işlem için onay istenmez",
     "/init": "Projeyi inceleyip EVREN.md proje hafızası oluştur",
     "/compact": "Konuşmayı özetleyip bağlamı küçült — /compact <odak> ile odak verin",
     "/ozet": "Konuşmayı özetle (/compact ile aynı)",

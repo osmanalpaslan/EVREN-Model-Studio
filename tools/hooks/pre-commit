@@ -9,4 +9,5 @@ elif [ -x "$ROOT/.venv/bin/python" ]; then
 else
   PY="python"
 fi
+"$PY" "$ROOT/tools/secret_scan.py" || exit 1
 exec "$PY" "$ROOT/tools/ai_memory.py" kanca

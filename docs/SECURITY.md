@@ -46,18 +46,19 @@
   doğrulanır, izin politikasından geçer. Bilinmeyen araçlar reddedilir.
 - **Modlar (Claude Code'a denk):** Manuel (her düzenleme ve komut sorulur) ·
   Düzenlemeleri kabul et (proje içi düzenlemeler onaysız, komutlar sorulur) ·
-  Plan (yalnız okuma) · Otomatik (düzenlemeler ve GÜVENLİ LİSTEDEKİ komutlar
-  onaysız; riskli ve tanınmayan komutlar sorulur). Eski anahtarlar güvenli
+  Plan (yalnız okuma) · Otomatik (HİÇBİR işlem sorulmaz — riskli komut,
+  korumalı dosyaya yazma ve gizli dosya okuma dahil; kullanıcı kararı 2026-10-17). Eski anahtarlar güvenli
   eşdeğerine çevrilir: `onayli`→Manuel, `otomatik`→Düzenlemeleri kabul et
   (asla Otomatik'e değil).
-- **Otomatik modun komut kararı yalnızca kurallarla** verilir
+- **Komut sınıflandırması** (Otomatik modda yalnız bilgi amaçlı gerekçe olarak karta yazılır, onay istemez)
   (`agent/commands.py`): salt okuma git komutları, test/derleme/lint,
-  dosya görüntüleme güvenlidir; silme, git push/reset/clean, paket kurma,
+  dosya görüntüleme güvenli sayılır; silme, git push/reset/clean, paket kurma,
   ağdan indirme, `iex`, süreç başlatma/sonlandırma, sistem ayarı, dosyaya
-  yönlendirme, satır içi kod (`python -c`) ve proje dışı yollar sorulur.
+  yönlendirme, satır içi kod (`python -c`) ve proje dışı yollar riskli sayılır.
   **Uyarı:** testler ve derleme projenin kendi kodunu çalıştırır; ajanın
-  yazdığı kod Otomatik modda `pytest` ile onaysız çalışabilir.
-- **Korumalı dosyalar (her modda sorulur):** `.env*`, `*.pem`, `*.key`, `id_rsa*`,
+  yazdığı kod ve her türlü komut Otomatik modda onaysız çalışır; riskli
+  projelerde Manuel veya Düzenlemeleri kabul et modunu kullanın.
+- **Korumalı dosyalar (Manuel ve Düzenlemeleri kabul et modlarında sorulur):** `.env*`, `*.pem`, `*.key`, `id_rsa*`,
   `.npmrc`, `.pypirc`, `.vscode/`, `.idea/`, `.github/workflows/`, `.claude/`,
   `.cursor/`, `.kilocode/` yazmaları; `.env*`, anahtar ve kimlik dosyalarını
   OKUMAK da sorulur (içerik EVREN'e gider) ve bu dosyalar aramaya dahil edilmez.
@@ -79,6 +80,18 @@
   dışına çıkmayı yasaklar; bu kurallar teknik engellerin YERİNE değil
   ÜSTÜNE uygulanır.
 - Dosyalar sekmesindeki elle kaydetme her zaman açık onay ister.
+
+## Program kurulumu (ortam denetimi)
+
+- Yalnız bilinen listeden (git, python, uv, node, pnpm, yarn, go, rust, dotnet,
+  java) ve yalnız resmi kaynaktan kurulur: Windows Paket Yöneticisi `winget`
+  (kimlikler 2026-10-17'de `winget show` ile doğrulandı) veya Node'un `npm -g`'si.
+  Listede olmayan program kurulmaz; model kurulum komutunu kendisi yazamaz.
+- Ayarlar > "Eksik program kurulumu": Otomatik (varsayılan, sormadan) / Manuel
+  (her kurulum için onay). Ajanın çalışma modundan bağımsızdır.
+- Makine kapsamlı kurulumlar Windows yönetici onayı (UAC) isteyebilir.
+- PowerShell betik politikası atlatılmaz (`-ExecutionPolicy Bypass` kullanılmaz);
+  npm araçları `.cmd` ile çağrılır.
 
 ## Repo hijyeni
 

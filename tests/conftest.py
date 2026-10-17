@@ -32,6 +32,22 @@ class FakeKeyring:
 
 
 @pytest.fixture(autouse=True)
+def _gercek_program_kurulumu_yok(monkeypatch):
+    """Testler bilgisayara ASLA gerçek program kurmaz (ortam denetimi, winget/npm).
+
+    Kurulumu deneyen test kendi sahte install'ını verir; verilmezse bu kilit
+    başarısız sonuç döndürür.
+    """
+    from evren_studio.agent import environment
+
+    def _blocked(key, *a, **k):
+        return environment.InstallResult(key, False, "", "testte gerçek kurulum kapalı")
+
+    monkeypatch.setattr(environment, "install", _blocked)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _qt_pencere_temizligi():
     """Her testten sonra açık kalan Qt pencerelerini gerçekten yok eder.
 

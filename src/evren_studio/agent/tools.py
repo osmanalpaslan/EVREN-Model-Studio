@@ -144,6 +144,17 @@ TOOL_SPECS: list[ToolSpec] = [
         }, ["command"]),
     ),
     ToolSpec(
+        "install_program", EXEC,
+        "Projenin ihtiyaç duyduğu, bilgisayarda eksik bir programı kurar (winget/npm ile, "
+        "yalnız bilinen listeden: git, python, uv, node, pnpm, yarn, go, rust, dotnet, java). "
+        "Ayara göre sorulmadan kurulur ya da kullanıcıya sorulur. Kurulumu run_command ile "
+        "kendin yapmaya çalışma.",
+        _obj({
+            "name": {"type": "string", "description": "Program adı, örn. 'pnpm', 'node', 'go'"},
+            "reason": {"type": "string", "description": "Neden gerekli (kullanıcıya gösterilir)"},
+        }, ["name"]),
+    ),
+    ToolSpec(
         "update_todos", META,
         "Çok adımlı işler için görev listesini günceller. Her çağrıda listenin "
         "TAMAMINI gönder; aynı anda yalnızca bir görev in_progress olmalı.",
@@ -288,14 +299,15 @@ class Workspace:
         return text[:10]
 
     def project_memory(self, limit: int = 20_000) -> tuple[str | None, str]:
-        """Proje talimatlarını döndürür: EVREN.md ve AGENTS.md birlikte okunur.
+        """Proje talimatlarını döndürür: EVREN.md varsa YALNIZ o; yoksa AGENTS.md,
+        o da yoksa CLAUDE.md.
 
-        AGENTS.md birçok kod ajanının ortak standardıdır; bu depoda ortak
-        geliştirici hafızası protokolünü taşır. İkisi de yoksa CLAUDE.md denenir.
+        EVREN.md varken AGENTS.md eklenmez: uzun, "ZORUNLU" adımlarla dolu bir
+        AGENTS.md küçük modelleri asıl işten uzaklaştırıyordu (2026-10-17 ölçüm:
+        tek satırlık iş 23 adım sürdü). EVREN.md kısa ve EVREN ajanına özel tutulur.
         """
-        names = [n for n in ("EVREN.md", "AGENTS.md") if (self.root / n).is_file()]
-        if not names and (self.root / "CLAUDE.md").is_file():
-            names = ["CLAUDE.md"]
+        names = next(([n] for n in ("EVREN.md", "AGENTS.md", "CLAUDE.md")
+                      if (self.root / n).is_file()), [])
         parts: list[str] = []
         used: list[str] = []
         budget = limit

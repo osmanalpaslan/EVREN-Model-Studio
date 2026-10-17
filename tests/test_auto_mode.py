@@ -94,8 +94,9 @@ def test_mod_anahtarlari_asla_daha_yetkiliye_cevrilmez():
 def test_mod_kararlari(tmp_path):
     p = SessionPermissions()
     assert decide("auto", EXEC, p, "git status", root=tmp_path)[0] == Decision.ALLOW
+    # Kullanıcı kararı (2026-10-17): Otomatik modda riskli komut da sorulmaz; gerekçe bilgi amaçlı
     d, reason = decide("auto", EXEC, p, "pip install x", root=tmp_path)
-    assert d == Decision.ASK and "paket" in reason
+    assert d == Decision.ALLOW and "paket" in reason
     assert decide("kabul", EXEC, p, "git status", root=tmp_path)[0] == Decision.ASK, \
         "Düzenlemeleri kabul modunda komutlar yine sorulur"
     assert decide("manuel", EXEC, p, "git status")[0] == Decision.ASK
@@ -109,18 +110,19 @@ def test_korumali_dosyalar_ve_gizli_okumalar():
     for path in (".env", ".env.local", ".vscode/settings.json", ".github/workflows/ci.yml",
                  "keys/server.pem", "id_rsa"):
         assert is_protected_write(path), path
-        for mode in ("kabul", "auto"):
-            assert decide(mode, WRITE, p, path=path)[0] == Decision.ASK, (mode, path)
+        assert decide("kabul", WRITE, p, path=path)[0] == Decision.ASK, path
+        assert decide("auto", WRITE, p, path=path)[0] == Decision.ALLOW, path
     assert not is_protected_write("src/app.py")
     assert not is_protected_write("src/evren_studio/secrets.py"), "kaynak modül korumalı sayılmamalı"
     assert is_sensitive_read(".env") and is_sensitive_read("config/.env.local")
     assert not is_sensitive_read(".env.example")
     assert not is_sensitive_read("README.md")
-    assert decide("auto", READ, p, path=".env")[0] == Decision.ASK
+    assert decide("auto", READ, p, path=".env")[0] == Decision.ALLOW
     assert decide("plan", READ, p, path=".env")[0] == Decision.ASK
+    assert decide("kabul", READ, p, path=".env")[0] == Decision.ASK
     assert decide("auto", READ, p, path="README.md")[0] == Decision.ALLOW
     p.allow_sensitive_reads = True
-    assert decide("auto", READ, p, path=".env")[0] == Decision.ALLOW
+    assert decide("kabul", READ, p, path=".env")[0] == Decision.ALLOW
 
 
 def test_aramada_gizli_dosya_atlanir(tmp_path):
@@ -177,7 +179,7 @@ def _runner(tmp_path, responses, mode, decision="deny"):
 
 
 @pytest.mark.skipif(os.name != "nt", reason="PowerShell gerekir")
-def test_otomatik_mod_guvenli_komutu_onaysiz_calistirir(tmp_path):
+def test_otomatik_mod_hicbir_seyi_sormaz(tmp_path):
     r, db, sid, ev, client, proj = _runner(tmp_path, [
         ChatResult(tool_calls=[_call("run_command", "a", command="echo merhaba"),
                                _call("run_command", "b", command="make build"),
@@ -185,20 +187,31 @@ def test_otomatik_mod_guvenli_komutu_onaysiz_calistirir(tmp_path):
         ChatResult(content="tamam", finish_reason="stop"),
     ], "auto")
     r.run(db.get_session_messages(sid))
-    assert [a.call.id for a in ev.approvals] == ["b"], "yalnız tanınmayan komut sorulmalı"
-    assert "güvenli listede olmayan" in ev.approvals[0].reason
+    assert ev.approvals == [], "Otomatik modda hiçbir şey sorulmamalı (kullanıcı kararı)"
     tools = {m["tool_call_id"]: m for m in db.get_session_messages(sid) if m["role"] == "tool"}
     assert "merhaba" in tools["a"]["content"] and tools["a"]["meta"]["auto_approved"]
-    assert tools["b"]["meta"].get("denied")
+    assert not tools["b"]["meta"].get("denied") and tools["b"]["meta"]["auto_approved"]
+    assert "güvenli listede olmayan" in tools["b"]["meta"]["auto_reason"]
     assert (proj / "app.py").read_text(encoding="utf-8") == "x = 2\n"
     assert tools["c"]["meta"]["auto_approved"]
+
+
+def test_otomatik_modda_gizli_dosya_sorulmadan_okunur(tmp_path):
+    r, db, sid, ev, client, proj = _runner(tmp_path, [
+        ChatResult(tool_calls=[_call("read_file", "a", path=".env")]),
+        ChatResult(content="tamam", finish_reason="stop"),
+    ], "auto")
+    r.run(db.get_session_messages(sid))
+    assert ev.approvals == []
+    tools = {m["tool_call_id"]: m for m in db.get_session_messages(sid) if m["role"] == "tool"}
+    assert "1234" in tools["a"]["content"]
 
 
 def test_gizli_dosya_okumasi_sorulur_reddedilirse_okunmaz(tmp_path):
     r, db, sid, ev, client, proj = _runner(tmp_path, [
         ChatResult(tool_calls=[_call("read_file", "a", path=".env"), _call("read_file", "b", path="app.py")]),
         ChatResult(content="tamam", finish_reason="stop"),
-    ], "auto")
+    ], "kabul")
     r.run(db.get_session_messages(sid))
     assert [a.kind for a in ev.approvals] == ["read"]
     tools = {m["tool_call_id"]: m for m in db.get_session_messages(sid) if m["role"] == "tool"}

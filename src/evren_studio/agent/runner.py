@@ -49,9 +49,104 @@ from .tools import (
     validate_todos,
 )
 
-DEFAULT_MAX_STEPS = 40
+DEFAULT_MAX_STEPS = 80
 CHARS_PER_TOKEN = 3.5
-TRIMMED_NOTE = "[Bağlam sınırı nedeniyle eski araç çıktısı kısaltıldı; gerekirse yeniden oku.]"
+# "gerekirse yeniden oku" demiyoruz: modeli aynı dosyaları tekrar okumaya itiyordu (döngü).
+TRIMMED_NOTE = ("[Bu araç çıktısı bağlam sınırı nedeniyle kısaltıldı. İşlem zaten yapıldı; "
+                "yalnızca içeriğe gerçekten yeniden ihtiyacın varsa tekrar çağır.]")
+
+# ---- döngü bekçisi (2026-10-17 gerçek API ölçümü, docs/knowledge/LOOP_ANALYSIS.md) ----
+# Aynı araç + aynı parametre, arada başarılı dosya değişikliği olmadan:
+REPEAT_WARN = 2        # 2. kez → sonuca uyarı eklenir
+REPEAT_STOP = 3        # 3. kez → tur durur ("loop"), kullanıcı karar verir
+# Bir dosya bu tur içinde daha önceki bir hâline geri dönerse (ileri-geri düzenleme):
+FLIPFLOP_STOP = 2      # 1. kez uyarı, 2. kez tur durur
+# glm-5.3 metin protokolünde tek yanıtta 39 çağrı (çoğu uydurma dosya) üretti:
+MAX_CALLS_PER_STEP = 12
+REPEAT_NOTE = ("\n\n[Döngü uyarısı] Bu çağrıyı bu turda aynı parametrelerle zaten {n} kez yaptın ve "
+               "arada dosya değişmedi; sonuç aynı olacak. Farklı bir yol dene; ilerleyemiyorsan dur ve "
+               "kullanıcıya neyin engel olduğunu açıkça söyle.")
+FLIPFLOP_NOTE = ("\n\n[Döngü uyarısı] {path} dosyası bu turda daha önceki bir hâline geri döndü "
+                 "(aynı değişikliği ileri-geri yapıyorsun). Gereksinimler çelişiyor olabilir: test "
+                 "dosyalarını değiştirmeden veya testi kandırmadan çözemiyorsan dur ve kullanıcıya bildir.")
+NUDGE_EMPTY = ("[Otomatik hatırlatma] Son yanıtın boş geldi (muhtemelen düşünme bütçesi tükendi). "
+               "Kısa düşün; ya bir sonraki aracı çağır ya da sonucu kısaca yaz.")
+NUDGE_INTENT = ("[Otomatik hatırlatma] Ne yapacağını söyleyip araç çağırmadan durdun. Söylediğin işi "
+                "şimdi araçlarla yap; iş zaten bittiyse ne yaptığını özetle.")
+NUDGE_REPEAT = ("[Otomatik hatırlatma] Son yanıtın aynı cümleleri tekrar tekrar yazıyordu ve araç "
+                "çağırmadın. Tekrarı bırak: yapacağın işin aracını ŞİMDİ çağır; iş bittiyse kısa bir "
+                "özet yaz, bitmediyse neyin eksik olduğunu açıkça söyle.")
+REPEAT_COLLAPSED = "\n\n[Tekrar eden metin kısaltıldı.]"
+_INTENT_RE = None
+
+
+class _StepCancel:
+    """Kullanıcı iptaline ek olarak, akışta metin tekrarı görülünce isteği kesmeye yarar."""
+
+    def __init__(self, outer: Any):
+        self.outer = outer
+        self.repetition = False
+
+    @property
+    def cancelled(self) -> bool:
+        return self.repetition or bool(self.outer is not None and getattr(self.outer, "cancelled", False))
+
+
+STREAM_REPEAT_MIN = 8      # akışta bu kadar tekrar eden cümle görülürse istek kesilir
+MAX_JSON_400_RETRIES = 2   # tur başına, sunucunun model JSON'unu okuyamadığı 400'lerde yeniden deneme
+
+
+def looks_like_model_json_error(message: str) -> bool:
+    """400 mesajı, sunucunun MODEL çıktısındaki JSON'u ayrıştıramadığını mı gösteriyor?"""
+    m = (message or "").lower()
+    return any(s in m for s in ("expecting ',' delimiter", "expecting value", "expecting property name",
+                                "unterminated string", "extra data", "invalid control character",
+                                "jsondecodeerror", "invalid \\escape"))
+
+
+def collapse_repetition(text: str, min_dup: int = 3) -> tuple[str, bool]:
+    """Aynı cümleleri defalarca yazan (dejenere) yanıtı kısaltır.
+
+    auto (2026-10-17 maraton): araç çağırmadan "dosyayı okuyayım. Testleri
+    çalıştıracağım. …" cümlelerini onlarca kez yazdı; koşucu bunu yanıt sandı.
+    Dönüş: (kısaltılmış metin, tekrar vardı mı). Kısa (<12 harf) parçalar ve
+    birkaç tekrar normal sayılır; en az 3 tekrar ve parçaların %30'u gerekir.
+    """
+    import re
+
+    if not text or len(text) < 120:
+        return text, False
+    parts = [p for p in re.split(r"(?<=[.!?…:])\s+|\n+", text.strip()) if p.strip()]
+    seen: set[str] = set()
+    kept: list[str] = []
+    dup = 0
+    for p in parts:
+        key = re.sub(r"\W+", " ", p.lower()).strip()
+        if len(key) >= 12 and key in seen:
+            dup += 1
+            continue
+        seen.add(key)
+        kept.append(p)
+    if dup >= min_dup and dup >= 0.3 * len(parts):
+        return " ".join(kept) + REPEAT_COLLAPSED, True
+    return text, False
+
+
+def looks_like_unfinished_intent(text: str) -> bool:
+    """Kısa ve 'yapacağım/inceleyeyim' gibi niyet bildiren bir son yanıt mı?"""
+    global _INTENT_RE
+    import re
+
+    if _INTENT_RE is None:
+        _INTENT_RE = re.compile(
+            r"(eyim|ayım|eceğim|acağım|elim|alım|iyorum|ıyorum|uyorum|üyorum|let me[^.]*|i will[^.]*)"
+            r"[\s.:!…]*$", re.I)
+    t = (text or "").strip()
+    return bool(t) and len(t) <= 300 and bool(_INTENT_RE.search(t))
+
+
+def call_signature(call: "ToolCall") -> str:
+    return call.name + " " + json.dumps(call.arguments, ensure_ascii=False, sort_keys=True)
 
 
 # ---- veri yapıları --------------------------------------------------------------
@@ -166,7 +261,7 @@ class SessionStore(Protocol):
 
 @dataclass
 class TurnOutcome:
-    stopped: str = "done"            # done | cancelled | max_steps | error
+    stopped: str = "done"            # done | cancelled | max_steps | loop | error | context_limit | budget
     steps: int = 0
     protocol: str = "native"
     last_text: str = ""
@@ -275,7 +370,9 @@ class AgentRunner:
                  command_timeout: int = 120, output_limit: int = 20_000,
                  context_tokens: int | None = None, turn_id: int | None = None,
                  hard_context_limit: int | None = None,
-                 before_model_call: Any = None):
+                 before_model_call: Any = None,
+                 stall_retry_body: dict[str, Any] | None = None,
+                 install_mode: str = "otomatik"):
         self.client = client
         self.model = model
         self.session_id = session_id
@@ -299,6 +396,16 @@ class AgentRunner:
         # Her model çağrısından ÖNCE çağrılır; None → devam, metin → tur o
         # nedenle durur (ör. "budget": aylık bütçe doldu, arayüz onay ister).
         self.before_model_call = before_model_call
+        # Boş yanıttan sonra yapılan TEK yeniden denemede isteğe eklenecek alanlar
+        # (ör. {"reasoning_effort": "none"}; yalnız modeli destekliyorsa verilir).
+        self.stall_retry_body = stall_retry_body
+        # Ortam denetimi: "otomatik" → eksik program sorulmadan kurulur, "manuel" → sorulur.
+        # Ajanın çalışma modundan bağımsızdır (kullanıcı kararı 2026-10-17).
+        self.install_mode = install_mode if install_mode in ("otomatik", "manuel") else "otomatik"
+        self._env_section: str | None = None
+        self._nudge: str | None = None          # sonraki çağrıya eklenecek geçici hatırlatma
+        self._extra_body: dict[str, Any] | None = None
+        self._writes: list[tuple[str, str | None, str | None]] = []  # (yol, önce, sonra) — son araç
         self.toolbox = (
             ToolBox(workspace, command_timeout=command_timeout, output_limit=output_limit,
                     skip_file=is_sensitive_read)
@@ -319,8 +426,17 @@ class AgentRunner:
     def _system(self) -> str:
         if not self.agentic:
             return build_chat_system()
+        if self._env_section is None:
+            from . import environment
+
+            try:
+                self._env_section = environment.prompt_section(
+                    environment.quick_status(self.workspace.root), self.install_mode)
+            except OSError:
+                self._env_section = ""
         return build_agent_system(self.workspace, normalize_mode(self.mode), self._specs(),
-                                  text_protocol=(self.protocol == "text"))
+                                  text_protocol=(self.protocol == "text"),
+                                  env_section=self._env_section)
 
     def _cancelled(self) -> bool:
         return bool(self.cancel is not None and getattr(self.cancel, "cancelled", False))
@@ -336,18 +452,37 @@ class AgentRunner:
     def _call_model(self, history: list[dict]):
         visible = trim_for_context(history, self.context_tokens)
         messages = to_api_messages(self._system(), visible, self.protocol)
+        if self._nudge:
+            # Geçici: kayda yazılmaz, yalnız bu çağrıda gider.
+            messages.append({"role": "user", "content": self._nudge})
+            self._nudge = None
+        extra_body, self._extra_body = self._extra_body, None
         tools = None
         if self.agentic and self.protocol == "native":
             tools = [s.openai_schema() for s in self._specs()]
 
+        guard = _StepCancel(self.cancel)
+        streamed: list[str] = []
+
         def on_delta(text: str, _finish: str = "") -> None:
             self.events.text_delta(text)
+            streamed.append(text)
+            # Akışta aynı cümleler dönüp duruyorsa isteği erken kes (zaman ve kota).
+            if len(streamed) % 25 == 0 and not guard.repetition:
+                if collapse_repetition("".join(streamed), min_dup=STREAM_REPEAT_MIN)[1]:
+                    guard.repetition = True
 
-        return self.client.chat(
-            self.model, messages, stream=self.stream, cancel=self.cancel,
+        kwargs: dict[str, Any] = {}
+        if extra_body:
+            kwargs["extra_body"] = extra_body
+        result = self.client.chat(
+            self.model, messages, stream=self.stream, cancel=guard,
             on_delta=on_delta, on_reasoning=self.events.reasoning_delta,
-            tools=tools,
+            tools=tools, **kwargs,
         )
+        if guard.repetition and not self._cancelled():
+            result.finish_reason = "repetition"
+        return result
 
     # -- ana döngü ---------------------------------------------------------------------
 
@@ -356,6 +491,13 @@ class AgentRunner:
         outcome = TurnOutcome(protocol=self.protocol)
         step = 0
         fallback_used = False
+        # döngü bekçisi durumu (tur başına)
+        repeats: dict[str, int] = {}                 # imza → son yazmadan beri kaç kez
+        file_states: dict[str, list[int]] = {}       # yol → içerik özetleri (sırayla)
+        flipflops = 0
+        nudged: set[str] = set()
+        loop_reason = ""
+        json_retries = 0
         while step < self.max_steps:
             if self._cancelled():
                 outcome.stopped = "cancelled"
@@ -372,6 +514,16 @@ class AgentRunner:
             try:
                 result = self._call_model(history)
             except ApiError as exc:
+                # EVREN, modelin ürettiği bozuk araç JSON'unu kendisi ayrıştıramayınca 400
+                # döndürüyor ("Expecting ',' delimiter"); bu tek seferlik — aynı adımı yeniden dene,
+                # yerel protokolü bırakma (2026-10-17 maraton: auto 3 denemede 1 kez).
+                if (exc.kind == ErrorKind.VALIDATION and json_retries < MAX_JSON_400_RETRIES
+                        and looks_like_model_json_error(exc.message)):
+                    json_retries += 1
+                    self.events.status("Sunucu, modelin ürettiği araç çağrısını okuyamadı (400); "
+                                       "aynı adım yeniden deneniyor.")
+                    step -= 1
+                    continue
                 if (self.agentic and self.protocol == "native" and self.allow_fallback
                         and not fallback_used and exc.kind == ErrorKind.VALIDATION):
                     fallback_used = True
@@ -391,6 +543,7 @@ class AgentRunner:
                 content, text_calls, parse_errors = textproto.parse_tool_calls(content)
                 raw_calls += text_calls
             calls = [ToolCall.from_raw(c) for c in raw_calls] if self.agentic else []
+            content, repetitive = collapse_repetition(content)
 
             cancelled = result.finish_reason == "cancelled_by_user"
             duration = round(time.monotonic() - t0, 1)
@@ -423,14 +576,48 @@ class AgentRunner:
                                tool_call_id=call.id, name=call.name, meta={"error": True})
                 break
             if not calls and not parse_errors:
+                stall = ("repeat" if repetitive else self._stall_kind(content, result)) if self.agentic else None
+                if stall and stall not in nudged and step < self.max_steps:
+                    # Boş yanıt / "inceleyeyim" deyip durma / metin tekrarı: bir kez otomatik dürt.
+                    nudged.add(stall)
+                    self._nudge = {"empty": NUDGE_EMPTY, "repeat": NUDGE_REPEAT}.get(stall, NUDGE_INTENT)
+                    if stall == "empty" and self.stall_retry_body:
+                        self._extra_body = dict(self.stall_retry_body)
+                    self.events.status(
+                        "Model boş yanıt döndürdü; kısa bir hatırlatmayla bir kez yeniden deneniyor."
+                        if stall == "empty" else
+                        "Model işi yapmadan durdu; devam etmesi için bir kez hatırlatıldı.")
+                    continue
+                if not content.strip():
+                    self.events.status("Model boş yanıt döndürdü (düşünme bütçesi tükenmiş olabilir). "
+                                       "Başka bir model seçebilir veya mesajı yeniden gönderebilirsiniz.")
                 outcome.stopped = "done"
                 break
 
-            for call in calls:
+            for i, call in enumerate(calls):
                 if self._cancelled():
                     res = ToolResult(False, "İşlem kullanıcı tarafından iptal edildi.", "İptal edildi")
+                elif loop_reason:
+                    # Döngü bu yanıtın içinde algılandı: kalan çağrılar çalıştırılmaz.
+                    res = ToolResult(False, "Döngü algılandığı için bu çağrı çalıştırılmadı.",
+                                     "Atlandı (döngü)")
+                elif i >= MAX_CALLS_PER_STEP:
+                    res = ToolResult(False, f"Tek yanıtta en fazla {MAX_CALLS_PER_STEP} araç çağrısı "
+                                     "çalıştırılır; bu çağrı atlandı. Gerçekten gerekiyorsa sonraki "
+                                     "adımda iste.", "Atlandı (çok fazla çağrı)")
                 else:
+                    self._writes = []
                     res = self._execute(call)
+                    note, stop = self._guard(call, res, repeats, file_states)
+                    if note:
+                        res.content += note
+                    if stop == "flipflop":
+                        flipflops += 1
+                        if flipflops >= FLIPFLOP_STOP:
+                            loop_reason = loop_reason or (
+                                f"bir dosya tekrar tekrar eski hâline döndürüldü ({res.extra.get('path', '?')})")
+                    elif stop:
+                        loop_reason = loop_reason or stop
                 self._save(history, "tool", res.content, tool_call_id=call.id, name=call.name,
                            meta={"error": not res.ok, "summary": res.summary, **res.extra})
             for err in parse_errors:
@@ -440,6 +627,12 @@ class AgentRunner:
             if self._cancelled():
                 outcome.stopped = "cancelled"
                 break
+            if loop_reason:
+                outcome.stopped = "loop"
+                self.events.status(
+                    f"Döngü algılandı: {loop_reason}. Model aynı işi sonuç almadan tekrarlıyor; "
+                    "tur durduruldu. Yeni bir yönlendirme yazın ya da başka bir model deneyin.")
+                break
             if self.hard_context_limit and self._history_tokens(history) >= self.hard_context_limit:
                 outcome.stopped = "context_limit"
                 break
@@ -447,6 +640,49 @@ class AgentRunner:
             outcome.stopped = "max_steps"
             self.events.status(f"Adım sınırına ({self.max_steps}) ulaşıldı; devam etmek için mesaj gönderin.")
         return outcome
+
+    @staticmethod
+    def _stall_kind(content: str, result: Any) -> str | None:
+        """Araçsız son yanıt bitmemiş iş gibi mi görünüyor? → "empty" | "intent" | None"""
+        if not (content or "").strip():
+            return "empty"
+        if looks_like_unfinished_intent(content):
+            return "intent"
+        return None
+
+    def _guard(self, call: ToolCall, res: ToolResult, repeats: dict[str, int],
+               file_states: dict[str, list[int]]) -> tuple[str, str]:
+        """Döngü bekçisi. Dönüş: (sonuca eklenecek not, durma nedeni | "flipflop" | "")."""
+        spec = SPEC_BY_NAME.get(call.name)
+        if spec is None or spec.kind == META:
+            return "", ""
+        if spec.kind == WRITE:
+            if not res.ok:
+                key = call_signature(call)
+                repeats[key] = repeats.get(key, 0) + 1
+                if repeats[key] >= REPEAT_STOP:
+                    return "", f"aynı başarısız düzenleme {repeats[key]} kez denendi ({call.name})"
+                if repeats[key] >= REPEAT_WARN:
+                    return REPEAT_NOTE.format(n=repeats[key] - 1), ""
+                return "", ""
+            # Başarılı yazma: dosyalar değişti, okuma/komut tekrarları yeniden sayılır.
+            repeats.clear()
+            note, stop = "", ""
+            for path, before, after in self._writes:
+                h = hash(after)
+                states = file_states.setdefault(path, [hash(before)])
+                if len(states) >= 2 and h in states[:-1]:
+                    note, stop = FLIPFLOP_NOTE.format(path=path), "flipflop"
+                states.append(h)
+            return note, stop
+        key = call_signature(call)
+        repeats[key] = repeats.get(key, 0) + 1
+        n = repeats[key]
+        if n >= REPEAT_STOP:
+            return "", f"“{describe_call(call)}” {n} kez aynı sonuçla tekrarlandı"
+        if n >= REPEAT_WARN:
+            return REPEAT_NOTE.format(n=n - 1), ""
+        return "", ""
 
     def _history_tokens(self, history: list[dict]) -> int:
         return estimate_tokens(to_api_messages("", history, self.protocol)) + 2_500
@@ -467,7 +703,9 @@ class AgentRunner:
             return ToolResult(False, reason, "Plan modunda engellendi")
         self.events.tool_started(call, describe_call(call))
         try:
-            if spec.kind == READ:
+            if call.name == "install_program":
+                res = self._run_install(call)
+            elif spec.kind == READ:
                 res = self._run_read(call)
             elif spec.kind == META:
                 res = self._run_todos(call)
@@ -537,6 +775,8 @@ class AgentRunner:
                 self.perms.allow_all_writes = True
             elif kind == READ:
                 self.perms.allow_sensitive_reads = True
+            elif kind == "install":
+                self.perms.allow_installs = True
             elif prefix:
                 self.perms.command_prefixes.add(prefix)
         return decision in (ApprovalRequest.ALLOW, ApprovalRequest.ALLOW_SESSION), req.feedback
@@ -561,6 +801,7 @@ class AgentRunner:
                 return ToolResult(False, msg, f"Reddedildi: {change.rel_path}",
                                   {"diff": change.diff, "path": change.rel_path, "denied": True})
         self.toolbox.apply_change(change)
+        self._writes.append((change.rel_path, change.before, change.after))
         change_id = self.store.add_file_change(self.session_id, self.turn_id, change.rel_path,
                                                change.before, change.after)
         self.events.file_changed(change_id, change)
@@ -571,6 +812,58 @@ class AgentRunner:
             extra["auto_approved"] = True
         return ToolResult(True, f"{verb}: {change.rel_path} (+{added} −{removed} satır).",
                           f"{verb}: {change.rel_path}  +{added} −{removed}", extra)
+
+    def _run_install(self, call: ToolCall) -> ToolResult:
+        """Ortam denetimi: bilinen listedeki eksik programı ayara göre sorarak/sormadan kurar."""
+        from . import environment as envmod
+
+        name = str(_req(call.arguments, "name"))
+        key = envmod.normalize_tool(name)
+        if key is None:
+            known = ", ".join(sorted(envmod.KNOWN_TOOLS))
+            return ToolResult(False, f"'{name}' bilinen kurulum listesinde yok (kurulabilenler: {known}). "
+                              "Kullanıcıya bu programı kendisinin kurması gerektiğini söyle.",
+                              f"Bilinmeyen program: {name}")
+        tool = envmod.KNOWN_TOOLS[key]
+        exe = envmod.find_exe(tool)
+        if exe:
+            return ToolResult(True, f"{tool.title} zaten kurulu: {exe}", f"Zaten kurulu: {tool.title}")
+        plan = envmod.describe_plan(key)
+        reason = str(call.arguments.get("reason") or "").strip()
+        asked = False
+        if self.install_mode != "otomatik" and not self.perms.allow_installs:
+            asked = True
+            ok, feedback = self._approve(
+                call, "install", f"{tool.title} kurulsun mu?", plan,
+                reason=reason or "Proje bu programa ihtiyaç duyuyor; bilgisayarda kurulu değil.")
+            if not ok:
+                msg = (f"Kullanıcı {tool.title} kurulumunu reddetti. Program olmadan devam etmenin "
+                       "yolunu bul ya da kullanıcıya programı kendisinin kurabileceğini söyle.")
+                if feedback:
+                    msg += f" Kullanıcının notu: {feedback}"
+                return ToolResult(False, msg, f"Kurulum reddedildi: {tool.title}",
+                                  {"command": plan, "denied": True})
+        result = envmod.install(key, on_output=lambda chunk: self.events.tool_output(call, chunk),
+                                cancel=self.cancel)
+        self._env_section = None          # sonraki istemde güncel durum
+        steps = ("\n" + "\n".join(result.steps)) if result.steps else ""
+        if result.ok:
+            text = f"{tool.title} kuruldu" + (f" (sürüm {result.version})" if result.version else "") + "."
+            if result.needs_restart:
+                text += (" Kurulum başarılı ama program bu oturumda henüz bulunamıyor; gerekirse "
+                         "kullanıcıdan EVREN Studio'yu yeniden başlatmasını iste.")
+            if tool.npm_package and result.command.startswith("npm"):
+                text += (f" PowerShell'de `{tool.exes[0]}.cmd` olarak çağır (betik politikası "
+                         f"`{tool.exes[0]}.ps1` kabuğunu engelleyebilir).")
+            summary = f"Kuruldu: {tool.title}" + (f" {result.version}" if result.version else "")
+        else:
+            text = f"{tool.title} kurulamadı. Komut: {result.command or plan}"
+            summary = f"Kurulamadı: {tool.title}"
+        return ToolResult(result.ok, text + steps + ("\n" + result.output[-1500:] if result.output else ""),
+                          summary, {"command": result.command or plan,
+                                    "output": result.output[-4000:],
+                                    "auto_approved": not asked,
+                                    "auto_reason": "Program kurulumu: Otomatik" if not asked else ""})
 
     def _run_exec(self, call: ToolCall) -> ToolResult:
         command = _req(call.arguments, "command").strip()
@@ -620,5 +913,6 @@ def describe_call(call: ToolCall) -> str:
         "write_file": lambda: f"Yazılıyor: {a.get('path', '?')}",
         "edit_file": lambda: f"Düzenleniyor: {a.get('path', '?')}",
         "run_command": lambda: f"Komut: {a.get('command', '')}",
+        "install_program": lambda: f"Program kuruluyor: {a.get('name', '?')}",
         "update_todos": lambda: "Görev listesi güncelleniyor",
     }.get(call.name, lambda: call.name)()

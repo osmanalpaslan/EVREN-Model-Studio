@@ -495,6 +495,10 @@ class ApprovalWidget(QFrame):
             lay.addWidget(DiffView(request.detail, max_lines=24))
         elif request.kind == "read":
             lay.addWidget(faint_label(f"Dosya: {request.detail} — içeriği EVREN API'sine gönderilecek.", "dim"))
+        elif request.kind == "install":
+            lay.addWidget(CodeView(f"PS> {request.detail}", max_lines=4))
+            lay.addWidget(faint_label("Program bilgisayara kurulur (winget/npm, yalnız bilinen listeden). "
+                                      "Ayarlar > Eksik program kurulumu: Otomatik yapılırsa sorulmaz."))
         else:
             lay.addWidget(CodeView(f"PS> {request.detail}", max_lines=6))
             lay.addWidget(faint_label("Komut proje klasöründe çalışır. Çıktısı modele gönderilir."))
@@ -503,7 +507,7 @@ class ApprovalWidget(QFrame):
         lay.addWidget(self.feedback)
         row = QHBoxLayout()
         row.setSpacing(8)
-        allow = QPushButton("Onayla")
+        allow = QPushButton("Kur" if request.kind == "install" else "Onayla")
         allow.setProperty("variant", "primary")
         allow.setIcon(icons.icon("check", theme.current().on_accent, 16))
         allow.clicked.connect(lambda: self._decide("allow"))
@@ -511,6 +515,8 @@ class ApprovalWidget(QFrame):
             session_text = "Bu oturumda tüm düzenlemelere izin ver"
         elif request.kind == "read":
             session_text = "Bu oturumda gizli dosya okumalarına izin ver"
+        elif request.kind == "install":
+            session_text = "Bu oturumda program kurulumlarına izin ver"
         else:
             session_text = f"“{request.prefix}” komutlarına bu oturumda izin ver"
         always = QPushButton(session_text)
@@ -702,6 +708,72 @@ class NoteWidget(QWidget):
         lab.setWordWrap(True)
         lay.addWidget(lab)
         lay.addStretch(1)
+
+
+class InstallCard(QFrame):
+    """Ortam denetimi kartı: eksik programlar. Manuel modda Kur / Şimdi değil düğmeleri.
+
+    Kullanıcı kararı (2026-10-17): Ayarlar > "Eksik program kurulumu" Manuel ise
+    kurulum bu kartla onaylanır; Otomatik ise kart yalnız ilerlemeyi gösterir.
+    """
+
+    install_requested = Signal()
+    dismissed = Signal()
+
+    def __init__(self, title: str, lines: list[str], ask: bool, parent=None):
+        super().__init__(parent)
+        self.setObjectName("ApprovalBox")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 10, 12, 12)
+        lay.setSpacing(6)
+        head = QHBoxLayout()
+        ic = QLabel()
+        ic.setPixmap(icons.pixmap("spark", theme.current().accent, 16))
+        head.addWidget(ic)
+        self.title = QLabel(title)
+        self.title.setStyleSheet("font-weight: 600;")
+        self.title.setWordWrap(True)
+        head.addWidget(self.title, 1)
+        lay.addLayout(head)
+        self.body = QLabel("\n".join(lines))
+        self.body.setWordWrap(True)
+        self.body.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        lay.addWidget(self.body)
+        self.buttons: list[QPushButton] = []
+        if ask:
+            row = QHBoxLayout()
+            row.setSpacing(8)
+            self.install_btn = QPushButton("Kur")
+            self.install_btn.setProperty("variant", "primary")
+            self.install_btn.setIcon(icons.icon("check", theme.current().on_accent, 16))
+            self.install_btn.clicked.connect(self._install)
+            later = QPushButton("Şimdi değil")
+            later.setProperty("variant", "ghost")
+            later.clicked.connect(self._dismiss)
+            row.addWidget(self.install_btn)
+            row.addWidget(later)
+            row.addStretch(1)
+            lay.addLayout(row)
+            self.buttons = [self.install_btn, later]
+
+    def _lock(self) -> None:
+        for b in self.buttons:
+            b.setEnabled(False)
+
+    def _install(self) -> None:
+        self._lock()
+        self.install_requested.emit()
+
+    def _dismiss(self) -> None:
+        self._lock()
+        self.append_line("Kurulum ertelendi. Ajan gerekirse yine sorar; Ayarlar'dan Otomatik yapılabilir.")
+        self.dismissed.emit()
+
+    def set_title(self, text: str) -> None:
+        self.title.setText(text)
+
+    def append_line(self, text: str) -> None:
+        self.body.setText(self.body.text() + "\n" + text)
 
 
 class ErrorCard(QFrame):

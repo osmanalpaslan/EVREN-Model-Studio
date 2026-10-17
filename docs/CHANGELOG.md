@@ -1,5 +1,40 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Döngü önleme (ajan tekrara düşmesin)
+
+### Eklendi
+
+- **Ortam denetimi ve program kurulumu**: klasör bağlanınca gereken programlar
+  denetlenir; eksikler Ayarlar > "Eksik program kurulumu" seçimine göre Otomatik
+  (sormadan) veya Manuel ("Kurulsun mu?" bildirimi) kurulur. Ajan `install_program`
+  aracıyla da isteyebilir. Kurulum winget/npm ile, yalnız bilinen listeden.
+- **Döngü bekçisi**: ajan aynı aracı aynı parametrelerle (arada dosya değişmeden)
+  ikinci kez çağırırsa modele uyarı gider, üçüncüde tur durur ve size bildirilir.
+  Bir dosya bu tur içinde eski bir hâline geri dönerse (ileri-geri düzenleme)
+  aynı şekilde uyarı, tekrarında durma.
+- **Boş yanıt / "inceleyeyim" deyip durma**: model bir kez otomatik hatırlatılır;
+  boş yanıtta (düşünme bütçesi tükenmesi) destekleyen EVREN modelinde o deneme
+  düşünmesiz yapılır. Yine boşsa ekranda not çıkar.
+- **Metin tekrarı denetimi**: model araç çağırmadan aynı cümleleri tekrar tekrar
+  yazarsa metin kısaltılır, model bir kez yönlendirilir; akışta istek erken kesilir.
+- **Sunucu 400 (bozuk araç JSON'u)**: aynı adım yeniden denenir, yerel araç
+  çağrısı bırakılmaz.
+- **Proje maratonu** (tests/e2e_marathon_real_api.py): gerçek arayüzle 3 proje
+  baştan sona; kabul testleri dışarıdan.
+- **API anahtarı koruması**: commit'e anahtar giremez (tools/secret_scan.py,
+  ön-commit kancası ve test). Depoda/geçmişte anahtar olmadığı doğrulandı.
+
+### Değişti
+
+- **Otomatik mod hiçbir işlem için onay istemez** (kullanıcı kararı): riskli
+  komutlar, korumalı dosyalar ve gizli dosya okuma dahil. Durdurmak için Esc.
+- Tur başına adım sınırı varsayılanı 40 → 80 (eski varsayılan kendiliğinden taşınır).
+- Proje hafızası: kökte EVREN.md varsa ajana yalnız o verilir (uzun AGENTS.md
+  ajanı asıl işten uzaklaştırıyordu). Bu depoya kısa EVREN.md eklendi.
+- Ajan kuralları: tekrar etmeme, iki başarısızlıktan sonra yol değiştirme veya
+  durma, test dosyalarını değiştirmeme/kandırmama, yapmadığını yaptım dememe.
+- Ayrıntı ve ölçümler: docs/knowledge/LOOP_ANALYSIS.md.
+
 ## Yayınlanmamış — Varsayılan motor auto, seçimler hatırlanır
 
 ### Değişti
