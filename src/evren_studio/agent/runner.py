@@ -51,7 +51,46 @@ from .tools import (
 
 DEFAULT_MAX_STEPS = 40
 CHARS_PER_TOKEN = 3.5
-TRIMMED_NOTE = "[Bağlam sınırı nedeniyle eski araç çıktısı kısaltıldı; gerekirse yeniden oku.]"
+# "gerekirse yeniden oku" demiyoruz: modeli aynı dosyaları tekrar okumaya itiyordu (döngü).
+TRIMMED_NOTE = ("[Bu araç çıktısı bağlam sınırı nedeniyle kısaltıldı. İşlem zaten yapıldı; "
+                "yalnızca içeriğe gerçekten yeniden ihtiyacın varsa tekrar çağır.]")
+
+# ---- döngü bekçisi (2026-10-17 gerçek API ölçümü, docs/knowledge/LOOP_ANALYSIS.md) ----
+# Aynı araç + aynı parametre, arada başarılı dosya değişikliği olmadan:
+REPEAT_WARN = 2        # 2. kez → sonuca uyarı eklenir
+REPEAT_STOP = 3        # 3. kez → tur durur ("loop"), kullanıcı karar verir
+# Bir dosya bu tur içinde daha önceki bir hâline geri dönerse (ileri-geri düzenleme):
+FLIPFLOP_STOP = 2      # 1. kez uyarı, 2. kez tur durur
+# glm-5.3 metin protokolünde tek yanıtta 39 çağrı (çoğu uydurma dosya) üretti:
+MAX_CALLS_PER_STEP = 12
+REPEAT_NOTE = ("\n\n[Döngü uyarısı] Bu çağrıyı bu turda aynı parametrelerle zaten {n} kez yaptın ve "
+               "arada dosya değişmedi; sonuç aynı olacak. Farklı bir yol dene; ilerleyemiyorsan dur ve "
+               "kullanıcıya neyin engel olduğunu açıkça söyle.")
+FLIPFLOP_NOTE = ("\n\n[Döngü uyarısı] {path} dosyası bu turda daha önceki bir hâline geri döndü "
+                 "(aynı değişikliği ileri-geri yapıyorsun). Gereksinimler çelişiyor olabilir: test "
+                 "dosyalarını değiştirmeden veya testi kandırmadan çözemiyorsan dur ve kullanıcıya bildir.")
+NUDGE_EMPTY = ("[Otomatik hatırlatma] Son yanıtın boş geldi (muhtemelen düşünme bütçesi tükendi). "
+               "Kısa düşün; ya bir sonraki aracı çağır ya da sonucu kısaca yaz.")
+NUDGE_INTENT = ("[Otomatik hatırlatma] Ne yapacağını söyleyip araç çağırmadan durdun. Söylediğin işi "
+                "şimdi araçlarla yap; iş zaten bittiyse ne yaptığını özetle.")
+_INTENT_RE = None
+
+
+def looks_like_unfinished_intent(text: str) -> bool:
+    """Kısa ve 'yapacağım/inceleyeyim' gibi niyet bildiren bir son yanıt mı?"""
+    global _INTENT_RE
+    import re
+
+    if _INTENT_RE is None:
+        _INTENT_RE = re.compile(
+            r"(eyim|ayım|eceğim|acağım|elim|alım|iyorum|ıyorum|uyorum|üyorum|let me[^.]*|i will[^.]*)"
+            r"[\s.:!…]*$", re.I)
+    t = (text or "").strip()
+    return bool(t) and len(t) <= 300 and bool(_INTENT_RE.search(t))
+
+
+def call_signature(call: "ToolCall") -> str:
+    return call.name + " " + json.dumps(call.arguments, ensure_ascii=False, sort_keys=True)
 
 
 # ---- veri yapıları --------------------------------------------------------------
@@ -166,7 +205,7 @@ class SessionStore(Protocol):
 
 @dataclass
 class TurnOutcome:
-    stopped: str = "done"            # done | cancelled | max_steps | error
+    stopped: str = "done"            # done | cancelled | max_steps | loop | error | context_limit | budget
     steps: int = 0
     protocol: str = "native"
     last_text: str = ""
@@ -275,7 +314,8 @@ class AgentRunner:
                  command_timeout: int = 120, output_limit: int = 20_000,
                  context_tokens: int | None = None, turn_id: int | None = None,
                  hard_context_limit: int | None = None,
-                 before_model_call: Any = None):
+                 before_model_call: Any = None,
+                 stall_retry_body: dict[str, Any] | None = None):
         self.client = client
         self.model = model
         self.session_id = session_id
@@ -299,6 +339,12 @@ class AgentRunner:
         # Her model çağrısından ÖNCE çağrılır; None → devam, metin → tur o
         # nedenle durur (ör. "budget": aylık bütçe doldu, arayüz onay ister).
         self.before_model_call = before_model_call
+        # Boş yanıttan sonra yapılan TEK yeniden denemede isteğe eklenecek alanlar
+        # (ör. {"reasoning_effort": "none"}; yalnız modeli destekliyorsa verilir).
+        self.stall_retry_body = stall_retry_body
+        self._nudge: str | None = None          # sonraki çağrıya eklenecek geçici hatırlatma
+        self._extra_body: dict[str, Any] | None = None
+        self._writes: list[tuple[str, str | None, str | None]] = []  # (yol, önce, sonra) — son araç
         self.toolbox = (
             ToolBox(workspace, command_timeout=command_timeout, output_limit=output_limit,
                     skip_file=is_sensitive_read)
@@ -336,6 +382,11 @@ class AgentRunner:
     def _call_model(self, history: list[dict]):
         visible = trim_for_context(history, self.context_tokens)
         messages = to_api_messages(self._system(), visible, self.protocol)
+        if self._nudge:
+            # Geçici: kayda yazılmaz, yalnız bu çağrıda gider.
+            messages.append({"role": "user", "content": self._nudge})
+            self._nudge = None
+        extra_body, self._extra_body = self._extra_body, None
         tools = None
         if self.agentic and self.protocol == "native":
             tools = [s.openai_schema() for s in self._specs()]
@@ -343,10 +394,13 @@ class AgentRunner:
         def on_delta(text: str, _finish: str = "") -> None:
             self.events.text_delta(text)
 
+        kwargs: dict[str, Any] = {}
+        if extra_body:
+            kwargs["extra_body"] = extra_body
         return self.client.chat(
             self.model, messages, stream=self.stream, cancel=self.cancel,
             on_delta=on_delta, on_reasoning=self.events.reasoning_delta,
-            tools=tools,
+            tools=tools, **kwargs,
         )
 
     # -- ana döngü ---------------------------------------------------------------------
@@ -356,6 +410,12 @@ class AgentRunner:
         outcome = TurnOutcome(protocol=self.protocol)
         step = 0
         fallback_used = False
+        # döngü bekçisi durumu (tur başına)
+        repeats: dict[str, int] = {}                 # imza → son yazmadan beri kaç kez
+        file_states: dict[str, list[int]] = {}       # yol → içerik özetleri (sırayla)
+        flipflops = 0
+        nudged: set[str] = set()
+        loop_reason = ""
         while step < self.max_steps:
             if self._cancelled():
                 outcome.stopped = "cancelled"
@@ -423,14 +483,48 @@ class AgentRunner:
                                tool_call_id=call.id, name=call.name, meta={"error": True})
                 break
             if not calls and not parse_errors:
+                stall = self._stall_kind(content, result) if self.agentic else None
+                if stall and stall not in nudged and step < self.max_steps:
+                    # Boş yanıt / "inceleyeyim" deyip durma: bir kez otomatik dürt.
+                    nudged.add(stall)
+                    self._nudge = NUDGE_EMPTY if stall == "empty" else NUDGE_INTENT
+                    if stall == "empty" and self.stall_retry_body:
+                        self._extra_body = dict(self.stall_retry_body)
+                    self.events.status(
+                        "Model boş yanıt döndürdü; kısa bir hatırlatmayla bir kez yeniden deneniyor."
+                        if stall == "empty" else
+                        "Model işi yapmadan durdu; devam etmesi için bir kez hatırlatıldı.")
+                    continue
+                if not content.strip():
+                    self.events.status("Model boş yanıt döndürdü (düşünme bütçesi tükenmiş olabilir). "
+                                       "Başka bir model seçebilir veya mesajı yeniden gönderebilirsiniz.")
                 outcome.stopped = "done"
                 break
 
-            for call in calls:
+            for i, call in enumerate(calls):
                 if self._cancelled():
                     res = ToolResult(False, "İşlem kullanıcı tarafından iptal edildi.", "İptal edildi")
+                elif loop_reason:
+                    # Döngü bu yanıtın içinde algılandı: kalan çağrılar çalıştırılmaz.
+                    res = ToolResult(False, "Döngü algılandığı için bu çağrı çalıştırılmadı.",
+                                     "Atlandı (döngü)")
+                elif i >= MAX_CALLS_PER_STEP:
+                    res = ToolResult(False, f"Tek yanıtta en fazla {MAX_CALLS_PER_STEP} araç çağrısı "
+                                     "çalıştırılır; bu çağrı atlandı. Gerçekten gerekiyorsa sonraki "
+                                     "adımda iste.", "Atlandı (çok fazla çağrı)")
                 else:
+                    self._writes = []
                     res = self._execute(call)
+                    note, stop = self._guard(call, res, repeats, file_states)
+                    if note:
+                        res.content += note
+                    if stop == "flipflop":
+                        flipflops += 1
+                        if flipflops >= FLIPFLOP_STOP:
+                            loop_reason = loop_reason or (
+                                f"bir dosya tekrar tekrar eski hâline döndürüldü ({res.extra.get('path', '?')})")
+                    elif stop:
+                        loop_reason = loop_reason or stop
                 self._save(history, "tool", res.content, tool_call_id=call.id, name=call.name,
                            meta={"error": not res.ok, "summary": res.summary, **res.extra})
             for err in parse_errors:
@@ -440,6 +534,12 @@ class AgentRunner:
             if self._cancelled():
                 outcome.stopped = "cancelled"
                 break
+            if loop_reason:
+                outcome.stopped = "loop"
+                self.events.status(
+                    f"Döngü algılandı: {loop_reason}. Model aynı işi sonuç almadan tekrarlıyor; "
+                    "tur durduruldu. Yeni bir yönlendirme yazın ya da başka bir model deneyin.")
+                break
             if self.hard_context_limit and self._history_tokens(history) >= self.hard_context_limit:
                 outcome.stopped = "context_limit"
                 break
@@ -447,6 +547,49 @@ class AgentRunner:
             outcome.stopped = "max_steps"
             self.events.status(f"Adım sınırına ({self.max_steps}) ulaşıldı; devam etmek için mesaj gönderin.")
         return outcome
+
+    @staticmethod
+    def _stall_kind(content: str, result: Any) -> str | None:
+        """Araçsız son yanıt bitmemiş iş gibi mi görünüyor? → "empty" | "intent" | None"""
+        if not (content or "").strip():
+            return "empty"
+        if looks_like_unfinished_intent(content):
+            return "intent"
+        return None
+
+    def _guard(self, call: ToolCall, res: ToolResult, repeats: dict[str, int],
+               file_states: dict[str, list[int]]) -> tuple[str, str]:
+        """Döngü bekçisi. Dönüş: (sonuca eklenecek not, durma nedeni | "flipflop" | "")."""
+        spec = SPEC_BY_NAME.get(call.name)
+        if spec is None or spec.kind == META:
+            return "", ""
+        if spec.kind == WRITE:
+            if not res.ok:
+                key = call_signature(call)
+                repeats[key] = repeats.get(key, 0) + 1
+                if repeats[key] >= REPEAT_STOP:
+                    return "", f"aynı başarısız düzenleme {repeats[key]} kez denendi ({call.name})"
+                if repeats[key] >= REPEAT_WARN:
+                    return REPEAT_NOTE.format(n=repeats[key] - 1), ""
+                return "", ""
+            # Başarılı yazma: dosyalar değişti, okuma/komut tekrarları yeniden sayılır.
+            repeats.clear()
+            note, stop = "", ""
+            for path, before, after in self._writes:
+                h = hash(after)
+                states = file_states.setdefault(path, [hash(before)])
+                if len(states) >= 2 and h in states[:-1]:
+                    note, stop = FLIPFLOP_NOTE.format(path=path), "flipflop"
+                states.append(h)
+            return note, stop
+        key = call_signature(call)
+        repeats[key] = repeats.get(key, 0) + 1
+        n = repeats[key]
+        if n >= REPEAT_STOP:
+            return "", f"“{describe_call(call)}” {n} kez aynı sonuçla tekrarlandı"
+        if n >= REPEAT_WARN:
+            return REPEAT_NOTE.format(n=n - 1), ""
+        return "", ""
 
     def _history_tokens(self, history: list[dict]) -> int:
         return estimate_tokens(to_api_messages("", history, self.protocol)) + 2_500
@@ -561,6 +704,7 @@ class AgentRunner:
                 return ToolResult(False, msg, f"Reddedildi: {change.rel_path}",
                                   {"diff": change.diff, "path": change.rel_path, "denied": True})
         self.toolbox.apply_change(change)
+        self._writes.append((change.rel_path, change.before, change.after))
         change_id = self.store.add_file_change(self.session_id, self.turn_id, change.rel_path,
                                                change.before, change.after)
         self.events.file_changed(change_id, change)

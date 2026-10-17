@@ -425,12 +425,15 @@ class EvrenClient:
              on_delta: Callable[[str, str], None] | None = None,
              on_reasoning: Callable[[str], None] | None = None,
              tools: list[dict[str, Any]] | None = None,
-             tool_choice: str | None = None) -> ChatResult:
+             tool_choice: str | None = None,
+             extra_body: dict[str, Any] | None = None) -> ChatResult:
         """Chat Completion; stream=True ise SSE parçaları geri çağrıyla iletilir.
 
         İptal: cancel bayrağı gönderim öncesi ve her akış parçasında denetlenir.
         tools verilirse OpenAI uyumlu function calling istenir; araç çağrıları
         ChatResult.tool_calls içinde döner (akışta parçalar birleştirilir).
+        extra_body gövdeye eklenir (ör. {"reasoning_effort": "none"} — EVREN'de
+        düşünmeyi kapatır, 2026-10-17 gerçek istekle ölçüldü).
         """
         if cancel is not None and cancel.cancelled:
             return ChatResult(model=model, finish_reason="cancelled_by_user")
@@ -442,6 +445,8 @@ class EvrenClient:
         if tools:
             body["tools"] = tools
             body["tool_choice"] = tool_choice or "auto"
+        if extra_body:
+            body.update(extra_body)
 
         extra = {"Accept": "text/event-stream"} if stream else None
         resp = self._request("POST", "/v1/chat/completions", json_body=body,

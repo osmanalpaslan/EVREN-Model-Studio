@@ -2,19 +2,26 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 25 · Açık/izlenen: 2 · Oturum: 10 · Kural: 18
+Kayıt: 30 · Açık/izlenen: 4 · Oturum: 11 · Kural: 19
 
 ## Açık ve izlenen kayıtlar
 
 | Önem | Kayıt | Tür | Alan | Başlık |
 |---|---|---|---|---|
 | yuksek | [2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma](incidents/2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma.md) | risk | api | OpenAI ve Anthropic entegrasyonu gerçek anahtarla doğrulanmadı |
+| yuksek | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | agent | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
+| orta | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | api | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
 | dusuk | [2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz](incidents/2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz.md) | hata | test/izleme | İzleme döngüsü testi zamanlamaya bağlı ve kararsız |
 
 ## Tüm kayıtlar (yeniden eskiye)
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-10-17 | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
+| 2026-10-17 | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | orta | izleniyor | Claude Code (masaüstü) | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
+| 2026-10-17 | [2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu](incidents/2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Boş yanıt ve "söz verip durma" sessizce bitti sayılıyordu |
+| 2026-10-17 | [2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu](incidents/2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Ajan tekrar ve ileri-geri düzenlemede durmuyordu |
+| 2026-10-17 | [2026-10-17-agir-agents-md-evren-ajanini-asil-isten-uzaklastiriyordu](incidents/2026-10-17-agir-agents-md-evren-ajanini-asil-isten-uzaklastiriyordu.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Ağır AGENTS.md EVREN ajanını asıl işten uzaklaştırıyordu |
 | 2026-10-16 | [2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu](incidents/2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu.md) | surec | dusuk | cozuldu | Claude Code (masaüstü) | Test paketi silinmeyen pencerelerle yavaşlıyordu |
 | 2026-10-16 | [2026-10-16-qtimer-silinmis-widgeta-cagri](incidents/2026-10-16-qtimer-silinmis-widgeta-cagri.md) | hata | orta | cozuldu | Claude Code (masaüstü) | QTimer.singleShot silinmiş widget'ı çağırdı |
 | 2026-10-16 | [2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma](incidents/2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | OpenAI ve Anthropic entegrasyonu gerçek anahtarla doğrulanmadı |
@@ -45,6 +52,7 @@ Kayıt: 25 · Açık/izlenen: 2 · Oturum: 10 · Kural: 18
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do.md) | Claude Code (masaüstü) / claude-opus-5-5 | kismi | Claude Code masaüstü: döngü analizi ve döngü bekçisi |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan](sessions/2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Varsayılan motor auto; son seçilen motor ve mod hatırlanır |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact](sessions/2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik özet (auto-compact) |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba](sessions/2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik mod, korumalı dosyalar, klasör bağlama |
@@ -76,3 +84,4 @@ Kayıt: 25 · Açık/izlenen: 2 · Oturum: 10 · Kural: 18
 - **R-16** · Uzun sürebilecek model çağrısını akışlı yap
 - **R-17** · Ücretli sağlayıcı fiyatını ve doğrulama durumunu tarihli tut
 - **R-18** · Başlamadan önce GitHub ile eşitle, eşitleme uyarısını yok sayma
+- **R-19** · Ajan turunu araçsız yanıt geldi diye bitmiş sayma; döngü bekçisini koru

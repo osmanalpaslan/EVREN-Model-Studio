@@ -102,3 +102,8 @@
 - **Kural:** `baslangic` çıktısındaki "GitHub eşitleme" bölümünü oku; "!" satırı varsa (geride, ayrışmış, commit'lenmemiş değişiklik) işe başlamadan kullanıcıya söyle ve veri kaybettiren git komutunu (reset, checkout --, stash drop, push --force) onaysız çalıştırma.
 - **Neden:** Kullanıcı birden çok bilgisayarda çalışıyor ve git pull yapmayı unutabiliyor; eski kopyada çalışan motor işi tekrarlar veya çakışma üretir.
 - **Kaynak:** 2026-10-16-motor-baska-bilgisayarda-yapilan-isleri-fark-etmiyordu
+
+### R-19 · Ajan turunu araçsız yanıt geldi diye bitmiş sayma; döngü bekçisini koru
+- **Kural:** agent/runner.py'de boş veya "yapacağım" türü araçsız yanıtı dürtmeden `done` sayma, tekrar/ileri-geri düzenleme bekçisini (`_guard`, tests/test_loop_guard.py) kaldırma; ajan davranışını değiştirince tests/e2e_agent_real_api.py ile birlikte çok adımlı (çelişkili görev) gerçek API ölçümü yap.
+- **Neden:** EVREN modelleri düşünme bütçesini tüketip boş dönüyor, söz verip duruyor, takılınca aynı işi tekrarlıyor veya test dosyasını değiştirip yalan rapor veriyor; tek adımlı e2e testi bunları yakalamıyor.
+- **Kaynak:** 2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu, 2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu, 2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap
