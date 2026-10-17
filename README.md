@@ -38,6 +38,9 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
   için onay), *Düzenlemeleri kabul et* (dosyalar onaysız, komutlar onaylı),
   *Plan* (salt okunur), *Otomatik* (hiçbir işlem için onay istenmez:
   tüm düzenlemeler, komutlar ve dosya okumaları onaysız; durdurmak için Esc).
+- **Kapsam koruması**: ajan yalnız isteneni yapar; tur sonu özeti + "Turu geri al";
+  istenmemiş değişiklikler otomatik işaretlenir ("Kapsam dışını geri al");
+  isteğe bağlı "Önce plan" (Ayarlar).
 - **Ortam denetimi**: proje klasörü bağlanınca gereken programlar (Node, pnpm,
   yarn, Python, uv, Git, Go, Rust, .NET, Java) denetlenir; eksikler Ayarlar'daki
   seçime göre *Otomatik* (sormadan) veya *Manuel* (Kur / Şimdi değil bildirimi)

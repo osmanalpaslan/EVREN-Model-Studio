@@ -256,3 +256,17 @@ def test_gercek_400_metin_protokolune_gecer(env):
     r = AgentRunner(c2, "m", session_id=sid, store=db, events=Ev(), workspace=Workspace(root),
                     mode="kabul", stream=False)
     assert r.run(db.get_session_messages(sid)).protocol == "text"
+
+
+def test_plan_modunda_niyet_cumlesi_durtulmez(tmp_path):
+    root = tmp_path / "p"
+    root.mkdir()
+    db = Database(tmp_path / "t.db")
+    sid = db.create_session("m", str(root), "plan")
+    db.add_session_message(sid, "user", "planla")
+    client = Fake([ChatResult(content="Plan: a.py'yi değiştireceğim.", finish_reason="stop")])
+    r = AgentRunner(client, "m", session_id=sid, store=db, events=Ev(), workspace=Workspace(root),
+                    mode="plan", stream=False)
+    out = r.run(db.get_session_messages(sid))
+    db.close()
+    assert out.stopped == "done" and len(client.requests) == 1

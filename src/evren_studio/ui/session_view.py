@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..agent import environment, prompts
+from ..agent import environment, prompts, scope
 from ..agent.compaction import MAX_AUTO_RESUMES, CompactPolicy, needs_compaction, summarize
 from ..agent.permissions import MODES, SessionPermissions, normalize_mode
 from ..agent.runner import (
@@ -55,6 +55,7 @@ from .composer import MODE_COMMANDS, SLASH_COMMANDS, Composer
 from .transcript import (
     COLUMN_WIDTH,
     AssistantMessageWidget,
+    ActionCard,
     ErrorCard,
     InstallCard,
     NoteWidget,
@@ -316,6 +317,9 @@ class SessionView(QWidget):
         self.edit_from: int | None = None
         self._pending_approvals: list[ApprovalRequest] = []
         self._env_checked: set[tuple] = set()       # (oturum, klasör) başına bir ortam denetimi
+        self._turn_id: int | None = None            # turu başlatan kullanıcı mesajı (değişiklik kaydı)
+        self._plan_turn = False                     # "önce plan": bu tur salt okunur plan turu
+        self._skip_plan_once = False
         # Çalışma süresi / model göstergesi
         self.run_model = ""
         self._run_t0: float | None = None
@@ -950,6 +954,11 @@ class SessionView(QWidget):
 
     def _send_now(self, sid: int, content: str, text: str) -> None:
         msg_id = self.ctx.db.add_session_message(sid, "user", content)
+        self._turn_id = msg_id
+        # "Önce plan" (Ayarlar, varsayılan kapalı): dosyaya dokunmadan önce plan turu
+        self._plan_turn = bool(self.ctx.settings.plan_first and self.workspace and self.mode != "plan"
+                               and not self._skip_plan_once)
+        self._skip_plan_once = False
         _, attached = split_attachments(content)
         w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), msg_id)
         w.text = text
@@ -1079,7 +1088,8 @@ class SessionView(QWidget):
             return "budget" if self._budget_blocks(provider) else None
         self.runner = AgentRunner(
             client, self.model, session_id=sid, store=self.ctx.db, events=b,
-            workspace=ws, mode=self.mode, protocol=protocol,
+            workspace=ws, mode=("plan" if self._plan_turn else self.mode), protocol=protocol,
+            turn_id=self._turn_id,
             allow_protocol_fallback=(s.tool_protocol == "otomatik"),
             permissions=perms, cancel=self.cancel_token, stream=s.stream_responses,
             max_steps=s.agent_max_steps, command_timeout=s.command_timeout_seconds,
@@ -1287,6 +1297,13 @@ class SessionView(QWidget):
                            "devam edildi. Devam etmek için yeni bir mesaj gönderin.", "alert")
         if self.session_id:
             self.panel.todos.set_todos(self.ctx.db.get_session_todos(self.session_id))
+        if outcome.stopped in ("done", "loop", "max_steps", "cancelled"):
+            if self._plan_turn:
+                self._plan_turn = False
+                if outcome.stopped == "done":
+                    self._offer_plan()
+            else:
+                self._turn_review(self._turn_id)
 
     def _on_fail(self, exc: Exception) -> None:
         self._finish()
@@ -1433,6 +1450,100 @@ class SessionView(QWidget):
                 then()
             else:
                 self.transcript.add(ErrorCard("Özetleme başarısız", [str(exc)]))
+
+        Task(job, on_done=done, on_error=fail).start()
+
+    # ---- kapsam koruması (2026-10-17) ----
+
+    def _offer_plan(self) -> None:
+        """"Önce plan" turunun sonunda: Uygula / Vazgeç."""
+        def apply() -> None:
+            self._skip_plan_once = True
+            self.send("Plan onaylandı. Yalnız plandaki değişiklikleri uygula.")
+
+        card = ActionCard("Plan hazır — uygulansın mı?",
+                          ["Ajan henüz hiçbir dosyayı değiştirmedi. Planı değiştirmek isterseniz "
+                           "Vazgeç'e basıp ne istediğinizi yazın."],
+                          [("Uygula", apply, "primary"),
+                           ("Vazgeç", lambda: self._note("Plan uygulanmadı.", "stop"), "ghost")],
+                          icon_name="map")
+        self.transcript.add(card)
+        self.transcript.scroll_to_bottom()
+
+    def _turn_rows(self, turn_id: int | None) -> list:
+        if not self.session_id or turn_id is None:
+            return []
+        return [r for r in self.ctx.db.list_file_changes(self.session_id)
+                if r["turn_id"] == turn_id and not r["reverted"]]
+
+    def _turn_review(self, turn_id: int | None) -> None:
+        """Tur sonu: değişen dosyalar + "Turu geri al"; ayar açıksa kapsam denetimi."""
+        rows = self._turn_rows(turn_id)
+        if not rows:
+            return
+        paths = list(dict.fromkeys(r["path"] for r in rows))
+        sid = self.session_id
+
+        def revert(selected: list[str] | None = None, label: str = "Tur") -> None:
+            todo = [r for r in self._turn_rows(turn_id) if selected is None or r["path"] in selected]
+            errors = self.panel.changes.revert_rows(todo)
+            self._update_context()
+            if errors:
+                self.transcript.add(ErrorCard("Bazı değişiklikler geri alınamadı", errors))
+            else:
+                self._note(f"{label} geri alındı: {len(todo)} değişiklik "
+                           f"({', '.join(dict.fromkeys(r['path'] for r in todo))}).", "undo")
+
+        card = ActionCard(f"Bu tur {len(paths)} dosyayı değiştirdi",
+                          [f"• {p}" for p in paths],
+                          [("Turu geri al", lambda: revert(None, "Tur"), "ghost")],
+                          icon_name="file")
+        self.transcript.add(card)
+        self.transcript.scroll_to_bottom()
+        if not self.ctx.settings.scope_check:
+            return
+        card.append_line("Kapsam denetleniyor…")
+        msgs = self.ctx.db.get_session_messages(sid)
+        requests = [split_attachments(m["content"] or "")[0] for m in msgs
+                    if m["role"] == "user" and not (m.get("meta") or {}).get("auto_continue")]
+        changes = [{"path": r["path"], "before_text": r["before_text"], "after_text": r["after_text"]}
+                   for r in rows]
+        wanted = (self.ctx.settings.scope_check_model or "").strip()
+        ids = [m.id for m in self.ctx.chat_models()]
+        model = wanted if wanted and (not ids or wanted in ids) else self.model
+        info = self.ctx.model_info(model)
+        provider = self.ctx.provider_of(model)
+        extra = ({"reasoning_effort": "none"} if provider == "evren" and info
+                 and (info.capabilities or {}).get("reasoning_effort") else None)
+
+        def job():
+            client = self.ctx.make_client_for(provider, log_sink=lambda m: None)
+            try:
+                return scope.check(client, model, requests, changes, extra)
+            finally:
+                client.close()
+
+        def done(found) -> None:
+            if sid != self.session_id:
+                return
+            card.set_lines([f"• {p}" for p in paths])
+            if not found:
+                card.append_line("✓ Kapsam denetimi: istenmemiş değişiklik görülmedi.")
+                return
+            out_paths = [o.path for o in found]
+            warn = ActionCard(
+                f"İstenmemiş olabilecek değişiklik: {len(found)} dosya",
+                [f"• {o.path} — {o.reason or 'isteğinizle ilgisi görülmedi'}" for o in found]
+                + ["Bunları siz istemediyseniz geri alabilirsiniz (denetim bir modele dayanır, yanılabilir)."],
+                [("Kapsam dışını geri al", lambda: revert(out_paths, "Kapsam dışı değişiklikler"), "danger"),
+                 ("Sorun yok", lambda: None, "ghost")],
+                icon_name="alert", warn=True)
+            self.transcript.add(warn)
+            self.transcript.scroll_to_bottom()
+
+        def fail(exc) -> None:
+            if sid == self.session_id:
+                card.set_lines([f"• {p}" for p in paths] + [f"Kapsam denetimi yapılamadı: {exc}"])
 
         Task(job, on_done=done, on_error=fail).start()
 

@@ -19,6 +19,12 @@ CHAT_SYSTEM = (
 )
 
 AGENT_RULES = """\
+# Kapsam (EN ÖNEMLİ KURAL)
+- YALNIZCA kullanıcının açıkça istediği değişikliği yap. İstenmeyen dosyaya, ekrana, tasarıma, stile veya davranışa dokunma; "bu arada şunu da güzelleştireyim" yapma.
+- Aklına gelen ek iyileştirmeleri UYGULAMA; yanıtının sonunda "Öneriler" başlığıyla kısaca yaz, kullanıcı isterse yapılır.
+- İstek belirsizse veya birden çok şekilde yorumlanabiliyorsa (ör. "simgeyi değiştir": hangi simge, nerede?) dosyaya dokunmadan önce kısa bir soru sor.
+- Bir değişiklik isteğin doğal ve gerekli parçasıysa (ilgili test, içe aktarma) yapabilirsin; özetinde hangi dosyayı neden değiştirdiğini yaz.
+
 # Çalışma kuralları
 - Değişiklik yapmadan önce ilgili dosyaları oku ve projeyi anla; tahminle kod yazma.
 - Var olan dosyalarda küçük değişiklikler için edit_file kullan; old_string dosyada birebir ve tek olmalı (girinti dahil). Yeni dosya veya tam yeniden yazım için write_file kullan.

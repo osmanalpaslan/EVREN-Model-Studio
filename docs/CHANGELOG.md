@@ -4,6 +4,10 @@
 
 ### Eklendi
 
+- **Kapsam koruması**: ajan yalnız isteneni yapar (kural); tur sonunda "Bu tur N
+  dosyayı değiştirdi" kartı ve **Turu geri al**; kapsam denetimi istenmemiş
+  değişiklikleri işaretler ve **Kapsam dışını geri al** sunar (onay istemez);
+  Ayarlar'da isteğe bağlı **Önce plan** (varsayılan kapalı).
 - **Ay-yıldız simgesi**: Türk bayrağı oranlarıyla, arka plansız; koyu temada
   beyaz, açık temada bayrak kırmızısı. Masaüstü/görev çubuğu için `assets/evren.ico`.
 - **Canlı çalışma göstergesi**: model çalışırken dönen yıldız (mesajda ve durum çubuğunda).

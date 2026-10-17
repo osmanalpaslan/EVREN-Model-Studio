@@ -577,6 +577,9 @@ class AgentRunner:
                 break
             if not calls and not parse_errors:
                 stall = ("repeat" if repetitive else self._stall_kind(content, result)) if self.agentic else None
+                if stall == "intent" and normalize_mode(self.mode) == "plan":
+                    # Plan modunda "…değiştireceğim" ile biten yanıt beklenen sonuçtur (plan), dürtme.
+                    stall = None
                 if stall and stall not in nudged and step < self.max_steps:
                     # Boş yanıt / "inceleyeyim" deyip durma / metin tekrarı: bir kez otomatik dürt.
                     nudged.add(stall)

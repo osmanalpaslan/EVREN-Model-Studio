@@ -107,3 +107,8 @@
 - **Kural:** agent/runner.py'de boş veya "yapacağım" türü araçsız yanıtı dürtmeden `done` sayma, tekrar/ileri-geri düzenleme bekçisini (`_guard`, tests/test_loop_guard.py) kaldırma; ajan davranışını değiştirince tests/e2e_agent_real_api.py ile birlikte çok adımlı (çelişkili görev) gerçek API ölçümü yap.
 - **Neden:** EVREN modelleri düşünme bütçesini tüketip boş dönüyor, söz verip duruyor, takılınca aynı işi tekrarlıyor veya test dosyasını değiştirip yalan rapor veriyor; tek adımlı e2e testi bunları yakalamıyor.
 - **Kaynak:** 2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu, 2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu, 2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap
+
+### R-20 · Ajanın kapsam korumasını kaldırma; değişiklikleri tura bağla
+- **Kural:** prompts.AGENT_RULES'taki "Kapsam" bölümünü kısaltma/kaldırma; AgentRunner'a her turda turn_id ver (değişiklikler tura bağlı kalsın); tur sonu kartını ve kapsam denetimini (agent/scope.py) kapatma, yalnız ayar kapatabilir.
+- **Neden:** EVREN modelleri istenmeyen tasarım/arayüz değişikliği yapıyor; kural tek başına yetmiyor, denetim + tek tıkla geri alma gerekiyor.
+- **Kaynak:** 2026-10-17-ajan-istenmeyen-tasarim-degisikligi-yapiyordu-kapsam-tasmasi

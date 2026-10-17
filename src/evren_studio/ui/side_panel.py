@@ -209,16 +209,21 @@ class ChangesTab(QWidget):
             "Ajanın oluşturduğu dosyalar silinecek. Devam edilsin mi?",
         ) != QMessageBox.Yes:
             return
+        errors = self.revert_rows(active)
+        if errors:
+            QMessageBox.warning(self, "Bazı değişiklikler geri alınamadı", "\n\n".join(errors))
+
+    def revert_rows(self, rows) -> list[str]:
+        """Verilen değişiklikleri sondan başa geri alır (soru sormaz). Dönüş: hata satırları."""
         errors = []
-        for r in reversed(active):
+        for r in sorted((r for r in rows if not r["reverted"]), key=lambda r: r["id"], reverse=True):
             try:
                 self._revert(r, ask_force=False)
             except (ToolError, OSError) as exc:
                 errors.append(f"{r['path']}: {exc}")
         self.refresh()
         self.changed.emit()
-        if errors:
-            QMessageBox.warning(self, "Bazı değişiklikler geri alınamadı", "\n\n".join(errors))
+        return errors
 
 
 class FilesTab(QWidget):
