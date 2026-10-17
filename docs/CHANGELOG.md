@@ -16,6 +16,8 @@
 
 ### Değişti
 
+- **Otomatik mod hiçbir işlem için onay istemez** (kullanıcı kararı): riskli
+  komutlar, korumalı dosyalar ve gizli dosya okuma dahil. Durdurmak için Esc.
 - Proje hafızası: kökte EVREN.md varsa ajana yalnız o verilir (uzun AGENTS.md
   ajanı asıl işten uzaklaştırıyordu). Bu depoya kısa EVREN.md eklendi.
 - Ajan kuralları: tekrar etmeme, iki başarısızlıktan sonra yol değiştirme veya

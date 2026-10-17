@@ -699,9 +699,9 @@ class SessionView(QWidget):
         changed = mode != self.mode
         self.mode = mode
         if changed and mode == "auto" and self.session_id:
-            self._note("Otomatik mod: dosya düzenlemeleri ve güvenli komutlar (git status/diff/log, "
-                       "testler, derleme, lint, görüntüleme) onaysız çalışır. Riskli veya tanınmayan "
-                       "komutlar ve korumalı dosyalar yine size sorulur.", "spark")
+            self._note("Otomatik mod: hiçbir işlem için onay istenmez — tüm dosya düzenlemeleri, "
+                       "komutlar ve dosya okumaları onaysız çalışır. Durdurmak için Esc veya "
+                       "Durdur düğmesini kullanın.", "spark")
         if self.runner is not None:
             self.runner.mode = mode       # sonraki araç kararından itibaren geçerli
         if self.session_id:

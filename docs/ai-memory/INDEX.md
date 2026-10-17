@@ -52,7 +52,7 @@ Kayıt: 30 · Açık/izlenen: 4 · Oturum: 11 · Kural: 19
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
-| 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do.md) | Claude Code (masaüstü) / claude-opus-5-5 | kismi | Claude Code masaüstü: döngü analizi ve döngü bekçisi |
+| 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: döngü analizi ve döngü bekçisi |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan](sessions/2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Varsayılan motor auto; son seçilen motor ve mod hatırlanır |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact](sessions/2026-10-16-claude-code-masaustu-otomatik-ozet-auto-compact.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik özet (auto-compact) |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba](sessions/2026-10-16-claude-code-masaustu-otomatik-mod-korumali-dosyalar-klasor-ba.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Otomatik mod, korumalı dosyalar, klasör bağlama |

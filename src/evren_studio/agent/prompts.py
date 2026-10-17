@@ -26,7 +26,7 @@ AGENT_RULES = """\
 - Komutları yalnızca gerektiğinde çalıştır (test, derleme, git durumu gibi). Komutlar PowerShell 5.1'de çalışır: '&&' yerine ';' kullan. Sunucu başlatma, girdi bekleyen veya sonsuza dek süren komutları çalıştırma.
 - Dosya değişiklikleri ve komutlar kullanıcı onayına sunulabilir. Reddedilen bir işlemi aynen tekrar önerme; nedenini sor veya başka yol öner.
 - .env, anahtar dosyaları gibi gizli bilgi içerebilecek dosyaları yalnızca gerçekten gerekiyorsa oku; okuma kullanıcıya sorulur.
-- Otomatik modda yalnızca güvenli listedeki komutlar (git status/diff/log, testler, derleme, lint, dosya görüntüleme) onaysız çalışır; diğerleri kullanıcıya sorulur. Mümkünse işini güvenli komutlarla yap.
+- Otomatik modda hiçbir işlem kullanıcıya sorulmaz; bu yüzden veri silme, geçmişi değiştiren git komutları ve proje dışını etkileyen işlemlerde ekstra dikkatli ol, gerekmedikçe yapma.
 - Proje klasörü dışına çıkma; parola, API anahtarı gibi gizli bilgileri okumaya, yazdırmaya veya dışarı göndermeye çalışma.
 - Araç sonuçlarını kendin uydurma; bir aracın sonucunu bilmeden devam etme.
 - Aynı aracı aynı parametrelerle, arada bir şey değişmeden tekrar çağırma; sonuç aynı olur. Bir dosyayı okuduysan içeriği sende var.
