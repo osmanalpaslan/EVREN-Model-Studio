@@ -51,7 +51,17 @@ Ayrıca: "Otomatik modda hiçbir şey için onay istemesin" (kesin karar) ve
   uygulanınca bu kontrol de geçer. Arayüz değişmediği için ekran görüntüsü
   incelemesi (R-05) gerekmedi; ui/session_view.py'de yalnız runner parametresi eklendi.
 
+### Proje maratonu (dal feat/metin-tekrari)
+- tests/e2e_marathon_real_api.py yazıldı. 1. tur 9 proje: 8 tam puan, auto A 9/10
+  (metin tekrarı). 2. tur (özet eşiği 15k, yeni kod): 6 projenin 4'ü tam; kalan
+  2 eksik model yorumu (boş satır, --json argüman sırası). Onay 0, hata 0.
+- Eklendi: metin tekrarı denetimi + akışta kesme, sunucu model-JSON 400'ünde
+  yeniden deneme, adım sınırı 80 (ayar sürümü 3). pytest 245+ geçti.
+
 ## Sorunlar ve kayıtlar
+- 2026-10-17-model-ayni-cumleleri-tekrar-tekrar-yazip-aracsiz-bitiriyordu (çözüldü)
+- 2026-10-17-evren-model-json-400-hatasi-kalici-metin-protokolune-geciriy (çözüldü)
+- 2026-10-17-tur-basina-40-adim-buyuk-projede-dar (çözüldü)
 - 2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu (çözüldü)
 - 2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu (çözüldü)
 - 2026-10-17-agir-agents-md-evren-ajanini-asil-isten-uzaklastiriyordu (çözüldü)

@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 30 · Açık/izlenen: 4 · Oturum: 11 · Kural: 19
+Kayıt: 33 · Açık/izlenen: 4 · Oturum: 11 · Kural: 19
 
 ## Açık ve izlenen kayıtlar
 
@@ -18,6 +18,9 @@ Kayıt: 30 · Açık/izlenen: 4 · Oturum: 11 · Kural: 19
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
 | 2026-10-17 | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
+| 2026-10-17 | [2026-10-17-tur-basina-40-adim-buyuk-projede-dar](incidents/2026-10-17-tur-basina-40-adim-buyuk-projede-dar.md) | eksik | dusuk | cozuldu | Claude Code (masaüstü) | Tur başına 40 adım büyük projede dar |
+| 2026-10-17 | [2026-10-17-model-ayni-cumleleri-tekrar-tekrar-yazip-aracsiz-bitiriyordu](incidents/2026-10-17-model-ayni-cumleleri-tekrar-tekrar-yazip-aracsiz-bitiriyordu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Model aynı cümleleri tekrar tekrar yazıp araçsız bitiriyordu |
+| 2026-10-17 | [2026-10-17-evren-model-json-400-hatasi-kalici-metin-protokolune-geciriy](incidents/2026-10-17-evren-model-json-400-hatasi-kalici-metin-protokolune-geciriy.md) | hata | orta | cozuldu | Claude Code (masaüstü) | EVREN model JSON 400 hatası kalıcı metin protokolüne geçiriyordu |
 | 2026-10-17 | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | orta | izleniyor | Claude Code (masaüstü) | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
 | 2026-10-17 | [2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu](incidents/2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Boş yanıt ve "söz verip durma" sessizce bitti sayılıyordu |
 | 2026-10-17 | [2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu](incidents/2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Ajan tekrar ve ileri-geri düzenlemede durmuyordu |

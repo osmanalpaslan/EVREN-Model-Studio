@@ -130,3 +130,13 @@ def test_anahtarsiz_ucretli_model_hatirlanmaz(win, monkeypatch, tmp_path):
     s.set_model("gpt-6-luna")                                       # anahtar yok → reddedilir
     assert w.ctx.settings.default_model == "auto"
     assert ConfigStore(tmp_path / "data").load().default_model in ("auto",) or         not (tmp_path / "data" / "config.json").exists()
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ({"settings_version": 2, "agent_max_steps": 40}, 80),     # eski varsayılan taşınır
+    ({"settings_version": 2, "agent_max_steps": 25}, 25),     # kullanıcı seçimi korunur
+    ({"settings_version": 2}, 80),
+    ({"settings_version": 3, "agent_max_steps": 40}, 40),     # yeni sürümde bilerek 40 seçilmiş
+])
+def test_adim_siniri_tasima(raw, expected):
+    assert migrate_raw(dict(raw)).get("agent_max_steps", 80) == expected

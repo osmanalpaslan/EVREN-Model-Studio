@@ -76,9 +76,36 @@ deepseek-v4.1-flash, qwen3.8-flash-next, glm-5.3, mimo-v2.6-pro.
   testleri değiştirme/kandırma, yapmadığını yaptım deme kuralları.
 - Proje hafızası: EVREN.md varsa YALNIZ o (bu depoda kısa EVREN.md eklendi).
 
+## Proje maratonu (gerçek arayüz, tests/e2e_marathon_real_api.py)
+
+Görünmez pencerede Otomatik mod; sanal kullanıcı 3–4 mesajlık gerçek projeler
+yaptırır, modelin görmediği kabul testleri dışarıdan dener.
+A: Python CLI + SQLite (10 test) · B: Flask REST + HTML, proje .venv'i (13) ·
+C: Node + TypeScript + pnpm (pnpm kurulu değildi; ajan kendisi kurdu) (10).
+
+| Tur | Proje | deepseek-v4-flash | qwen3.8-flash-next | auto |
+|---|---|---|---|---|
+| 1 (özet yok) | A | 10/10 · 3,3 dk | 10/10 · 8,7 dk | 9/10 · 13 dk (metin tekrarı) |
+| 1 | B | 13/13 · 4,3 dk | 13/13 · 7 dk | 13/13 · 6,8 dk |
+| 1 | C | 10/10 · 6,4 dk | 10/10 · 19 dk (40 adım sınırına dayandı) | 10/10 · 14 dk (400 → metin protokolü) |
+| 2 (özet eşiği 15k) | A | 10/10 · 1 özet | 10/10 · 2 özet | 10/10 · 1 özet |
+| 2 | C | 8/10 · 1 özet (boş satırı saymadı — görev metni belirsizdi) | 10/10 · 1 özet | 9/10 · 1 özet (`--json` yalnız dosyadan önce çalışıyor) |
+
+Hiçbir koşuda onay istenmedi, "devam et" gerekmedi, Qt uyarısı/yakalanmamış hata
+yok. Otomatik özet + otomatik devam zinciri 5 koşuda çalıştı; özetten sonra
+işin tekrarlandığı / kaybolduğu görülmedi.
+
+Maratonda çıkan ve düzeltilenler:
+- **Metin tekrarı** (auto): araçsız yanıtta aynı cümleler onlarca kez (48 bin
+  karakter). → `collapse_repetition` + dürtme + akışta erken kesme. 170 gerçek
+  mesajda 2 doğru yakalama, 0 yanlış alarm.
+- **Sunucu 400 "Expecting ',' delimiter"**: EVREN, modelin bozuk araç JSON'unu
+  okuyamayınca 400 dönüyor (aynı istek 3 denemede 1 kez). Koşucu bunu kalıcı
+  metin protokolüne geçiş sanıyordu. → aynı adım 2 kez yeniden denenir.
+- **40 adım sınırı** büyük projede dar → varsayılan 80 (eski varsayılan taşınır).
+
 ## Açık işler
 
-- Uzun oturumda (özet + kısaltma devrede) döngü ölçümü → proje maratonu.
 - "auto" yönlendiricisinin tur içinde model değiştirmesi (akışta `routed_model`
   gelmiyor; ölçülemedi).
 - Test dosyası değiştiğinde turu özetleyen uyarı (kural yalnız istemde).

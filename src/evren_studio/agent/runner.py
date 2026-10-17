@@ -49,7 +49,7 @@ from .tools import (
     validate_todos,
 )
 
-DEFAULT_MAX_STEPS = 40
+DEFAULT_MAX_STEPS = 80
 CHARS_PER_TOKEN = 3.5
 # "gerekirse yeniden oku" demiyoruz: modeli aynı dosyaları tekrar okumaya itiyordu (döngü).
 TRIMMED_NOTE = ("[Bu araç çıktısı bağlam sınırı nedeniyle kısaltıldı. İşlem zaten yapıldı; "
@@ -73,7 +73,63 @@ NUDGE_EMPTY = ("[Otomatik hatırlatma] Son yanıtın boş geldi (muhtemelen dü�
                "Kısa düşün; ya bir sonraki aracı çağır ya da sonucu kısaca yaz.")
 NUDGE_INTENT = ("[Otomatik hatırlatma] Ne yapacağını söyleyip araç çağırmadan durdun. Söylediğin işi "
                 "şimdi araçlarla yap; iş zaten bittiyse ne yaptığını özetle.")
+NUDGE_REPEAT = ("[Otomatik hatırlatma] Son yanıtın aynı cümleleri tekrar tekrar yazıyordu ve araç "
+                "çağırmadın. Tekrarı bırak: yapacağın işin aracını ŞİMDİ çağır; iş bittiyse kısa bir "
+                "özet yaz, bitmediyse neyin eksik olduğunu açıkça söyle.")
+REPEAT_COLLAPSED = "\n\n[Tekrar eden metin kısaltıldı.]"
 _INTENT_RE = None
+
+
+class _StepCancel:
+    """Kullanıcı iptaline ek olarak, akışta metin tekrarı görülünce isteği kesmeye yarar."""
+
+    def __init__(self, outer: Any):
+        self.outer = outer
+        self.repetition = False
+
+    @property
+    def cancelled(self) -> bool:
+        return self.repetition or bool(self.outer is not None and getattr(self.outer, "cancelled", False))
+
+
+STREAM_REPEAT_MIN = 8      # akışta bu kadar tekrar eden cümle görülürse istek kesilir
+MAX_JSON_400_RETRIES = 2   # tur başına, sunucunun model JSON'unu okuyamadığı 400'lerde yeniden deneme
+
+
+def looks_like_model_json_error(message: str) -> bool:
+    """400 mesajı, sunucunun MODEL çıktısındaki JSON'u ayrıştıramadığını mı gösteriyor?"""
+    m = (message or "").lower()
+    return any(s in m for s in ("expecting ',' delimiter", "expecting value", "expecting property name",
+                                "unterminated string", "extra data", "invalid control character",
+                                "jsondecodeerror", "invalid \\escape"))
+
+
+def collapse_repetition(text: str, min_dup: int = 3) -> tuple[str, bool]:
+    """Aynı cümleleri defalarca yazan (dejenere) yanıtı kısaltır.
+
+    auto (2026-10-17 maraton): araç çağırmadan "dosyayı okuyayım. Testleri
+    çalıştıracağım. …" cümlelerini onlarca kez yazdı; koşucu bunu yanıt sandı.
+    Dönüş: (kısaltılmış metin, tekrar vardı mı). Kısa (<12 harf) parçalar ve
+    birkaç tekrar normal sayılır; en az 3 tekrar ve parçaların %30'u gerekir.
+    """
+    import re
+
+    if not text or len(text) < 120:
+        return text, False
+    parts = [p for p in re.split(r"(?<=[.!?…:])\s+|\n+", text.strip()) if p.strip()]
+    seen: set[str] = set()
+    kept: list[str] = []
+    dup = 0
+    for p in parts:
+        key = re.sub(r"\W+", " ", p.lower()).strip()
+        if len(key) >= 12 and key in seen:
+            dup += 1
+            continue
+        seen.add(key)
+        kept.append(p)
+    if dup >= min_dup and dup >= 0.3 * len(parts):
+        return " ".join(kept) + REPEAT_COLLAPSED, True
+    return text, False
 
 
 def looks_like_unfinished_intent(text: str) -> bool:
@@ -391,17 +447,28 @@ class AgentRunner:
         if self.agentic and self.protocol == "native":
             tools = [s.openai_schema() for s in self._specs()]
 
+        guard = _StepCancel(self.cancel)
+        streamed: list[str] = []
+
         def on_delta(text: str, _finish: str = "") -> None:
             self.events.text_delta(text)
+            streamed.append(text)
+            # Akışta aynı cümleler dönüp duruyorsa isteği erken kes (zaman ve kota).
+            if len(streamed) % 25 == 0 and not guard.repetition:
+                if collapse_repetition("".join(streamed), min_dup=STREAM_REPEAT_MIN)[1]:
+                    guard.repetition = True
 
         kwargs: dict[str, Any] = {}
         if extra_body:
             kwargs["extra_body"] = extra_body
-        return self.client.chat(
-            self.model, messages, stream=self.stream, cancel=self.cancel,
+        result = self.client.chat(
+            self.model, messages, stream=self.stream, cancel=guard,
             on_delta=on_delta, on_reasoning=self.events.reasoning_delta,
             tools=tools, **kwargs,
         )
+        if guard.repetition and not self._cancelled():
+            result.finish_reason = "repetition"
+        return result
 
     # -- ana döngü ---------------------------------------------------------------------
 
@@ -416,6 +483,7 @@ class AgentRunner:
         flipflops = 0
         nudged: set[str] = set()
         loop_reason = ""
+        json_retries = 0
         while step < self.max_steps:
             if self._cancelled():
                 outcome.stopped = "cancelled"
@@ -432,6 +500,16 @@ class AgentRunner:
             try:
                 result = self._call_model(history)
             except ApiError as exc:
+                # EVREN, modelin ürettiği bozuk araç JSON'unu kendisi ayrıştıramayınca 400
+                # döndürüyor ("Expecting ',' delimiter"); bu tek seferlik — aynı adımı yeniden dene,
+                # yerel protokolü bırakma (2026-10-17 maraton: auto 3 denemede 1 kez).
+                if (exc.kind == ErrorKind.VALIDATION and json_retries < MAX_JSON_400_RETRIES
+                        and looks_like_model_json_error(exc.message)):
+                    json_retries += 1
+                    self.events.status("Sunucu, modelin ürettiği araç çağrısını okuyamadı (400); "
+                                       "aynı adım yeniden deneniyor.")
+                    step -= 1
+                    continue
                 if (self.agentic and self.protocol == "native" and self.allow_fallback
                         and not fallback_used and exc.kind == ErrorKind.VALIDATION):
                     fallback_used = True
@@ -451,6 +529,7 @@ class AgentRunner:
                 content, text_calls, parse_errors = textproto.parse_tool_calls(content)
                 raw_calls += text_calls
             calls = [ToolCall.from_raw(c) for c in raw_calls] if self.agentic else []
+            content, repetitive = collapse_repetition(content)
 
             cancelled = result.finish_reason == "cancelled_by_user"
             duration = round(time.monotonic() - t0, 1)
@@ -483,11 +562,11 @@ class AgentRunner:
                                tool_call_id=call.id, name=call.name, meta={"error": True})
                 break
             if not calls and not parse_errors:
-                stall = self._stall_kind(content, result) if self.agentic else None
+                stall = ("repeat" if repetitive else self._stall_kind(content, result)) if self.agentic else None
                 if stall and stall not in nudged and step < self.max_steps:
-                    # Boş yanıt / "inceleyeyim" deyip durma: bir kez otomatik dürt.
+                    # Boş yanıt / "inceleyeyim" deyip durma / metin tekrarı: bir kez otomatik dürt.
                     nudged.add(stall)
-                    self._nudge = NUDGE_EMPTY if stall == "empty" else NUDGE_INTENT
+                    self._nudge = {"empty": NUDGE_EMPTY, "repeat": NUDGE_REPEAT}.get(stall, NUDGE_INTENT)
                     if stall == "empty" and self.stall_retry_body:
                         self._extra_body = dict(self.stall_retry_body)
                     self.events.status(

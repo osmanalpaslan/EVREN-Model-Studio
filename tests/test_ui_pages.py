@@ -209,7 +209,7 @@ def test_tum_ekranlar_ve_eylemleri(qa):
     assert saved["timeout_seconds"] == 250
     assert "timeout_seconds" in st.changed_fields()
     st.reset_defaults()
-    assert w.ctx.settings.timeout_seconds == 120 and w.ctx.settings.agent_max_steps == 40
+    assert w.ctx.settings.timeout_seconds == 120 and w.ctx.settings.agent_max_steps == 80
     assert st.timeout.value() == 120, "form varsayılan değerlerle yenilenmeli"
     assert st.changed_fields() == []
     st.export_data()

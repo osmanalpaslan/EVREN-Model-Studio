@@ -11,6 +11,12 @@
 - **Boş yanıt / "inceleyeyim" deyip durma**: model bir kez otomatik hatırlatılır;
   boş yanıtta (düşünme bütçesi tükenmesi) destekleyen EVREN modelinde o deneme
   düşünmesiz yapılır. Yine boşsa ekranda not çıkar.
+- **Metin tekrarı denetimi**: model araç çağırmadan aynı cümleleri tekrar tekrar
+  yazarsa metin kısaltılır, model bir kez yönlendirilir; akışta istek erken kesilir.
+- **Sunucu 400 (bozuk araç JSON'u)**: aynı adım yeniden denenir, yerel araç
+  çağrısı bırakılmaz.
+- **Proje maratonu** (tests/e2e_marathon_real_api.py): gerçek arayüzle 3 proje
+  baştan sona; kabul testleri dışarıdan.
 - **API anahtarı koruması**: commit'e anahtar giremez (tools/secret_scan.py,
   ön-commit kancası ve test). Depoda/geçmişte anahtar olmadığı doğrulandı.
 
@@ -18,6 +24,7 @@
 
 - **Otomatik mod hiçbir işlem için onay istemez** (kullanıcı kararı): riskli
   komutlar, korumalı dosyalar ve gizli dosya okuma dahil. Durdurmak için Esc.
+- Tur başına adım sınırı varsayılanı 40 → 80 (eski varsayılan kendiliğinden taşınır).
 - Proje hafızası: kökte EVREN.md varsa ajana yalnız o verilir (uzun AGENTS.md
   ajanı asıl işten uzaklaştırıyordu). Bu depoya kısa EVREN.md eklendi.
 - Ajan kuralları: tekrar etmeme, iki başarısızlıktan sonra yol değiştirme veya

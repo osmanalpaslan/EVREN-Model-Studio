@@ -64,13 +64,12 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
-- (2026-10-17, onaylı) Proje maratonu: arayüzle uzun gerçek projeler + uzun
-  oturumda döngü ölçümü; "ortam denetimi" (eksik programı winget + bilinen
+- (2026-10-17) Proje maratonu YAPILDI (LOOP_ANALYSIS.md); sıradaki: "ortam denetimi" (eksik programı winget + bilinen
   listeyle onaysız kurma). Otomatik mod artık hiç onay istemiyor (uygulandı). Döngü analizi: docs/knowledge/LOOP_ANALYSIS.md.
 0. OpenAI/Anthropic'i gerçek anahtarla doğrula; geçerse `api/providers.py`'de
    `verified=True` ve MODEL_CAPABILITIES.md güncelle.
-1. Gerçek modellerle komut çalıştırma (run_command) ve uzun çok adımlı
-   görev senaryosu ekle (`tests/e2e_ui_real_api.py`).
+1. ~~Uzun çok adımlı görev senaryosu~~ — YAPILDI (2026-10-17):
+   `tests/e2e_marathon_real_api.py` (A/B/C projeleri, kabul testleri).
 2. ~~`auto` için protokol seçimi~~ — ÇÖZÜLDÜ (2026-10-16): ölçülen değerler
    (262k + yerel araç) uygulanıyor; auto artık varsayılan motor.
 3. Git entegrasyonu (durum/diff görünümü, ajan değişikliklerini commit'leme

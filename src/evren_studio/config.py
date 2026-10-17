@@ -36,9 +36,10 @@ TASK_LABELS = {
 }
 
 
-SETTINGS_VERSION = 2
+SETTINGS_VERSION = 3
 # Eski sürümün varsayılanı: kullanıcı değiştirmediyse yeni varsayılana taşınır.
 _OLD_DEFAULT_MODEL = "glm-5.3"
+_OLD_DEFAULT_MAX_STEPS = 40
 
 
 def migrate_raw(raw: dict[str, Any]) -> dict[str, Any]:
@@ -50,6 +51,10 @@ def migrate_raw(raw: dict[str, Any]) -> dict[str, Any]:
         # Eski sürüm varsayılanı her zaman dosyaya yazıyordu; glm-5.3 bilerek seçilmiş
         # olabilir ama ayırt edilemez. Kullanıcı kararı (2026-10-16): varsayılan auto.
         raw["default_model"] = "auto"
+    if version < 3 and raw.get("agent_max_steps", _OLD_DEFAULT_MAX_STEPS) == _OLD_DEFAULT_MAX_STEPS:
+        # 2026-10-17 maraton: büyük projede ilk mesaj tam 40 adımda bitti; döngü bekçisi
+        # kontrolden çıkan turu durdurduğu için varsayılan 80 (yalnız eski varsayılan taşınır).
+        raw["agent_max_steps"] = 80
     raw["settings_version"] = max(version, SETTINGS_VERSION)
     return raw
 
@@ -82,7 +87,7 @@ class Settings:
     # ---- kod ajanı / çalışma alanı ----
     agent_mode: str = "manuel"              # manuel | kabul | plan | auto (eski: onayli/otomatik)
     tool_protocol: str = "otomatik"         # otomatik | yerel | metin
-    agent_max_steps: int = 40
+    agent_max_steps: int = 80
     command_timeout_seconds: int = 120
     tool_output_limit: int = 20000
     recent_workspaces: list[str] = field(default_factory=list)
@@ -101,6 +106,7 @@ class Settings:
     panel_visible: bool = True
     send_with_enter: bool = True
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
+    # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).
     settings_version: int = SETTINGS_VERSION
 
     def resolved_data_dir(self) -> Path:
