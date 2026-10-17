@@ -788,6 +788,70 @@ class InstallCard(QFrame):
         self.body.setText(self.body.text() + "\n" + text)
 
 
+class ActionCard(QFrame):
+    """Başlık + satırlar + eylem düğmeleri olan bilgi kartı (tur özeti, kapsam, plan).
+
+    actions: [(etiket, geri çağrı, "primary"|"ghost"|"danger"|"")]. Bir düğmeye
+    basılınca `disable_on_click` ise tüm düğmeler kilitlenir (çift tıklama olmasın).
+    """
+
+    def __init__(self, title: str, lines: list[str], actions=None, icon_name: str = "spark",
+                 warn: bool = False, disable_on_click: bool = True, parent=None):
+        super().__init__(parent)
+        self.setObjectName("ApprovalBox" if warn else "ToolCard")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 10, 12, 12)
+        lay.setSpacing(6)
+        head = QHBoxLayout()
+        ic = QLabel()
+        p = theme.current()
+        ic.setPixmap(icons.pixmap(icon_name, p.warning if warn else p.accent, 16))
+        head.addWidget(ic)
+        self.title = QLabel(title)
+        self.title.setStyleSheet("font-weight: 600;")
+        self.title.setWordWrap(True)
+        head.addWidget(self.title, 1)
+        lay.addLayout(head)
+        self.body = QLabel("\n".join(lines))
+        self.body.setWordWrap(True)
+        self.body.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.body.setVisible(bool(lines))
+        lay.addWidget(self.body)
+        self.buttons: dict[str, QPushButton] = {}
+        if actions:
+            row = QHBoxLayout()
+            row.setSpacing(8)
+            for label, cb, variant in actions:
+                b = QPushButton(label)
+                if variant:
+                    b.setProperty("variant", variant)
+                b.clicked.connect(lambda _=False, f=cb: self._clicked(f, disable_on_click))
+                row.addWidget(b)
+                self.buttons[label] = b
+            row.addStretch(1)
+            lay.addLayout(row)
+
+    def _clicked(self, cb, lock: bool) -> None:
+        if lock:
+            self.lock()
+        cb()
+
+    def lock(self) -> None:
+        for b in self.buttons.values():
+            b.setEnabled(False)
+
+    def set_title(self, text: str) -> None:
+        self.title.setText(text)
+
+    def set_lines(self, lines: list[str]) -> None:
+        self.body.setText("\n".join(lines))
+        self.body.setVisible(bool(lines))
+
+    def append_line(self, text: str) -> None:
+        self.body.setVisible(True)
+        self.body.setText((self.body.text() + "\n" if self.body.text() else "") + text)
+
+
 class ErrorCard(QFrame):
     def __init__(self, title: str, lines: list[str],
                  actions: list[tuple[str, Callable[[], None]]] | None = None, parent=None):

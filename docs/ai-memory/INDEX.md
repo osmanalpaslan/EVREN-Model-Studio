@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 35 · Açık/izlenen: 4 · Oturum: 13 · Kural: 19
+Kayıt: 36 · Açık/izlenen: 4 · Oturum: 14 · Kural: 20
 
 ## Açık ve izlenen kayıtlar
 
@@ -26,6 +26,7 @@ Kayıt: 35 · Açık/izlenen: 4 · Oturum: 13 · Kural: 19
 | 2026-10-17 | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | orta | izleniyor | Claude Code (masaüstü) | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
 | 2026-10-17 | [2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu](incidents/2026-10-17-bos-yanit-ve-soz-verip-durma-sessizce-bitti-sayiliyordu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Boş yanıt ve "söz verip durma" sessizce bitti sayılıyordu |
 | 2026-10-17 | [2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu](incidents/2026-10-17-ajan-tekrar-ve-ileri-geri-duzenlemede-durmuyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Ajan tekrar ve ileri-geri düzenlemede durmuyordu |
+| 2026-10-17 | [2026-10-17-ajan-istenmeyen-tasarim-degisikligi-yapiyordu-kapsam-tasmasi](incidents/2026-10-17-ajan-istenmeyen-tasarim-degisikligi-yapiyordu-kapsam-tasmasi.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Ajan istenmeyen tasarım değişikliği yapıyordu (kapsam taşması) |
 | 2026-10-17 | [2026-10-17-agir-agents-md-evren-ajanini-asil-isten-uzaklastiriyordu](incidents/2026-10-17-agir-agents-md-evren-ajanini-asil-isten-uzaklastiriyordu.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Ağır AGENTS.md EVREN ajanını asıl işten uzaklaştırıyordu |
 | 2026-10-16 | [2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu](incidents/2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu.md) | surec | dusuk | cozuldu | Claude Code (masaüstü) | Test paketi silinmeyen pencerelerle yavaşlıyordu |
 | 2026-10-16 | [2026-10-16-qtimer-silinmis-widgeta-cagri](incidents/2026-10-16-qtimer-silinmis-widgeta-cagri.md) | hata | orta | cozuldu | Claude Code (masaüstü) | QTimer.singleShot silinmiş widget'ı çağırdı |
@@ -58,6 +59,7 @@ Kayıt: 35 · Açık/izlenen: 4 · Oturum: 13 · Kural: 19
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: ortam denetimi ve program kurulumu |
+| 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-kapsam-korumasi](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-kapsam-korumasi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: kapsam koruması |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: döngü analizi ve döngü bekçisi |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-ay-yildiz-simgesi-c](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-ay-yildiz-simgesi-c.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: ay-yıldız simgesi, canlı gösterge, hız |
 | 2026-10-16 | [2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan](sessions/2026-10-16-claude-code-masaustu-varsayilan-motor-auto-son-secim-hatirlan.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Varsayılan motor auto; son seçilen motor ve mod hatırlanır |
@@ -92,3 +94,4 @@ Kayıt: 35 · Açık/izlenen: 4 · Oturum: 13 · Kural: 19
 - **R-17** · Ücretli sağlayıcı fiyatını ve doğrulama durumunu tarihli tut
 - **R-18** · Başlamadan önce GitHub ile eşitle, eşitleme uyarısını yok sayma
 - **R-19** · Ajan turunu araçsız yanıt geldi diye bitmiş sayma; döngü bekçisini koru
+- **R-20** · Ajanın kapsam korumasını kaldırma; değişiklikleri tura bağla

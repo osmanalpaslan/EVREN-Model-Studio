@@ -90,6 +90,11 @@ class Settings:
     agent_max_steps: int = 80
     # Ortam denetimi: eksik program "otomatik" (sormadan) | "manuel" (sorarak) kurulur.
     install_mode: str = "otomatik"
+    # Kapsam koruması (2026-10-17): tur bitince istenmemiş değişiklikleri hızlı bir modelle
+    # işaretle (onay istemez, yalnız uyarır). plan_first: dosyaya dokunmadan önce plan sun.
+    scope_check: bool = True
+    scope_check_model: str = "deepseek-v4-flash"
+    plan_first: bool = False
     command_timeout_seconds: int = 120
     tool_output_limit: int = 20000
     recent_workspaces: list[str] = field(default_factory=list)

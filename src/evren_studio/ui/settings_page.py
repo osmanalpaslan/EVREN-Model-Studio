@@ -247,6 +247,13 @@ class SettingsPage(BasePage):
             "Proje klasörü bağlanınca gereken programlar (Node, pnpm, Python, Git, Go, .NET …) "
             "denetlenir. Otomatik: eksik olan sorulmadan kurulur. Manuel: kurmadan önce sorulur. "
             "Kurulum Windows Paket Yöneticisi (winget) veya npm ile, yalnız bilinen listeden yapılır."))
+        self.scope_check = QCheckBox("Tur bitince kapsam denetimi yap: istenmemiş değişiklikleri işaretle (önerilir)")
+        l.addWidget(self.scope_check)
+        l.addWidget(hint("Ajan istemediğiniz dosyalara/tasarıma dokunduysa sohbette uyarı kartı çıkar; "
+                         "tek tıkla geri alabilirsiniz. Onay istemez, işi yavaşlatmaz (hızlı modelle denetlenir)."))
+        self.plan_first = QCheckBox("Önce plan: dosyaya dokunmadan önce plan sun, “Uygula” deyince başla")
+        l.addWidget(self.plan_first)
+        l.addWidget(hint("Tasarım gibi yoruma açık işler için açın. Kapalıyken ajan doğrudan çalışır."))
         self.cmd_timeout = QSpinBox()
         self.cmd_timeout.setRange(10, 1800)
         self.cmd_timeout.setSuffix(" sn")
@@ -355,6 +362,8 @@ class SettingsPage(BasePage):
         self.tool_protocol.setCurrentIndex(max(0, self.tool_protocol.findData(s.tool_protocol)))
         self.max_steps.setValue(s.agent_max_steps)
         self.install_mode.setCurrentIndex(max(0, self.install_mode.findData(s.install_mode)))
+        self.scope_check.setChecked(s.scope_check)
+        self.plan_first.setChecked(s.plan_first)
         self.cmd_timeout.setValue(s.command_timeout_seconds)
         self.output_limit.setValue(s.tool_output_limit)
         self.show_reasoning.setChecked(s.show_reasoning)
@@ -386,6 +395,8 @@ class SettingsPage(BasePage):
         s.tool_protocol = self.tool_protocol.currentData()
         s.agent_max_steps = int(self.max_steps.value())
         s.install_mode = self.install_mode.currentData() or "otomatik"
+        s.scope_check = self.scope_check.isChecked()
+        s.plan_first = self.plan_first.isChecked()
         s.command_timeout_seconds = int(self.cmd_timeout.value())
         s.tool_output_limit = int(self.output_limit.value())
         s.show_reasoning = self.show_reasoning.isChecked()
