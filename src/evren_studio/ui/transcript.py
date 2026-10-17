@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..agent import textproto
-from . import icons, theme
+from . import brand, icons, theme
 from .markdown_view import MarkdownView
 
 COLUMN_WIDTH = 860
@@ -185,6 +185,7 @@ class Transcript(QScrollArea):
         while self.lay.count() > 1:
             item = self.lay.takeAt(0)
             if item.widget():
+                item.widget().hide()          # silinmeyi beklerken ekranda kalmasın
                 item.widget().deleteLater()
         self._stick = True
 
@@ -307,7 +308,7 @@ class AssistantMessageWidget(QWidget):
         head = QHBoxLayout()
         head.setSpacing(6)
         logo = QLabel()
-        logo.setPixmap(icons.pixmap("spark", theme.current().accent, 16))
+        logo.setPixmap(brand.pixmap(16))
         head.addWidget(logo)
         name = QLabel("EVREN")
         name.setStyleSheet("font-weight: 600;")
@@ -327,8 +328,17 @@ class AssistantMessageWidget(QWidget):
         self.body = MarkdownView()
         self.body.setVisible(False)
         lay.addWidget(self.body)
+        # Bekleme satırı: canlı yıldız (model çalışırken döner) + durum metni
+        self.status_row = QWidget()
+        sr = QHBoxLayout(self.status_row)
+        sr.setContentsMargins(0, 0, 0, 0)
+        sr.setSpacing(8)
+        self.busy = brand.BusyStar(14)
+        self.busy.setVisible(False)
+        sr.addWidget(self.busy)
         self.status = faint_label("")
-        lay.addWidget(self.status)
+        sr.addWidget(self.status, 1)
+        lay.addWidget(self.status_row)
         self.tools = QVBoxLayout()
         self.tools.setSpacing(6)
         lay.addLayout(self.tools)
@@ -398,6 +408,7 @@ class AssistantMessageWidget(QWidget):
         self._wait_text = text
         self._dots = 0
         self._tick()
+        self.busy.setVisible(True)
         self._wait_timer.start()
 
     def _tick(self) -> None:
@@ -407,6 +418,7 @@ class AssistantMessageWidget(QWidget):
 
     def stop_waiting(self) -> None:
         self._wait_timer.stop()
+        self.busy.setVisible(False)
         self.status.setVisible(False)
 
     def append_text(self, delta: str) -> None:

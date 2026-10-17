@@ -46,6 +46,14 @@ def main() -> int:
     _install_excepthook()
     from .ui.main_window import MainWindow
 
+    if sys.platform == "win32":
+        # Görev çubuğunda "Python" yerine uygulamanın kendi simgesi (ay-yıldız) görünsün
+        try:
+            import ctypes
+
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("EVREN.Studio")
+        except (AttributeError, OSError):
+            pass
     app = QApplication(sys.argv)
     app.setApplicationName("EVREN Studio")
     app.setOrganizationName("EVREN Studio")

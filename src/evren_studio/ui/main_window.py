@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
-from . import icons, theme, wheel_guard, workers
+from . import brand, icons, theme, wheel_guard, workers
 from .app_context import AppContext
 from .connection_page import ConnectionPage
 from .errors_page import ErrorsPage
@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
             theme.apply_theme(app, s.theme, s.font_size)
             wheel_guard.install(app)
         self.setWindowTitle("EVREN Studio")
-        self.setWindowIcon(icons.icon("spark", theme.current().accent, 32))
+        self.setWindowIcon(brand.app_icon())       # ay-yıldız, temaya göre beyaz/kırmızı
         self.resize(1440, 900)
         self.setMinimumSize(900, 600)
 
@@ -81,6 +81,7 @@ class MainWindow(QMainWindow):
         self.ctx.on_models_changed(self.session.refresh_models)
 
         self._shortcuts()
+        wheel_guard.protect(self)              # tüm sayı/liste alanları (bkz. wheel_guard)
         self.sidebar.setVisible(s.sidebar_visible)
         self.session.set_sidebar_hidden(not s.sidebar_visible)
         self.panel.setVisible(s.panel_visible)
@@ -121,6 +122,7 @@ class MainWindow(QMainWindow):
                 page.refresh()
             except TypeError:
                 pass
+        wheel_guard.protect(page)          # ekranda sonradan eklenen alanlar da korunsun
         self.center.setCurrentWidget(page)
         self.sidebar.set_page(key)
         self.panel.setVisible(False)
@@ -202,6 +204,9 @@ class MainWindow(QMainWindow):
         if app is not None:
             icons.clear_cache()
             theme.apply_theme(app, s.theme, s.font_size)
+            self.setWindowIcon(brand.app_icon())
+            self.sidebar.refresh_logo()
+            self.session.welcome.refresh_logo()
         self.session.composer.edit.send_with_enter = s.send_with_enter
         self.sidebar.refresh()
         self.session.refresh_models()

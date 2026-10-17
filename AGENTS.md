@@ -97,7 +97,7 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-09** · Hafızayı oku, sonra besle — Her oturuma `tools/ai_memory.py baslangic` ile başla; kod değiştirdiysen oturum günlüğü yaz, `indeks` ve `denetle` çalıştır.
 - **R-10** · Kodlamayı test ile koru — Kaynak/doküman dosyalarında bozuk Türkçe (mojibake) ve .py dosyalarında BOM olmamalı; tests/test_source_hygiene.py bunu denetler, kapatma.
 - **R-11** · Qt bileşenini yalnızca ana iş parçacığından güncelle — Arka plan iş parçacığından gelen her geri çağrıyı QObject sinyaliyle ana iş parçacığına taşı; Task kullanırken workers.py'deki referans tutma düzenini bozma.
-- **R-12** · Fare tekerleği korumasını kaldırma — Yeni sayı/liste alanları ekleyince wheel_guard'ın onları kapsadığını varsay; korumayı kapatma, alan başına tekerlek davranışı ekleme.
+- **R-12** · Fare tekerleği korumasını kaldırma — Yeni sayı/liste alanları wheel_guard.protect() ile korunur (pencere kurulunca ve her ekran açılışında otomatik); korumayı kapatma, alan başına tekerlek davranışı ekleme ve UYGULAMA GENELİ Python olay filtresi kurma.
 - **R-13** · API/ajan değişikliğinden sonra gerçek uçtan uca testleri çalıştır — api/ veya agent/ ya da oturum arayüzüne dokunduysan ve API anahtarı varsa tests/e2e_real_api.py, tests/e2e_agent_real_api.py ve tests/e2e_ui_real_api.py çalıştır; sonucu oturum günlüğüne yaz.
 - **R-14** · Eski izin anahtarını asla daha yetkili moda çevirme — Mod/izin adlarını değiştirirken yeni anahtar kullan; eski değerleri normalize_mode ile eşdeğer veya daha kısıtlı moda eşle ve bunu test et.
 - **R-15** · Özelliğin hangi dalda olduğunu kullanıcıya söyle — Kullanıcıya bir özelliği "hazır" diye anlatırken birleştirilmemiş bir dalda/PR'da olup olmadığını ve diğer bilgisayarlarda nasıl güncelleneceğini belirt.

@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..agent.permissions import MODE_HINTS, MODES, normalize_mode
-from . import icons, theme
+from . import brand, icons, theme
 
 SLASH_COMMANDS = {
     "/model": "Modeli değiştir — listeden seçin",
@@ -150,8 +150,8 @@ class Composer(QWidget):
         rl = QHBoxLayout(self.run_bar)
         rl.setContentsMargins(12, 5, 12, 5)
         rl.setSpacing(8)
-        self.run_dot = QLabel()
-        self.run_dot.setPixmap(icons.pixmap("dot", theme.current().accent, 12))
+        # Canlı gösterge: çubuk görünürken döner, gizlenince durur (işlemci harcamaz)
+        self.run_dot = brand.BusyStar(14)
         rl.addWidget(self.run_dot)
         self.run_text = QLabel()
         rl.addWidget(self.run_text, 1)

@@ -4,6 +4,11 @@
 
 ### Eklendi
 
+- **Ay-yıldız simgesi**: Türk bayrağı oranlarıyla, arka plansız; koyu temada
+  beyaz, açık temada bayrak kırmızısı. Masaüstü/görev çubuğu için `assets/evren.ico`.
+- **Canlı çalışma göstergesi**: model çalışırken dönen yıldız (mesajda ve durum çubuğunda).
+- **Hız**: uzun geçmiş oturumlar ~5 kat hızlı açılır (son 40 mesaj, "Önceki
+  mesajları göster"); ekran geçişleri hızlandı (tekerlek koruması alan başına).
 - **Ortam denetimi ve program kurulumu**: klasör bağlanınca gereken programlar
   denetlenir; eksikler Ayarlar > "Eksik program kurulumu" seçimine göre Otomatik
   (sormadan) veya Manuel ("Kurulsun mu?" bildirimi) kurulur. Ajan `install_program`

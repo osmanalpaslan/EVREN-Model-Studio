@@ -366,3 +366,65 @@ def test_llm_markdown_listesi_bos_satirsiz_da_liste_olur():
     assert "x = 1\n- kod içi" in fixed, "kod bloğu içine dokunulmamalı"
     html = render_markdown(src)
     assert "<li>birinci</li>" in html and "<li>ikinci</li>" in html
+
+
+def test_uzun_oturum_son_mesajlarla_acilir_ve_tumu_gosterilir(qa):
+    """200 mesajlık oturum yalnız son HISTORY_WINDOW mesajla açılır (performans, 2026-10-17)."""
+    import json as _json
+
+    from PySide6.QtWidgets import QPushButton
+
+    from evren_studio.ui.session_view import HISTORY_WINDOW
+    from evren_studio.ui.transcript import UserMessageWidget
+
+    app, w, errors, warnings, _ = qa
+    db = w.ctx.db
+    sid = db.create_session("auto", None, "manuel", title="uzun")
+    for i in range(50):
+        db.add_session_message(sid, "user", f"istek {i}")
+        db.add_session_message(sid, "assistant", "", tool_calls=[{"id": f"c{i}", "name": "read_file",
+                                                                 "arguments": _json.dumps({"path": "a.py"})}])
+        db.add_session_message(sid, "tool", "x", tool_call_id=f"c{i}", name="read_file", meta={"summary": "Okundu"})
+        db.add_session_message(sid, "assistant", f"yanıt {i}")
+    w.session.open_session(sid)
+    app.processEvents()
+    users = w.session.findChildren(UserMessageWidget)
+    shown = [u for u in users if u.isVisibleTo(w.session.transcript)]
+    assert 0 < len(shown) <= HISTORY_WINDOW // 4 + 1, len(shown)
+    btns = [b for b in w.session.findChildren(QPushButton) if b.text().startswith("Önceki ")]
+    assert btns, "önceki mesajlar düğmesi yok"
+    btns[0].click()
+    app.processEvents()
+    shown = [u for u in w.session.findChildren(UserMessageWidget) if u.isVisibleTo(w.session.transcript)]
+    assert len(shown) == 50
+    assert len(w.session.tool_widgets) == 50, "araç kartları sonuçlarıyla eşleşmeli"
+    assert_clean(errors, warnings)
+
+
+def test_tekerlek_korumasi_sonradan_eklenen_alani_kapsar(qa):
+    from PySide6.QtWidgets import QSpinBox
+
+    from evren_studio.ui import wheel_guard
+
+    app, w, errors, warnings, _ = qa
+    page = w.pages["settings"]
+    yeni = QSpinBox(page)
+    assert not yeni.property("_wheel_guard")
+    w.show_page("settings")
+    assert yeni.property("_wheel_guard") and yeni.focusPolicy() != Qt.WheelFocus
+    assert wheel_guard.protect(page) == 0, "aynı alan iki kez korunmamalı"
+
+
+def test_calisma_gostergesi_yalniz_gorunurken_doner(qa):
+    from evren_studio.ui.brand import BusyStar
+
+    app, w, errors, warnings, _ = qa
+    comp = w.session.composer
+    star = comp.run_dot
+    assert isinstance(star, BusyStar)
+    comp.set_run_status("deepseek-v4-flash  yanıt üretiyor")
+    app.processEvents()
+    assert star.running
+    comp.set_run_status(None)
+    app.processEvents()
+    assert not star.running
