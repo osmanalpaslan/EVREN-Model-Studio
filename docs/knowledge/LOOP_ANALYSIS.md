@@ -32,6 +32,9 @@
 | 5 | Gereksiz **görev listesi** güncellemeleri (her iki adımda bir) | gemma-4-31b, mimo-v2.6-pro | Adım/süre şişer |
 | 6 | **Ağır AGENTS.md**: "ZORUNLU" törenler yüzünden tek satırlık iş 23 adım / 646 sn; ortamdaki ilgisiz bir hatanın peşine düşüp olay kaydı açtı | qwen3.8-flash-next | "Aynı işleri yapıp duruyor" |
 
+| 7 | **Tek yanıtta toplu uydurma çağrı**: metin protokolünde tek yanıtta 39 araç çağrısı, çoğu projede olmayan dosyalar (`src/counter.py`) ve aynı dosyayı tekrar okuma; o yanıt 854 sn sürdü | glm-5.3 | Uzun bekleme, sonra anlamsız iş |
+| 8 | **Aşırı uzun düşünme**: tek adımda 772 sn / 31k karakter muhakeme; 6 adımlık iş 21 dk | glm-5.3 | "Takıldı" |
+
 Kısa görevlerde 30 adım içinde **sonsuz döngü gözlenmedi**; yukarıdakiler
 döngüye giden yolun taşlarıdır. Talimata uyan / dürüst modeller:
 deepseek-v4-flash, qwen3.8-flash-next, mimo-v2.6-pro (çelişkide durup bildirdi).
@@ -63,6 +66,8 @@ deepseek-v4.1-flash, qwen3.8-flash-next, glm-5.3, mimo-v2.6-pro.
 - `agent/runner.py` döngü bekçisi: aynı çağrı 2. kez → sonuca uyarı, 3. kez →
   tur `loop` ile durur; dosya önceki hâline dönerse uyarı, 2. kez → durur;
   başarılı yazma sayaçları sıfırlar.
+- Tek yanıtta döngü algılanınca kalan çağrılar çalıştırılmaz; tek yanıtta en fazla
+  12 araç çağrısı (`MAX_CALLS_PER_STEP`).
 - Boş yanıt → bir kez geçici hatırlatma (kayda yazılmaz) + destekleyen EVREN
   modelinde o tek denemede `reasoning_effort: "none"`; yine boşsa kullanıcıya not.
 - "İnceleyeyim/yapacağım" deyip durma → bir kez hatırlatma.

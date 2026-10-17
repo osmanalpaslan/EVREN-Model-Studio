@@ -137,3 +137,24 @@ def test_soz_verip_durma_durtulur(env):
 ])
 def test_niyet_algilama(text, expected):
     assert looks_like_unfinished_intent(text) is expected
+
+
+def test_tek_yanitta_dongu_algilaninca_kalan_cagrilar_calismaz(env):
+    # glm-5.3 gözlemi: tek yanıtta aynı dosyayı defalarca okuyan çok sayıda çağrı
+    calls = [{"id": f"c{i}", "name": "read_file", "arguments": json.dumps({"path": "a.py"})}
+             for i in range(8)]
+    out, client, ev, msgs = run(env, [ChatResult(tool_calls=calls, finish_reason="tool_calls")])
+    tools = [m for m in msgs if m["role"] == "tool"]
+    assert out.stopped == "loop" and len(tools) == 8          # her çağrıya yanıt yazılır
+    assert sum("çalıştırılmadı" in t["content"] for t in tools) == 5
+
+
+def test_tek_yanitta_cagri_siniri(env):
+    root, _ = env
+    for i in range(15):
+        (root / f"f{i}.py").write_text("x\n", encoding="utf-8")
+    calls = [{"id": f"c{i}", "name": "read_file", "arguments": json.dumps({"path": f"f{i}.py"})}
+             for i in range(15)]
+    out, client, ev, msgs = run(env, [ChatResult(tool_calls=calls, finish_reason="tool_calls")])
+    tools = [m for m in msgs if m["role"] == "tool"]
+    assert len(tools) == 15 and sum("atlandı" in t["content"] for t in tools) == 3

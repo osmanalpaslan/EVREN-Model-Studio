@@ -22,6 +22,8 @@ Ayrıca: "Otomatik modda hiçbir şey için onay istemesin" (kesin karar) ve
 - `agent/runner.py`: döngü bekçisi (tekrar / ileri-geri düzenleme → uyarı, sonra
   `loop` ile durma), boş yanıt ve "söz verip durma" için tek seferlik geçici
   hatırlatma, boş yanıtta destekleyen modelde `reasoning_effort: "none"`.
+- Ek: glm-5.3'ün tek yanıtta 39 (uydurma) çağrısı üzerine, döngü algılanınca kalan
+  çağrılar atlanır ve tek yanıtta en fazla 12 çağrı çalışır.
 - `api/client.py`: `chat(extra_body=...)`; OpenAI/Anthropic istemcileri yok sayar.
 - `ui/session_view.py`: `stall_retry_body` model yeteneğine göre verilir.
 - `agent/prompts.py`: tekrar etmeme, 2 başarısızlıktan sonra yol değiştirme,

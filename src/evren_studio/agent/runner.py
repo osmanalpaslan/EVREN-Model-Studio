@@ -61,6 +61,8 @@ REPEAT_WARN = 2        # 2. kez → sonuca uyarı eklenir
 REPEAT_STOP = 3        # 3. kez → tur durur ("loop"), kullanıcı karar verir
 # Bir dosya bu tur içinde daha önceki bir hâline geri dönerse (ileri-geri düzenleme):
 FLIPFLOP_STOP = 2      # 1. kez uyarı, 2. kez tur durur
+# glm-5.3 metin protokolünde tek yanıtta 39 çağrı (çoğu uydurma dosya) üretti:
+MAX_CALLS_PER_STEP = 12
 REPEAT_NOTE = ("\n\n[Döngü uyarısı] Bu çağrıyı bu turda aynı parametrelerle zaten {n} kez yaptın ve "
                "arada dosya değişmedi; sonuç aynı olacak. Farklı bir yol dene; ilerleyemiyorsan dur ve "
                "kullanıcıya neyin engel olduğunu açıkça söyle.")
@@ -499,9 +501,17 @@ class AgentRunner:
                 outcome.stopped = "done"
                 break
 
-            for call in calls:
+            for i, call in enumerate(calls):
                 if self._cancelled():
                     res = ToolResult(False, "İşlem kullanıcı tarafından iptal edildi.", "İptal edildi")
+                elif loop_reason:
+                    # Döngü bu yanıtın içinde algılandı: kalan çağrılar çalıştırılmaz.
+                    res = ToolResult(False, "Döngü algılandığı için bu çağrı çalıştırılmadı.",
+                                     "Atlandı (döngü)")
+                elif i >= MAX_CALLS_PER_STEP:
+                    res = ToolResult(False, f"Tek yanıtta en fazla {MAX_CALLS_PER_STEP} araç çağrısı "
+                                     "çalıştırılır; bu çağrı atlandı. Gerçekten gerekiyorsa sonraki "
+                                     "adımda iste.", "Atlandı (çok fazla çağrı)")
                 else:
                     self._writes = []
                     res = self._execute(call)
