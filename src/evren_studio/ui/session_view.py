@@ -50,7 +50,7 @@ from ..api.client import CancelToken
 from ..api.providers import PROVIDERS, estimate_cost, price_hint
 from ..budget import current_state
 from ..api.errors import ApiError, ErrorKind
-from . import icons, theme
+from . import brand, icons, theme
 from .composer import MODE_COMMANDS, SLASH_COMMANDS, Composer
 from .transcript import (
     COLUMN_WIDTH,
@@ -68,6 +68,7 @@ from .transcript import (
 )
 from .workers import Task
 
+HISTORY_WINDOW = 40          # uzun oturumda ilk çizilen son mesaj sayısı
 ATTACH_OPEN = "<ekli_dosyalar>"
 ATTACH_CLOSE = "</ekli_dosyalar>"
 MENTION_RE = re.compile(r"(?<!\S)@([^\s]+)")
@@ -158,10 +159,10 @@ class WelcomeView(QWidget):
         col.setMaximumWidth(COLUMN_WIDTH - 60)
         cl = QVBoxLayout(col)
         cl.setSpacing(14)
-        logo = QLabel()
-        logo.setPixmap(icons.pixmap("spark", theme.current().accent, 40))
-        logo.setAlignment(Qt.AlignCenter)
-        cl.addWidget(logo)
+        self.logo = QLabel()
+        self.refresh_logo()
+        self.logo.setAlignment(Qt.AlignCenter)
+        cl.addWidget(self.logo)
         title = QLabel("Bugün ne üzerinde çalışalım?")
         title.setProperty("role", "title")
         title.setAlignment(Qt.AlignCenter)
@@ -211,6 +212,9 @@ class WelcomeView(QWidget):
         outer.addLayout(col_host)
         outer.addStretch(3)
         self.set_workspace(ctx.settings.code_workdir if ctx.settings.code_workdir and Path(ctx.settings.code_workdir).is_dir() else None)
+
+    def refresh_logo(self) -> None:
+        self.logo.setPixmap(brand.pixmap(72))
 
     def refresh(self) -> None:
         self.key_card.setVisible(not self.ctx.has_api_key())
@@ -560,9 +564,33 @@ class SessionView(QWidget):
         elif self.workspace:
             self._env_check(self.workspace)
 
-    def render_history(self, messages: list[dict]) -> None:
+    def render_history(self, messages: list[dict], show_all: bool = False) -> None:
+        """Oturum geçmişini çizer.
+
+        PERFORMANS (2026-10-17): 200 mesajlık oturum açılışı ~30 sn sürüyordu. Artık
+        çizim sırasında ekran güncellemesi askıya alınır ve uzun oturumlarda yalnız son
+        HISTORY_WINDOW mesaj (bir kullanıcı mesajı sınırından) çizilir; üstte "Önceki
+        mesajları göster" düğmesi tümünü açar. Modele giden geçmiş DEĞİŞMEZ.
+        """
+        self.transcript.setUpdatesEnabled(False)
+        try:
+            self._render_history(messages, show_all)
+        finally:
+            self.transcript.setUpdatesEnabled(True)
+
+    def _render_history(self, messages: list[dict], show_all: bool) -> None:
         self.transcript.clear()
         self.tool_widgets.clear()
+        hidden = 0
+        if not show_all and len(messages) > HISTORY_WINDOW:
+            start = len(messages) - HISTORY_WINDOW
+            # Araç çağrısı ile sonucu ayrılmasın: bir kullanıcı mesajından başla
+            while start > 0 and messages[start]["role"] not in ("user", "summary"):
+                start -= 1
+            hidden = start
+            messages = messages[start:]
+        if hidden:
+            self.transcript.add(self._older_button(hidden))
         agentic = self.workspace is not None
         last_assistant: AssistantMessageWidget | None = None
         turn = {"total": 0.0, "steps": 0}
@@ -626,6 +654,26 @@ class SessionView(QWidget):
         close_turn()
         self.current = None
         self.transcript.scroll_to_bottom()
+
+    def _older_button(self, count: int) -> QWidget:
+        host = QWidget()
+        h = QHBoxLayout(host)
+        h.setContentsMargins(0, 0, 0, 0)
+        b = QPushButton(f"Önceki {count} mesajı göster")
+        b.setProperty("variant", "ghost")
+        b.setIcon(icons.icon("chevron-down", size=14))
+        b.clicked.connect(self._show_full_history)
+        h.addStretch(1)
+        h.addWidget(b)
+        h.addStretch(1)
+        return host
+
+    def _show_full_history(self) -> None:
+        if not self.session_id:
+            return
+        self.render_history(self.ctx.db.get_session_messages(self.session_id), show_all=True)
+        self.transcript._stick = False
+        QTimer.singleShot(0, self, lambda: self.transcript.verticalScrollBar().setValue(0))
 
     def _ensure_session(self, first_text: str) -> int:
         if self.session_id is not None:

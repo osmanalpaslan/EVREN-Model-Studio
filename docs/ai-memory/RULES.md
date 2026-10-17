@@ -69,9 +69,9 @@
 - **Kaynak:** 2026-10-16-izleme-sayfasi-arayuzu-arka-plan-is-parcacigindan-guncelliyordu, 2026-10-16-arka-plan-gorevine-referans-tutulmuyordu
 
 ### R-12 · Fare tekerleği korumasını kaldırma
-- **Kural:** Yeni sayı/liste alanları ekleyince wheel_guard'ın onları kapsadığını varsay; korumayı kapatma, alan başına tekerlek davranışı ekleme.
-- **Neden:** Kullanıcı ayarları kaydırırken farkında olmadan değiştiriyordu.
-- **Kaynak:** 2026-10-16-ayarlar-fare-tekerlegiyle-farkinda-olmadan-degisiyordu
+- **Kural:** Yeni sayı/liste alanları wheel_guard.protect() ile korunur (pencere kurulunca ve her ekran açılışında otomatik); korumayı kapatma, alan başına tekerlek davranışı ekleme ve UYGULAMA GENELİ Python olay filtresi kurma.
+- **Neden:** Kullanıcı ayarları kaydırırken farkında olmadan değiştiriyordu; uygulama geneli filtre ise her olayı Python'dan geçirip oturum açılışını ve ekran geçişlerini yavaşlatıyordu.
+- **Kaynak:** 2026-10-16-ayarlar-fare-tekerlegiyle-farkinda-olmadan-degisiyordu, 2026-10-17-gecmis-oturum-acma-ve-ekran-gecisleri-yavasti
 
 ### R-13 · API/ajan değişikliğinden sonra gerçek uçtan uca testleri çalıştır
 - **Kural:** api/ veya agent/ ya da oturum arayüzüne dokunduysan ve API anahtarı varsa tests/e2e_real_api.py, tests/e2e_agent_real_api.py ve tests/e2e_ui_real_api.py çalıştır; sonucu oturum günlüğüne yaz.

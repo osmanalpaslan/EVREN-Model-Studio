@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import icons, theme
+from . import brand, icons, theme
 from .transcript import icon_button
 
 ROLE_KIND = Qt.UserRole + 1      # "header" | "session"
@@ -131,9 +131,9 @@ class Sidebar(QWidget):
         lay.setSpacing(8)
 
         top = QHBoxLayout()
-        logo = QLabel()
-        logo.setPixmap(icons.pixmap("spark", theme.current().accent, 20))
-        top.addWidget(logo)
+        self.logo = QLabel()
+        self.refresh_logo()
+        top.addWidget(self.logo)
         name = QLabel("EVREN Studio")
         name.setStyleSheet("font-weight: 700; font-size: 11.5pt;")
         top.addWidget(name)
@@ -192,6 +192,9 @@ class Sidebar(QWidget):
         self.refresh()
 
     # -- liste --
+
+    def refresh_logo(self) -> None:
+        self.logo.setPixmap(brand.pixmap(22))
 
     def refresh(self) -> None:
         rows = self.ctx.db.list_sessions(self.search.text().strip())
