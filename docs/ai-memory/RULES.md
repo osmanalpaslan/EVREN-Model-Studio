@@ -122,3 +122,8 @@
 - **Kural:** Ajana otomatik eklenen her uyarı, not veya denetim için hem tetiklenmesi gereken hem de tetiklenmemesi gereken (ör. kullanıcı dosyayı oluşturmak istiyor) senaryoyu birim testiyle yaz ve zorluk paketinin TAMAMIYLA ölç; yalnız hedef görevle ölçme.
 - **Neden:** "Adı geçen dosya yok" uyarısı olmayan dosya görevini düzeltti ama oluşturma isteklerinde zayıf modelleri soru sormaya itti (planlama 0/1).
 - **Kaynak:** 2026-10-19-olmayan-dosya-uyarisi-olusturma-isteklerinde-yanlis-alarm-ve
+
+### R-23 · Uygulamanın kendi kaynağını ajanla düzenlerken ayrı dalda çalış; `%f` ile time.strftime kullanma
+- **Kural:** EVREN Studio'nun kaynağı üzerinde (EVREN uygulamasının kendi ajanı dahil) değişiklik yaparken önce ayrı git dalı aç, geçici hata ayıklama kodu bırakma; zaman damgasında `time.strftime(... %f ...)` değil `datetime.now().strftime` kullan. Bir motorun bitmemiş değişikliğini bulursan silme, yedekle ve ayrı ele al.
+- **Neden:** Uygulama ajanının eklediği `time.strftime('%f')` Windows'ta açılışta ValueError verdi; ajanı çalıştıran uygulama bozulunca sorun uygulamayla düzeltilemedi.
+- **Kaynak:** 2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma

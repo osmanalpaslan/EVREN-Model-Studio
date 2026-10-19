@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 44 · Açık/izlenen: 4 · Oturum: 17 · Kural: 22
+Kayıt: 45 · Açık/izlenen: 4 · Oturum: 17 · Kural: 23
 
 ## Açık ve izlenen kayıtlar
 
@@ -18,6 +18,7 @@ Kayıt: 44 · Açık/izlenen: 4 · Oturum: 17 · Kural: 22
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
 | 2026-10-19 | [2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu](incidents/2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Yeni kullanıcı kurulumu elle Python ve venv gerektiriyordu |
+| 2026-10-19 | [2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma](incidents/2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma.md) | hata | kritik | cozuldu | EVREN Studio | Uygulama ajanı kendi kaynağını düzenlerken uygulamayı açılmaz yaptı |
 | 2026-10-19 | [2026-10-19-sunucu-tarafi-auto-yonlendirmesi-ongorulemez-gorunmez](incidents/2026-10-19-sunucu-tarafi-auto-yonlendirmesi-ongorulemez-gorunmez.md) | risk | orta | cozuldu | Claude Code (masaüstü) | Sunucu tarafı auto yönlendirmesi öngörülemez ve görünmez |
 | 2026-10-19 | [2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y](incidents/2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Sohbete dosya ve görsel yapıştırılamıyordu; bırakılan dosya yol yazıyordu |
 | 2026-10-19 | [2026-10-19-olmayan-dosya-uyarisi-olusturma-isteklerinde-yanlis-alarm-ve](incidents/2026-10-19-olmayan-dosya-uyarisi-olusturma-isteklerinde-yanlis-alarm-ve.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Olmayan dosya uyarısı oluşturma isteklerinde yanlış alarm verdi (kendi gerilemem) |
@@ -108,3 +109,4 @@ Kayıt: 44 · Açık/izlenen: 4 · Oturum: 17 · Kural: 22
 - **R-20** · Ajanın kapsam korumasını kaldırma; değişiklikleri tura bağla
 - **R-21** · Ajan davranışını değiştirince zorluk paketiyle ölç
 - **R-22** · Otomatik uyarı/denetimin gereksiz tetiklenmesini de test et
+- **R-23** · Uygulamanın kendi kaynağını ajanla düzenlerken ayrı dalda çalış; `%f` ile time.strftime kullanma

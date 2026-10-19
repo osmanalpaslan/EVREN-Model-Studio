@@ -1825,6 +1825,29 @@ class SessionView(QWidget):
 
     # ---- ortam denetimi (eksik program) ----
 
+    def _warn_self_source(self, ws: str) -> None:
+        """Proje klasörü EVREN Studio'nun KENDİ kaynak kodu ise bir kez uyar (oturum başına).
+
+        2026-10-19: uygulamanın ajanı kendi kaynağına hatalı bir değişiklik yaptı
+        (main_window'da Windows'ta çöken `time.strftime('%f')`); uygulama açılmaz oldu ve
+        sorun uygulamayla düzeltilemedi."""
+        import evren_studio
+
+        app_root = Path(evren_studio.__file__).resolve().parents[2]
+        try:
+            same = Path(ws).resolve() == app_root
+        except OSError:
+            same = False
+        key = ("self", self.session_id)
+        if not same or key in getattr(self, "_self_warned", set()):
+            return
+        self._self_warned = getattr(self, "_self_warned", set()) | {key}
+        self.transcript.add(NoteWidget(
+            "Dikkat: bu klasör EVREN Studio'nun kendi kaynak kodu. Ajanın yapacağı hatalı bir değişiklik "
+            "uygulamayı açılmaz hâle getirebilir ve o zaman sorunu uygulamayla düzeltemezsiniz. Önce bir "
+            "git dalı açın (git checkout -b deneme); uygulama açılmazsa değişiklikleri `git stash` ile "
+            "kenara alıp yeniden açın.", "alert"))
+
     def _env_check(self, ws: str | None) -> None:
         """Proje klasörünün gerektirdiği programları arka planda denetler (R-04).
 
@@ -1833,6 +1856,7 @@ class SessionView(QWidget):
         """
         if not ws or not Path(ws).is_dir():
             return
+        self._warn_self_source(ws)
         key = (self.session_id, str(Path(ws)).lower())
         if key in self._env_checked:
             return

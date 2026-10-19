@@ -55,12 +55,16 @@ ajanıyla bu depoda bir hata düzeltmeye çalışmış ve uygulama açılmaz olm
 - Ortam: arka planda 4+ Qt süreci varken git alt süreçleri "Permission denied /
   cannot spawn sh.exe" verdi; ölçüm bitince aynı testler geçti (R-08).
 
+## Ek: uygulamanın açılmaması (aynı oturum, 2. aşama)
+- Kök neden ve çözüm: 2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma (R-23).
+- Kenar çubuğu geliştirici satırı düzgün yerleştirildi; Ctrl+K ayar senkronu; kendi kaynak uyarısı.
+- Splitter'da hata bulunmadı (build/repro_bolmeler.py, 4 ayar × 17 adım, gerçek pencere).
+- Gerçek giriş noktası kullanıcının verisinin kopyasıyla açıldı (şema v1 → v3).
+
 ## Sonraki motor için notlar
-- Kullanıcının EVREN uygulamasıyla yaptığı değişiklik: `build/evren_ajan_degisiklikleri/`.
-  main_window'daki `_debug_log` `time.strftime('%f')` Windows'ta ValueError →
-  uygulama açılmıyordu. Ajan kenar çubuğu/panel görünürlük (splitter) sorununu
-  çözmeye çalışıyordu; sidebar'a "Developed by Osman Alpaslan" eklemişti. Bu dalda
-  YOK; ayrı işte ele alınır.
+- Kullanıcının EVREN uygulamasıyla yaptığı değişikliğin özgün hâli:
+  `build/evren_ajan_degisiklikleri/` (yerel, git'e girmez). İsteği (geliştirici satırı)
+  düzgün uygulandı; splitter yeniden yazımı gerekmedi.
 - Varsayılan motor hâlâ auto (kullanıcı ayarı glm-5.3); EVREN Akıllı'yı varsayılan
   yapmak kullanıcı onayı ister.
 - Dal: `feat/akilli-yonlendirme` (birleştirilmedi).

@@ -21,6 +21,12 @@
 
 ### Düzeltildi
 
+- Uygulama açılmıyordu: uygulamanın kendi ajanının main_window'a eklediği hata
+  ayıklama günlüğü (`time.strftime('%f')`, Windows'ta geçersiz) kaldırıldı.
+- "Developed by Osman Alpaslan" yazısı kenar çubuğunda kesiliyordu: adın altına,
+  kendi satırına alındı.
+- Ctrl+K kenar çubuğunu açarken ayarı güncellemiyordu (yeniden açılışta kapanıyordu).
+- Proje klasörü olarak uygulamanın kendi kaynak kodu seçilince uyarı gösterilir.
 - "Adı geçen dosya projede yok" uyarısı, dosyanın oluşturulması istendiğinde
   verilmiyor (zayıf modelleri soru sormaya itiyordu).
 - Ölçüm betiği: mutlak yol ve UTF-8 çıktı (yanlış "başarısız" puanları).

@@ -170,6 +170,14 @@ class MainWindow(QMainWindow):
         self.session.set_sidebar_hidden(not vis)
         self.ctx.settings.sidebar_visible = vis
 
+    def focus_session_search(self) -> None:
+        """Ctrl+K: oturum araması. Kenar çubuğu kapalıysa normal yoldan açılır; doğrudan
+        setVisible(True) ayarı ve başlıktaki "kenar çubuğunu göster" düğmesini güncel
+        bırakmıyordu (yeniden açılışta çubuk kendiliğinden kapanıyordu)."""
+        if not self.sidebar.isVisible():
+            self.toggle_sidebar()
+        self.sidebar.search.setFocus()
+
     def toggle_panel(self) -> None:
         if self.center.currentWidget() is not self.session:
             self.show_sessions()
@@ -187,7 +195,7 @@ class MainWindow(QMainWindow):
         sc("Ctrl+N", self.new_session)
         sc("Ctrl+B", self.toggle_sidebar)
         sc("Ctrl+J", self.toggle_panel)
-        sc("Ctrl+K", lambda: (self.sidebar.setVisible(True), self.sidebar.search.setFocus()))
+        sc("Ctrl+K", self.focus_session_search)
         sc("Ctrl+L", lambda: (self.show_sessions(), self.session.composer.focus()))
         sc("Ctrl+,", lambda: self.show_page("settings"))
         sc("Esc", self._escape)

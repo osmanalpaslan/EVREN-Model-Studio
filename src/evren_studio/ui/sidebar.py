@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMenu,
     QPushButton,
+    QSizePolicy,
     QStyle,
     QStyledItemDelegate,
     QStyleOptionViewItem,
@@ -141,7 +142,21 @@ class Sidebar(QWidget):
         collapse = icon_button("panel-left", "Kenar çubuğunu gizle (Ctrl+B)", 17)
         collapse.clicked.connect(self.collapse_requested.emit)
         top.addWidget(collapse)
-        lay.addLayout(top)
+        top.setSpacing(8)                  # iç düzen üst düzenin aralığını devralmasın
+        header = QVBoxLayout()
+        header.setSpacing(0)
+        header.addLayout(top)
+        # Geliştirici satırı ad satırının ALTINDA, tam genişlikte: ad ile gizleme düğmesi
+        # arasına sıkıştırılınca 220 px'lik çubukta kesiliyordu ("…Osman Alp", 2026-10-19).
+        credit = QLabel("Developed by Osman Alpaslan")
+        credit.setObjectName("SidebarCredit")
+        credit.setProperty("role", "faint")
+        credit.setStyleSheet("font-size: 8.5pt;")
+        credit.setContentsMargins(self.logo.sizeHint().width() + top.spacing(), 0, 0, 0)
+        credit.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)   # boş alanı o doldurmasın
+        header.addWidget(credit)
+        self.credit = credit
+        lay.addLayout(header)
 
         self.new_btn = QPushButton("  Yeni oturum")
         self.new_btn.setObjectName("NewSession")
