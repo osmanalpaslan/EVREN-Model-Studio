@@ -220,6 +220,18 @@ yapıldı ve gerçek API ile ölçüldü (CHALLENGE_RESULTS.md "MCP / Serena"). 
 Playwright MCP (Node gerekir; isteğe bağlı), Serena'yı başka dillerde denemek, repo
 tarafını (kod dahil etme) lisans/bakım açısından konuşmak. Not: Serena 2.0.0 GPL-3.0'a geçti.
 
+**Sonraki aşama — kullanıcı kararları (2026-10-19):**
+- MCP yalnız gerektiğinde açılsın (ilk araç çağrısında başlat, boşta kapat; araçlar yalnız
+  ilgili projede/görevde sunulsun), gerekmediğinde kapalı kalsın.
+- Ücretli sağlayıcılarla MCP KESİNLİKLE çalışmayacak (uygulamanın amacı ücretsiz hizmet);
+  MCP araçları yalnız EVREN modellerine, Auto Pro MCP işini EVREN'e yönlendirir.
+- Serena Python dışındaki dillerde de çalışacak (gerçek küçük projelerle denenecek).
+- Playwright MCP eklenecek (web projelerini tarayıcıda test).
+- Node.js (Playwright ve TypeScript dil sunucusu için) **winget ile sistem geneline** kurulacak
+  (kullanıcı tercihi; taşınabilir Node yerine).
+- Önerilen ek: düzenlemeden sonra Serena hata denetimi (diagnostics) kendiliğinden çalışıp
+  hataları modele geri versin ("hata bekçisi").
+
 
 **Kullanıcı isteği:** Serena gibi kod, test ve görsel alanında güçlü MCP sunucularını
 uygulamaya bağlamak; uygulamayı geliştirecek repolar varsa koda dahil etmek. Önce MCP
