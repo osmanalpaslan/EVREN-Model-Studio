@@ -27,7 +27,9 @@ araştırıp bilgi ver, sonra repo tarafına bakılacak.
   yüzdesi özet eşiğine göre; ipucu pencereyi ve nedeni açıklar. 100k üst sınır korundu.
 - theme.py: koyu temada text_dim = text_faint = text (#e8e9ec); yeni `muted` (#9ca1ab) yalnız
   yer tutucu ve devre dışı öğe için; side_panel geri alınmış dosya simgesi muted;
-  settings_page bağlantıları vurgu rengiyle.
+  settings_page bağlantıları vurgu rengiyle. Kullanıcı ek isteği "düğmeler mavi olmasın":
+  koyu temada accent beyaz (#e8e9ec), seçili satır nötr gri, bağlantılar altı çizili
+  (ekran görüntüsü tema_2b_model_listesi.png, tema_3_ayarlar.png).
 - MCP araştırması docs/ILERIDE_YAPILACAKLAR.md madde 4'e yazıldı (kod yok).
 - Belgeler: CHANGELOG, DECISIONS 55–56, PROJECT_STATE.
 
@@ -50,6 +52,8 @@ araştırıp bilgi ver, sonra repo tarafına bakılacak.
   aracıyla düzeltildi (önceki oturumdaki ders tekrarlandı: yamayı dosyaya yaz ya da Edit kullan).
 
 ## Sonraki motor için notlar
+- Koyu temada mavi vurgu yok (kullanıcı kararı); yeni vurgu öğesi eklerken `accent` kullan,
+  sabit mavi yazma.
 - Koyu temada hiyerarşi artık renkle değil boyut/kalınlıkla; yeni bileşende "soluk" görünüm
   için text_faint'e güvenme — gerçekten devre dışıysa `muted` kullan.
 - MCP: kullanıcı önerilen yolu (Serena önce, agent/mcp_client.py, `mcp` SDK sürümü

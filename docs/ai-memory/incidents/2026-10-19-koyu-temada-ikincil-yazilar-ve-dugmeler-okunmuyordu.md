@@ -29,6 +29,8 @@ QSS uygulanınca QLabel bağlantıları Qt'nin koyu mavisini alıyordu.
 Koyu temada text_dim = text_faint = text (#e8e9ec, "Görevler" ile aynı). Yalnız yer tutucu
 yazı ve devre dışı öğeler için yeni `muted` belirteci (#9ca1ab, tüm koyu zeminlerde ≥4,5:1)
 — etkin sanılmasınlar. Ayarlar bağlantıları vurgu rengiyle. Açık tema değişmedi.
+Kullanıcı ek kararı: düğmeler mavi olmasın → koyu temada accent = #e8e9ec, accent_hover
+#ffffff, accent_soft nötr #30343c, on_accent #16171b; bağlantılar altı çizili.
 
 ## Kanıt
 tests/test_klavye_baglam_tema.py: `test_koyu_temada_tum_yazilar_gorevler_kadar_parlak`

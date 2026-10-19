@@ -128,6 +128,11 @@ def test_koyu_temada_tum_yazilar_gorevler_kadar_parlak():
         assert _contrast(d.text, bg) >= 7, bg                         # WCAG AAA
         assert _contrast(d.muted, bg) >= 4.5, bg                      # yer tutucu/devre dışı da okunur
     assert d.muted != d.text                                          # devre dışı öğe etkin sanılmasın
+    # Düğmeler mavi değil, yazılarla aynı beyaz; üzerindeki yazı koyu ve okunur
+    assert d.accent == d.text
+    assert _contrast(d.on_accent, d.accent) >= 7
+    r, g, b = (int(d.accent_soft[i:i + 2], 16) for i in (1, 3, 5))
+    assert max(r, g, b) - min(r, g, b) <= 16                          # seçili satır nötr gri, mavi değil
 
 
 def test_stil_yer_tutucu_ve_devre_disi_icin_muted_kullanir():

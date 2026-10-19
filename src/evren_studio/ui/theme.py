@@ -50,7 +50,9 @@ DARK = Palette(
     # Kullanıcı kararı (2026-10-19): koyu temada tüm yazı/düğme/simge "Görevler" başlığı kadar
     # parlak olsun; eski #a2a6af / #6d717a yer yer okunmuyordu. Hiyerarşi boyut ve kalınlıkla kalır.
     text="#e8e9ec", text_dim="#e8e9ec", text_faint="#e8e9ec",
-    accent="#7c9cff", accent_hover="#93aeff", accent_soft="#232b45", on_accent="#0d1020",
+    # Kullanıcı kararı (2026-10-19): koyu temada düğmeler/vurgu mavi değil, yazılarla aynı beyaz;
+    # birincil düğme beyaz zemin + koyu yazı, seçili satır nötr gri.
+    accent="#e8e9ec", accent_hover="#ffffff", accent_soft="#30343c", on_accent="#16171b",
     code_bg="#0f1013", code_border="#24262c",
     success="#4fd08a", danger="#ff7a7a", warning="#f2c25c",
     add_bg="#15301f", del_bg="#3a1a1d", hunk="#7c9cff",

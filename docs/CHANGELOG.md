@@ -13,7 +13,8 @@
   (EVREN kotası: 5 dk'da 2,5M, günde 15M token) açıklar. 100k üst sınır korundu.
 - **Koyu tema okunurluğu**: tüm ikincil yazı, düğme ve simgeler "Görevler" başlığıyla aynı
   parlaklıkta (#e8e9ec). Yalnız yer tutucu ve devre dışı öğeler okunur ama daha soluk
-  (#9ca1ab, ≥4,5:1). Ayarlar'daki bağlantılar açık mavi.
+  (#9ca1ab, ≥4,5:1). Koyu temada mavi vurgu kaldırıldı: birincil düğmeler (Kaydet, Gönder)
+  beyaz zemin + koyu yazı, seçili satır nötr gri, bağlantılar beyaz ve altı çizili.
 
 ## Yayınlanmamış — Auto Pro yönlendirici ve Proje ajanı
 
