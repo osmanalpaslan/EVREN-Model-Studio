@@ -220,7 +220,7 @@ yapıldı ve gerçek API ile ölçüldü (CHALLENGE_RESULTS.md "MCP / Serena"). 
 Playwright MCP (Node gerekir; isteğe bağlı), Serena'yı başka dillerde denemek, repo
 tarafını (kod dahil etme) lisans/bakım açısından konuşmak. Not: Serena 2.0.0 GPL-3.0'a geçti.
 
-**Sonraki aşama — kullanıcı kararları (2026-10-19):**
+**Sonraki aşama — kullanıcı kararları (2026-10-19) — YAPILDI (dal `feat/mcp-akilli`; ölçüm CHALLENGE_RESULTS.md "MCP aşama 2"). Kalan: Go/Rust için araç kurulumu önerisi, uzun süren geliştirme sunucularını (npm run dev) ajanın arka planda başlatabilmesi:**
 - MCP yalnız gerektiğinde açılsın (ilk araç çağrısında başlat, boşta kapat; araçlar yalnız
   ilgili projede/görevde sunulsun), gerekmediğinde kapalı kalsın.
 - Ücretli sağlayıcılarla MCP KESİNLİKLE çalışmayacak (uygulamanın amacı ücretsiz hizmet);

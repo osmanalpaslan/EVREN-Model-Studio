@@ -106,6 +106,8 @@ gönderildi; kare rengi ve CSV toplamı doğru yanıtlandı.
   araçlarını doğru şemayla çağırdı (find_symbol, find_referencing_symbols); şema
   (Serena'nın Pydantic şemaları, `$defs` dahil) EVREN'de 400 vermedi.
 - Sistem istemi yönlendirmesi olmadan model Serena'yı hiç seçmedi (search_files'ı tercih etti).
+- Playwright MCP araçları (browser_navigate/snapshot/click/console_messages) Auto Pro ile doğru
+  çağrıldı; model `ref` değerini snapshot'tan alıp tıkladı ve JS hatasını konsoldan buldu.
 
 ## Doğrulanmamışlar (⬜ — canlı istekle test edilmedi)
 

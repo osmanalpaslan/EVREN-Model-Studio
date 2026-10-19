@@ -160,6 +160,74 @@ def kabul_buyuk(p: Path, cevap: str) -> list[tuple[str, bool]]:
     return checks
 
 
+WEB_FILES = {
+    "index.html": ('<!doctype html><html><head><meta charset="utf-8"><title>Sayaç</title></head><body>\n'
+                   '<h1>Sayaç</h1><p id="deger">0</p>\n<button id="art">Artır</button>\n'
+                   '<script src="sayac.js"></script></body></html>\n'),
+    "sayac.js": ("let n = 0;\n"
+                 "document.getElementById('art').addEventListener('click', () => {\n"
+                 "  n += 1;\n"
+                 "  document.getElementById('degr').textContent = String(n);\n"
+                 "});\n"),
+}
+
+TS_FILES = {
+    "package.json": '{"name":"ornek","version":"1.0.0"}\n',
+    "tsconfig.json": '{"compilerOptions":{"strict":true,"target":"es2020","module":"commonjs"}}\n',
+    "src/hesap.ts": "export function vergiHesapla(t: number, oran = 0.2): number {\n  return Math.round(t * oran * 100) / 100;\n}\n"
+                    "export function vergiHesaplaEski(t: number): number {\n  return t * 0.18;\n}\n",
+    "src/fatura.ts": "import { vergiHesapla } from './hesap';\n\nexport class Fatura {\n  constructor(public tutar: number) {}\n"
+                     "  toplam(): number {\n    return this.tutar + vergiHesapla(this.tutar);\n  }\n}\n",
+    "src/siparis.ts": "import { vergiHesapla } from './hesap';\n\nexport function siparisToplami(k: number[]): number {\n"
+                      "  const ara = k.reduce((a, b) => a + b, 0);\n  return ara + vergiHesapla(ara, 0.1);\n}\n",
+    "src/rapor.ts": "import { Fatura } from './fatura';\nimport { vergiHesaplaEski } from './hesap';\n\n"
+                    "export const rapor = (t: number[]) => t.map((x) => new Fatura(x).toplam());\n"
+                    "export const eski = (t: number) => vergiHesaplaEski(t);\n",
+    "src/ana.ts": "import { vergiHesapla } from './hesap';\nimport { rapor } from './rapor';\n\n"
+                  "console.log(vergiHesapla(100), rapor([50]));\n",
+    "NOTLAR.md": "vergiHesapla KDV hesaplar.\n",
+}
+
+
+def kur_dosyalar(p: Path, files: dict[str, str]) -> None:
+    for rel, text in files.items():
+        f = p / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(text, encoding="utf-8")
+    kur_git(p)
+
+
+def kabul_web(p: Path, cevap: str) -> list[tuple[str, bool]]:
+    js = (p / "sayac.js").read_text(encoding="utf-8")
+    html = (p / "index.html").read_text(encoding="utf-8")
+    node = shutil.which("node") or r"C:\Program Files\nodejs\node.exe"
+    sim = ("const els={art:{l:null,addEventListener(e,f){this.l=f}},deger:{textContent:'0'}};"
+           "global.document={getElementById:(i)=>els[i]||null};"
+           f"{js}\nels.art.l();els.art.l();console.log(els.deger.textContent)")
+    r = subprocess.run([node, "-e", sim], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return [
+        ("tıklayınca sayaç artıyor (2 tık → 2)", r.returncode == 0 and r.stdout.strip() == "2"),
+        ("yanlış kimlik 'degr' kalmadı", "'degr'" not in js and '"degr"' not in js),
+        ("index.html'deki kimlik korunmuş", 'id="deger"' in html),
+    ]
+
+
+def kabul_ts(p: Path, cevap: str) -> list[tuple[str, bool]]:
+    src = {rel: (p / rel).read_text(encoding="utf-8") for rel in TS_FILES if rel.endswith(".ts")}
+    allsrc = "\n".join(src.values())
+    import re as _re
+
+    kalan = len(_re.findall(r"\bvergiHesapla\b", allsrc))
+    return [
+        ("hesap.ts'de kdvHesapla tanımı", "export function kdvHesapla(" in src["src/hesap.ts"]),
+        ("vergiHesapla kalmadı (eski hariç)", kalan == 0),
+        ("vergiHesaplaEski korunmuş", src["src/hesap.ts"].count("vergiHesaplaEski") == 1
+         and "vergiHesaplaEski" in src["src/rapor.ts"]),
+        ("NOTLAR.md'ye dokunulmadı", (p / "NOTLAR.md").read_text(encoding="utf-8") == TS_FILES["NOTLAR.md"]),
+        ("fatura/siparis/ana güncel", all("kdvHesapla" in src[f] for f in ("src/fatura.ts", "src/siparis.ts", "src/ana.ts"))),
+    ]
+
+
 GOREVLER = {
     "soru": ("vergi_hesapla fonksiyonu nerede TANIMLI ve onu gerçekten ÇAĞIRAN yerler hangileri? "
              "Her birini dosya, satır ve hangi fonksiyonun/metodun içinde olduğu ile listele. Benzer adlı "
@@ -167,6 +235,10 @@ GOREVLER = {
     "duzenle": ("vergi_hesapla fonksiyonunun adını kdv_hesapla yap: tanımı ve onu çağıran/içe aktaran "
                 "TÜM yerleri güncelle. vergi_hesapla_eski fonksiyonuna, notlar.md'ye ve tests/ klasörüne "
                 "dokunma. Sonunda `python -m unittest discover -s tests` çalıştırıp sonucu söyle."),
+    "web": ("index.html'deki Artır butonuna basınca sayaç artmıyor. Sayfayı tarayıcıda açıp butona bas, "
+            "konsoldaki hatayı bul, düzelt ve tarayıcıda tekrar deneyip çalıştığını doğrula."),
+    "ts": ("TypeScript projesinde vergiHesapla fonksiyonunun adını kdvHesapla yap: tanımı ve onu kullanan/içe "
+           "aktaran TÜM yerleri güncelle. vergiHesaplaEski fonksiyonuna ve NOTLAR.md'ye dokunma."),
     "buyuk": (f"{BUYUK_HEDEF} fonksiyonu nerede TANIMLI ve hangi dosyalarda, HANGİ fonksiyon/metotların "
               "içinde gerçekten ÇAĞRILIYOR? Her çağrıyı dosya ve çağıran fonksiyon/metot adıyla listele; "
               "import satırlarını, yorumları ve metinleri sayma. Dosya değiştirme."),
@@ -219,10 +291,15 @@ def main() -> int:
     outcomes: list[dict] = []
     notes: list[str] = []
 
+    bekci: list[str] = []
+
     class RecordingRunner(AgentRunner):
         def _execute(self, call):
             calls.append(call.name)
-            return super()._execute(call)
+            res = super()._execute(call)
+            if "HATA BEKÇİSİ" in (res.content or ""):
+                bekci.append(call.name)
+            return res
 
         def run(self, history):
             t0 = time.monotonic()
@@ -241,6 +318,7 @@ def main() -> int:
     # Serena kurulu klasör uygulamanın veri klasöründen farklı: yönetici oraya bakar
     w.ctx.mcp.data_dir = serena_data
     serena_cfg = mcp.serena_config().to_dict()
+    playwright_cfg = mcp.playwright_config().to_dict()
 
     def pump(sec):
         end = time.monotonic() + sec
@@ -270,10 +348,11 @@ def main() -> int:
             etiket = f"{gorev}/{'serena' if serena else 'serenasiz'}"
             proj = base / etiket.replace("/", "_")
             proj.mkdir()
-            (kur_buyuk if gorev == "buyuk" else kur)(proj)
+            {"buyuk": kur_buyuk, "web": lambda q: kur_dosyalar(q, WEB_FILES),
+             "ts": lambda q: kur_dosyalar(q, TS_FILES)}.get(gorev, kur)(proj)
             w.ctx.settings.mcp_enabled = serena
-            w.ctx.settings.mcp_servers = [dict(serena_cfg)] if serena else []
-            n_calls, n_out, n_notes = len(calls), len(outcomes), len(notes)
+            w.ctx.settings.mcp_servers = [dict(serena_cfg), dict(playwright_cfg)] if serena else []
+            n_calls, n_out, n_notes, n_bekci = len(calls), len(outcomes), len(notes), len(bekci)
             w.new_session()
             w.session.welcome._choose(str(proj))
             w.session.composer.set_model(model, emit=True)
@@ -288,7 +367,8 @@ def main() -> int:
             msgs = w.ctx.db.get_session_messages(w.session.session_id)
             cevap = next((m["content"] for m in reversed(msgs) if m["role"] == "assistant" and m["content"]), "")
             checks = {"soru": lambda: kabul_soru(proj, cevap), "duzenle": lambda: kabul_duzenle(proj),
-                      "buyuk": lambda: kabul_buyuk(proj, cevap)}[gorev]()
+                      "buyuk": lambda: kabul_buyuk(proj, cevap), "web": lambda: kabul_web(proj, cevap),
+                      "ts": lambda: kabul_ts(proj, cevap)}[gorev]()
             if gorev == "buyuk":
                 checks.append(("dosya değişmedi", not subprocess.run(
                     ["git", "status", "--porcelain", "--", "evren_studio"], cwd=proj, capture_output=True,
@@ -301,7 +381,7 @@ def main() -> int:
             steps = sum(o["steps"] for o in tur)
             print(f"[{'TAMAM' if passed == len(checks) and ok else 'KALDI'}] {etiket:20} {passed}/{len(checks)} · "
                   f"{sure:6.1f} sn · adım {steps:2} · araç {len(used):2} (MCP {len(mcp_used)}) · "
-                  f"durma={[o['stopped'] for o in tur]}", flush=True)
+                  f"durma={[o['stopped'] for o in tur]} · bekçi {len(bekci) - n_bekci}", flush=True)
             for n, o in checks:
                 if not o:
                     print(f"     KALDI | {n}", flush=True)

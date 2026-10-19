@@ -371,12 +371,16 @@ def main() -> int:
     notes: list[str] = []
 
     mcp_calls: list[str] = []
+    bekci: list[str] = []
 
     class RecordingRunner(AgentRunner):
         def _execute(self, call):
             if call.name.startswith("mcp__"):
                 mcp_calls.append(call.name)
-            return super()._execute(call)
+            res = super()._execute(call)
+            if "HATA BEKÇİSİ" in (res.content or ""):
+                bekci.append(call.name)
+            return res
 
         def run(self, history):
             t0 = time.monotonic()
@@ -402,7 +406,7 @@ def main() -> int:
             return 1
         w.ctx.mcp.data_dir = serena_data                 # Serena'nın kurulu olduğu klasör
         w.ctx.settings.mcp_enabled = True
-        w.ctx.settings.mcp_servers = [mcpmod.serena_config().to_dict()]
+        w.ctx.settings.mcp_servers = [mcpmod.serena_config().to_dict(), mcpmod.playwright_config().to_dict()]
         print(f"   (Serena {mcpmod.SERENA_VERSION} açık)", flush=True)
 
     def pump(sec):
@@ -434,7 +438,7 @@ def main() -> int:
         proj = base / ad
         proj.mkdir()
         durum = g["kur"](proj)
-        n_out, n_notes, n_mcp = len(outcomes), len(notes), len(mcp_calls)
+        n_out, n_notes, n_mcp, n_bekci = len(outcomes), len(notes), len(mcp_calls), len(bekci)
         w.new_session()
         w.session.welcome._choose(str(proj))
         w.session.composer.set_model(model, emit=True)
@@ -475,7 +479,8 @@ def main() -> int:
         tam = all(ok for _n, ok, _d in checks)
         print(f"[{'TAMAM' if tam else 'SORUN'}] {ad:17s} {rec['skor']:>5} · {rec['sure']:6.1f} sn · adım {rec['adim']:2d} · "
               f"durma={rec['durma']} · hata kartı={rec['hata_karti']}"
-              + (f" · MCP {len(mcp_calls) - n_mcp}" if serena_data is not None else ""), flush=True)
+              + (f" · MCP {len(mcp_calls) - n_mcp}" if serena_data is not None else "")
+              + f" · bekçi {len(bekci) - n_bekci}", flush=True)
         for n, ok, d in checks:
             if not ok:
                 print(f"         KALDI: {n}" + (f" | {d}" if d else ""), flush=True)

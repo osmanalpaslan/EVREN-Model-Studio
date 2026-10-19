@@ -1,5 +1,33 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — MCP gerektiğinde, Playwright, hata bekçisi, çok dilli Serena
+
+### Eklendi
+
+- **MCP gerektiğinde açılır, gerekmediğinde kapalı kalır**: araç listesi önbellekten sunulur,
+  sunucu ilk araç çağrısında başlar ve boşta kalınca kapanır (Serena 10 dk, Playwright 5 dk).
+  Serena yalnız yeterince büyük kod projesinde (≥5 kod dosyası veya ≥800 satır) ya da sembol
+  işinde (yeniden adlandır, nerede kullanılıyor…), Playwright yalnız tarayıcı/arayüz testi
+  istendiğinde sunulur.
+- **Ücretli sağlayıcıda MCP yok**: MCP araçları yalnız EVREN modellerine verilir.
+- **Hata bekçisi**: ajan bir dosyayı düzenleyince kesin hatalar aynı turda modele bildirilir.
+  Yerleşik denetimler: Python sözdizimi, JSON, TOML, Node varsa JavaScript. Serena açıksa dil
+  sunucusu hataları da eklenir: tanımsız ad, eksik argüman. Eksik paket/import uyarıları yanlış
+  alarm olabileceği için atılır. Ayarlar'dan kapatılabilir.
+- **Playwright MCP 0.0.83** (Apache-2.0): ajan web sayfasını gerçek tarayıcıda (kurulu Microsoft
+  Edge) açar, okur, tıklar, konsol hatalarını görür. Proje dosyaları yalnız bu bilgisayardan
+  erişilebilen yerel bir adresten (127.0.0.1) verilir; `.env`, anahtar dosyaları ve `.git` verilmez.
+  Adrese gitme, tıklama ve JavaScript çalıştırma çalışma moduna göre onay ister.
+- **Serena çok dilli**: Python, TypeScript, JavaScript, C# ve Java gerçek dil sunucusuyla denendi.
+  Dil sunucuları tüm projeler için tek ve kısa yollu bir klasörde tutulur.
+- Ayarlar > MCP: Playwright satırı ve Node.js yoksa "Node.js'i kur (winget)" düğmesi.
+
+### Düzeltildi
+
+- Auto Pro yedek listesi farklı sağlayıcının modelini içerebiliyordu; tur boyunca istemci aynı
+  kaldığı için istek yanlış sağlayıcıya gidiyordu. Yedekler artık turun sağlayıcısıyla sınırlı.
+- Serena'nın C# dil sunucusu Windows'un 260 karakterlik yol sınırına takılıp başlamıyordu.
+
 ## Yayınlanmamış — MCP sunucuları ve Serena
 
 ### Eklendi

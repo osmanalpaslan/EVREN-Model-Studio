@@ -178,6 +178,14 @@ def route(*, agentic: bool, mode: str = "", has_images: bool = False, est_tokens
     return choose(role, available=available, health=health, reason=reason)
 
 
+def same_provider(models: list[str], model: str, provider_of) -> list[str]:
+    """Yedekleri birincil modelin sağlayıcısıyla sınırlar: istemci tur boyunca aynıdır, EVREN
+    turu ücretli modele (veya tersi) geçemez; MCP'nin ücretli modele ulaşmaması da bununla
+    garanti (kullanıcı kararı 2026-10-19)."""
+    p = provider_of(model)
+    return [m for m in models if provider_of(m) == p]
+
+
 def is_auto_pro(model_id: str | None) -> bool:
     return model_id == AUTO_PRO_ID or model_id in LEGACY_IDS
 

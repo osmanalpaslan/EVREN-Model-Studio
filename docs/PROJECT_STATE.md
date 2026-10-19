@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-19) MCP aşama 2 (dal `feat/mcp-akilli`): MCP gerektiğinde açılır/boşta kapanır,
+    ücretli sağlayıcıda yok, hata bekçisi, Playwright MCP 0.0.83 (Edge), Serena çok dilli
+    (Python/TS/JS/C#/Java). Node.js 24 winget ile kuruldu. Ölçüm: CHALLENGE_RESULTS.md.
+
   - (2026-10-19) MCP desteği + Serena 1.7.0 tek tıkla kurulum (dal `feat/mcp`, `feat/klavye-baglam-tema`
     üstünde): ajan MCP araçlarını izin sistemiyle kullanır; gerçek API ölçümü CHALLENGE_RESULTS.md.
 

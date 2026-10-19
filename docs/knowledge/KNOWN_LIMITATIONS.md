@@ -76,6 +76,16 @@
 
 ## MCP ve Serena (2026-10-19)
 
+- Serena Go/Rust projelerinde o dilin aracı (go, rustup) kurulu değilse çalışmaz; Java ilk
+  açılışta dil sunucusu + Java ortamı indirir (~1,5 dk). Diğer diller denenmedi.
+- Hata bekçisi yalnız kesin hataları bildirir; tip çıkarımına dayalı ve eksik paket kaynaklı
+  hatalar bilerek atılır (bazı gerçek hatalar da kaçabilir).
+- Playwright ekran görüntüsünü modele göndermez (kota); sayfa metin özetiyle (snapshot) çalışır.
+  Uzun süre çalışan geliştirme sunucularını (npm run dev) ajan başlatamaz; statik dosyalar yerel
+  sunucudan açılır.
+- Gereklilik kuralları (dosya sayısı, anahtar kelimeler) sezgiseldir; gereken bir turda sunucu
+  sunulmayabilir veya tersi.
+
 - Yalnız stdio taşıması ve araç (tools) alt kümesi: MCP kaynakları (resources), istemler
   (prompts), örnekleme (sampling) ve HTTP sunucuları desteklenmez.
 - MCP aracının yaptığı dosya değişiklikleri Değişiklikler paneline, geri almaya ve kapsam

@@ -340,15 +340,21 @@ class AppContext:
             return []
         return [c for c in configs_from_settings(self.settings.mcp_servers) if c.enabled]
 
-    def mcp_toolset(self, project_root):
-        """Ajan turu için tembel araç kümesi; etkin sunucu yoksa None (davranış değişmez).
-        Sunucular ilk kullanımda ajanın ARKA PLAN iş parçacığında başlatılır (R-04)."""
+    def mcp_toolset(self, project_root, message: str = "", provider: str = "evren", status=None):
+        """Ajan turu için tembel araç kümesi; gerekmiyorsa None (davranış değişmez).
+
+        - Yalnız EVREN modellerinde (kullanıcı kararı 2026-10-19: uygulamanın amacı ücretsiz
+          hizmet; ücretli sağlayıcıyla MCP KESİNLİKLE çalışmaz).
+        - Sunucu yalnız gerektiği projede/görevde sunulur (McpServerConfig.when) ve ilk araç
+          çağrısında, ajanın ARKA PLAN iş parçacığında açılır (R-04)."""
+        if provider != "evren":
+            return None
         configs = self.mcp_configs()
         if not configs or project_root is None:
             return None
         from ..agent.mcp import LazyToolset
 
-        return LazyToolset(lambda: self.mcp.toolset(configs, Path(project_root)))
+        return LazyToolset(lambda: self.mcp.toolset(configs, Path(project_root), message, status))
 
     def close(self) -> None:
         if getattr(self, "_mcp", None) is not None:

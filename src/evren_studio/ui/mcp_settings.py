@@ -87,34 +87,43 @@ class McpSettingsCard(QWidget):
         self.ctx = ctx
         self._servers: list[dict] = []
         self._busy = False
+        self.rows: dict[str, dict] = {}
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(8)
         lay.addWidget(_label(
-            "MCP (Model Context Protocol) sunucuları ajana ek araç verir. Yalnız proje klasörlü "
-            "oturumlarda kullanılır; okuma dışındaki araçlar çalışma modunuza göre onay ister. "
-            "MCP aracının yaptığı dosya değişiklikleri Değişiklikler paneline düşmez — bu yüzden "
-            "Serena'da yalnız okuma araçları açıktır, düzenlemeyi ajanın kendi araçları yapar."))
+            "MCP (Model Context Protocol) sunucuları ajana ek araç verir. Yalnız EVREN modelleriyle ve "
+            "proje klasörlü oturumlarda kullanılır (ücretli sağlayıcıda asla). Sunucu yalnız gerektiğinde "
+            "açılır: Serena yeterince büyük kod projesinde veya sembol işinde, Playwright tarayıcı/arayüz "
+            "testi istendiğinde; ilk araç çağrısında başlar, boşta kalınca kapanır. Okuma dışındaki "
+            "araçlar çalışma modunuza göre onay ister; MCP aracının yaptığı dosya değişiklikleri "
+            "Değişiklikler paneline düşmez (Serena'da yalnız okuma araçları açık)."))
         self.enabled = QCheckBox("MCP sunucularını ajanda kullan")
         lay.addWidget(self.enabled)
-
-        # Serena
-        lay.addWidget(_label(f"Serena {mcp.SERENA_VERSION} (oraios/serena, MIT) — kodu sembol düzeyinde "
-                             "anlar: tanım, kullanıldığı yerler, dosya özeti. Python projelerinde denendi.",
-                             "dim"))
-        row = QHBoxLayout()
-        self.serena_status = QLabel("")
-        self.serena_install = QPushButton("Serena'yı kur")
-        self.serena_install.clicked.connect(self.install_serena)
-        self.serena_toggle = QCheckBox("Serena etkin")
-        self.serena_toggle.toggled.connect(self._toggle_serena)
-        self.serena_test = QPushButton("Dene")
-        self.serena_test.clicked.connect(lambda _=None: self.test_server("serena"))
-        row.addWidget(self.serena_status, 1)
-        row.addWidget(self.serena_toggle)
-        row.addWidget(self.serena_install)
-        row.addWidget(self.serena_test)
-        lay.addLayout(row)
+        for name, p in mcp.PRESETS.items():
+            lay.addWidget(_label(p["title"], "dim"))
+            row = QHBoxLayout()
+            status = QLabel("")
+            status.setWordWrap(True)
+            toggle = QCheckBox(f"{p['short']} etkin")
+            toggle.toggled.connect(lambda on, n=name: self._toggle_preset(n, on))
+            node_btn = QPushButton("Node.js'i kur (winget)")
+            node_btn.clicked.connect(lambda _=None: self.install_node())
+            install = QPushButton(f"{p['short']}'yı kur" if name == "serena" else f"{p['short']}'ı kur")
+            install.clicked.connect(lambda _=None, n=name: self.install_preset(n))
+            test = QPushButton("Dene")
+            test.clicked.connect(lambda _=None, n=name: self.test_server(n))
+            row.addWidget(status, 1)
+            for w in (toggle, node_btn, install, test):
+                row.addWidget(w)
+            lay.addLayout(row)
+            self.rows[name] = {"status": status, "toggle": toggle, "install": install, "test": test,
+                               "node": node_btn}
+        # geriye uyum (testler ve eski kod)
+        self.serena_status = self.rows["serena"]["status"]
+        self.serena_toggle = self.rows["serena"]["toggle"]
+        self.serena_install = self.rows["serena"]["install"]
+        self.serena_test = self.rows["serena"]["test"]
 
         # diğer sunucular
         lay.addWidget(_label("Diğer sunucular", "dim"))
@@ -153,35 +162,46 @@ class McpSettingsCard(QWidget):
 
     def _refresh(self) -> None:
         data_dir = self.ctx.settings.resolved_data_dir()
-        ready = mcp.serena_ready(data_dir)
-        cfg = self._find("serena")
-        if ready:
-            self.serena_status.setText(f"Kurulu · {mcp.serena_dir(data_dir)}")
-        else:
-            self.serena_status.setText("Kurulu değil (~2 dk, ~150 MB indirilir; Python 3.13 ve pyright dahil)")
-        self.serena_install.setVisible(not ready)
-        self.serena_toggle.blockSignals(True)
-        self.serena_toggle.setChecked(bool(cfg and cfg.get("enabled", True)))
-        self.serena_toggle.setEnabled(ready)
-        self.serena_toggle.blockSignals(False)
-        self.serena_test.setEnabled(ready and not self._busy)
-        self.serena_install.setEnabled(not self._busy)
+        node = bool(mcp.find_node())
+        for name, p in mcp.PRESETS.items():
+            r = self.rows[name]
+            ready = p["ready"](data_dir)
+            needs_node = p.get("needs_node") and not node
+            cfg = self._find(name)
+            if ready:
+                r["status"].setText(f"Kurulu · {p['dir'](data_dir)}")
+            elif needs_node:
+                r["status"].setText("Node.js gerekli (Playwright ve TypeScript için). winget ile sistem geneline kurulur.")
+            else:
+                r["status"].setText(f"Kurulu değil ({p['size']})")
+            r["node"].setVisible(bool(needs_node))
+            r["install"].setVisible(not ready and not needs_node)
+            r["toggle"].blockSignals(True)
+            r["toggle"].setChecked(bool(cfg and cfg.get("enabled", True)))
+            r["toggle"].setEnabled(ready)
+            r["toggle"].blockSignals(False)
+            r["test"].setEnabled(ready and not self._busy)
+            r["install"].setEnabled(not self._busy)
+            r["node"].setEnabled(not self._busy)
         self.list.clear()
         for d in self._servers:
-            if d.get("name") == "serena":
+            if d.get("name") in mcp.PRESETS:
                 continue
             state = "etkin" if d.get("enabled", True) else "kapalı"
             it = QListWidgetItem(f"{d['name']}  ·  {d.get('command', '')} {' '.join(d.get('args') or [])}  ·  {state}")
             it.setData(256, d["name"])
             self.list.addItem(it)
 
-    def _toggle_serena(self, on: bool) -> None:
-        cfg = self._find("serena")
+    def _toggle_preset(self, name: str, on: bool) -> None:
+        cfg = self._find(name)
         if on and cfg is None:
-            self._servers.append(mcp.serena_config().to_dict())
+            self._servers.append(mcp.PRESETS[name]["config"]().to_dict())
         elif cfg is not None:
             cfg["enabled"] = on
         self._save()
+
+    def _toggle_serena(self, on: bool) -> None:          # geriye uyum
+        self._toggle_preset("serena", on)
 
     def _save(self) -> None:
         """MCP değişiklikleri hemen kalıcı olur (kurulum sonrası kaybolmasın; R-03)."""
@@ -190,48 +210,75 @@ class McpSettingsCard(QWidget):
         self._refresh()
 
     # ---- eylemler ----
-    def install_serena(self) -> None:
-        if self._busy:
-            return
-        ok = QMessageBox.question(
-            self, "Serena kurulsun mu?",
-            f"Serena {mcp.SERENA_VERSION} ve uv, uygulamanın veri klasöründe ayrı bir Python ortamına "
-            "kurulacak; Python dil sunucusu (pyright, Python 3.13 ile) de indirilecek. Yaklaşık "
-            "2 dakika ve ~150 MB. Bilgisayara ayrıca program kurulmaz, yönetici izni gerekmez.\n\n"
-            "Devam edilsin mi?")
-        if ok != QMessageBox.Yes:
-            return
+    def _run_task(self, job, done_text: str, fail_text: str, after=None) -> None:
         self._busy = True
         self._refresh()
-        data_dir = self.ctx.settings.resolved_data_dir()
         task: Task
 
-        def job():
-            return mcp.install_serena(data_dir, log=task.log)
+        def run():
+            return job(task.log)
 
-        def done(_exe):
+        def done(_res):
             self._busy = False
-            if self._find("serena") is None:
-                self._servers.append(mcp.serena_config().to_dict())
-            self.enabled.setChecked(True)
+            if after:
+                after()
             self._save()
-            self.log.setText("Serena kuruldu ve etkinleştirildi. Proje klasörlü bir oturumda ajan "
-                             "sembol araçlarını kullanabilir.")
+            self.log.setText(done_text)
 
         def fail(exc):
             self._busy = False
             self._refresh()
-            self.log.setText(f"Serena kurulamadı: {exc}")
+            self.log.setText(f"{fail_text}: {exc}")
 
-        task = Task(job, on_done=done, on_error=fail, on_log=self.log.setText)
+        task = Task(run, on_done=done, on_error=fail, on_log=self.log.setText)
         task.start()
+
+    def install_preset(self, name: str) -> None:
+        if self._busy:
+            return
+        p = mcp.PRESETS[name]
+        if QMessageBox.question(self, f"{p['short']} kurulsun mu?", p["confirm"] + "\n\nDevam edilsin mi?") \
+                != QMessageBox.Yes:
+            return
+        data_dir = self.ctx.settings.resolved_data_dir()
+
+        def after():
+            if self._find(name) is None:
+                self._servers.append(p["config"]().to_dict())
+            self.enabled.setChecked(True)
+
+        self._run_task(lambda log: p["install"](data_dir, log=log),
+                       f"{p['short']} kuruldu ve etkinleştirildi; gerektiğinde kendiliğinden açılır.",
+                       f"{p['short']} kurulamadı", after)
+
+    def install_serena(self) -> None:                    # geriye uyum
+        self.install_preset("serena")
+
+    def install_node(self) -> None:
+        if self._busy:
+            return
+        if QMessageBox.question(
+                self, "Node.js kurulsun mu?",
+                "Node.js LTS, Windows Paket Yöneticisi (winget) ile bilgisayarın geneline kurulacak. "
+                "Windows yönetici onayı (UAC) isteyebilir; paket lisansı winget üzerinden kabul edilir."
+                "\n\nDevam edilsin mi?") != QMessageBox.Yes:
+            return
+        from ..agent import environment
+
+        def job(_log):
+            res = environment.install("node")
+            if not res.ok:
+                raise RuntimeError(res.output[-400:] or "kurulum başarısız")
+            environment.refresh_path()
+            return res
+        self._run_task(job, "Node.js kuruldu.", "Node.js kurulamadı")
 
     def _project_root(self) -> Path | None:
         p = (self.ctx.settings.code_workdir or "").strip()
         return Path(p) if p and Path(p).is_dir() else None
 
     def test_server(self, name: str) -> None:
-        d = self._find(name) or (mcp.serena_config().to_dict() if name == "serena" else None)
+        d = self._find(name) or (mcp.PRESETS[name]["config"]().to_dict() if name in mcp.PRESETS else None)
         if d is None or self._busy:
             return
         cfg = mcp.McpServerConfig.from_dict(d)
