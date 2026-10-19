@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 59 · Açık/izlenen: 4 · Oturum: 21 · Kural: 25
+Kayıt: 62 · Açık/izlenen: 4 · Oturum: 22 · Kural: 26
 
 ## Açık ve izlenen kayıtlar
 
@@ -25,6 +25,8 @@ Kayıt: 59 · Açık/izlenen: 4 · Oturum: 21 · Kural: 25
 | 2026-10-19 | [2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y](incidents/2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Sohbete dosya ve görsel yapıştırılamıyordu; bırakılan dosya yol yazıyordu |
 | 2026-10-19 | [2026-10-19-serena-proje-klasorune-serena-yazip-plan-modu-sozunu-bozdu](incidents/2026-10-19-serena-proje-klasorune-serena-yazip-plan-modu-sozunu-bozdu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Serena proje klasörüne .serena yazıp Plan modu sözünü bozdu |
 | 2026-10-19 | [2026-10-19-serena-c-dil-sunucusu-windows-260-karakter-yol-sinirina-taki](incidents/2026-10-19-serena-c-dil-sunucusu-windows-260-karakter-yol-sinirina-taki.md) | ortam | orta | cozuldu | Claude Code (masaüstü) | Serena C# dil sunucusu Windows 260 karakter yol sınırına takıldı |
+| 2026-10-19 | [2026-10-19-qa-senaryosunda-model-sonuc-blogunu-yazmayi-unuttu](incidents/2026-10-19-qa-senaryosunda-model-sonuc-blogunu-yazmayi-unuttu.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | QA senaryosunda model sonuç bloğunu yazmayı unuttu |
+| 2026-10-19 | [2026-10-19-playwright-ekran-goruntusu-goreli-adla-proje-klasorune-yazil](incidents/2026-10-19-playwright-ekran-goruntusu-goreli-adla-proje-klasorune-yazil.md) | risk | orta | cozuldu | Claude Code (masaüstü) | Playwright ekran görüntüsü göreli adla proje klasörüne yazılıyordu |
 | 2026-10-19 | [2026-10-19-olmayan-dosya-uyarisi-olusturma-isteklerinde-yanlis-alarm-ve](incidents/2026-10-19-olmayan-dosya-uyarisi-olusturma-isteklerinde-yanlis-alarm-ve.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Olmayan dosya uyarısı oluşturma isteklerinde yanlış alarm verdi (kendi gerilemem) |
 | 2026-10-19 | [2026-10-19-model-serena-araclarini-yonlendirme-olmadan-hic-kullanmadi](incidents/2026-10-19-model-serena-araclarini-yonlendirme-olmadan-hic-kullanmadi.md) | risk | orta | cozuldu | Claude Code (masaüstü) | Model Serena araçlarını yönlendirme olmadan hiç kullanmadı |
 | 2026-10-19 | [2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu](incidents/2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Model kısaltılmış dosya çıktısından kesin sayı uydurdu |
@@ -38,6 +40,7 @@ Kayıt: 59 · Açık/izlenen: 4 · Oturum: 21 · Kural: 25
 | 2026-10-19 | [2026-10-19-canli-model-listesi-yalniz-modeller-sayfasi-acilinca-yukleni](incidents/2026-10-19-canli-model-listesi-yalniz-modeller-sayfasi-acilinca-yukleni.md) | eksik | dusuk | cozuldu | Claude Code (masaüstü) | Canlı model listesi yalnız Modeller sayfası açılınca yükleniyordu |
 | 2026-10-19 | [2026-10-19-auto-pro-yedek-listesi-farkli-saglayicinin-modelini-ayni-ist](incidents/2026-10-19-auto-pro-yedek-listesi-farkli-saglayicinin-modelini-ayni-ist.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Auto Pro yedek listesi farklı sağlayıcının modelini aynı istemciyle deniyordu |
 | 2026-10-19 | [2026-10-19-auto-pro-da-baglam-gostergesi-ozeti-yuzde-10-da-baslatiyor-g](incidents/2026-10-19-auto-pro-da-baglam-gostergesi-ozeti-yuzde-10-da-baslatiyor-g.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Auto Pro'da bağlam göstergesi özeti yüzde 10'da başlatıyor gibi görünüyordu |
+| 2026-10-19 | [2026-10-19-arka-plan-python-sunucusunun-ciktisi-tamponlandigi-icin-port](incidents/2026-10-19-arka-plan-python-sunucusunun-ciktisi-tamponlandigi-icin-port.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Arka plan Python sunucusunun çıktısı tamponlandığı için port algılanmadı |
 | 2026-10-19 | [2026-10-19-alt-enter-yeni-satir-yerine-mesaji-gonderiyordu](incidents/2026-10-19-alt-enter-yeni-satir-yerine-mesaji-gonderiyordu.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Alt+Enter yeni satır yerine mesajı gönderiyordu |
 | 2026-10-17 | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
 | 2026-10-17 | [2026-10-17-tur-basina-40-adim-buyuk-projede-dar](incidents/2026-10-17-tur-basina-40-adim-buyuk-projede-dar.md) | eksik | dusuk | cozuldu | Claude Code (masaüstü) | Tur başına 40 adım büyük projede dar |
@@ -82,6 +85,7 @@ Kayıt: 59 · Açık/izlenen: 4 · Oturum: 21 · Kural: 25
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum](sessions/2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Zorluk paketi ve tek tıkla kurulum |
+| 2026-10-19 | [2026-10-19-claude-code-masaustu-qa-ajani-arka-plan-servisleri-test-bekci](sessions/2026-10-19-claude-code-masaustu-qa-ajani-arka-plan-servisleri-test-bekci.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | QA ajanı, arka plan servisleri, test bekçisi, görsel göz |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-mcp-gerektiginde-acma-playwright-hata-be](sessions/2026-10-19-claude-code-masaustu-mcp-gerektiginde-acma-playwright-hata-be.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | MCP gerektiğinde açma, Playwright, hata bekçisi, çok dilli Serena |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-mcp-destegi-ve-serena-entegrasyonu](sessions/2026-10-19-claude-code-masaustu-mcp-destegi-ve-serena-entegrasyonu.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | MCP desteği ve Serena entegrasyonu |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-evren-akilli-yonlendirici-ve-proje-ajani](sessions/2026-10-19-claude-code-masaustu-evren-akilli-yonlendirici-ve-proje-ajani.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | EVREN Akıllı yönlendirici ve Proje ajanı |
@@ -130,3 +134,4 @@ Kayıt: 59 · Açık/izlenen: 4 · Oturum: 21 · Kural: 25
 - **R-23** · Uygulamanın kendi kaynağını ajanla düzenlerken ayrı dalda çalış; `%f` ile time.strftime kullanma
 - **R-24** · Kısa iç yapay zekâ isteğini ai_chat'ten geçir ve gerçek API'de dene; düğme lambdasında `_=None`
 - **R-25** · Yeni araç eklerken modelin onu gerçekten seçtiğini ve kabul denetimini ölç
+- **R-26** · Gözetimsiz akışta yapılandırılmış sonucu üç katmanla güvenceye al

@@ -240,7 +240,7 @@ class Git:
         c, o = self._run("rev-parse", "HEAD")
         return o if c == 0 else ""
 
-    def dirty(self, ignore: tuple[str, ...] = (PLAN_FILE, REPORT_FILE)) -> bool:
+    def dirty(self, ignore: tuple[str, ...] = (PLAN_FILE, REPORT_FILE, "EVREN_QA_RAPORU.md")) -> bool:
         """Kullanıcının kaydedilmemiş değişikliği var mı? Ajanın kendi plan/rapor dosyaları
         sayılmaz (2026-10-19: yazılan EVREN_PLAN.md yanlış "kaydedilmemiş değişiklik" uyarısı verdi)."""
         c, o = self._run("status", "--porcelain")

@@ -40,3 +40,9 @@ MODEL_CAPABILITIES.md'ye not. EVREN güncellenirse yeniden ölç.
 
 ## İlgili dosyalar
 - docs/knowledge/MODEL_CAPABILITIES.md
+
+## Gözlem 2026-10-19 (Claude Code masaüstü, claude-opus-5-5)
+tests/e2e_agent_real_api.py art arda 4 koşu: deepseek-v4.1-flash metin protokolü 2 kez boş yanıtla
+KALDI, 2 kez GEÇTİ (aralıklı). Bu test AgentRunner'ı doğrudan kurar; aynı gün eklenen servis
+araçları/test bekçisi bu senaryoda devrede değil (services=None) — gerileme değil. Durum açık kalır.
+

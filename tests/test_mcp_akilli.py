@@ -324,12 +324,14 @@ def test_yerel_web_sunucusu_gizli_dosyalari_vermez(tmp_path):
     (tmp_path / ".git").mkdir()
     (tmp_path / ".git" / "config").write_text("x", encoding="utf-8")
     srv = mcp.ProjectWebServer(tmp_path)
+    # Sistem vekil ayarı yerel adrese uygulanmasın; tam pakette yük altında 5 sn yetmedi (R-08)
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
         assert srv.url.startswith("http://127.0.0.1:")
-        assert b"merhaba" in urllib.request.urlopen(srv.url + "index.html", timeout=5).read()
+        assert b"merhaba" in opener.open(srv.url + "index.html", timeout=20).read()
         for secret in (".env", ".git/config", "%2Eenv"):
             with pytest.raises(urllib.error.HTTPError) as e:
-                urllib.request.urlopen(srv.url + secret, timeout=5)
+                opener.open(srv.url + secret, timeout=20)
             assert e.value.code == 403
     finally:
         srv.close()

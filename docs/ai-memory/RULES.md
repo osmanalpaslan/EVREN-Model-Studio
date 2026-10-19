@@ -137,3 +137,9 @@
 - **Kural:** Ajana yeni araç (MCP dahil) eklediğinde gerçek API ile aracın açık/kapalı karşılaştırmasını yap ve çağrı sayısını kaydet (sunmak, kullanılması demek değildir); e2e kabul denetimini çalıştırmadan önce bilinen doğru ve bilinen yanlış bir cevapla sına.
 - **Neden:** Serena araçları sunulduğu hâlde model istem yönlendirmesi olmadan hiç çağırmadı; ilk kabul denetimi doğru cevabı düşürdü.
 - **Kaynak:** 2026-10-19-model-serena-araclarini-yonlendirme-olmadan-hic-kullanmadi, 2026-10-19-mcp-e2e-kabul-denetimi-dogru-cevabi-yanlislikla-dusurdu
+
+### R-26 · Gözetimsiz akışta yapılandırılmış sonucu üç katmanla güvenceye al
+- **Kural:** Modelden sonunda belirli bir blok/JSON (ör. `<qa_sonuc>`, `<plan>`) isteyen gözetimsiz akışta: (1) blok yoksa aynı turda bir kez dürt (`final_marker`), (2) tur yine bloksuz biterse aynı bağlamla kısa "yalnız sonucu ver" turu aç, (3) bozuk JSON'u (kaçışsız tırnak vb.) anahtar adlarından esnek oku; ayrıştırıcıyı gerçek model çıktısıyla test et.
+- **Neden:** Gerçek QA koşularında EVREN modelleri sonucu ya hiç yazmadı, ya boş yanıtla bitirdi, ya da değer içinde kaçışsız çift tırnakla bozuk JSON verdi; senaryo yanlışlıkla "engellendi" sayıldı.
+- **Kaynak:** 2026-10-19-qa-senaryosunda-model-sonuc-blogunu-yazmayi-unuttu
+

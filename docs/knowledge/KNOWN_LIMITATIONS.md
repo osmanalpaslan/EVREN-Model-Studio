@@ -74,6 +74,16 @@
 - OpenAI'de reasoning özeti yalnız model gönderirse görünür; Anthropic
   "extended thinking" ayrıca açılmaz (modelin varsayılanı).
 
+## QA ajanı (2026-10-19)
+
+- Yalnız web uygulamaları; masaüstü uygulama testi bilerek yok.
+- Senaryo sonucu modelin tarayıcıdaki gözlemidir; yanlış "geçti" ya da yanlış "kaldı" olabilir
+  (kanıt alanı ve rapor bunu denetlemek içindir).
+- Test bekçisi yalnız tanınan koşucuları çalıştırır (pytest/unittest, npm test, dotnet test,
+  go test); npm projesinde `node_modules` yoksa çalışmaz. Uzun süren test takımları tur sonunu uzatır
+  (zaman aşımı 180 sn).
+- Görsel göz ve uzun QA oturumları EVREN token kotasını çok harcar (kota bekçisi yok, kullanıcı kararı).
+
 ## MCP ve Serena (2026-10-19)
 
 - Serena Go/Rust projelerinde o dilin aracı (go, rustup) kurulu değilse çalışmaz; Java ilk

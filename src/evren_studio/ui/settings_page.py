@@ -298,6 +298,8 @@ class SettingsPage(BasePage):
         l.addWidget(self.send_enter)
         self.edit_diag = QCheckBox("Hata bekçisi: ajan dosya düzenleyince hataları denetle ve modele bildir (önerilir)")
         l.addWidget(self.edit_diag)
+        self.test_check = QCheckBox("Test bekçisi: ajan dosya değiştirince tur sonunda projenin testlerini çalıştır (önerilir)")
+        l.addWidget(self.test_check)
         col.addWidget(c)
 
         # ---- MCP sunucuları ----
@@ -386,6 +388,7 @@ class SettingsPage(BasePage):
         self.ai_titles.setChecked(s.ai_session_titles)
         self.send_enter.setChecked(s.send_with_enter)
         self.edit_diag.setChecked(s.edit_diagnostics)
+        self.test_check.setChecked(s.test_check)
         self.auto_compact.setChecked(s.auto_compact)
         self.compact_percent.setValue(s.auto_compact_percent)
         self.compact_max.setValue(s.auto_compact_max_tokens)
@@ -422,6 +425,7 @@ class SettingsPage(BasePage):
         s.ai_session_titles = self.ai_titles.isChecked()
         s.send_with_enter = self.send_enter.isChecked()
         s.edit_diagnostics = self.edit_diag.isChecked()
+        s.test_check = self.test_check.isChecked()
         s.auto_compact = self.auto_compact.isChecked()
         s.auto_compact_percent = int(self.compact_percent.value())
         s.auto_compact_max_tokens = int(self.compact_max.value())

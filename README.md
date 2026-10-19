@@ -76,6 +76,10 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
   tıkla **Serena** (kodu sembol düzeyinde anlar; Python, TypeScript, JavaScript, C#, Java) ve
   **Playwright** (web sayfasını gerçek tarayıcıda dener) kurulur. Gerektiğinde kendiliğinden
   açılır, boşta kapanır. Okuma dışındaki MCP araçları çalışma modunuza göre onay ister.
+- **QA ajanı**: `/qa <neyi test etsin>` yazın. Web uygulamanızı test uzmanı gibi tarayıcıda dener:
+  sunucuyu başlatır, senaryoları (uç durumlar dahil) sizin onayınızla gözetimsiz uygular, hataları
+  kanıtıyla `EVREN_QA_RAPORU.md`'ye yazar; isterseniz hataları Proje ajanına düzeltir.
+- **Test bekçisi**: ajan dosya değiştirince tur sonunda projenin testleri çalışır; bozulursa model düzeltir.
 - **Hata bekçisi**: ajan bir dosyayı düzenleyince sözdizimi ve dil sunucusu hataları aynı
   turda modele bildirilir; model "bitti" demeden düzeltir.
 - **Proje ajanı**: `/proje <hedef>` yazın; plan çıkarır, onayınızdan sonra

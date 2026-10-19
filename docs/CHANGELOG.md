@@ -1,5 +1,31 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — QA ajanı, arka plan servisleri, test bekçisi
+
+### Eklendi
+
+- **QA ajanı** (`/qa <neyi test etsin>`, `/qa-duzelt`, `/qa-devam`, `/qa-durdur`): web uygulamasını
+  gerçek bir test uzmanı gibi tarayıcıda dener.
+  - Önce senaryo planı çıkarır (uç durumlar dahil: boş giriş, uzun metin, Türkçe karakter, art arda
+    tıklama); planı siz onaylarsınız.
+  - Her senaryoyu temiz bağlamla, gözetimsiz ve DOSYA DEĞİŞTİRMEDEN dener.
+  - Sonuç: geçti / kaldı / engellendi, kanıtla birlikte. Rapor `EVREN_QA_RAPORU.md`'ye yazılır,
+    bitince Windows bildirimi gelir.
+  - "Hataları düzelt" düğmesi kalan hataları Proje ajanına verir.
+  - Yalnız EVREN modelleriyle ve Playwright MCP ile çalışır.
+- **Arka plan servisleri** (`start_service`, `service_logs`, `stop_service`): ajan `npm run dev`,
+  `python server.py` gibi sürekli çalışan sunucuları başlatıp porta hazır olmasını bekler ve
+  çıktısını okur. Normal tur bitince servisler kapanır; QA çalışmasında senaryolar arasında açık kalır.
+- **Test bekçisi**: dosya değiştiren turun sonunda projenin kendi testleri çalışır (pytest/unittest,
+  npm test, dotnet test, go test). Tur başında geçen testler bozulduysa model bir kez uyarılır;
+  önceden düşen testler için uyarı verilmez. Ayarlar'dan kapatılabilir.
+- **Görsel göz** (`visual_check`, QA turlarında): ekran görüntüsünü EVREN'in görsel modeline
+  (gemma-4-31b) sorar; görüntü proje klasörüne değil uygulama klasörüne kaydedilir.
+- **Ek denetimler** (`qa_audit`):
+  - Erişilebilirlik: axe-core 4.13.0, açık sayfada.
+  - Performans: yükleme süresi ve en büyük dosyalar.
+  - Güvenlik: projede unutulmuş anahtar/parola taraması; `package-lock.json` varsa `npm audit`.
+
 ## Yayınlanmamış — MCP gerektiğinde, Playwright, hata bekçisi, çok dilli Serena
 
 ### Eklendi
