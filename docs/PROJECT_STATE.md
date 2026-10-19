@@ -64,6 +64,13 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-19) Auto Pro (eski adı EVREN Akıllı) + Proje ajanı uygulandı (dal
+    `feat/akilli-yonlendirme`): 8 motor ölçümü, Auto Pro 12/12, proje ajanı gerçek
+    API'de kabul 5/5. Auto Pro yalnız anahtarı girilmiş sağlayıcıları kullanır;
+    uygulamanın kendi yapay zekâ işleri `AppContext.ai_chat` üzerinden (başlık,
+    hata açıklaması, commit mesajı, özet, inceleme). Ücretli yönlendirme doğrulanmadı.
+    Ayrıntı: CHALLENGE_RESULTS.md, ILERIDE_YAPILACAKLAR.md madde 3.
+
   - **Kararlaştırılmış ileri işler: docs/ILERIDE_YAPILACAKLAR.md** — ilk madde
     profesyonel Windows kurulum paketi (PyInstaller onedir + Inno Setup, isteğe
     bağlı Git/Python/Node kurulumu); kullanıcı "şimdi değil" dedi (2026-10-19).

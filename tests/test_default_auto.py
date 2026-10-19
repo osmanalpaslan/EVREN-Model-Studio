@@ -90,7 +90,7 @@ def test_sohbet_ekrani_auto_ile_acilir_ve_degistirilebilir(win):
     s.new_session()
     assert s.model == "auto" and s.composer.model() == "auto"
     assert s.mode == "manuel"                                       # onay modu değişmedi
-    assert s.composer.model_ids()[0] == "auto"                      # listede en üstte
+    assert s.composer.model_ids()[:2] == ["auto-pro", "auto"]       # Auto Pro en üstte, EVREN auto hemen altında
     s.composer.set_model("deepseek-v4-flash", emit=True)            # kullanıcı seçiciden değiştirir
     assert s.model == "deepseek-v4-flash" and s.composer.model() == "deepseek-v4-flash"
 

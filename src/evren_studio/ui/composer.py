@@ -54,17 +54,26 @@ SLASH_COMMANDS = {
     "/yeni": "Yeni oturum başlat",
     "/disa-aktar": "Oturumu Markdown olarak dışa aktar",
     "/yardim": "Komutları ve kısayolları göster",
+    "/proje": "Proje ajanı: /proje <hedef> — plan çıkarır, onayınızla görev görev yürütür",
+    "/proje-duzelt": "Proje planını değiştir: /proje-duzelt <geri bildirim>",
+    "/proje-devam": "Duraklatılan projeyi kaldığı yerden sürdür",
+    "/proje-durdur": "Çalışan projeyi güvenli noktada durdur",
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
     "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/disa-aktar": "download",
-    "/yardim": "help",
+    "/yardim": "help", "/proje": "list", "/proje-duzelt": "pencil", "/proje-devam": "refresh",
+    "/proje-durdur": "stop",
 }
 FOOTER_SENT_TO = {"evren": "EVREN API'sine", "openai": "OpenAI'ye (ücretli)",
-                  "anthropic": "Anthropic'e (ücretli)"}
+                  "anthropic": "Anthropic'e (ücretli)",
+                  "otomatik": "Auto Pro'nun seçtiği sağlayıcıya"}
+# Kimliği yerine görünen ad kullanılan modeller
+DISPLAY_NAMES = {"auto-pro": "Auto Pro", "akilli": "Auto Pro"}
 
 # Model seçicideki sağlayıcı başlıkları
 GROUP_TITLES = {
+    "otomatik": "Otomatik yönlendirme",
     "evren": "EVREN · ücretsiz",
     "openai": "OpenAI · ücretli · doğrulanmadı",
     "anthropic": "Anthropic · ücretli · doğrulanmadı",
@@ -326,7 +335,7 @@ class Composer(QWidget):
             if provider != last_provider:
                 self.model_menu.addSection(GROUP_TITLES.get(provider, provider))
                 last_provider = provider
-            label = mid + (f"   ·  {desc}" if desc else "")
+            label = DISPLAY_NAMES.get(mid, mid) + (f"   ·  {desc}" if desc else "")
             if not enabled:
                 label += "   (anahtar gerekli)"
             act = QAction(label, self.model_menu)
@@ -346,7 +355,7 @@ class Composer(QWidget):
 
     def set_model(self, model: str, emit: bool = False) -> None:
         self._model = model
-        self.model_btn.setText(model or "model seçin")
+        self.model_btn.setText(DISPLAY_NAMES.get(model, model) or "model seçin")
         provider = next((m[3] for m in self._models if m[0] == model), "evren")
         self.footer.setText("Yapay zekâ hata yapabilir; önemli değişiklikleri gözden geçirin. "
                             f"Mesajlar ve dosya içerikleri {FOOTER_SENT_TO.get(provider, provider)} gönderilir.")
@@ -453,7 +462,7 @@ class Composer(QWidget):
         self.popup.clear()
         last_provider = None
         for mid, desc, tools, provider, enabled in self._models:
-            if filt and filt not in mid.lower():
+            if filt and filt not in mid.lower() and filt not in DISPLAY_NAMES.get(mid, "").lower():
                 continue
             if provider != last_provider:
                 head = QListWidgetItem(GROUP_TITLES.get(provider, provider))
@@ -464,7 +473,7 @@ class Composer(QWidget):
                 self.popup.addItem(head)
                 last_provider = provider
             mark = "✓ " if mid == self._model else "    "
-            text = f"{mark}{mid}" + (f"    {desc}" if desc else "") + ("" if enabled else "    (anahtar gerekli)")
+            text = f"{mark}{DISPLAY_NAMES.get(mid, mid)}" + (f"    {desc}" if desc else "") + ("" if enabled else "    (anahtar gerekli)")
             it = QListWidgetItem(icons.icon("cpu", size=16), text)
             it.setData(ROLE_VALUE, mid)
             it.setData(ROLE_KIND, "model")

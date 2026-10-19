@@ -78,6 +78,9 @@ class MainWindow(QMainWindow):
         self.session.page_requested.connect(self.show_page)
         self.session.toggle_sidebar.connect(self.toggle_sidebar)
         self.session.toggle_panel.connect(self.toggle_panel)
+        self.session.notify.connect(self.show_notification)
+        self._tray = None
+        self.sidebar.apply_providers(self.ctx.available_providers())
         self.ctx.on_models_changed(self.session.refresh_models)
 
         self._shortcuts()
@@ -168,6 +171,14 @@ class MainWindow(QMainWindow):
         self.session.set_sidebar_hidden(not vis)
         self.ctx.settings.sidebar_visible = vis
 
+    def focus_session_search(self) -> None:
+        """Ctrl+K: oturum araması. Kenar çubuğu kapalıysa normal yoldan açılır; doğrudan
+        setVisible(True) ayarı ve başlıktaki "kenar çubuğunu göster" düğmesini güncel
+        bırakmıyordu (yeniden açılışta çubuk kendiliğinden kapanıyordu)."""
+        if not self.sidebar.isVisible():
+            self.toggle_sidebar()
+        self.sidebar.search.setFocus()
+
     def toggle_panel(self) -> None:
         if self.center.currentWidget() is not self.session:
             self.show_sessions()
@@ -185,7 +196,7 @@ class MainWindow(QMainWindow):
         sc("Ctrl+N", self.new_session)
         sc("Ctrl+B", self.toggle_sidebar)
         sc("Ctrl+J", self.toggle_panel)
-        sc("Ctrl+K", lambda: (self.sidebar.setVisible(True), self.sidebar.search.setFocus()))
+        sc("Ctrl+K", self.focus_session_search)
         sc("Ctrl+L", lambda: (self.show_sessions(), self.session.composer.focus()))
         sc("Ctrl+,", lambda: self.show_page("settings"))
         sc("Esc", self._escape)
@@ -198,7 +209,32 @@ class MainWindow(QMainWindow):
         else:
             self.session.stop()
 
+    def show_notification(self, title: str, text: str) -> None:
+        """Windows bildirimi (proje ajanı bitti/duraklatıldı). Ek hizmet gerektirmez:
+        sistem tepsisi simgesi üzerinden Windows bildirim merkezine düşer."""
+        from PySide6.QtWidgets import QSystemTrayIcon
+
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+        if self._tray is None:
+            self._tray = QSystemTrayIcon(self.windowIcon(), self)
+            self._tray.setToolTip("EVREN Studio")
+            self._tray.messageClicked.connect(lambda: (self.showNormal(), self.raise_(), self.activateWindow()))
+        self._tray.show()
+        self._tray.showMessage(title, text, QSystemTrayIcon.Information, 15000)
+
+    def _apply_providers(self) -> None:
+        """Anahtar eklenip silinince EVREN'e özel sayfalar ve model listesi güncellenir."""
+        from .sidebar import EVREN_ONLY_PAGES
+
+        provs = self.ctx.available_providers()
+        self.sidebar.apply_providers(provs)
+        cur = next((k for k, p in self.pages.items() if p is self.center.currentWidget()), None)
+        if cur in EVREN_ONLY_PAGES and provs and "evren" not in provs:
+            self.show_sessions()
+
     def _settings_saved(self) -> None:
+        self._apply_providers()
         s = self.ctx.settings
         app = QApplication.instance()
         if app is not None:

@@ -475,31 +475,27 @@ def _popup_texts(comp):
 
 
 def test_gruplu_model_secici_ve_anahtar_kapisi(win, monkeypatch):
+    """Yalnız anahtarı girilmiş sağlayıcıların modelleri listelenir (kullanıcı kararı 2026-10-19)."""
     from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QMessageBox
 
     app, w = win
     s = w.session
     s.refresh_models()
     rows = _popup_texts(s.composer)
     heads = [t for t, f in rows if f == Qt.NoItemFlags]
-    assert "OpenAI · ücretli · doğrulanmadı" in heads and "Anthropic · ücretli · doğrulanmadı" in heads
-    luna = next(t for t, _ in rows if "gpt-6-luna" in t)
-    assert "(anahtar gerekli)" in luna and "$" in luna                    # fiyat ipucu
-    # anahtarsız ücretli model seçilemez; seçim geri alınır
-    asked = []
-    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: asked.append(a) or QMessageBox.No)
-    before = s.model
-    s.set_model("gpt-6-luna")
-    assert s.model == before and asked and s.composer.model() == before
-    # anahtar girilince etkinleşir
+    assert "Otomatik yönlendirme" in heads and "EVREN · ücretsiz" in heads
+    assert not any("gpt-6-luna" in t for t, _ in rows)              # anahtar yok → görünmez
+    assert not any(h.startswith("OpenAI") for h in heads)
+    # anahtar girilince grup ve fiyat ipucu görünür
     w.ctx._provider_keys["openai"] = OAI_KEY
     s.refresh_models()
-    luna = next(t for t, _ in _popup_texts(s.composer) if "gpt-6-luna" in t)
-    assert "(anahtar gerekli)" not in luna
+    rows = _popup_texts(s.composer)
+    heads = [t for t, f in rows if f == Qt.NoItemFlags]
+    assert "OpenAI · ücretli · doğrulanmadı" in heads
+    luna = next(t for t, _ in rows if "gpt-6-luna" in t)
+    assert "$" in luna
     s.set_model("gpt-6-luna")
     assert s.model == "gpt-6-luna"
-
 
 def test_ayarlar_saglayici_anahtari_ve_butce(win, monkeypatch, fake_keyring):
     from PySide6.QtWidgets import QMessageBox

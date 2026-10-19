@@ -67,6 +67,14 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
 - **Ücretli sağlayıcılar (isteğe bağlı, doğrulanmadı)**: kendi OpenAI veya
   Anthropic API anahtarınızla GPT/Claude modelleri; gruplu model seçici,
   Ayarlar'da adım adım anahtar rehberi ve aylık bütçe (varsayılan $5, tahmini).
+- **Auto Pro**: işe göre en uygun motoru seçen, görev ortasında motor
+  değiştirmeyen, sorun olursa yedeğe geçen yönlendirici. Yalnız API anahtarını
+  girdiğiniz sağlayıcıları kullanır (yalnız EVREN, yalnız OpenAI/Anthropic veya
+  birlikte); uygulamanın kendi yapay zekâ işleri (oturum başlığı, hata açıklaması,
+  commit mesajı, özet, inceleme) de bağlı API üzerinden çalışır.
+- **Proje ajanı**: `/proje <hedef>` yazın; plan çıkarır, onayınızdan sonra
+  görevleri siz başında olmadan sırayla yapar, her birini test eder, ayrı git
+  dalında commit'ler, bitince bildirim ve rapor (EVREN_RAPOR.md) verir.
 - **Ekler**: dosya ve görselleri sürükleyip bırakın veya Ctrl+V ile
   yapıştırın; kart olarak görünür, görseller görsel okuyan modellere gider.
 - **Kullanım düğmesi**: model seçicinin yanında günlük kalan kota; tıklayınca

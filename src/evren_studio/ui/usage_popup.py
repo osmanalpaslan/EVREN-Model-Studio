@@ -294,7 +294,8 @@ class UsagePanel(QFrame):
         pal = theme.current()
         q = s.quota
         head = QHBoxLayout()
-        head.addWidget(_title("EVREN kullanımı"), 1)
+        evren_part = q is not None or bool(s.error) or not s.paid_name
+        head.addWidget(_title("EVREN kullanımı" if evren_part else "Kullanım"), 1)
         if q is not None:
             level = str(getattr(q, "level", "") or "")
             name, _desc = LEVEL_TEXT.get(level, (level or "?", ""))
@@ -306,7 +307,9 @@ class UsagePanel(QFrame):
             head.addWidget(badge)
         self.body_l.addLayout(head)
 
-        if q is None:
+        if q is None and not evren_part:
+            pass                                    # yalnız ücretli sağlayıcı: aşağıdaki bölüm
+        elif q is None:
             self.body_l.addWidget(_dim("Kota bilgisi alınamadı" + (f": {s.error}" if s.error else ".")
                                        + " İnternet bağlantınızı ve API anahtarınızı kontrol edip "
                                          "Yenile'ye basın."))
@@ -405,7 +408,15 @@ class UsageChip(QToolButton):
         self.snapshot = s
         q = s.quota
         used = daily_ratio(q) if q is not None else None
-        if used is None:
+        if q is None and s.paid_name and not s.error:
+            from ..budget import format_usd
+
+            r = min(1.0, s.paid_spent / s.paid_limit) if s.paid_limit else 0.0
+            self.setIcon(ring_pixmap(1 - r, ratio_color(r)))
+            self.setText(format_usd(s.paid_spent))
+            self.setToolTip(f"{s.paid_name}: bu ay tahmini {format_usd(s.paid_spent)} / "
+                            f"{format_usd(s.paid_limit)} — ayrıntı için tıklayın")
+        elif used is None:
             self.setIcon(ring_pixmap(None, theme.current().text_faint))
             self.setText("Kullanım")
             self.setToolTip("EVREN kullanımı: " + (s.error or "henüz alınmadı") + " — ayrıntı için tıklayın")

@@ -74,6 +74,29 @@
 - OpenAI'de reasoning özeti yalnız model gönderirse görünür; Anthropic
   "extended thinking" ayrıca açılmaz (modelin varsayılanı).
 
+## Auto Pro ve Proje ajanı (2026-10-19)
+
+- OpenAI/Anthropic yönlendirme tablosu (`router.PAID_ROUTES`) sağlayıcı
+  belgelerine dayanır, gerçek istekle **doğrulanmadı** (anahtar yok); yalnız
+  sahte istemcilerle test edildi.
+- Ücretli anahtar varken uygulamanın kendi yapay zekâ işleri (başlık, hata
+  açıklaması, commit mesajı, özet, inceleme) küçük de olsa **ücretli harcama**
+  yapabilir (dengeli politikada önce EVREN denenir; yalnız ücretli anahtarda
+  doğrudan ücretlidir). Oturum başlığı Ayarlar'dan kapatılabilir.
+- Otomatik oturum başlığı ilk yanıttan sonra bir kez üretilir; adı elle
+  değiştirilmiş oturuma dokunulmaz.
+
+- Rol tablosu 12 görevlik ölçüme dayanır; EVREN model listesi/davranışı değişince
+  yeniden ölçülmeli (`router.ROUTES_MEASURED`).
+- Proje ajanı uygulama kapanınca kendiliğinden yeniden başlamaz (`/proje-devam`);
+  günlük kota bitince duraklar, sıfırlanınca otomatik sürmez.
+- Git deposu olmayan projede kontrol noktası commit'i yoktur; takılan görevin
+  değişiklikleri geri alınmaz (Değişiklikler panelinden geri alınabilir).
+- İnceleme modeli de yanılabilir; doğrulama komutu olmayan görevde kabul yalnız
+  incelemeye dayanır.
+- Yalnız EVREN modelleriyle ölçüldü; ücretli sağlayıcıda bütçe onayı penceresi
+  gözetimsiz çalışmayı bekletebilir.
+
 ## Sağlayıcıya bağlı sınırlar
 
 - `free_until: 2026-11-01` — sonrası için fiyatlandırma bilinmiyor.

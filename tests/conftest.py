@@ -48,6 +48,13 @@ def _gercek_program_kurulumu_yok(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _yapay_zeka_basligi_kapali(monkeypatch):
+    """Otomatik oturum başlığı ilk yanıttan sonra EK bir model çağrısı yapar; sahte istemcilerin
+    sıralı yanıtlarını kaydırmasın. Özelliğin kendisi test_auto_pro.py'de açıkça sınanır."""
+    monkeypatch.setenv("EVREN_STUDIO_NO_AI_TITLE", "1")
+
+
+@pytest.fixture(autouse=True)
 def _qt_pencere_temizligi():
     """Her testten sonra açık kalan Qt pencerelerini gerçekten yok eder.
 

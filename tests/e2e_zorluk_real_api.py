@@ -42,8 +42,11 @@ def sha(p: Path) -> str:
 
 def run(cmd: list[str], cwd: Path, timeout: int = 120) -> tuple[int, str]:
     try:
+        # PYTHONIOENCODING: Windows'ta yönlendirilmiş çıktı varsayılan olarak cp1254'tür; modelin
+        # programı doğru olsa da Türkçe harfler bozuk okunuyordu (2026-10-19 ölçüm hatası).
         r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=timeout)
+                           errors="replace", timeout=timeout,
+                           env={**os.environ, "PYTHONIOENCODING": "utf-8"})
         return r.returncode, (r.stdout or "") + (r.stderr or "")
     except subprocess.TimeoutExpired:
         return -9, "zaman aşımı"
@@ -232,6 +235,49 @@ def kontrol_girdi(p: Path, s: dict, yanit: str) -> list:
                                                                    "adınız")), yanit[-160:].replace("\n", " "))]
 
 
+def kur_planlama(p: Path) -> dict:
+    (p / "README.md").write_text("# Kütüphane\n\nHenüz boş bir proje.\n", encoding="utf-8")
+    return {}
+
+
+def kontrol_planlama(p: Path, s: dict, yanit: str) -> list:
+    plan = p / "EVREN_PLAN.md"
+    if not plan.is_file():
+        return [("EVREN_PLAN.md yazıldı", False, "")]
+    text = plan.read_text(encoding="utf-8", errors="replace")
+    gorevler = re.findall(r"^\s*- \[ \] .+", text, re.M)
+    olcut = len(re.findall(r"bitti ölçütü", text, re.I))
+    kod = [x.name for x in p.rglob("*") if x.suffix in (".py", ".js", ".ts") and x.is_file()]
+    return [("EVREN_PLAN.md yazıldı", True, ""),
+            ("5-12 görev", 5 <= len(gorevler) <= 12, f"{len(gorevler)} görev"),
+            ("her görevde bitti ölçütü", olcut >= len(gorevler) > 0, f"{olcut} ölçüt / {len(gorevler)} görev"),
+            ("testlerden söz ediyor", "test" in text.lower(), ""),
+            ("henüz kod yazılmadı", not kod, ", ".join(kod)[:80])]
+
+
+def kur_mini_proje(p: Path) -> dict:
+    return {}
+
+
+def kontrol_mini_proje(p: Path, s: dict, yanit: str) -> list:
+    script = p / "kelime_say.py"
+    if not script.is_file():
+        return [("kelime_say.py var", False, "")]
+    ornek = p / "_kabul.txt"
+    # 3 satır (biri boş değil), 9 kelime; Türkçe küçük harf: "IRMAK"→"ırmak", "İzmir"→"izmir"
+    ornek.write_text("IRMAK ırmak İzmir\nizmir Irmak deniz\nDeniz deniz ada\n", encoding="utf-8")
+    c, o = run([PY, str(script), str(ornek)], p)
+    lines = [x.strip() for x in o.strip().splitlines()]
+    ornek.unlink(missing_ok=True)
+    c2, o2 = run([PY, str(script), str(p / "yok.txt")], p)
+    ok, info = unittest_ok(p)
+    return [("satir: 3", "satir: 3" in lines, " | ".join(lines)[:140]),
+            ("kelime: 9", "kelime: 9" in lines, ""),
+            ("Türkçe küçük harf ve sıralama", "en_sik: ırmak=3, deniz=3, izmir=2" in lines, ""),
+            ("olmayan dosyada çıkış 1", c2 == 1, f"çıkış {c2}"),
+            ("kendi testleri geçiyor", ok, info)]
+
+
 GOREVLER: dict[str, dict] = {
     "turkce": {"kur": kur_turkce, "kontrol": kontrol_turkce,
                "mesaj": "metin.py dosyasındaki selamda “Merhaba” kelimesini “Günaydın” yap. Başka hiçbir şeyi değiştirme."},
@@ -255,6 +301,20 @@ GOREVLER: dict[str, dict] = {
              "mesaj": "Bu uygulamaya komut satırından isim alıp selam veren bir özellik eklemek istiyorum. Nasıl yaparsın?"},
     "girdi": {"kur": kur_girdi, "kontrol": kontrol_girdi,
               "mesaj": "oyun.py'yi çalıştır ve çıktısını bana söyle."},
+    "planlama": {"kur": kur_planlama, "kontrol": kontrol_planlama,
+                 "mesaj": "Bu klasörde Python ile bir kütüphane yönetim sistemi yapacağız: kitap ve üye kaydı, "
+                          "ödünç verme/iade, gecikme cezası, SQLite veritabanı, komut satırı arayüzü ve testler. "
+                          "Henüz KOD YAZMA. Sadece EVREN_PLAN.md dosyasına uygulanabilir bir görev planı yaz: "
+                          "5-12 görev, her görev `- [ ] ` ile başlayan tek satır olsun ve hemen altında "
+                          "`  Bitti ölçütü: ...` satırı bulunsun."},
+    "mini_proje": {"kur": kur_mini_proje, "kontrol": kontrol_mini_proje,
+                   "mesaj": "Yalnız standart kütüphaneyle kelime_say.py yaz: `python kelime_say.py <dosya>` UTF-8 metin "
+                            "dosyasını okusun ve tam olarak üç satır yazsın: `satir: <boş olmayan satır sayısı>`, "
+                            "`kelime: <kelime sayısı>`, `en_sik: <k1>=<n1>, <k2>=<n2>, <k3>=<n3>`. Kelimeler Türkçe "
+                            "kurallarıyla küçük harfe çevrilsin (I→ı, İ→i), noktalama atılsın; en sık 3 kelime "
+                            "sayıya göre azalan, eşitlikte alfabetik değil İLK GÖRÜLME sırasına göre. Dosya yoksa "
+                            "hata yazıp çıkış kodu 1. tests/ altında unittest testleri yaz ve "
+                            "`python -m unittest discover -s tests` ile çalıştırıp geçtiğini göster."},
 }
 
 
@@ -277,7 +337,7 @@ def main() -> int:
         print(__doc__)
         return 2
     model, secim = args[0], args[1:] or list(GOREVLER)
-    base = out / model.replace("/", "_")
+    base = out.resolve() / model.replace("/", "_")      # mutlak: kontroller cwd=proje ile çalışır
     shutil.rmtree(base, ignore_errors=True)
     base.mkdir(parents=True)
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(base / "data")
