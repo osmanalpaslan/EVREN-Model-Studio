@@ -1,9 +1,15 @@
 """Mesaj yazma kutusu: çok satırlı giriş, komut/model seçim listesi,
-mod ve model seçici, çalışma durum çubuğu, gönder/durdur."""
+mod ve model seçici, kullanım düğmesi, ekler, çalışma durum çubuğu, gönder/durdur.
+
+Sürükle-bırak ve yapıştır (Ctrl+V): yerel dosya → ek kartı (yol metne yazılmaz),
+panodaki görsel (ekran görüntüsü) → küçük resimli ek; düz metin normal yapıştırılır.
+"""
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QAction, QActionGroup, QKeyEvent, QTextCursor
+from pathlib import Path
+
+from PySide6.QtCore import QMimeData, QSize, Qt, Signal
+from PySide6.QtGui import QAction, QActionGroup, QImage, QKeyEvent, QTextCursor
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -20,6 +26,21 @@ from PySide6.QtWidgets import (
 
 from ..agent.permissions import MODE_HINTS, MODES, normalize_mode
 from . import brand, icons, theme
+from .attachments import AttachmentBar
+from .usage_popup import UsageChip
+
+
+def local_files(md: QMimeData) -> list[str]:
+    """Panodaki/sürüklenen verideki yerel dosya yolları (klasörler hariç)."""
+    if not md.hasUrls():
+        return []
+    out = []
+    for u in md.urls():
+        if u.isLocalFile():
+            path = u.toLocalFile()
+            if Path(path).is_file():
+                out.append(path)
+    return out
 
 SLASH_COMMANDS = {
     "/model": "Modeli değiştir — listeden seçin",
@@ -69,6 +90,25 @@ ROLE_KIND = Qt.UserRole + 2     # "command" | "model"
 class ComposerEdit(QPlainTextEdit):
     submit = Signal()
     escape = Signal()
+    files_dropped = Signal(list)        # yerel dosya yolları (sürükle-bırak / yapıştır)
+    image_pasted = Signal(QImage)       # panodaki görsel (ekran görüntüsü vb.)
+
+    def canInsertFromMimeData(self, source: QMimeData) -> bool:
+        return bool(local_files(source)) or source.hasImage() or super().canInsertFromMimeData(source)
+
+    def insertFromMimeData(self, source: QMimeData) -> None:
+        files = local_files(source)
+        if files:
+            self.files_dropped.emit(files)      # yol metne YAZILMAZ; ek kartı olur
+            return
+        if source.hasImage():
+            img = source.imageData()
+            if isinstance(img, QImage) and not img.isNull():
+                self.image_pasted.emit(img)
+                return
+        if source.hasUrls() and not source.hasText():
+            return                              # uzak adres / klasör: sessizce yok say
+        super().insertFromMimeData(source)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -118,6 +158,8 @@ class Composer(QWidget):
     mode_changed = Signal(str)
     model_changed = Signal(str)
     attach_requested = Signal()
+    files_added = Signal(list)          # ComposerEdit veya çerçeveye bırakılan dosyalar
+    image_added = Signal(QImage)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -166,7 +208,13 @@ class Composer(QWidget):
         fl = QVBoxLayout(self.frame)
         fl.setContentsMargins(14, 10, 10, 8)
         fl.setSpacing(6)
+        self.attachments = AttachmentBar()
+        self.attachments.changed.connect(self._update_send)
+        fl.addWidget(self.attachments)
+        self.setAcceptDrops(True)
         self.edit = ComposerEdit()
+        self.edit.files_dropped.connect(self.files_added.emit)
+        self.edit.image_pasted.connect(self.image_added.emit)
         self.edit.setPlaceholderText("EVREN'e bir görev verin veya soru sorun…  (/ komutlar, @ dosya)")
         self.edit.submit.connect(self._submit)
         self.edit.escape.connect(self.stop_requested.emit)
@@ -177,8 +225,9 @@ class Composer(QWidget):
 
         row = QHBoxLayout()
         row.setSpacing(4)
-        self.attach_btn = self._chip("paperclip", "Dosya ekle (@)")
-        self.attach_btn.setToolTip("Proje dosyasını mesaja ekle")
+        self.attach_btn = self._chip("paperclip", "")
+        self.attach_btn.setToolTip("Dosya veya görsel ekle — sürükleyip bırakabilir ya da "
+                                   "Ctrl+V ile yapıştırabilirsiniz")
         self.attach_btn.clicked.connect(self.attach_requested.emit)
         row.addWidget(self.attach_btn)
 
@@ -203,6 +252,8 @@ class Composer(QWidget):
         self.model_menu = QMenu(self)
         self.model_btn.setMenu(self.model_menu)
         row.addWidget(self.model_btn)
+        self.usage_btn = UsageChip()
+        row.addWidget(self.usage_btn)
 
         row.addStretch(1)
         self.context_label = QLabel("")
@@ -248,7 +299,6 @@ class Composer(QWidget):
     def set_agentic(self, agentic: bool) -> None:
         self._agentic = agentic
         self.mode_btn.setVisible(agentic)
-        self.attach_btn.setVisible(agentic)
         self.edit.setPlaceholderText(
             "EVREN'e bir görev verin veya soru sorun…  (/ komutlar, @ dosya)" if agentic
             else "Mesajınızı yazın…  (/ komutlar)")
@@ -361,7 +411,7 @@ class Composer(QWidget):
             self.send_btn.setToolTip("Durdur (Esc)")
             self.send_btn.setEnabled(True)
         else:
-            has_text = bool(self.edit.toPlainText().strip())
+            has_text = bool(self.edit.toPlainText().strip()) or bool(self.attachments.items())
             self.send_btn.setIcon(icons.icon("send", p.on_accent if has_text else p.text_faint, 18))
             self.send_btn.setToolTip("Gönder (Enter) — yeni satır: Shift+Enter")
             self.send_btn.setEnabled(has_text)
@@ -508,11 +558,30 @@ class Composer(QWidget):
         if self._running and not self.edit.toPlainText().strip().startswith("/"):
             return
         text = self.edit.toPlainText().strip()
-        if not text:
+        if not text and not self.attachments.items():
             return
         self.edit.clear()
         self.hide_popup()
         self.submitted.emit(text)
+
+    # ---- sürükle-bırak (çerçevenin tamamı) ----
+
+    def dragEnterEvent(self, e) -> None:
+        md = e.mimeData()
+        if local_files(md) or md.hasImage():
+            e.acceptProposedAction()
+        else:
+            super().dragEnterEvent(e)
+
+    def dropEvent(self, e) -> None:
+        md = e.mimeData()
+        files = local_files(md)
+        if files:
+            self.files_added.emit(files)
+            e.acceptProposedAction()
+        elif md.hasImage() and isinstance(md.imageData(), QImage):
+            self.image_added.emit(md.imageData())
+            e.acceptProposedAction()
 
     def set_text(self, text: str) -> None:
         self.edit.setPlainText(text)

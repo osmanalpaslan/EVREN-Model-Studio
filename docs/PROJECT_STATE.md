@@ -73,7 +73,8 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
    (262k + yerel araç) uygulanıyor; auto artık varsayılan motor.
 3. Git entegrasyonu (durum/diff görünümü, ajan değişikliklerini commit'leme
    önerisi) — şu an yalnızca dal adı gösteriliyor.
-4. Görsel girdi (Aşama 3): qwen3-vl-30b ile ekran görüntüsü ekleme.
+4. ~~Görsel girdi~~ — YAPILDI (2026-10-19): yapıştır/sürükle-bırak ekleri,
+   görsel okuyan modeller ölçüldü; kullanım düğmesi eklendi.
 5. Paketleme (Aşama 4): PyInstaller ile tek klasör EXE.
 
 ## Ortam notları

@@ -1,5 +1,24 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Ekler ve kullanım düğmesi
+
+### Eklendi
+
+- **Dosya ve görsel ekleme (Claude Code gibi)**: yazma kutusuna sürükle-bırak,
+  Ctrl+V ile yapıştırma (Gezgin'den kopyalanan dosya veya ekran görüntüsü) ve
+  ataç düğmesi. Ekler kutunun üstünde küçük resim / dosya kartı olarak görünür,
+  ✕ ile kaldırılır; dosya yolu metne yazılmaz, arka planda tutulur. Gönderilen
+  mesajda da ek şeridi görünür; mesaj düzenlenince ekler geri gelir.
+- **Görsel girdi**: görseller görsel okuyabilen modellere gönderilir (gerçek API
+  ile doğrulandı). Görsel okuyamayan motorda (glm-5.3, deepseek-v4-flash)
+  gönderimden önce auto'ya geçmek önerilir.
+- **Dosya ekleri**: metin dosyalarının içeriği modele eklenir (100 KB'a kadar);
+  ikili dosyalarda yalnız ad ve yol.
+- **Kullanım düğmesi**: model seçicinin yanında günlük kotadan kalan yüzde;
+  tıklayınca halka grafik (günlük kota), çubuk (5 dakikalık hız penceresi),
+  kredi, bu oturumun token kullanımı ve ücretli sağlayıcıda aylık tahmini
+  harcama — her birinin altında kısa açıklama.
+
 ## Yayınlanmamış — Döngü önleme (ajan tekrara düşmesin)
 
 ### Eklendi

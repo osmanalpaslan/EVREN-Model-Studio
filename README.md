@@ -64,6 +64,10 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
 - **Ücretli sağlayıcılar (isteğe bağlı, doğrulanmadı)**: kendi OpenAI veya
   Anthropic API anahtarınızla GPT/Claude modelleri; gruplu model seçici,
   Ayarlar'da adım adım anahtar rehberi ve aylık bütçe (varsayılan $5, tahmini).
+- **Ekler**: dosya ve görselleri sürükleyip bırakın veya Ctrl+V ile
+  yapıştırın; kart olarak görünür, görseller görsel okuyan modellere gider.
+- **Kullanım düğmesi**: model seçicinin yanında günlük kalan kota; tıklayınca
+  grafikli ve açıklamalı kullanım paneli.
 - **Modern arayüz**: koyu/açık tema, kendi simge seti, ortalanmış okuma
   sütunu, klavye kısayolları (Enter, Shift+Enter, Esc, Ctrl+N/B/J/K/L/,).
 - **Aşama 1'den gelenler**: Modeller, Kullanım/Kota, Hata Merkezi (Türkçe

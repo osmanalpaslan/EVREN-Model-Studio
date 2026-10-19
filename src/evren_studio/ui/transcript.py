@@ -201,10 +201,11 @@ class Transcript(QScrollArea):
 class UserMessageWidget(QWidget):
     edit_requested = Signal(int, str)
 
-    def __init__(self, text: str, message_id: int | None = None, parent=None):
+    def __init__(self, text: str, message_id: int | None = None, parent=None, attachments=None):
         super().__init__(parent)
         self.message_id = message_id
         self.text = text
+        self.attachments = list(attachments or [])
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(2)
@@ -222,7 +223,12 @@ class UserMessageWidget(QWidget):
         body.setMaximumWidth(int(COLUMN_WIDTH * 0.82))
         bl.addWidget(body)
         row.addWidget(bubble)
+        bubble.setVisible(bool(text.strip()))       # yalnız ek gönderildiyse balon gizli
         lay.addLayout(row)
+        if self.attachments:
+            from .attachments import AttachmentStrip
+
+            lay.addWidget(AttachmentStrip(self.attachments))
         actions = QHBoxLayout()
         actions.addStretch(1)
         self.copy_btn = _retain(icon_button("copy", "Kopyala", 14))

@@ -51,7 +51,9 @@ from ..api.providers import PROVIDERS, estimate_cost, price_hint
 from ..budget import current_state
 from ..api.errors import ApiError, ErrorKind
 from . import brand, icons, theme
+from .attachments import Attachment, attachment_from_path, clipboard_image_attachment
 from .composer import MODE_COMMANDS, SLASH_COMMANDS, Composer
+from .usage_popup import UsageSnapshot
 from .transcript import (
     COLUMN_WIDTH,
     AssistantMessageWidget,
@@ -74,6 +76,45 @@ ATTACH_OPEN = "<ekli_dosyalar>"
 ATTACH_CLOSE = "</ekli_dosyalar>"
 MENTION_RE = re.compile(r"(?<!\S)@([^\s]+)")
 MAX_ATTACH_BYTES = 100 * 1024
+
+
+def file_block(att: Attachment, ws: str | None) -> tuple[str, str]:
+    """Ek dosyanın modele gidecek bloğu: (başlık etiketi, blok). Görseller hariç."""
+    p = Path(att.path)
+    label = att.name
+    if ws:
+        try:
+            label = p.resolve().relative_to(Path(ws).resolve()).as_posix()
+        except (ValueError, OSError):
+            pass
+    reason = ""
+    content = ""
+    try:
+        size = p.stat().st_size
+        if size > MAX_ATTACH_BYTES:
+            reason = f"{size // 1024} KB, sınır {MAX_ATTACH_BYTES // 1024} KB"
+        else:
+            raw = p.read_bytes()
+            if b"\x00" in raw[:8192]:
+                reason = "ikili dosya (metin değil)"
+            else:
+                try:
+                    content = raw.decode("utf-8-sig")
+                except UnicodeDecodeError:
+                    content = raw.decode("cp1254", errors="replace")
+    except OSError as exc:
+        reason = f"okunamadı ({type(exc).__name__})"
+    if reason:
+        return label, f"### {label}\n(İçerik eklenmedi: {reason}. Dosya yolu: {p})"
+    return label, f"### {label}\n```{p.suffix.lstrip('.')}\n{content}\n```"
+
+
+def append_blocks(content: str, blocks: list[str]) -> str:
+    if not blocks:
+        return content
+    if ATTACH_CLOSE in content:
+        return content.replace(ATTACH_CLOSE, "\n\n".join(blocks) + "\n" + ATTACH_CLOSE, 1)
+    return (content + "\n\n" if content else "") + ATTACH_OPEN + "\n" + "\n\n".join(blocks) + "\n" + ATTACH_CLOSE
 
 
 def split_attachments(content: str) -> tuple[str, list[str]]:
@@ -351,7 +392,18 @@ class SessionView(QWidget):
         host.addStretch(1)
         self.composer = Composer()
         self.composer.setMaximumWidth(COLUMN_WIDTH)
-        self.composer.submitted.connect(self.send)
+        self.composer.submitted.connect(lambda t: self.send(t, self.composer.attachments.take()))
+        self.composer.files_added.connect(self.add_files)
+        self.composer.image_added.connect(self.add_image)
+        self.composer.usage_btn.refresh_requested.connect(self.refresh_usage)
+        self.composer.usage_btn.details_requested.connect(lambda: self.page_requested.emit("usage"))
+        self._quota = None
+        self._quota_error = ""
+        self._quota_time = None
+        self._usage_busy = False
+        self._usage_timer = QTimer(self)
+        self._usage_timer.setInterval(5 * 60 * 1000)
+        self._usage_timer.timeout.connect(self.refresh_usage)
         self.composer.stop_requested.connect(self.stop)
         self.composer.mode_changed.connect(self.set_mode)
         self.composer.model_changed.connect(self.set_model)
@@ -616,7 +668,12 @@ class SessionView(QWidget):
             if role == "user":
                 close_turn()
                 text, attached = split_attachments(m["content"] or "")
-                w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), m["id"])
+                meta = m.get("meta") or {}
+                atts = [Attachment.from_meta(d) for d in meta.get("attachments") or []]
+                labels = set(meta.get("file_labels") or [])
+                attached = [n for n in attached if n not in labels]
+                w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), m["id"],
+                                      attachments=atts)
                 w.text = text
                 w.edit_requested.connect(self.edit_message)
                 self.transcript.add(w)
@@ -794,6 +851,7 @@ class SessionView(QWidget):
             self.ctx.db.update_session(self.session_id, model=model, provider=provider)
         self._remember(default_model=model)
         self._update_context()
+        self.update_usage_view()
 
     # ---- ücretli sağlayıcı bütçesi ----
 
@@ -868,16 +926,40 @@ class SessionView(QWidget):
 
     def attach_files(self) -> None:
         ws = self.workspace if self.session_id else self.welcome.workspace
-        if not ws:
-            return
-        files, _ = QFileDialog.getOpenFileNames(self, "Mesaja dosya ekle", ws)
-        root = Path(ws).resolve()
-        for f in files:
-            p = Path(f).resolve()
-            if p.is_relative_to(root):
-                self.composer.edit.insert_at_cursor(f"@{p.relative_to(root).as_posix()} ")
-            else:
-                QMessageBox.warning(self, "Proje dışı dosya", f"{f} proje klasörü dışında; eklenmedi.")
+        files, _ = QFileDialog.getOpenFileNames(self, "Mesaja dosya veya görsel ekle", ws or str(Path.home()))
+        self.add_files(files)
+
+    def _data_dir(self) -> Path:
+        return self.ctx.settings.resolved_data_dir()
+
+    def add_files(self, paths: list) -> None:
+        """Sürüklenen / yapıştırılan / seçilen dosyalar → ek kartı (yol metne yazılmaz)."""
+        skipped = []
+        for f in paths:
+            att = attachment_from_path(str(f), self._data_dir())
+            if att is None or not self.composer.attachments.add(att):
+                skipped.append(Path(str(f)).name)
+        if skipped:
+            self.composer.set_run_status(None)
+            QMessageBox.information(self, "Bazı dosyalar eklenmedi",
+                                    "Eklenemedi (zaten ekli, okunamıyor veya en fazla "
+                                    f"{10} ek sınırı): " + ", ".join(skipped))
+        self.composer.edit.setFocus()
+
+    def add_image(self, img) -> None:
+        att = clipboard_image_attachment(img, self._data_dir())
+        if att is None or not self.composer.attachments.add(att):
+            QMessageBox.information(self, "Görsel eklenemedi", "Panodaki görsel kaydedilemedi.")
+        self.composer.edit.setFocus()
+
+    def _restore_attachments(self, atts: list) -> None:
+        for a in atts:
+            if Path(a.path).exists():
+                self.composer.attachments.add(a)
+
+    def _sees_images(self, model: str) -> bool:
+        info = self.ctx.model_info(model)
+        return bool(info and info.supports_vision)
 
     def _expand_mentions(self, text: str, ws: str | None) -> str:
         if not ws:
@@ -909,15 +991,32 @@ class SessionView(QWidget):
 
     # ---- gönderme ----
 
-    def send(self, text: str) -> None:
+    def send(self, text: str, attachments: list | None = None) -> None:
         text = text.strip()
-        if not text:
+        atts = list(attachments or [])
+        if not text and not atts:
             return
-        if text.startswith("/"):
+
+        def back() -> None:
+            self.composer.set_text(text)
+            self._restore_attachments(atts)
+
+        if text.startswith("/") and not atts:
             if self._command(text):
                 return
         if self.running:
+            back()
             return
+        images = [a for a in atts if a.kind == "image"]
+        if images and not self._sees_images(self.model):
+            if QMessageBox.question(
+                self, "Bu motor görsel okuyamaz",
+                f"{self.model} görsel kabul etmiyor. Görsel okuyabilen “auto” motoruna geçip "
+                "gönderilsin mi? (auto görseli uygun modele yönlendirir.)",
+            ) != QMessageBox.Yes:
+                back()
+                return
+            self.composer.set_model("auto", emit=True)
         provider = self.ctx.provider_of(self.model)
         if not self.ctx.has_provider_key(provider):
             self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome)
@@ -925,21 +1024,32 @@ class SessionView(QWidget):
             name = PROVIDERS.get(provider).name if provider in PROVIDERS else provider
             QMessageBox.warning(self, "API anahtarı yok",
                                 f"Önce Ayarlar sayfasından {name} API anahtarınızı girin.")
-            self.composer.set_text(text)
+            back()
             return
         if self._budget_blocks(provider) and not self._ask_budget():
-            self.composer.set_text(text)
+            back()
             return
         if not self.model:
             QMessageBox.warning(self, "Model seçilmedi", "Lütfen bir model seçin.")
             return
         visible, _att = split_attachments(text)
-        sid = self._ensure_session(visible)
+        sid = self._ensure_session(visible or (atts[0].name if atts else "Ek"))
         if self.edit_from is not None:
             self.ctx.db.delete_session_messages_from(sid, self.edit_from)
             self.edit_from = None
             self.render_history(self.ctx.db.get_session_messages(sid))
         content = self._expand_mentions(text, self.workspace)
+        meta = None
+        if atts:
+            labels, blocks = [], []
+            for a in atts:
+                if a.kind != "image":
+                    label, block = file_block(a, self.workspace)
+                    labels.append(label)
+                    blocks.append(block)
+            content = append_blocks(content, blocks)
+            meta = {"attachments": [a.to_meta() for a in atts], "file_labels": labels,
+                    "images": [a.path for a in images]}
         self._auto_resumes = 0
         need, tokens, limit = needs_compaction(self.ctx.db.get_session_messages(sid), self._policy(),
                                                self._context_tokens(), content)
@@ -947,20 +1057,24 @@ class SessionView(QWidget):
             pct = int(tokens * 100 / limit) if limit else 0
             self.compact(auto=True, reason=f"bağlam ~{tokens // 1000}k token, otomatik özet eşiği "
                                            f"{limit // 1000}k ({pct}%)",
-                         then=lambda: self._send_now(sid, content, text),
-                         on_cancel=lambda: self.composer.set_text(text))
+                         then=lambda: self._send_now(sid, content, text, meta),
+                         on_cancel=back)
             return
-        self._send_now(sid, content, text)
+        self._send_now(sid, content, text, meta)
 
-    def _send_now(self, sid: int, content: str, text: str) -> None:
-        msg_id = self.ctx.db.add_session_message(sid, "user", content)
+    def _send_now(self, sid: int, content: str, text: str, meta: dict | None = None) -> None:
+        msg_id = self.ctx.db.add_session_message(sid, "user", content, meta=meta)
         self._turn_id = msg_id
         # "Önce plan" (Ayarlar, varsayılan kapalı): dosyaya dokunmadan önce plan turu
         self._plan_turn = bool(self.ctx.settings.plan_first and self.workspace and self.mode != "plan"
                                and not self._skip_plan_once)
         self._skip_plan_once = False
         _, attached = split_attachments(content)
-        w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), msg_id)
+        labels = set((meta or {}).get("file_labels") or [])
+        attached = [n for n in attached if n not in labels]
+        atts = [Attachment.from_meta(d) for d in (meta or {}).get("attachments") or []]
+        w = UserMessageWidget(text + (("\n📎 " + ", ".join(attached)) if attached else ""), msg_id,
+                              attachments=atts)
         w.text = text
         w.edit_requested.connect(self.edit_message)
         self.transcript.add(w)
@@ -973,6 +1087,11 @@ class SessionView(QWidget):
             return
         self.edit_from = message_id
         self.composer.set_text(text)
+        for m in self.ctx.db.get_session_messages(self.session_id) if self.session_id else []:
+            if m["id"] == message_id:
+                self._restore_attachments([Attachment.from_meta(d)
+                                           for d in (m.get("meta") or {}).get("attachments") or []])
+                break
         self.transcript.add(NoteWidget(
             "Mesajı düzenliyorsunuz: gönderdiğinizde bu mesaj ve sonrası yeniden oluşturulur "
             "(dosya değişiklikleri otomatik geri alınmaz).", "pencil"))
@@ -1241,6 +1360,61 @@ class SessionView(QWidget):
             self.ctx.db.update_session(self.session_id, protocol=protocol)
         self._note(reason, "refresh")
 
+    # ---- kullanım (kota) ----
+
+    def _usage_snapshot(self) -> UsageSnapshot:
+        s = UsageSnapshot(quota=self._quota, error=self._quota_error, updated=self._quota_time)
+        if self.session_id:
+            for m in self.ctx.db.get_session_messages(self.session_id):
+                u = (m.get("meta") or {}).get("usage") or {}
+                s.session_in += int(u.get("input_tokens") or 0)
+                s.session_out += int(u.get("output_tokens") or 0)
+        prov = self.ctx.provider_of(self.model) if self.model else "evren"
+        if prov in PROVIDERS and PROVIDERS[prov].paid:
+            st = self._budget_state()
+            s.paid_name, s.paid_spent, s.paid_limit = PROVIDERS[prov].name, st.spent, st.limit
+        return s
+
+    def update_usage_view(self) -> None:
+        self.composer.usage_btn.set_snapshot(self._usage_snapshot())
+
+    def refresh_usage(self) -> None:
+        """EVREN kotasını arka planda ister (R-04); sonuç düğmeye ve panele yazılır."""
+        if self._usage_busy:
+            return
+        if not self.ctx.has_api_key():
+            self._quota, self._quota_error = None, "EVREN API anahtarı yok"
+            self.update_usage_view()
+            return
+        self._usage_busy = True
+
+        def job():
+            client = self.ctx.make_client()
+            try:
+                return client.get_quota()
+            finally:
+                close = getattr(client, "close", None)
+                if close:
+                    close()
+
+        def done(q):
+            from datetime import datetime
+
+            self._usage_busy = False
+            self._quota, self._quota_error, self._quota_time = q, "", datetime.now()
+            if not self._usage_timer.isActive():
+                self._usage_timer.start()
+            self.update_usage_view()
+
+        def fail(exc):
+            from datetime import datetime
+
+            self._usage_busy = False
+            self._quota_error, self._quota_time = str(exc)[:160], datetime.now()
+            self.update_usage_view()
+
+        Task(job, on_done=done, on_error=fail).start()
+
     def _finish(self) -> None:
         self.running = False
         self._run_timer.stop()
@@ -1248,6 +1422,8 @@ class SessionView(QWidget):
         self._run_t0 = None
         self.composer.set_running(False)
         self.runner = None
+        if self.ctx.provider_of(self.model) == "evren":
+            QTimer.singleShot(400, self, self.refresh_usage)   # yanıt bitti: EVREN kotası değişti
         if self.current is not None:
             self.current.stop_waiting()
             self.current.stop_clock()

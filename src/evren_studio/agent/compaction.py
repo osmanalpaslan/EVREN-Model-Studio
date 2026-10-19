@@ -74,7 +74,7 @@ def build_summary_request(history: list[dict], focus: str | None = None,
                           context_tokens: int | None = None) -> list[dict]:
     """Özet isteği: eski araç çıktıları gerekiyorsa kısaltılır ki istek sığsın."""
     visible = trim_for_context(history, context_tokens)
-    msgs = to_api_messages(SUMMARY_SYSTEM, visible, "text")
+    msgs = to_api_messages(SUMMARY_SYSTEM, visible, "text", images=False)
     prompt = COMPACT_PROMPT
     if focus:
         prompt += f"\n\nÖzellikle şuna odaklan: {focus.strip()}"

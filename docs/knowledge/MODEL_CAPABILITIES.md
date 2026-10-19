@@ -81,10 +81,27 @@ dosya yolu, karar, hata ve açık iş korunmalı.
 | qwen3.8-flash-next | 35,6 sn | ✅ |
 | glm-5.3 | 153,2 sn | ✅ (akışsız istekte bağlantı koptu) |
 
+## Görsel girdi gerçek testi (2026-10-19, `build/probe_vision.py`)
+
+Görsel: beyaz zemin, siyah "K7Q4" yazısı ve kırmızı kare (PNG, base64
+`image_url` veri adresi). Soru: yazı ve renkli şeklin rengi.
+
+| Model | Sonuç | Süre |
+|---|---|---|
+| qwen3-vl-30b | ✅ "K7Q4 … kırmızı" | 0,6 sn |
+| gemma-4-31b | ✅ "K7Q4, kırmızı" | 1,6 sn |
+| qwen3.8-flash-next | ✅ "K7Q4 Kırmızı" | 7,1 sn |
+| deepseek-v4.1-flash | ✅ "K7Q4 kırmızı" | 9,6 sn |
+| auto | ✅ qwen3-vl-30b'ye yönlendirdi, doğru | 0,2 sn |
+| mimo-v2.6-pro | ⚠️ renk doğru; yazı yalnız bozuk (kutucuklu) görselle denendi | 38 sn |
+| glm-5.3 | ❌ 400 `feature_not_enabled` (yalnız metin) | — |
+| deepseek-v4-flash | ❌ 400 `feature_not_enabled` (yalnız metin) | — |
+
+Gerçek uygulamada (yapıştır/sürükle-bırak yolu) görsel + CSV auto'ya
+gönderildi; kare rengi ve CSV toplamı doğru yanıtlandı.
+
 ## Doğrulanmamışlar (⬜ — canlı istekle test edilmedi)
 
-- Görsel girdi (qwen3-vl-30b, gemma-4-31b, ...): yetenek bayrağı kayıt
-  defterinden; gerçek görsel gönderilerek test EDİLMEDİ.
 - Araç çağrısıyla komut çalıştırma (run_command) ve çok adımlı uzun görevler
   gerçek modellerle ayrıca denenmedi (okuma ve düzenleme denendi).
 - OCR, ASR, embedding, rerank, guard, systemone: uç noktalar şemada var;
