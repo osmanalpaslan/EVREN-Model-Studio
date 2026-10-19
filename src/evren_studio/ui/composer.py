@@ -54,11 +54,16 @@ SLASH_COMMANDS = {
     "/yeni": "Yeni oturum başlat",
     "/disa-aktar": "Oturumu Markdown olarak dışa aktar",
     "/yardim": "Komutları ve kısayolları göster",
+    "/proje": "Proje ajanı: /proje <hedef> — plan çıkarır, onayınızla görev görev yürütür",
+    "/proje-duzelt": "Proje planını değiştir: /proje-duzelt <geri bildirim>",
+    "/proje-devam": "Duraklatılan projeyi kaldığı yerden sürdür",
+    "/proje-durdur": "Çalışan projeyi güvenli noktada durdur",
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
     "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/disa-aktar": "download",
-    "/yardim": "help",
+    "/yardim": "help", "/proje": "list", "/proje-duzelt": "pencil", "/proje-devam": "refresh",
+    "/proje-durdur": "stop",
 }
 FOOTER_SENT_TO = {"evren": "EVREN API'sine", "openai": "OpenAI'ye (ücretli)",
                   "anthropic": "Anthropic'e (ücretli)"}
@@ -346,7 +351,7 @@ class Composer(QWidget):
 
     def set_model(self, model: str, emit: bool = False) -> None:
         self._model = model
-        self.model_btn.setText(model or "model seçin")
+        self.model_btn.setText({"akilli": "EVREN Akıllı"}.get(model, model) or "model seçin")
         provider = next((m[3] for m in self._models if m[0] == model), "evren")
         self.footer.setText("Yapay zekâ hata yapabilir; önemli değişiklikleri gözden geçirin. "
                             f"Mesajlar ve dosya içerikleri {FOOTER_SENT_TO.get(provider, provider)} gönderilir.")

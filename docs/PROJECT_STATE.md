@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-19) EVREN Akıllı + Proje ajanı uygulandı (dal `feat/akilli-yonlendirme`):
+    8 motor ölçümü, EVREN Akıllı 12/12, proje ajanı gerçek API'de kabul 5/5.
+    Ayrıntı: CHALLENGE_RESULTS.md, ILERIDE_YAPILACAKLAR.md madde 3.
+
   - **Kararlaştırılmış ileri işler: docs/ILERIDE_YAPILACAKLAR.md** — ilk madde
     profesyonel Windows kurulum paketi (PyInstaller onedir + Inno Setup, isteğe
     bağlı Git/Python/Node kurulumu); kullanıcı "şimdi değil" dedi (2026-10-19).

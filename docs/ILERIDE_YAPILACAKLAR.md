@@ -170,6 +170,41 @@ iki yol olarak anlatılır.
 
 ---
 
+## 3. EVREN Akıllı yönlendirici ve Proje ajanı — YAPILDI (2026-10-19, dal `feat/akilli-yonlendirme`)
+
+**Kullanıcı kararları (2026-10-19):** Ana odak EVREN API ve motorları. Sunucu
+tarafı `auto` öngörülemez (her istekte sunucu seçer, akışta hangi model olduğu
+görünmez, uzun görevde adımlar farklı modellere gidebilir). Kararlar:
+- **EVREN Akıllı** eklenecek: uygulama içi, ölçüme dayalı yönlendirici. İşe göre
+  model seçer (görsel → görsel model, kod/araç → en tutarlı, plan/muhakeme →
+  güçlü düşünen, çok büyük bağlam → 1M, özet → hızlı); görev ortasında modeli
+  DEĞİŞTİRMEZ (yalnız hata/aşırı yük/döngüde yedeğe geçer ve söyler); hangi
+  modelin çalıştığı her zaman görünür. `auto` listede kalır.
+- **Proje ajanı** eklenecek: büyük istek → güçlü modelle plan (`EVREN_PLAN.md`,
+  her görevin "bitti" ölçütü) → **kullanıcı planı onaylar** → her görev temiz
+  bağlamla ayrı turda → test/kabul + ikinci model kontrolü → git dalında kontrol
+  noktası commit'i → takılırsa N kez başka modelle dene, olmazsa işaretle ve
+  bağımsız sonrakine geç → rapor.
+- Gözetimsiz çalışma: engelleyici onay penceresi yok (önceden seçilen kurallar),
+  5 dk kota penceresi/günlük kota yönetimi, EVREN kesintisinde bekle-dene, uyku
+  engelleme, uygulama kapanırsa kaldığı yerden devam.
+- Bildirim: **Windows bildirimi + rapor dosyası** (telefon bildirimi şimdilik yok).
+
+**Aşamalar:** (1) tüm EVREN modellerini zorluk paketi + planlama görevleriyle
+ölç → yetenek tablosu; (2) EVREN Akıllı; (3) Proje ajanı; (4) gözetimsiz çalışma;
+her aşama sonunda zorluk paketiyle ölç (R-21).
+
+**Durum (2026-10-19):** dört aşama uygulandı ve ölçüldü — sonuçlar
+docs/knowledge/CHALLENGE_RESULTS.md ("8 EVREN motoru", "Proje ajanı uçtan uca").
+Kalanlar / sonraki iyileştirmeler:
+- Varsayılan motoru `auto` yerine EVREN Akıllı yapmak kullanıcıya soruldu
+  (ayarlar korunur; yalnız onayla değişir).
+- Uygulama kapanırsa proje kendiliğinden yeniden başlamaz: açılışta "yarım kalan
+  proje" notu çıkar, `/proje-devam` ile sürer (otomatik sürdürme isteğe bağlı eklenebilir).
+- Günlük kota bitince proje duraklar; sıfırlanınca otomatik sürdürme yok (zamanlayıcı eklenebilir).
+- Proje görevleri yalnız EVREN modelleriyle denendi; ücretli sağlayıcıda bütçe
+  onayı penceresi gözetimsiz çalışmayı durdurabilir (ölçülmedi).
+
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 
 - OpenAI/Anthropic'i gerçek anahtarla doğrula (`tests/e2e_providers_real_api.py --evet`).

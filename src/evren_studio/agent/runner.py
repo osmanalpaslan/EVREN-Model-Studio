@@ -267,6 +267,7 @@ class TurnOutcome:
     protocol: str = "native"
     last_text: str = ""
     test_edits: list[str] = field(default_factory=list)   # istenmeden değiştirilen var olan test dosyaları
+    model_switches: list[tuple[str, str, str]] = field(default_factory=list)   # (eski, yeni, neden)
 
 
 # ---- geçmiş → API mesajları ----------------------------------------------------------
@@ -396,9 +397,13 @@ class AgentRunner:
                  hard_context_limit: int | None = None,
                  before_model_call: Any = None,
                  stall_retry_body: dict[str, Any] | None = None,
-                 install_mode: str = "otomatik"):
+                 install_mode: str = "otomatik",
+                 fallback_models: list[str] | None = None):
         self.client = client
         self.model = model
+        # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
+        # girerse sıradaki yedeğe geçilir; görev ortasında başka nedenle model DEĞİŞMEZ.
+        self.fallback_models = [m for m in (fallback_models or []) if m != model]
         self.session_id = session_id
         self.store = store
         self.events = events or AgentEvents()
@@ -485,6 +490,31 @@ class AgentRunner:
                 return ""
             return missing_hint(missing) if missing else ""
         return ""
+
+    def _switch_model(self, outcome: "TurnOutcome", exc: ApiError | None, loop_reason: str = "") -> bool:
+        """Yedek model varsa ona geçer. Kota/hız sınırı hesap başınadır: model değiştirmek
+        çözmez, geçilmez. Döngüde tur başına yalnız bir kez geçilir."""
+        if not self.fallback_models:
+            return False
+        if exc is not None:
+            failover = {ErrorKind.SERVER_UNAVAILABLE, ErrorKind.SERVER_ERROR, ErrorKind.TIMEOUT,
+                        ErrorKind.NOT_FOUND, ErrorKind.NETWORK}
+            image_refused = exc.kind == ErrorKind.VALIDATION and "feature_not_enabled" in (exc.message or "")
+            if exc.kind not in failover and not image_refused:
+                return False
+            reason = f"{exc.kind.value}" + (f" (HTTP {exc.status})" if exc.status else "")
+        else:
+            if any(s[2].startswith("döngü") for s in outcome.model_switches):
+                return False
+            reason = f"döngü: {loop_reason}"
+            self._turn_hint = (getattr(self, "_turn_hint", "") + "\n\n# Model değişti (bu tur)\n"
+                               f"Önceki model döngüye girdi ({loop_reason}). Aynı çağrıları tekrarlama; "
+                               "farklı bir yol dene veya neyin engel olduğunu kullanıcıya açıkla.").strip()
+        old, new = self.model, self.fallback_models.pop(0)
+        self.model = new
+        outcome.model_switches.append((old, new, reason))
+        self.events.status(f"{old} → {new}: {reason}. EVREN Akıllı yedek modele geçti; görev aynı yerden sürüyor.")
+        return True
 
     def _remaining_test_edits(self) -> list[str]:
         """Turda istenmeden değiştirilip hâlâ eski hâline dönmemiş test dosyaları."""
@@ -587,6 +617,12 @@ class AgentRunner:
                                        "aynı adım yeniden deneniyor.")
                     step -= 1
                     continue
+                # Model görseli reddetti (400 feature_not_enabled): protokol sorunu değil,
+                # model sorunu — metin protokolüne geçmeden önce görsel okuyan yedeğe geç.
+                if (exc.kind == ErrorKind.VALIDATION and "feature_not_enabled" in (exc.message or "")
+                        and self._switch_model(outcome, exc)):
+                    step -= 1
+                    continue
                 if (self.agentic and self.protocol == "native" and self.allow_fallback
                         and not fallback_used and exc.kind == ErrorKind.VALIDATION):
                     fallback_used = True
@@ -594,6 +630,9 @@ class AgentRunner:
                     self.events.protocol_changed(
                         "text", f"Model yerel araç çağrısını reddetti ({exc.status}); "
                                 "metin protokolüne geçildi.")
+                    step -= 1
+                    continue
+                if self._switch_model(outcome, exc):
                     step -= 1
                     continue
                 outcome.stopped = "error"
@@ -693,6 +732,13 @@ class AgentRunner:
             if self._cancelled():
                 outcome.stopped = "cancelled"
                 break
+            if loop_reason and self._switch_model(outcome, None, loop_reason):
+                repeats.clear()
+                file_states.clear()
+                flipflops = 0
+                nudged.clear()
+                loop_reason = ""
+                continue
             if loop_reason:
                 outcome.stopped = "loop"
                 self.events.status(

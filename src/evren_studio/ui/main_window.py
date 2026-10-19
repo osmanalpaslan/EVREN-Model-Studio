@@ -78,6 +78,8 @@ class MainWindow(QMainWindow):
         self.session.page_requested.connect(self.show_page)
         self.session.toggle_sidebar.connect(self.toggle_sidebar)
         self.session.toggle_panel.connect(self.toggle_panel)
+        self.session.notify.connect(self.show_notification)
+        self._tray = None
         self.ctx.on_models_changed(self.session.refresh_models)
 
         self._shortcuts()
@@ -197,6 +199,20 @@ class MainWindow(QMainWindow):
             comp.hide_popup()
         else:
             self.session.stop()
+
+    def show_notification(self, title: str, text: str) -> None:
+        """Windows bildirimi (proje ajanı bitti/duraklatıldı). Ek hizmet gerektirmez:
+        sistem tepsisi simgesi üzerinden Windows bildirim merkezine düşer."""
+        from PySide6.QtWidgets import QSystemTrayIcon
+
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+        if self._tray is None:
+            self._tray = QSystemTrayIcon(self.windowIcon(), self)
+            self._tray.setToolTip("EVREN Studio")
+            self._tray.messageClicked.connect(lambda: (self.showNormal(), self.raise_(), self.activateWindow()))
+        self._tray.show()
+        self._tray.showMessage(title, text, QSystemTrayIcon.Information, 15000)
 
     def _settings_saved(self) -> None:
         s = self.ctx.settings

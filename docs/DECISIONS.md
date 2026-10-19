@@ -47,6 +47,11 @@
 | 43 | Sürekli arka plan kendi kendini test etme yerine elle/CI çalıştırılan kısa zorluk paketi | Kota harcamaz, kullanıcı dosyalarına dokunmaz; her kullanıcı kendi anahtarıyla çalıştırır | 2026-10-19 |
 | 44 | Model davranış hatalarında önce araç çıktısı/kod denetimi, sonra istem | Ölçüm: istem kuralı tek başına auto'da 2/3; kod denetimi 3/3 | 2026-10-19 |
 | 45 | Kurulum: kurulum.bat (venv + kısayol), EXE sonraya | Hemen herkes kurabilsin; PyInstaller paketleme (Aşama 4) ayrı iş | 2026-10-19 |
+| 46 | Uygulama içi yönlendirici (EVREN Akıllı); sunucu auto listede kalır | Kullanıcı kararı; auto öngörülemez/görünmez; rol tablosu 8 motor ölçümünden | 2026-10-19 |
+| 47 | Tur ortasında model değişmez; yalnız sunucu hatası/döngü/görsel reddinde yedeğe | Tutarlılık; kota/hız sınırı hesap başına olduğu için o hatalarda geçilmez | 2026-10-19 |
+| 48 | Proje ajanı: plan onayı zorunlu, görev başına temiz bağlam, doğrulama + ikinci model incelemesi, ayrı git dalı | Kullanıcı kararları; uzun tek tur kalitesi düşüyordu; her adım geri alınabilir | 2026-10-19 |
+| 49 | Takılan görev silinmez: git stash; bağımlıları atlanır, bağımsızlarla devam | Gözetimsiz çalışmada sonsuz deneme/veri kaybı olmasın | 2026-10-19 |
+| 50 | Bildirim: Windows sistem tepsisi bildirimi + rapor dosyası (telefon yok) | Kullanıcı kararı; ek hizmet gerektirmez | 2026-10-19 |
 
 ## Değerlendirilip reddedilenler
 

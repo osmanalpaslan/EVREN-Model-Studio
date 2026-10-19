@@ -45,6 +45,7 @@ from ..agent.runner import (
     estimate_tokens,
     to_api_messages,
 )
+from ..agent import router
 from ..agent.tools import FileChange, ToolBox, ToolError, Workspace
 from ..api.client import CancelToken
 from ..api.providers import PROVIDERS, estimate_cost, price_hint
@@ -339,6 +340,7 @@ class SessionView(QWidget):
     page_requested = Signal(str)
     toggle_sidebar = Signal()
     toggle_panel = Signal()
+    notify = Signal(str, str)              # (başlık, metin) → ana pencere Windows bildirimi
 
     def __init__(self, ctx, panel, parent=None):
         super().__init__(parent)
@@ -360,6 +362,11 @@ class SessionView(QWidget):
         self._env_checked: set[tuple] = set()       # (oturum, klasör) başına bir ortam denetimi
         self._turn_id: int | None = None            # turu başlatan kullanıcı mesajı (değişiklik kaydı)
         self._plan_turn = False                     # "önce plan": bu tur salt okunur plan turu
+        self._turn_hook = None                      # proje ajanı: tur bitince (outcome, exc) çağrılır
+        from .project_ui import ProjectController
+
+        self.project = ProjectController(self)
+        self.project.notify.connect(self.notify.emit)
         self._skip_plan_once = False
         # Çalışma süresi / model göstergesi
         self.run_model = ""
@@ -544,7 +551,8 @@ class SessionView(QWidget):
     def refresh_models(self) -> None:
         items = []
         # auto (önerilen varsayılan) EVREN grubunun en üstünde
-        models = sorted(self.ctx.chat_models(), key=lambda m: (m.provider != "evren", m.id != "auto"))
+        models = sorted(self.ctx.chat_models(),
+                        key=lambda m: (m.provider != "evren", m.id != router.AKILLI_ID, m.id != "auto"))
         for m in models:
             desc = []
             if m.supports_tools:
@@ -553,8 +561,10 @@ class SessionView(QWidget):
                 desc.append("görsel")
             if m.context_length:
                 desc.append(f"{m.context_length // 1000}k")
-            if m.id == "auto":
-                desc = ["önerilen · görevine göre modeli seçer"]
+            if m.id == router.AKILLI_ID:
+                desc = ["uygulama seçer · işe göre motor, görev ortasında değişmez, görünür"]
+            elif m.id == "auto":
+                desc = ["EVREN sunucusu seçer · her istekte değişebilir"]
             if m.provider != "evren":
                 desc = [d for d in desc if d != "araç"] + [price_hint(m.id)]
             enabled = m.provider == "evren" or self.ctx.has_provider_key(m.provider)
@@ -615,6 +625,19 @@ class SessionView(QWidget):
         self._update_header()
         self._update_context()
         self.session_opened.emit(session_id)
+        run = self.ctx.db.latest_project_run(session_id)
+        if run is not None and run["status"] in ("calisiyor", "duraklatildi") and not self.project.active:
+            if run["status"] == "calisiyor":         # uygulama proje sürerken kapanmış
+                from ..agent.project import ProjectState
+
+                st = ProjectState.from_json(run["state_json"])
+                st.status, st.pause_reason = "duraklatildi", "uygulama kapandı"
+                for t in st.tasks:
+                    if t.status == "calisiyor":
+                        t.status = "bekliyor"
+                self.ctx.db.update_project_run(run["id"], st.status, st.to_json())
+            self.transcript.add(NoteWidget("Bu oturumda yarım kalan bir proje var. Kaldığı yerden sürdürmek "
+                                           "için /proje-devam yazın.", "refresh"))
         if self.workspace and not Path(self.workspace).is_dir():
             self.transcript.add(NoteWidget(f"Proje klasörü bulunamadı: {self.workspace}", "alert"))
         elif self.workspace:
@@ -669,6 +692,8 @@ class SessionView(QWidget):
                 close_turn()
                 text, attached = split_attachments(m["content"] or "")
                 meta = m.get("meta") or {}
+                if meta.get("display"):                 # proje ajanı: uzun istem yerine kısa başlık
+                    text, attached = meta["display"], []
                 atts = [Attachment.from_meta(d) for d in meta.get("attachments") or []]
                 labels = set(meta.get("file_labels") or [])
                 attached = [n for n in attached if n not in labels]
@@ -903,9 +928,33 @@ class SessionView(QWidget):
         """Özet modeli: ayar (varsayılan hızlı model) yoksa/kullanılamıyorsa oturumun modeli."""
         wanted = (self.ctx.settings.auto_compact_model or "").strip()
         if not wanted:
-            return self.model
+            return self._concrete_model("sohbet")
         ids = [m.id for m in self.ctx.chat_models()]
-        return wanted if (not ids or wanted in ids) else self.model
+        return wanted if (not ids or wanted in ids) else self._concrete_model("sohbet")
+
+    def _concrete_model(self, role: str = "sohbet") -> str:
+        """Oturum modeli EVREN Akıllı ise o rol için seçilen gerçek model; değilse kendisi."""
+        if not router.is_akilli(self.model):
+            return self.model
+        return self._route(role=role).model
+
+    def _route(self, history: list | None = None, role: str | None = None) -> "router.Route":
+        avail = {m.id for m in self.ctx.evren_chat_models()}
+        health = {}
+        try:
+            health = {r["model"]: dict(r) for r in self.ctx.db.all_model_health()}
+        except Exception:
+            pass
+        if role:
+            return router.choose(role, available=avail or None, health=health, reason="yardımcı iş")
+        history = history or []
+        last_user = next((m for m in reversed(history) if m.get("role") == "user"), None)
+        has_images = bool(((last_user or {}).get("meta") or {}).get("images"))
+        est = estimate_tokens(to_api_messages("", history, "native")) if history else 0
+        context_of = {m.id: m.context_length or 0 for m in self.ctx.evren_chat_models()}
+        return router.route(agentic=self.workspace is not None,
+                            mode=("plan" if self._plan_turn else self.mode), has_images=has_images,
+                            est_tokens=est, context_of=context_of, available=avail or None, health=health)
 
     def _context_tokens(self) -> int | None:
         info = self.ctx.model_info(self.model)
@@ -958,6 +1007,8 @@ class SessionView(QWidget):
                 self.composer.attachments.add(a)
 
     def _sees_images(self, model: str) -> bool:
+        if router.is_akilli(model):
+            return True                         # görselli turda görsel modele yönlendirir
         info = self.ctx.model_info(model)
         return bool(info and info.supports_vision)
 
@@ -1004,6 +1055,11 @@ class SessionView(QWidget):
         if text.startswith("/") and not atts:
             if self._command(text):
                 return
+        if self.project.active or self.project.planning:
+            self._note("Proje ajanı çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için "
+                       "/proje-durdur yazın.", "alert")
+            back()
+            return
         if self.running:
             back()
             return
@@ -1101,6 +1157,9 @@ class SessionView(QWidget):
         cmd = cmd.lower()
         if cmd not in SLASH_COMMANDS and cmd not in MODE_COMMANDS:
             return False
+        if cmd.startswith("/proje"):
+            self.project.command(cmd, arg)
+            return True
         if cmd == "/yeni":
             self.new_session()
         elif cmd in MODE_COMMANDS:
@@ -1161,11 +1220,16 @@ class SessionView(QWidget):
 
     # ---- ajan çalıştırma ----
 
-    def start_run(self) -> None:
+    def start_run(self, history_from: int | None = None, mode_override: str | None = None,
+                  model_override: tuple[str, list[str], str] | None = None) -> None:
+        """history_from: yalnız bu mesajdan itibaren geçmiş (proje görevi: temiz bağlam).
+        mode_override / model_override: proje ajanının plan (salt okunur) ve görev (Otomatik) turları."""
         sid = self.session_id
         if sid is None:
             return
         history = self.ctx.db.get_session_messages(sid)
+        if history_from is not None:
+            history = [m for m in history if m["id"] >= history_from]
         ws = None
         if self.workspace:
             try:
@@ -1173,11 +1237,21 @@ class SessionView(QWidget):
             except ToolError as exc:
                 self.transcript.add(ErrorCard("Proje klasörüne erişilemiyor", [str(exc)]))
                 return
+        # EVREN Akıllı: bu tur için rol + gerçek model + yedekler (tur boyunca sabit)
+        self._run_route = None
+        api_model, fallbacks = self.model, []
+        if model_override is not None:
+            api_model, fallbacks = model_override[0], list(model_override[1])
+            if router.is_akilli(self.model):
+                self._run_route = router.Route(api_model, model_override[2], "proje ajanı", fallbacks)
+        elif router.is_akilli(self.model):
+            self._run_route = self._route(history)
+            api_model, fallbacks = self._run_route.model, list(self._run_route.fallbacks)
         row = self.ctx.db.get_session(sid)
-        protocol = row["protocol"] if row and row["protocol"] else self.ctx.resolve_protocol(self.model)
+        protocol = row["protocol"] if row and row["protocol"] else self.ctx.resolve_protocol(api_model)
         if self.ctx.settings.tool_protocol != "otomatik":
-            protocol = self.ctx.resolve_protocol(self.model)
-        info = self.ctx.model_info(self.model)
+            protocol = self.ctx.resolve_protocol(api_model)
+        info = self.ctx.model_info(api_model)
         self.cancel_token = CancelToken()
         self.bridge = AgentBridge()
         b = self.bridge
@@ -1195,7 +1269,7 @@ class SessionView(QWidget):
         b.sig_status.connect(lambda t: self._note(t, "alert"))
         s = self.ctx.settings
         perms = self.perms.setdefault(sid, SessionPermissions())
-        provider = self.ctx.provider_of(self.model)
+        provider = self.ctx.provider_of(api_model)
         try:
             client = self.ctx.make_client_for(provider, log_sink=lambda m: None)
         except RuntimeError as exc:
@@ -1206,8 +1280,8 @@ class SessionView(QWidget):
         def before_call(_step: int):
             return "budget" if self._budget_blocks(provider) else None
         self.runner = AgentRunner(
-            client, self.model, session_id=sid, store=self.ctx.db, events=b,
-            workspace=ws, mode=("plan" if self._plan_turn else self.mode), protocol=protocol,
+            client, api_model, session_id=sid, store=self.ctx.db, events=b,
+            workspace=ws, mode=(mode_override or ("plan" if self._plan_turn else self.mode)), protocol=protocol,
             turn_id=self._turn_id,
             allow_protocol_fallback=(s.tool_protocol == "otomatik"),
             permissions=perms, cancel=self.cancel_token, stream=s.stream_responses,
@@ -1223,12 +1297,13 @@ class SessionView(QWidget):
                               if provider == "evren" and info and (info.capabilities or {}).get("reasoning_effort")
                               else None),
             install_mode=s.install_mode,
+            fallback_models=fallbacks,
         )
         runner = self.runner
         self.running = True
         self.composer.set_running(True)
         self._pending_approvals.clear()
-        self.run_model = self.model
+        self.run_model = api_model
         self._run_t0 = time.monotonic()
         self._run_step = 0
         self._run_activity = "başlatılıyor"
@@ -1271,9 +1346,15 @@ class SessionView(QWidget):
         if not self.running or self._run_t0 is None:
             return
         elapsed = time.monotonic() - self._run_t0
-        prov = self.ctx.provider_of(self.run_model)
-        name = f"{PROVIDERS[prov].name} · {self.run_model}" if prov != "evren" else self.run_model
+        model = self.runner.model if self.runner is not None else self.run_model   # yedeğe geçişte güncel
+        prov = self.ctx.provider_of(model)
+        name = f"{PROVIDERS[prov].name} · {model}" if prov != "evren" else model
+        route = getattr(self, "_run_route", None)
+        if route is not None:
+            name = f"{router.AKILLI_LABEL} → {model} ({router.ROLE_LABELS.get(route.role, route.role)})"
         parts = [f"{name}  {self._run_activity}", format_duration(elapsed)]
+        if self.project.label:
+            parts.insert(0, self.project.label)
         if self._run_step > 1:
             parts.append(f"adım {self._run_step}")
         self.composer.set_run_status("  ·  ".join(parts))
@@ -1452,6 +1533,14 @@ class SessionView(QWidget):
         return None
 
     def _on_done(self, outcome) -> None:
+        hook, self._turn_hook = self._turn_hook, None
+        if hook is not None:                    # proje ajanı turu: sonrası denetleyicide
+            self._finish()
+            if getattr(outcome, "test_edits", None):
+                self._note("Dikkat: bu görevde var olan test dosyaları değiştirildi: "
+                           + ", ".join(outcome.test_edits), "alert")
+            hook(outcome, None)
+            return
         self._finish()
         if getattr(outcome, "test_edits", None):
             self._note("Dikkat: bu turda var olan test dosyaları değiştirildi ve öyle kaldı: "
@@ -1487,6 +1576,12 @@ class SessionView(QWidget):
                 self._turn_review(self._turn_id)
 
     def _on_fail(self, exc: Exception) -> None:
+        hook, self._turn_hook = self._turn_hook, None
+        if hook is not None:                    # proje ajanı: hata yönetimi (bekle/yedek/duraklat) orada
+            self._finish()
+            self._note(f"Görev turu hata ile bitti: {exc}", "alert")
+            hook(None, exc)
+            return
         self._finish()
         if isinstance(exc, ApiError):
             open_mon = self.ctx.db.get_open_monitor_session()
@@ -1691,7 +1786,7 @@ class SessionView(QWidget):
                    for r in rows]
         wanted = (self.ctx.settings.scope_check_model or "").strip()
         ids = [m.id for m in self.ctx.chat_models()]
-        model = wanted if wanted and (not ids or wanted in ids) else self.model
+        model = wanted if wanted and (not ids or wanted in ids) else self._concrete_model("inceleme")
         info = self.ctx.model_info(model)
         provider = self.ctx.provider_of(model)
         extra = ({"reasoning_effort": "none"} if provider == "evren" and info

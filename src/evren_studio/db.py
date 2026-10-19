@@ -117,6 +117,15 @@ CREATE TABLE IF NOT EXISTS session_messages (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_session_messages ON session_messages(session_id, id);
+CREATE TABLE IF NOT EXISTS project_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER,
+    workspace TEXT,
+    status TEXT NOT NULL,
+    state_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS usage_costs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at TEXT NOT NULL,
@@ -628,6 +637,26 @@ class Database:
         self._commit()
         return int(cur.lastrowid)
 
+    # ---- proje ajanı (agent/project.py, ui/project_ui.py) ----
+
+    def add_project_run(self, session_id: int | None, workspace: str | None, status: str,
+                        state_json: str) -> int:
+        now = utcnow_iso()
+        cur = self._exec(
+            "INSERT INTO project_runs(session_id, workspace, status, state_json, created_at, updated_at)"
+            " VALUES(?,?,?,?,?,?)", (session_id, workspace, status, state_json, now, now))
+        self._commit()
+        return int(cur.lastrowid)
+
+    def update_project_run(self, run_id: int, status: str, state_json: str) -> None:
+        self._exec("UPDATE project_runs SET status=?, state_json=?, updated_at=? WHERE id=?",
+                   (status, state_json, utcnow_iso(), run_id))
+        self._commit()
+
+    def latest_project_run(self, session_id: int) -> sqlite3.Row | None:
+        return self._exec("SELECT * FROM project_runs WHERE session_id=? ORDER BY id DESC LIMIT 1",
+                          (session_id,)).fetchone()
+
     def month_spend(self, month_prefix: str | None = None) -> dict[str, float]:
         """{sağlayıcı: USD} — month_prefix 'YYYY-MM' (UTC); varsayılan bu ay."""
         prefix = month_prefix or utcnow_iso()[:7]
@@ -640,7 +669,7 @@ class Database:
     def wipe_user_data(self) -> None:
         self._script(
             "DELETE FROM session_messages; DELETE FROM file_changes; DELETE FROM sessions;"
-            " DELETE FROM usage_costs;"
+            " DELETE FROM usage_costs; DELETE FROM project_runs;"
             " DELETE FROM messages; DELETE FROM chats;"
             " DELETE FROM error_records; DELETE FROM monitor_checks;"
             " DELETE FROM monitor_sessions; DELETE FROM model_health;"

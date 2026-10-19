@@ -63,11 +63,30 @@ def mentioned_files(text: str) -> list[str]:
     return seen
 
 
+# Dosya adının yakınında bu fiiller varsa kullanıcı dosyayı OLUŞTURMAK istiyor demektir:
+# uyarı verilmez. 2026-10-19 ölçümü: "kelime_say.py yaz", "EVREN_PLAN.md dosyasına ... yaz"
+# isteklerinde uyarı, zayıf modelleri dosyayı yazmak yerine soru sormaya itti.
+_CREATE_RE = re.compile(r"\b(yaz|oluştur|olustur|ekle|yarat|hazırla|hazirla|kaydet|üret|uret|aç\s+yeni|yeni)\w*",
+                        re.IGNORECASE)
+CREATE_WINDOW = 70
+
+
+def wants_creation(text: str, name: str) -> bool:
+    """`name` metinde oluşturma fiiliyle birlikte mi anılıyor? (adın ±CREATE_WINDOW karakteri)"""
+    low = text.replace("\\", "/")
+    for m in re.finditer(re.escape(name), low, re.IGNORECASE):
+        around = low[max(0, m.start() - 25): m.end() + CREATE_WINDOW]
+        if _CREATE_RE.search(around):
+            return True
+    return False
+
+
 def missing_mentions(text: str, root, limit: int = 20000) -> list[str]:
-    """Metinde anılan ama proje klasöründe (yol veya ad olarak) bulunmayan dosyalar."""
+    """Metinde anılan ama proje klasöründe (yol veya ad olarak) bulunmayan dosyalar.
+    Oluşturulması istenen dosyalar (wants_creation) sayılmaz."""
     from pathlib import Path
 
-    names = mentioned_files(text)
+    names = [n for n in mentioned_files(text) if not wants_creation(text, n)]
     if not names:
         return []
     root = Path(root)

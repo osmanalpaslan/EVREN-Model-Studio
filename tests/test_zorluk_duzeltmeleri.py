@@ -175,3 +175,15 @@ def test_geri_alinirsa_tur_notu_yok(tmp_path):
 def test_kullanici_isterse_uyari_yok(tmp_path):
     out, tools_out = _guard_run(tmp_path, "yanlış olan testi düzelt: 80 olmalı değil", [("== 80", "== 90")])
     assert "TEST dosyasını" not in tools_out[0] and out.test_edits == []
+
+
+def test_olusturulacak_dosya_icin_uyari_yok(tmp_path):
+    """2026-10-19 ölçümü: oluşturma isteğinde uyarı, zayıf modelleri soru sormaya itti."""
+    from evren_studio.agent.scope import missing_mentions, wants_creation
+
+    assert wants_creation("Yalnız standart kütüphaneyle kelime_say.py yaz: python kelime_say.py", "kelime_say.py")
+    assert wants_creation("Sadece EVREN_PLAN.md dosyasına uygulanabilir bir görev planı yaz", "EVREN_PLAN.md")
+    assert wants_creation("yeni bir rapor.md oluştur", "rapor.md")
+    assert not wants_creation("ayarlar.yaml dosyasındaki timeout değerini 30 yap.", "ayarlar.yaml")
+    assert missing_mentions("README.md dosyasına kurulum bölümü ekle", tmp_path) == []
+    assert missing_mentions("config.json dosyasını oku ve port değerini söyle", tmp_path) == ["config.json"]

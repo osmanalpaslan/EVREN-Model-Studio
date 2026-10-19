@@ -1,5 +1,30 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — EVREN Akıllı yönlendirici ve Proje ajanı
+
+### Eklendi
+
+- **EVREN Akıllı** (model seçicide en üstte): uygulama içi, ölçüme dayalı
+  yönlendirici. İşe göre motor seçer (sohbet / kod / plan / görsel / büyük bağlam
+  / inceleme), görev ortasında motoru değiştirmez; yalnız EVREN hata verirse,
+  model döngüye girerse veya görseli reddederse yedeğe geçer ve söyler. Çalışma
+  çubuğunda "EVREN Akıllı → model (rol)". Zorluk paketinde 12/12. auto listede kalır.
+- **Proje ajanı**: `/proje <hedef>` → plan (EVREN_PLAN.md, her görevde bitti
+  ölçütü/doğrulama) → **onay kartı** → görevler Otomatik modda, temiz bağlamla,
+  gözetimsiz sırayla yürür; her görev doğrulama komutu + ikinci model incelemesiyle
+  denetlenir; git deposunda ayrı dalda görev başına commit; takılan görev 3
+  denemeden sonra stash'e alınıp atlanır (bağımlıları da); kota penceresi /
+  EVREN kesintisinde bekler, günlük kota bitince duraklar; uyku engellenir;
+  bitince Windows bildirimi + EVREN_RAPOR.md. `/proje-duzelt`, `/proje-devam`,
+  `/proje-durdur`; Esc projeyi duraklatır; açılışta yarım kalan proje bildirilir.
+- Zorluk paketine `planlama` ve `mini_proje` görevleri; `tests/e2e_proje_real_api.py`.
+
+### Düzeltildi
+
+- "Adı geçen dosya projede yok" uyarısı, dosyanın oluşturulması istendiğinde
+  verilmiyor (zayıf modelleri soru sormaya itiyordu).
+- Ölçüm betiği: mutlak yol ve UTF-8 çıktı (yanlış "başarısız" puanları).
+
 ## Yayınlanmamış — Zorluk paketi ve tek tıkla kurulum
 
 ### Eklendi

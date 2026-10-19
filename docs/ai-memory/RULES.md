@@ -117,3 +117,8 @@
 - **Kural:** agent/ (araçlar, istem, koşucu) değiştiyse ve anahtar varsa `tests/e2e_zorluk_real_api.py auto` (ve mümkünse bir model daha) çalıştır; önceki sonuçla docs/knowledge/CHALLENGE_RESULTS.md'de karşılaştır, gerilemeyi düzeltmeden birleştirme.
 - **Neden:** Birim testleri model davranışını ölçmez; istem kuralı tek başına bazen yetmedi (olmayan dosya), araç çıktısı biçimi sonucu değiştirdi (sayım).
 - **Kaynak:** 2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu, 2026-10-19-istenen-dosya-yokken-ajan-benzer-dosyayi-sormadan-degistirdi
+
+### R-22 · Otomatik uyarı/denetimin gereksiz tetiklenmesini de test et
+- **Kural:** Ajana otomatik eklenen her uyarı, not veya denetim için hem tetiklenmesi gereken hem de tetiklenmemesi gereken (ör. kullanıcı dosyayı oluşturmak istiyor) senaryoyu birim testiyle yaz ve zorluk paketinin TAMAMIYLA ölç; yalnız hedef görevle ölçme.
+- **Neden:** "Adı geçen dosya yok" uyarısı olmayan dosya görevini düzeltti ama oluşturma isteklerinde zayıf modelleri soru sormaya itti (planlama 0/1).
+- **Kaynak:** 2026-10-19-olmayan-dosya-uyarisi-olusturma-isteklerinde-yanlis-alarm-ve

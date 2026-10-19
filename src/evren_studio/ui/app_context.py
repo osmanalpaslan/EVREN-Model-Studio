@@ -44,6 +44,13 @@ MEASURED_OVERRIDES: dict[str, dict] = {
 }
 
 
+# EVREN Akıllı: uygulama içi yönlendirici (agent/router.py). API'ye ASLA bu ad gitmez;
+# her tur başında gerçek bir EVREN modeline çevrilir. Bağlam: en büyük adayın (1M).
+AKILLI_INFO = ModelInfo(id="akilli", task="chat", modalities=["text", "image"], context_length=1_048_576,
+                        default_max_output_tokens=None, capabilities={"tools": True, "vision": True},
+                        provider="evren")
+
+
 def apply_measured(m: ModelInfo) -> ModelInfo:
     o = MEASURED_OVERRIDES.get(m.id)
     if o and m.provider == "evren":
@@ -95,13 +102,16 @@ class AppContext:
         self._model_listeners.append(callback)
 
     def chat_models(self) -> list[ModelInfo]:
-        """EVREN (canlı/yedek) + OpenAI + Anthropic sohbet modelleri."""
-        return [m for m in self.models if m.supports_chat] + list(self.paid_models)
+        """EVREN Akıllı + EVREN (canlı/yedek) + OpenAI + Anthropic sohbet modelleri."""
+        return [AKILLI_INFO] + [m for m in self.models if m.supports_chat] + list(self.paid_models)
 
     def evren_chat_models(self) -> list[ModelInfo]:
+        """Gerçek EVREN sohbet modelleri (EVREN Akıllı sözde modeli hariç)."""
         return [m for m in self.models if m.supports_chat]
 
     def model_info(self, model_id: str) -> ModelInfo | None:
+        if model_id == AKILLI_INFO.id:
+            return AKILLI_INFO
         for m in list(self.models) + list(self.paid_models):
             if m.id == model_id:
                 return m

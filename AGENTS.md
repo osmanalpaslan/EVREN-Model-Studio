@@ -75,7 +75,8 @@ durdurur. Her bilgisayarda bir kez kur:
 - **Test**: `.\.venv\Scripts\python.exe -m pytest -q` (birim + tüm ekranlar QA) ·
   gerçek API (anahtar gerekir, R-13): `tests\e2e_real_api.py`,
   `tests\e2e_agent_real_api.py`, `tests\e2e_ui_real_api.py` · ajan davranışı
-  (R-21): `tests\e2e_zorluk_real_api.py auto` (10 kısa zor görev, ~3 dk) ·
+  (R-21): `tests\e2e_zorluk_real_api.py akilli` (12 kısa zor görev, ~5 dk) ·
+  proje ajanı: `tests\e2e_proje_real_api.py` ·
   arayüz görsel kontrol: `tools/ui_screenshots.py` (bkz. R-05)
 - **Yapı**: `src/evren_studio/agent/` (Qt'siz ajan çekirdeği),
   `api/` (EVREN istemcisi), `ui/` (arayüz), `db.py` (SQLite),
@@ -109,4 +110,5 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-19** · Ajan turunu araçsız yanıt geldi diye bitmiş sayma; döngü bekçisini koru — agent/runner.py'de boş veya "yapacağım" türü araçsız yanıtı dürtmeden `done` sayma, tekrar/ileri-geri düzenleme bekçisini (`_guard`, tests/test_loop_guard.py) kaldırma; ajan davranışını değiştirince tests/e2e_agent_real_api.py ile birlikte çok adımlı (çelişkili görev) gerçek API ölçümü yap.
 - **R-20** · Ajanın kapsam korumasını kaldırma; değişiklikleri tura bağla — prompts.AGENT_RULES'taki "Kapsam" bölümünü kısaltma/kaldırma; AgentRunner'a her turda turn_id ver (değişiklikler tura bağlı kalsın); tur sonu kartını ve kapsam denetimini (agent/scope.py) kapatma, yalnız ayar kapatabilir.
 - **R-21** · Ajan davranışını değiştirince zorluk paketiyle ölç — agent/ (araçlar, istem, koşucu) değiştiyse ve anahtar varsa `tests/e2e_zorluk_real_api.py auto` (ve mümkünse bir model daha) çalıştır; önceki sonuçla docs/knowledge/CHALLENGE_RESULTS.md'de karşılaştır, gerilemeyi düzeltmeden birleştirme.
+- **R-22** · Otomatik uyarı/denetimin gereksiz tetiklenmesini de test et — Ajana otomatik eklenen her uyarı, not veya denetim için hem tetiklenmesi gereken hem de tetiklenmemesi gereken (ör. kullanıcı dosyayı oluşturmak istiyor) senaryoyu birim testiyle yaz ve zorluk paketinin TAMAMIYLA ölç; yalnız hedef görevle ölçme.
 <!-- KURALLAR:BITIR -->

@@ -44,6 +44,35 @@ Süreler: görev başına 3–35 sn (bir çelişki denemesi 135 sn). Yakalanmam�
 Not: akışlı yanıtta auto'nun hangi modele yönlendirdiği kaydedilmiyor; auto
 sonuçları yönlendirmeye göre dalgalanabilir.
 
+## 8 EVREN motoru × 12 görev (2026-10-19, yönlendirme tablosunun kaynağı)
+
+12 görev = önceki 10 + **planlama** (büyük isteği "Bitti ölçütü"lü 5-12 göreve bölüp
+EVREN_PLAN.md yazmak, kod yazmadan) + **mini_proje** (Türkçe küçük harf I→ı / İ→i ve
+ilk görülme sıralı kelime sayacı + kendi testleri). mini_proje puanları ölçüm
+betiğindeki iki hata (göreli yol; programların cp1254 çıktısı) düzeltilip ÜRETİLEN
+programlar yeniden denetlenerek verilmiştir.
+
+| Model | Sonuç | Toplam süre | Planlama | Not |
+|---|---|---|---|---|
+| deepseek-v4-flash | **12/12** | 5 dk | 59 sn | en tutarlı; maratonda da en hızlı → kod/sohbet birincil |
+| gemma-4-31b | **12/12** | 3 dk | 7 sn | en hızlı, görsel okur → görsel birincil |
+| qwen3.8-flash-next | **12/12** | 9 dk | 47 sn | maratonda A/B/C tam → kod yedek, inceleme birincil |
+| deepseek-v4.1-flash | **12/12** | 10 dk | 44 sn | → plan birincil |
+| auto (sunucu) | 11/12 → 12/12* | 8 dk | (*) | *planlamayı benim uyarı hatam bozdu; düzeltmeden sonra 5/5 |
+| glm-5.3 | 11/12 | 15 dk | 178 sn | mini projede 6 dk sınırı aşıldı (tek adımda ~6 dk düşündü) → kodda yok |
+| mimo-v2.6-pro | 11/12 | 11,5 dk | 80 sn | mini projede 6 dk sınırı aşıldı → kodda yok |
+| qwen3-vl-30b | 9/12 → 10/12* | 1,7 dk | 3 sn | çelişkide test değiştirdi; mini projede Türkçe kural yanlış → görselde son |
+
+**EVREN Akıllı** (yönlendirici, aynı 12 görev): **12/12**, 4 dk 19 sn (rol başına
+seçim: kod → deepseek-v4-flash, plan → deepseek-v4.1-flash; mini_proje programı
+UTF-8 denetimiyle 5/5).
+
+**Proje ajanı uçtan uca** (`tests/e2e_proje_real_api.py`, EVREN Akıllı, gerçek API):
+sıcaklık dönüştürücü hedefi → 34 sn'de 6 görevlik plan (her görevde ölçüt ve
+doğrulama komutu) → 6/6 görev ilk denemede bitti, toplam 3,5 dk, ayrı dalda 6
+commit, EVREN_PLAN.md + EVREN_RAPOR.md + bildirim; modelin görmediği kabul
+testleri **5/5**.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca
