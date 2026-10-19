@@ -44,6 +44,9 @@
 | 40 | Görseller küçültülmüş kopyayla veri klasöründe saklanır, `_images` ile istemciye taşınır | Asıl dosya silinse de geçmiş bozulmaz; çekirdek Qt'siz kalır, sağlayıcı biçimi istemcide | 2026-10-19 |
 | 41 | Görsel okuyamayan motorda gönderimden önce auto önerilir | Ölçüm: glm-5.3 ve deepseek-v4-flash 400 veriyor; auto görseli uygun modele yönlendiriyor | 2026-10-19 |
 | 42 | Kullanım düğmesi: günlük kalan %; panel /v1/quota + oturum + ücretli bütçe | Kullanıcı isteği; ağ isteği arka planda, açılışta yalnız app.py'den (testler ağ yapmaz) | 2026-10-19 |
+| 43 | Sürekli arka plan kendi kendini test etme yerine elle/CI çalıştırılan kısa zorluk paketi | Kota harcamaz, kullanıcı dosyalarına dokunmaz; her kullanıcı kendi anahtarıyla çalıştırır | 2026-10-19 |
+| 44 | Model davranış hatalarında önce araç çıktısı/kod denetimi, sonra istem | Ölçüm: istem kuralı tek başına auto'da 2/3; kod denetimi 3/3 | 2026-10-19 |
+| 45 | Kurulum: kurulum.bat (venv + kısayol), EXE sonraya | Hemen herkes kurabilsin; PyInstaller paketleme (Aşama 4) ayrı iş | 2026-10-19 |
 
 ## Değerlendirilip reddedilenler
 

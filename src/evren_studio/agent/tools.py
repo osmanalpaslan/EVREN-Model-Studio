@@ -87,7 +87,8 @@ TOOL_SPECS: list[ToolSpec] = [
     ToolSpec(
         "read_file", READ,
         "Bir metin dosyasını satır numaralarıyla okur. Büyük dosyalarda "
-        "start_line/end_line ile aralık iste.",
+        "start_line/end_line ile aralık iste. Satır/eşleşme SAYMAK için kullanma; "
+        "search_files toplam sayıyı verir.",
         _obj({
             "path": {"type": "string", "description": "Proje köküne göre dosya yolu"},
             "start_line": {"type": "integer", "description": "İlk satır (1'den başlar)"},
@@ -96,8 +97,8 @@ TOOL_SPECS: list[ToolSpec] = [
     ),
     ToolSpec(
         "search_files", READ,
-        "Dosya içeriklerinde düzenli ifade (regex) arar; 'yol:satır: metin' "
-        "biçiminde sonuç döndürür.",
+        "Dosya içeriklerinde düzenli ifade (regex) arar; önce toplam eşleşen satır sayısını, "
+        "sonra 'yol:satır: metin' satırlarını döndürür. Sayım soruları için bunu kullan.",
         _obj({
             "pattern": {"type": "string", "description": "Python regex deseni"},
             "path": {"type": "string", "description": "Aranacak klasör (varsayılan '.')"},
@@ -520,7 +521,11 @@ class ToolBox:
         )
         note = ""
         if end < total:
-            note = f"\n… (dosya {total} satır; {start}-{end} gösterildi)"
+            # Zorluk paketi (2026-10-19): kısa not gözden kaçtı, model görmediği satırlar
+            # için kesin sayı uydurdu. Uyarı açık ve yönlendirici olmalı.
+            note = (f"\n⚠ KISALTILDI: dosya {total} satır; yalnızca {start}-{end} gösterildi, "
+                    f"{end + 1}-{total} GÖRÜLMEDİ. Dosyanın tamamı hakkında sayı/özet vermeden önce "
+                    f"kalanı oku (start_line={end + 1}) veya sayım için search_files kullan.")
         if total == 0:
             return f"{self.ws.rel(p)} (boş dosya)"
         return f"{self.ws.rel(p)} ({total} satır)\n{body}{note}"
@@ -538,6 +543,8 @@ class ToolBox:
         files = [base] if base.is_file() else _walk(self.ws.root, base)
         results: list[str] = []
         skipped = 0
+        total = 0
+        matched_files: set[str] = set()
         for f in files:
             if glob and not fnmatch.fnmatch(f.name, glob):
                 continue
@@ -555,12 +562,18 @@ class ToolBox:
             text = decode_bytes(data).text
             for no, line in enumerate(text.split("\n"), 1):
                 if rx.search(line):
-                    results.append(f"{self.ws.rel(f)}:{no}: {line.strip()[:240]}")
-                    if len(results) >= MAX_SEARCH_RESULTS:
-                        results.append(f"… (ilk {MAX_SEARCH_RESULTS} eşleşme)")
-                        return "\n".join(results)
+                    total += 1
+                    matched_files.add(self.ws.rel(f))
+                    if len(results) < MAX_SEARCH_RESULTS:
+                        results.append(f"{self.ws.rel(f)}:{no}: {line.strip()[:240]}")
         note = f"\n({skipped} gizli bilgi dosyası aramaya dahil edilmedi)" if skipped else ""
-        return ("\n".join(results) if results else "Eşleşme bulunamadı.") + note
+        if not results:
+            return "Eşleşme bulunamadı." + note
+        # Toplam sayı en başta: model sayım sorularını satırları kendisi saymadan yanıtlar
+        head = f"Toplam {total} eşleşen satır ({len(matched_files)} dosyada)"
+        if total > len(results):
+            head += f"; ilk {len(results)} gösteriliyor"
+        return head + ":\n" + "\n".join(results) + note
 
     def find_files(self, pattern: str) -> str:
         if not pattern:

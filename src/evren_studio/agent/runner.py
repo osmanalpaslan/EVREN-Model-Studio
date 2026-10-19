@@ -266,6 +266,7 @@ class TurnOutcome:
     steps: int = 0
     protocol: str = "native"
     last_text: str = ""
+    test_edits: list[str] = field(default_factory=list)   # istenmeden değiştirilen var olan test dosyaları
 
 
 # ---- geçmiş → API mesajları ----------------------------------------------------------
@@ -457,9 +458,45 @@ class AgentRunner:
                     environment.quick_status(self.workspace.root), self.install_mode)
             except OSError:
                 self._env_section = ""
-        return build_agent_system(self.workspace, normalize_mode(self.mode), self._specs(),
-                                  text_protocol=(self.protocol == "text"),
-                                  env_section=self._env_section)
+        system = build_agent_system(self.workspace, normalize_mode(self.mode), self._specs(),
+                                    text_protocol=(self.protocol == "text"),
+                                    env_section=self._env_section)
+        hint = getattr(self, "_turn_hint", "")
+        return system + "\n\n" + hint if hint else system
+
+    def _compute_turn_hint(self, history: list[dict]) -> str:
+        """Tur başı: kullanıcının andığı ama projede olmayan dosyalar için uyarı (scope.py)."""
+        if not self.agentic or self.workspace is None:
+            return ""
+        for m in reversed(history):
+            if m.get("role") != "user":
+                continue
+            if (m.get("meta") or {}).get("auto_continue"):
+                continue
+            text = (m.get("content") or "").split("\n\n<ekli_dosyalar>", 1)[0]
+            from .scope import user_allows_test_edits
+
+            self._tests_allowed = user_allows_test_edits(text)
+            try:
+                from .scope import missing_hint, missing_mentions
+
+                missing = missing_mentions(text, self.workspace.root)
+            except OSError:
+                return ""
+            return missing_hint(missing) if missing else ""
+        return ""
+
+    def _remaining_test_edits(self) -> list[str]:
+        """Turda istenmeden değiştirilip hâlâ eski hâline dönmemiş test dosyaları."""
+        out = []
+        for rel, before in getattr(self, "_test_orig", {}).items():
+            try:
+                now = self.toolbox.load_text(self.workspace.resolve(rel)).text
+            except Exception:
+                now = None
+            if now != before:
+                out.append(rel)
+        return out
 
     def _cancelled(self) -> bool:
         return bool(self.cancel is not None and getattr(self.cancel, "cancelled", False))
@@ -512,6 +549,9 @@ class AgentRunner:
     def run(self, history: list[dict]) -> TurnOutcome:
         """`history` kayıtlı mesajlardır (son kullanıcı mesajı dahil); yerinde uzatılır."""
         outcome = TurnOutcome(protocol=self.protocol)
+        self._tests_allowed = True
+        self._test_orig: dict[str, str | None] = {}     # yol → turdaki ilk hâli
+        self._turn_hint = self._compute_turn_hint(history)
         step = 0
         fallback_used = False
         # döngü bekçisi durumu (tur başına)
@@ -665,6 +705,7 @@ class AgentRunner:
         else:
             outcome.stopped = "max_steps"
             self.events.status(f"Adım sınırına ({self.max_steps}) ulaşıldı; devam etmek için mesaj gönderin.")
+        outcome.test_edits = self._remaining_test_edits()
         return outcome
 
     @staticmethod
@@ -836,8 +877,14 @@ class AgentRunner:
         extra = {"diff": change.diff, "path": change.rel_path, "change_id": change_id}
         if decision == Decision.ALLOW and normalize_mode(self.mode) in ("kabul", "auto"):
             extra["auto_approved"] = True
-        return ToolResult(True, f"{verb}: {change.rel_path} (+{added} −{removed} satır).",
-                          f"{verb}: {change.rel_path}  +{added} −{removed}", extra)
+        content = f"{verb}: {change.rel_path} (+{added} −{removed} satır)."
+        from .scope import TEST_EDIT_WARNING, is_test_path
+
+        if not change.is_new and is_test_path(change.rel_path) and not getattr(self, "_tests_allowed", True):
+            content += TEST_EDIT_WARNING.format(path=change.rel_path)
+            self._test_orig.setdefault(change.rel_path, change.before)
+            extra["test_edit"] = True
+        return ToolResult(True, content, f"{verb}: {change.rel_path}  +{added} −{removed}", extra)
 
     def _run_install(self, call: ToolCall) -> ToolResult:
         """Ortam denetimi: bilinen listedeki eksik programı ayara göre sorarak/sormadan kurar."""

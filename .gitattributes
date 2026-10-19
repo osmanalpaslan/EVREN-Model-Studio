@@ -1,0 +1,2 @@
+# cmd, LF satır sonlu .bat dosyalarında goto/call :etiket atlamalarını kaçırabilir
+*.bat text eol=crlf

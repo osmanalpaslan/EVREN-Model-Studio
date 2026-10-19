@@ -1,5 +1,21 @@
 # Kurulum ve Kullanım
 
+## En kolay yol (geliştirici olmayanlar için)
+
+1. https://github.com/osmanalpaslan/EVREN-Model-Studio sayfasında
+   **Code → Download ZIP** ile indirin ve bir klasöre çıkarın
+   (ör. `Belgeler\EVREN-Studio`).
+2. Klasördeki **`kurulum.bat`** dosyasına çift tıklayın. Betik:
+   - Python 3.12 veya üstünü bulur; yoksa “kurulsun mu?” diye sorar ve
+     `winget` ile yalnız sizin kullanıcı hesabınıza kurar (yönetici gerekmez),
+   - `.venv` sanal ortamını oluşturup gerekli paketleri kurar (birkaç dakika),
+   - masaüstüne ve Başlat menüsüne **EVREN Studio** kısayolu ekler.
+3. Kısayolla açın; ilk açılışta EVREN API anahtarınızı girin.
+
+Windows SmartScreen “tanınmayan uygulama” uyarısı verirse **Ek bilgi → Yine de
+çalıştır** deyin (betik açık metindir, içeriğini Not Defteri ile görebilirsiniz).
+`run.bat` de kurulum yapılmamışsa kurulumu kendiliğinden başlatır.
+
 ## Gereksinimler
 
 - Windows 10/11 (64 bit)
