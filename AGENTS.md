@@ -68,7 +68,8 @@ durdurur. Her bilgisayarda bir kez kur:
 ## 5. Proje özeti
 
 - **Ne**: EVREN LLM API için Türkçe Windows masaüstü uygulaması (PySide6):
-  kod ajanı + sohbet. Ayrıntı: README.md, docs/PROJECT_STATE.md.
+  kod ajanı + sohbet. Ayrıntı: README.md, docs/PROJECT_STATE.md ·
+  kararlaştırılmış ileri işler: docs/ILERIDE_YAPILACAKLAR.md (başlamadan oku).
 - **Kurulum**: docs/INSTALLATION.md · **Çalıştır**: `run.bat` veya
   `.\.venv\Scripts\python.exe -m evren_studio`
 - **Test**: `.\.venv\Scripts\python.exe -m pytest -q` (birim + tüm ekranlar QA) ·

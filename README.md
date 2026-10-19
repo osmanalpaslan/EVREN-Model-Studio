@@ -92,6 +92,7 @@ bitirirken hafızayı besler; git kancası ve testler bunu denetler.
 - Kurulum: docs/INSTALLATION.md · Güvenlik: docs/SECURITY.md
 - Proje durumu: docs/PROJECT_STATE.md · Görevler: docs/TASK_CHECKLIST.md
 - Kararlar: docs/DECISIONS.md · Değişiklikler: docs/CHANGELOG.md
+- İleride yapılacaklar (ör. kurulum paketi): docs/ILERIDE_YAPILACAKLAR.md
 - Bilgi tabanı: docs/knowledge/ (API uyumluluğu, model yetenekleri, hata
   kataloğu, kurtarma rehberi, sınırlamalar, dersler, durum geçmişi)
 

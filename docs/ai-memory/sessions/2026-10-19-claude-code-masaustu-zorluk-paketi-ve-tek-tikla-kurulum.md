@@ -54,5 +54,7 @@ kodda/varsayılanda (GitHub'dan herkese); kurulum engeli için tek tık kurulum.
 - Ajan davranışına dokunursan R-21: `tests\e2e_zorluk_real_api.py auto`.
 - auto sonuçları yönlendirmeye göre dalgalanır; tek deneme yerine 3 tekrar ölç.
 - Claude Code oturumunda .bat'ı tam yolla çağır (NoDefaultCurrentDirectoryInExePath).
-- Herkesin kullanabilmesi için sıradaki büyük adım: PyInstaller EXE (Python'suz).
+- Profesyonel kurulum paketi kullanıcıyla kararlaştırıldı ama ERTELENDİ: tüm
+  kararlar ve adımlar docs/ILERIDE_YAPILACAKLAR.md madde 1 (onedir + Inno Setup,
+  tek EXE istenmiyor, isteğe bağlı Git/Python/Node kurulumu, Comodo notu).
 - Dal: `feat/zorluk-paketi` (birleştirilmedi).
