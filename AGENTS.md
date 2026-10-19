@@ -76,7 +76,8 @@ durdurur. Her bilgisayarda bir kez kur:
   gerçek API (anahtar gerekir, R-13): `tests\e2e_real_api.py`,
   `tests\e2e_agent_real_api.py`, `tests\e2e_ui_real_api.py` · ajan davranışı
   (R-21): `tests\e2e_zorluk_real_api.py auto-pro` (12 kısa zor görev, ~5 dk) ·
-  proje ajanı: `tests\e2e_proje_real_api.py` ·
+  proje ajanı: `tests\e2e_proje_real_api.py` · MCP/Serena (R-25):
+  `tests\e2e_mcp_real_api.py` ve zorluk paketine `--serena build\mcp_data` ·
   arayüz görsel kontrol: `tools/ui_screenshots.py` (bkz. R-05)
 - **Yapı**: `src/evren_studio/agent/` (Qt'siz ajan çekirdeği),
   `api/` (EVREN istemcisi), `ui/` (arayüz), `db.py` (SQLite),
@@ -113,4 +114,5 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-22** · Otomatik uyarı/denetimin gereksiz tetiklenmesini de test et — Ajana otomatik eklenen her uyarı, not veya denetim için hem tetiklenmesi gereken hem de tetiklenmemesi gereken (ör. kullanıcı dosyayı oluşturmak istiyor) senaryoyu birim testiyle yaz ve zorluk paketinin TAMAMIYLA ölç; yalnız hedef görevle ölçme.
 - **R-23** · Uygulamanın kendi kaynağını ajanla düzenlerken ayrı dalda çalış; `%f` ile time.strftime kullanma — EVREN Studio'nun kaynağı üzerinde (EVREN uygulamasının kendi ajanı dahil) değişiklik yaparken önce ayrı git dalı aç, geçici hata ayıklama kodu bırakma; zaman damgasında `time.strftime(... %f ...)` değil `datetime.now().strftime` kullan. Bir motorun bitmemiş değişikliğini bulursan silme, yedekle ve ayrı ele al.
 - **R-24** · Kısa iç yapay zekâ isteğini ai_chat'ten geçir ve gerçek API'de dene; düğme lambdasında `_=None` — Uygulamanın kendi yapay zekâ işlerini (başlık, özet, inceleme, commit, hata açıklaması) doğrudan istemciyle değil `AppContext.ai_chat(rol)` ile yap (EVREN'de düşünmeyi kapatır, boş yanıtta yedeğe geçer, bütçe/maliyeti işler) ve en az bir kez gerçek API'de dene; `clicked.connect`'e varsayılan argümanlı lambda verirken ilk parametreyi `_=None` yap.
+- **R-25** · Yeni araç eklerken modelin onu gerçekten seçtiğini ve kabul denetimini ölç — Ajana yeni araç (MCP dahil) eklediğinde gerçek API ile aracın açık/kapalı karşılaştırmasını yap ve çağrı sayısını kaydet (sunmak, kullanılması demek değildir); e2e kabul denetimini çalıştırmadan önce bilinen doğru ve bilinen yanlış bir cevapla sına.
 <!-- KURALLAR:BITIR -->

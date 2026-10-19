@@ -1,5 +1,28 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — MCP sunucuları ve Serena
+
+### Eklendi
+
+- **MCP desteği** (`agent/mcp.py`): EVREN Studio artık bir MCP istemcisi. Ayarlar >
+  MCP Sunucuları'ndan eklenen stdio sunucularının araçları ajana `mcp__<sunucu>__<araç>`
+  adıyla sunulur. Yalnız proje klasörlü oturumlarda; Plan modunda yalnız okuma araçları.
+  Okuma listesinde olmayan araç çalışma moduna göre onay ister (sunucunun readOnlyHint
+  iddiasına güvenilmez). Başlatılamayan sunucu turu düşürmez, not olarak bildirilir.
+- **Serena 1.7.0** (MIT) tek tıkla kurulum: veri klasöründe ayrı Python ortamı, uv ve
+  pyright (Python 3.13 ile) dahil, sisteme program kurulmaz (~2 dk). Yalnız okuma yapan
+  3 sembol aracı açık: get_symbols_overview, find_symbol, find_referencing_symbols.
+  Serena'nın verisi (önbellek, proje ayarı, günlük) proje başına uygulamanın veri klasöründe
+  tutulur; proje klasörüne ve `%USERPROFILE%\.serena`'ya yazılmaz.
+- Ayarlar'da "Dene": sunucuyu başlatır, açılış süresini ve ajana açık araçları gösterir.
+- `tests/e2e_mcp_real_api.py` (Serena açık/kapalı karşılaştırması, gerçek API) ve
+  zorluk paketine `--serena` seçeneği.
+
+### Düzeltildi
+
+- Koyu temada işaretli onay kutusu içi boş beyaz kare görünüyordu (vurgu beyaz olunca);
+  artık koyu tik işareti var.
+
 ## Yayınlanmamış — Klavye, bağlam göstergesi, koyu tema
 
 ### Düzeltildi

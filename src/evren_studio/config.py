@@ -116,6 +116,10 @@ class Settings:
     send_with_enter: bool = True
     # İlk yanıttan sonra oturuma yapay zekâyla kısa başlık (bağlı API; ücretli sağlayıcıda çok küçük maliyet)
     ai_session_titles: bool = True
+    # MCP sunucuları (agent/mcp.py; kullanıcı kararı 2026-10-19): ajan turuna ek araç sağlar.
+    # Her öğe McpServerConfig.to_dict(); boş liste = MCP yok, ajan davranışı değişmez.
+    mcp_enabled: bool = True
+    mcp_servers: list[dict] = field(default_factory=list)
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
     # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).
     settings_version: int = SETTINGS_VERSION

@@ -26,7 +26,7 @@ IGNORED_DIRS = {
     ".git", ".hg", ".svn", ".venv", "venv", "env", "node_modules", "__pycache__",
     ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".idea", ".vs",
     ".next", ".nuxt", "dist", "build", "bin", "obj", ".gradle", "target",
-    ".egg-info",
+    ".egg-info", ".serena",
 }
 MAX_READ_BYTES = 512 * 1024
 MAX_READ_LINES = 2000

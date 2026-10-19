@@ -1338,6 +1338,8 @@ class SessionView(QWidget):
                               else None),
             install_mode=s.install_mode,
             fallback_models=fallbacks,
+            # MCP (Ayarlar > MCP Sunucuları): etkin sunucu yoksa None, davranış değişmez
+            mcp=self.ctx.mcp_toolset(ws.root) if ws is not None else None,
         )
         runner = self.runner
         self.running = True

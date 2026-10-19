@@ -112,8 +112,30 @@ def code_font(size: int = 10) -> QFont:
     return f
 
 
+def _check_icon(p: Palette) -> str:
+    """Onay kutusu tik işareti (on_accent renginde SVG). Koyu temada vurgu beyaz olunca
+    işaretli kutu içi boş beyaz kare görünüyordu (2026-10-19); tik bunu ayırt eder.
+    QSS dosya yolu ister: geçici klasöre bir kez yazılır."""
+    import tempfile
+    from pathlib import Path
+
+    color = p.on_accent.lstrip("#")
+    path = Path(tempfile.gettempdir()) / "evren_studio_tema" / f"tik_{color}.svg"
+    if not path.exists():
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" '
+                f'fill="none" stroke="#{color}" stroke-width="2" stroke-linecap="round" '
+                'stroke-linejoin="round"/></svg>', encoding="utf-8")
+        except OSError:
+            return ""
+    return path.as_posix()
+
+
 def build_qss(p: Palette, font_pt: int) -> str:
     small = max(font_pt - 1, 8)
+    check = _check_icon(p)
     return f"""
 * {{ outline: none; }}
 QWidget {{ color: {p.text}; font-size: {font_pt}pt; }}
@@ -170,7 +192,7 @@ QComboBox QAbstractItemView {{ background: {p.surface}; border: 1px solid {p.bor
 QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{ width: 16px; border: none; }}
 QCheckBox {{ spacing: 8px; background: transparent; }}
 QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {p.border_strong}; background: {p.surface}; }}
-QCheckBox::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; }}
+QCheckBox::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; image: url({check}); }}
 
 /* ---- menü ---- */
 QMenu {{ background: {p.surface}; border: 1px solid {p.border_strong}; border-radius: 10px; padding: 6px; }}

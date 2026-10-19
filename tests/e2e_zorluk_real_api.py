@@ -2,6 +2,7 @@
 
 pytest tarafından toplanmaz. Her kullanıcı kendi EVREN anahtarıyla çalıştırabilir:
     .\\.venv\\Scripts\\python.exe -u tests\\e2e_zorluk_real_api.py <model> [görev ...] [--cikti klasör]
+        [--serena SERENA_VERİ_KLASÖRÜ]   (Serena MCP açıkken koşar; MCP çağrı sayısı yazılır)
 
 Örnek: `... e2e_zorluk_real_api.py auto` (tüm görevler, ~10-15 dk) ·
 `... e2e_zorluk_real_api.py deepseek-v4-flash celiski kapsam`
@@ -333,6 +334,11 @@ def main() -> int:
         i = args.index("--cikti")
         out = Path(args[i + 1])
         del args[i:i + 2]
+    serena_data = None
+    if "--serena" in args:
+        i = args.index("--serena")
+        serena_data = Path(args[i + 1]).resolve()
+        del args[i:i + 2]
     if not args:
         print(__doc__)
         return 2
@@ -364,7 +370,14 @@ def main() -> int:
     outcomes: list[dict] = []
     notes: list[str] = []
 
+    mcp_calls: list[str] = []
+
     class RecordingRunner(AgentRunner):
+        def _execute(self, call):
+            if call.name.startswith("mcp__"):
+                mcp_calls.append(call.name)
+            return super()._execute(call)
+
         def run(self, history):
             t0 = time.monotonic()
             o = super().run(history)
@@ -379,6 +392,18 @@ def main() -> int:
     w = MainWindow()
     w.resize(1440, 900)
     w.show()
+    # --serena KLASÖR: tüm görevler Serena (MCP) AÇIKKEN koşulur — gereksiz/yanlış MCP
+    # kullanımı ve gerileme ölçümü (R-21, R-22). KLASÖR: Serena'nın kurulu olduğu veri klasörü.
+    if serena_data is not None:
+        from evren_studio.agent import mcp as mcpmod
+
+        if not mcpmod.serena_ready(serena_data):
+            print(f"FAIL: Serena kurulu değil: {serena_data}")
+            return 1
+        w.ctx.mcp.data_dir = serena_data                 # Serena'nın kurulu olduğu klasör
+        w.ctx.settings.mcp_enabled = True
+        w.ctx.settings.mcp_servers = [mcpmod.serena_config().to_dict()]
+        print(f"   (Serena {mcpmod.SERENA_VERSION} açık)", flush=True)
 
     def pump(sec):
         end = time.monotonic() + sec
@@ -409,7 +434,7 @@ def main() -> int:
         proj = base / ad
         proj.mkdir()
         durum = g["kur"](proj)
-        n_out, n_notes = len(outcomes), len(notes)
+        n_out, n_notes, n_mcp = len(outcomes), len(notes), len(mcp_calls)
         w.new_session()
         w.session.welcome._choose(str(proj))
         w.session.composer.set_model(model, emit=True)
@@ -449,7 +474,8 @@ def main() -> int:
         results.append(rec)
         tam = all(ok for _n, ok, _d in checks)
         print(f"[{'TAMAM' if tam else 'SORUN'}] {ad:17s} {rec['skor']:>5} · {rec['sure']:6.1f} sn · adım {rec['adim']:2d} · "
-              f"durma={rec['durma']} · hata kartı={rec['hata_karti']}", flush=True)
+              f"durma={rec['durma']} · hata kartı={rec['hata_karti']}"
+              + (f" · MCP {len(mcp_calls) - n_mcp}" if serena_data is not None else ""), flush=True)
         for n, ok, d in checks:
             if not ok:
                 print(f"         KALDI: {n}" + (f" | {d}" if d else ""), flush=True)

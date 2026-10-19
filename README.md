@@ -72,6 +72,9 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
   girdiğiniz sağlayıcıları kullanır (yalnız EVREN, yalnız OpenAI/Anthropic veya
   birlikte); uygulamanın kendi yapay zekâ işleri (oturum başlığı, hata açıklaması,
   commit mesajı, özet, inceleme) de bağlı API üzerinden çalışır.
+- **MCP sunucuları**: Ayarlar > MCP Sunucuları'ndan tek tıkla **Serena** (kodu sembol
+  düzeyinde anlar: tanım, kullanıldığı yerler) kurulur; başka stdio MCP sunucuları da
+  eklenebilir. Okuma dışındaki MCP araçları çalışma modunuza göre onay ister.
 - **Proje ajanı**: `/proje <hedef>` yazın; plan çıkarır, onayınızdan sonra
   görevleri siz başında olmadan sırayla yapar, her birini test eder, ayrı git
   dalında commit'ler, bitince bildirim ve rapor (EVREN_RAPOR.md) verir.

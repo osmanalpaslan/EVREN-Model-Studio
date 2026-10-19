@@ -212,7 +212,14 @@ Kalanlar / sonraki iyileştirmeler:
 - Proje görevleri yalnız EVREN modelleriyle denendi; ücretli sağlayıcıda bütçe
   onayı penceresi gözetimsiz çalışmayı durdurabilir (ölçülmedi).
 
-## 4. MCP (Model Context Protocol) entegrasyonu — ARAŞTIRMA (2026-10-19)
+## 4. MCP (Model Context Protocol) entegrasyonu — İLK AŞAMA YAPILDI (2026-10-19, dal `feat/mcp`)
+
+**Durum:** Kullanıcı önerilen yolu onayladı ("önerdiğin gibi işlemlere başla ve test et").
+Genel MCP desteği (agent/mcp.py, kendi stdio istemcimiz) + Serena 1.7.0 tek tıkla kurulum
+yapıldı ve gerçek API ile ölçüldü (CHALLENGE_RESULTS.md "MCP / Serena"). Sıradaki:
+Playwright MCP (Node gerekir; isteğe bağlı), Serena'yı başka dillerde denemek, repo
+tarafını (kod dahil etme) lisans/bakım açısından konuşmak. Not: Serena 2.0.0 GPL-3.0'a geçti.
+
 
 **Kullanıcı isteği:** Serena gibi kod, test ve görsel alanında güçlü MCP sunucularını
 uygulamaya bağlamak; uygulamayı geliştirecek repolar varsa koda dahil etmek. Önce MCP

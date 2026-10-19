@@ -100,6 +100,13 @@ Görsel: beyaz zemin, siyah "K7Q4" yazısı ve kırmızı kare (PNG, base64
 Gerçek uygulamada (yapıştır/sürükle-bırak yolu) görsel + CSV auto'ya
 gönderildi; kare rengi ve CSV toplamı doğru yanıtlandı.
 
+## MCP araçlarıyla gerçek test (2026-10-19, `tests/e2e_mcp_real_api.py`)
+
+- Auto Pro (kod rolü → deepseek-v4-flash) yerel function calling ile `mcp__serena__*`
+  araçlarını doğru şemayla çağırdı (find_symbol, find_referencing_symbols); şema
+  (Serena'nın Pydantic şemaları, `$defs` dahil) EVREN'de 400 vermedi.
+- Sistem istemi yönlendirmesi olmadan model Serena'yı hiç seçmedi (search_files'ı tercih etti).
+
 ## Doğrulanmamışlar (⬜ — canlı istekle test edilmedi)
 
 - Araç çağrısıyla komut çalıştırma (run_command) ve çok adımlı uzun görevler
