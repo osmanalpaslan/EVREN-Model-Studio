@@ -143,7 +143,7 @@ class ChangesTab(QWidget):
                 label += "   (geri alındı)"
             elif r["before_text"] is None:
                 label += "   (yeni)"
-            it = QListWidgetItem(icons.icon("file", p.text_faint if r["reverted"] else p.text_dim, 15), label)
+            it = QListWidgetItem(icons.icon("file", p.muted if r["reverted"] else p.text_dim, 15), label)
             self.list.addItem(it)
             files.add(r["path"])
         active = [r for r in self.rows if not r["reverted"]]

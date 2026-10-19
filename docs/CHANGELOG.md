@@ -1,5 +1,20 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Klavye, bağlam göstergesi, koyu tema
+
+### Düzeltildi
+
+- **Alt+Enter** artık yeni satır ekler (önceden mesajı gönderiyordu). Shift/Alt/Ctrl+Enter
+  yeni satır, Enter gönderir; "Enter ile gönder" kapalıysa Ctrl+Enter gönderir.
+- **Bağlam göstergesi**: Auto Pro'ya sabit 1M pencere yazılıydı; özet 100k'de başladığı
+  için gösterge "%10"da özetliyor gibi görünüyordu. Auto Pro'nun penceresi artık sıradaki
+  turda seçilecek model ve yedeklerinden gelir; yüzde, özetin devreye gireceği eşiğe göre
+  gösterilir ("bağlam ~42k / 100k (42%)"); ipucu model penceresini ve eşiğin nedenini
+  (EVREN kotası: 5 dk'da 2,5M, günde 15M token) açıklar. 100k üst sınır korundu.
+- **Koyu tema okunurluğu**: tüm ikincil yazı, düğme ve simgeler "Görevler" başlığıyla aynı
+  parlaklıkta (#e8e9ec). Yalnız yer tutucu ve devre dışı öğeler okunur ama daha soluk
+  (#9ca1ab, ≥4,5:1). Ayarlar'daki bağlantılar açık mavi.
+
 ## Yayınlanmamış — Auto Pro yönlendirici ve Proje ajanı
 
 ### Eklendi

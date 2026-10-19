@@ -86,7 +86,11 @@ def kv_row_widget(label: str, widget: QWidget, default: str | None = None) -> QW
 
 
 def link(text: str, url: str) -> str:
-    return f'<a href="{url}">{text}</a>'
+    # QSS uygulanınca QLabel bağlantıları paletin Link rengini değil Qt'nin koyu mavisini alıyor;
+    # koyu temada okunmuyordu → tema vurgu rengi açıkça verilir.
+    from . import theme
+
+    return f'<a href="{url}" style="color:{theme.current().accent};">{text}</a>'
 
 
 def kv_row_with(label: str, widget: QWidget, extra: QWidget) -> QWidget:

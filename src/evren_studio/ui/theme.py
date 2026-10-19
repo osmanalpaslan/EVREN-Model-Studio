@@ -39,6 +39,7 @@ class Palette:
     del_bg: str
     hunk: str
     scrollbar: str
+    muted: str          # yalnız yer tutucu yazı ve devre dışı öğe (okunur ama etkin değil)
 
 
 DARK = Palette(
@@ -46,12 +47,14 @@ DARK = Palette(
     bg="#16171b", sidebar="#111215", panel="#131418",
     surface="#1d1f24", surface2="#24272e", hover="#262930", selected="#2c3039",
     border="#2a2d34", border_strong="#3a3e47",
-    text="#e8e9ec", text_dim="#a2a6af", text_faint="#6d717a",
+    # Kullanıcı kararı (2026-10-19): koyu temada tüm yazı/düğme/simge "Görevler" başlığı kadar
+    # parlak olsun; eski #a2a6af / #6d717a yer yer okunmuyordu. Hiyerarşi boyut ve kalınlıkla kalır.
+    text="#e8e9ec", text_dim="#e8e9ec", text_faint="#e8e9ec",
     accent="#7c9cff", accent_hover="#93aeff", accent_soft="#232b45", on_accent="#0d1020",
     code_bg="#0f1013", code_border="#24262c",
     success="#4fd08a", danger="#ff7a7a", warning="#f2c25c",
     add_bg="#15301f", del_bg="#3a1a1d", hunk="#7c9cff",
-    scrollbar="#3a3e47",
+    scrollbar="#3a3e47", muted="#9ca1ab",
 )
 
 LIGHT = Palette(
@@ -64,7 +67,7 @@ LIGHT = Palette(
     code_bg="#f5f5f2", code_border="#e3e3de",
     success="#1f9d55", danger="#d64545", warning="#b7791f",
     add_bg="#e3f6e9", del_bg="#fbe5e5", hunk="#3d63dd",
-    scrollbar="#c9c9c2",
+    scrollbar="#c9c9c2", muted="#9095a0",
 )
 
 _current: Palette = DARK
@@ -130,10 +133,10 @@ QPushButton, QToolButton {{
 }}
 QPushButton:hover, QToolButton:hover {{ background: {p.hover}; border-color: {p.border_strong}; }}
 QPushButton:pressed, QToolButton:pressed {{ background: {p.selected}; }}
-QPushButton:disabled, QToolButton:disabled {{ color: {p.text_faint}; background: {p.surface}; }}
+QPushButton:disabled, QToolButton:disabled {{ color: {p.muted}; background: {p.surface}; }}
 QPushButton[variant="primary"] {{ background: {p.accent}; color: {p.on_accent}; border: none; font-weight: 600; }}
 QPushButton[variant="primary"]:hover {{ background: {p.accent_hover}; }}
-QPushButton[variant="primary"]:disabled {{ background: {p.selected}; color: {p.text_faint}; }}
+QPushButton[variant="primary"]:disabled {{ background: {p.selected}; color: {p.muted}; }}
 QPushButton[variant="ghost"], QToolButton[variant="ghost"] {{ background: transparent; border: 1px solid transparent; }}
 QPushButton[variant="ghost"]:hover, QToolButton[variant="ghost"]:hover {{ background: {p.hover}; }}
 QPushButton[variant="danger"] {{ background: transparent; color: {p.danger}; border: 1px solid {p.border}; }}
@@ -171,7 +174,7 @@ QCheckBox::indicator:checked {{ background: {p.accent}; border-color: {p.accent}
 QMenu {{ background: {p.surface}; border: 1px solid {p.border_strong}; border-radius: 10px; padding: 6px; }}
 QMenu::item {{ padding: 7px 26px 7px 12px; border-radius: 6px; }}
 QMenu::item:selected {{ background: {p.hover}; }}
-QMenu::item:disabled {{ color: {p.text_faint}; }}
+QMenu::item:disabled {{ color: {p.muted}; }}
 QMenu::separator {{ height: 1px; background: {p.border}; margin: 5px 6px; }}
 QMenu::indicator {{ width: 14px; height: 14px; left: 6px; }}
 
@@ -284,7 +287,7 @@ def apply_theme(app: QApplication, theme: str, font_pt: int = 10) -> Palette:
     qp.setColor(QPalette.HighlightedText, QColor(p.on_accent))
     qp.setColor(QPalette.ToolTipBase, QColor(p.surface2))
     qp.setColor(QPalette.ToolTipText, QColor(p.text))
-    qp.setColor(QPalette.PlaceholderText, QColor(p.text_faint))
+    qp.setColor(QPalette.PlaceholderText, QColor(p.muted))
     qp.setColor(QPalette.Link, QColor(p.accent))
     app.setPalette(qp)
     app.setStyleSheet(build_qss(p, font_pt))

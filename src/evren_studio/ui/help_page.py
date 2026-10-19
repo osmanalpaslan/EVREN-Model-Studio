@@ -44,7 +44,7 @@ class HelpPage(BasePage):
             "(EVREN.md) oluşturur, /ozet uzun konuşmayı özetler, /plan salt okunur moda geçer.\n"
             "6. Hata alırsanız Hata Merkezi'nden Türkçe açıklamayı okuyun; sağlayıcı "
             "kaynaklı sorunlarda EVREN Durum İzleme'yi başlatın.\n\n"
-            "Kısayollar: Enter gönder · Shift+Enter yeni satır · Esc durdur · Ctrl+N yeni "
+            "Kısayollar: Enter gönder · Shift+Enter / Alt+Enter yeni satır · Esc durdur · Ctrl+N yeni "
             "oturum · Ctrl+B kenar çubuğu · Ctrl+J sağ panel · Ctrl+K ara · Ctrl+, ayarlar\n\n"
             "503 'sağlıklı endpoint yok' hatası yerel bilgisayar hatası değildir; genellikle "
             "model geçici olarak kapasitede değildir. Bekleyip yeniden denemek veya başka "

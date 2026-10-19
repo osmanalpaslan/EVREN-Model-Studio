@@ -981,20 +981,35 @@ class SessionView(QWidget):
                             mode=("plan" if self._plan_turn else self.mode), has_images=has_images,
                             est_tokens=est, context_of=context_of, available=avail or None, health=health)
 
-    def _context_tokens(self) -> int | None:
+    def _window(self, msgs: list | None = None) -> tuple[int | None, str]:
+        """(bağlam penceresi, model adı). Auto Pro bir model değildir, kendi penceresi yoktur:
+        sıradaki tur için seçilecek modelin ve yedeklerinin EN KÜÇÜĞÜ alınır (yedeğe geçilse de
+        bağlam sığsın). Önceden sabit 1M yazılıydı; 100k özet eşiği göstergede "%10" görünüyordu."""
+        if router.is_auto_pro(self.model):
+            if msgs is None:
+                msgs = self.ctx.db.get_session_messages(self.session_id) if self.session_id else []
+            r = self._route(msgs)
+            sizes = [(i.context_length, m) for m in [r.model, *r.fallbacks]
+                     if (i := self.ctx.model_info(m)) and i.context_length]
+            if not sizes:
+                return None, r.model
+            return min(sizes)[0], r.model
         info = self.ctx.model_info(self.model)
-        return info.context_length if info else None
+        return (info.context_length if info else None), self.model
+
+    def _context_tokens(self) -> int | None:
+        return self._window()[0]
 
     def _update_context(self) -> None:
         if not self.session_id:
             self.composer.set_context(0, None)
             return
         msgs = self.ctx.db.get_session_messages(self.session_id)
-        info = self.ctx.model_info(self.model)
-        ctx_tokens = info.context_length if info else None
+        ctx_tokens, model = self._window(msgs)
         policy = self._policy()
         self.composer.set_context(estimate_tokens(to_api_messages("", msgs, "native")), ctx_tokens,
-                                  policy.soft_limit(ctx_tokens) if policy.enabled else None)
+                                  policy.soft_limit(ctx_tokens) if policy.enabled else None,
+                                  model=model)
 
     # ---- dosya ekleme ----
 
@@ -1230,7 +1245,7 @@ class SessionView(QWidget):
         lines = ["**Komutlar**", ""]
         lines += [f"- `{c}` — {d}" for c, d in SLASH_COMMANDS.items()]
         lines += ["", "**Kısayollar**", "",
-                  "- `Enter` gönder, `Shift+Enter` yeni satır, `Esc` durdur",
+                  "- `Enter` gönder, `Shift+Enter` veya `Alt+Enter` yeni satır, `Esc` durdur",
                   "- `Ctrl+N` yeni oturum, `Ctrl+B` kenar çubuğu, `Ctrl+J` sağ panel, `Ctrl+K` oturum ara",
                   "- Mesajda `@yol/dosya.py` yazarak dosya içeriğini ekleyin",
                   "", "**Modlar**", "",
