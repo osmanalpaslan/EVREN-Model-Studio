@@ -238,6 +238,12 @@ QListWidget#CommandPopup::item:selected {{ background: {p.accent_soft}; color: {
 QFrame#RunBar {{ background: {p.accent_soft}; border: 1px solid {p.border}; border-radius: 10px; }}
 QFrame#Composer {{ background: {p.surface}; border: 1px solid {p.border_strong}; border-radius: 16px; }}
 QFrame#Composer[focus="true"] {{ border-color: {p.accent}; }}
+QScrollArea#AttachmentBar, QScrollArea#AttachmentBar > QWidget > QWidget {{ background: transparent; }}
+QFrame#AttachmentChip {{ background: {p.bg}; border: 1px solid {p.border_strong}; border-radius: 10px; }}
+QLabel#AttachmentThumb {{ border-radius: 6px; }}
+QToolButton#AttachmentRemove {{ background: transparent; border: none; padding: 1px; border-radius: 8px; }}
+QToolButton#AttachmentRemove:hover {{ background: {p.hover}; }}
+QFrame#UsagePanel {{ background: {p.surface}; border: 1px solid {p.border_strong}; }}
 QPlainTextEdit#ComposerEdit {{ background: transparent; border: none; padding: 4px 2px; }}
 QFrame#UserBubble {{ background: {p.surface2}; border: 1px solid {p.border}; border-radius: 14px; }}
 QFrame#ToolCard {{ background: transparent; border: 1px solid {p.border}; border-radius: 10px; }}

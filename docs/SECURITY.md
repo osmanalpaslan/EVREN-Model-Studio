@@ -30,6 +30,14 @@
 - Hata kayıtlarına anahtar/token/kişisel veri YAZILMAZ; mesaj bağlamı
   ilk 60 karakterle sınırlıdır; hata gövdeleri maskelemeye tabidir.
 
+## Ekler
+
+- Eklenen görsellerin küçültülmüş kopyası `%LOCALAPPDATA%\EVREN-Model-Studio\attachments\`
+  altında saklanır (sohbet geçmişi için); "Tüm oturumları sil" bu klasörü
+  silmez, elle silinebilir.
+- Eklenen metin dosyalarının içeriği ve görseller seçili sağlayıcıya
+  gönderilir; gizli dosyaları (.env, anahtar dosyaları) eklemeyin.
+
 ## Taşıma güvenliği
 
 - HTTPS + sertifika doğrulama her zaman açık (`verify=True`).

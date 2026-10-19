@@ -24,6 +24,7 @@ import httpx
 
 from .client import CancelToken, ChatResult, EvrenClient, ModelInfo, strip_internal
 from .errors import ApiError, ErrorKind, classify_status, parse_retry_after
+from .images import responses_content
 from .providers import CATALOG, PROVIDERS
 
 _QUOTA_CODES = {"insufficient_quota", "credit_balance_exhausted", "organization_spend_limit_exceeded",
@@ -41,8 +42,9 @@ def to_responses_input(messages: list[dict[str, Any]]) -> tuple[str, list[dict[s
                 instructions.append(content)
             continue
         if role == "user":
-            items.append({"type": "message", "role": "user",
-                          "content": [{"type": "input_text", "text": content}]})
+            parts = (responses_content(content, m["_images"]) if m.get("_images")
+                     else [{"type": "input_text", "text": content}])
+            items.append({"type": "message", "role": "user", "content": parts})
         elif role == "assistant":
             raw = (m.get("_provider_state") or {}).get("openai_items")
             if raw:
@@ -251,10 +253,10 @@ class OpenAIClient(EvrenClient):
 
 
 def strip_internal_keep_state(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """_provider_state dışındaki iç alanları siler (dönüştürücü state'i kullanır)."""
+    """_provider_state/_images dışındaki iç alanları siler (dönüştürücü kullanır)."""
     out = []
     for m in messages:
-        d = {k: v for k, v in m.items() if not k.startswith("_") or k == "_provider_state"}
+        d = {k: v for k, v in m.items() if not k.startswith("_") or k in ("_provider_state", "_images")}
         out.append(d)
     return out
 

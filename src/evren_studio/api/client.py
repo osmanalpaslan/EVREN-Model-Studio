@@ -35,6 +35,7 @@ from .errors import (
     error_from_httpx,
     parse_retry_after,
 )
+from .images import expand_chat_images
 
 USER_AGENT = f"EVREN-Model-Studio/{__version__}"
 
@@ -438,7 +439,7 @@ class EvrenClient:
         if cancel is not None and cancel.cancelled:
             return ChatResult(model=model, finish_reason="cancelled_by_user")
 
-        body: dict[str, Any] = {"model": model, "messages": strip_internal(messages),
+        body: dict[str, Any] = {"model": model, "messages": strip_internal(expand_chat_images(messages)),
                                 "stream": bool(stream)}
         if max_tokens is not None:
             body["max_tokens"] = max_tokens

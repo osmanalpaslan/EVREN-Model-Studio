@@ -59,6 +59,10 @@ def main() -> int:
     app.setOrganizationName("EVREN Studio")
     window = MainWindow()
     window.show()
+    # Kullanım düğmesi açılışta dolsun (testler MainWindow'u doğrudan kurar; ağ isteği yapmaz)
+    from PySide6.QtCore import QTimer
+
+    QTimer.singleShot(1500, window, window.session.refresh_usage)
     return app.exec()
 
 

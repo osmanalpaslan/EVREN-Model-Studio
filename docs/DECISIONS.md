@@ -40,6 +40,10 @@
 | 36 | Ücretli model kataloğu statik ve tarihli (`PRICES_AS_OF`) | `/v1/models` fiyat/yetenek vermiyor; doğrulanmamış = `verified=False` (R-17) | 2026-10-16 |
 | 37 | Varsayılan motor `auto`; eski varsayılan glm-5.3 bir kez taşınır | Kullanıcı kararı; eski sürüm varsayılanı dosyaya yazdığı için bilinçli seçimden ayırt edilemedi, kullanıcı taşımayı onayladı | 2026-10-16 |
 | 38 | Sohbette seçilen motor ve onay modu kalıcı varsayılan olur | Kullanıcı kararı: "her değişiklik ben değiştirene kadar korunsun"; Otomatik mod da hatırlanır | 2026-10-16 |
+| 39 | Ekler kart olarak; yol metne yazılmaz, mesaj meta'sında tutulur | Kullanıcı isteği (Claude Code gibi); geçmiş yeniden çizilebilir, düzenlemede geri gelir | 2026-10-19 |
+| 40 | Görseller küçültülmüş kopyayla veri klasöründe saklanır, `_images` ile istemciye taşınır | Asıl dosya silinse de geçmiş bozulmaz; çekirdek Qt'siz kalır, sağlayıcı biçimi istemcide | 2026-10-19 |
+| 41 | Görsel okuyamayan motorda gönderimden önce auto önerilir | Ölçüm: glm-5.3 ve deepseek-v4-flash 400 veriyor; auto görseli uygun modele yönlendiriyor | 2026-10-19 |
+| 42 | Kullanım düğmesi: günlük kalan %; panel /v1/quota + oturum + ücretli bütçe | Kullanıcı isteği; ağ isteği arka planda, açılışta yalnız app.py'den (testler ağ yapmaz) | 2026-10-19 |
 
 ## Değerlendirilip reddedilenler
 

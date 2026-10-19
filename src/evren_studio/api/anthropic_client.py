@@ -29,6 +29,7 @@ import httpx
 
 from .client import USER_AGENT, CancelToken, ChatResult, EvrenClient, ModelInfo
 from .errors import ApiError, ErrorKind, classify_status, parse_retry_after
+from .images import anthropic_blocks
 from .providers import CATALOG, CATALOG_BY_ID, PROVIDERS
 
 ANTHROPIC_VERSION = "2023-06-01"
@@ -77,7 +78,9 @@ def to_anthropic(messages: list[dict[str, Any]]) -> tuple[str, list[dict[str, An
             if content:
                 system.append(content)
         elif role == "user":
-            if content:
+            if m.get("_images"):
+                push("user", anthropic_blocks(content, m["_images"]))
+            elif content:
                 push("user", [{"type": "text", "text": content}])
         elif role == "tool":
             push("user", [{"type": "tool_result", "tool_use_id": m.get("tool_call_id") or "",

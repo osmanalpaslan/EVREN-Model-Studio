@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 37 · Açık/izlenen: 4 · Oturum: 14 · Kural: 20
+Kayıt: 38 · Açık/izlenen: 4 · Oturum: 15 · Kural: 20
 
 ## Açık ve izlenen kayıtlar
 
@@ -17,6 +17,7 @@ Kayıt: 37 · Açık/izlenen: 4 · Oturum: 14 · Kural: 20
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-10-19 | [2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y](incidents/2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Sohbete dosya ve görsel yapıştırılamıyordu; bırakılan dosya yol yazıyordu |
 | 2026-10-17 | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
 | 2026-10-17 | [2026-10-17-tur-basina-40-adim-buyuk-projede-dar](incidents/2026-10-17-tur-basina-40-adim-buyuk-projede-dar.md) | eksik | dusuk | cozuldu | Claude Code (masaüstü) | Tur başına 40 adım büyük projede dar |
 | 2026-10-17 | [2026-10-17-npm-ile-kurulan-araclarin-ps1-kabugu-powershell-betik-politi](incidents/2026-10-17-npm-ile-kurulan-araclarin-ps1-kabugu-powershell-betik-politi.md) | ortam | orta | cozuldu | Claude Code (masaüstü) | npm ile kurulan araçların .ps1 kabuğu PowerShell betik politikasına takılıyor |
@@ -59,6 +60,7 @@ Kayıt: 37 · Açık/izlenen: 4 · Oturum: 14 · Kural: 20
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-19 | [2026-10-19-claude-code-masaustu-ekler-gorsel-yapistirma-ve-kullanim-dugm](sessions/2026-10-19-claude-code-masaustu-ekler-gorsel-yapistirma-ve-kullanim-dugm.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Ekler (görsel/dosya yapıştırma, sürükle-bırak) ve kullanım düğmesi |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: ortam denetimi ve program kurulumu |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-kapsam-korumasi](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-kapsam-korumasi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: kapsam koruması |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: döngü analizi ve döngü bekçisi |

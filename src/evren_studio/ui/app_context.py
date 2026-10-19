@@ -31,7 +31,7 @@ FALLBACK_MODELS = [
     _m("qwen3.8-flash-next", 262144, True, True),
     _m("gemma-4-31b", 262144, True, True),
     _m("qwen3-vl-30b", 262144, True, True, "vision_chat"),
-    _m("auto", 262144, True),
+    _m("auto", 262144, True, True),
 ]
 
 # Kayıttaki değeri gerçek ölçümle çelişen EVREN modelleri (R-07):
@@ -39,7 +39,8 @@ FALLBACK_MODELS = [
 # istek kabul edildi (gemma-4-31b / qwen3.8-flash-next'e, ikisi de 262k, yönlendirdi)
 # ve yerel araç çağrısı iki protokolde de çalıştı. docs/knowledge/MODEL_CAPABILITIES.md
 MEASURED_OVERRIDES: dict[str, dict] = {
-    "auto": {"context_length": 262144, "tools": True},
+    # 2026-10-19: görselli istekte auto qwen3-vl-30b / gemma-4-31b'ye yönlendirdi ve doğru okudu
+    "auto": {"context_length": 262144, "tools": True, "vision": True},
 }
 
 
@@ -48,8 +49,9 @@ def apply_measured(m: ModelInfo) -> ModelInfo:
     if o and m.provider == "evren":
         if o.get("context_length"):
             m.context_length = o["context_length"]
-        if "tools" in o:
-            m.capabilities = {**(m.capabilities or {}), "tools": o["tools"]}
+        for cap in ("tools", "vision"):
+            if cap in o:
+                m.capabilities = {**(m.capabilities or {}), cap: o[cap]}
     return m
 
 
@@ -67,7 +69,7 @@ class AppContext:
         self.recovery = RecoveryEngine(self.db, __version__)
         self._cached_key: str | None = None
         # Canlı liste gelene kadar belgelenmiş (2026-10-15) sohbet modelleri
-        self.models: list[ModelInfo] = list(FALLBACK_MODELS)
+        self.models: list[ModelInfo] = [apply_measured(m) for m in FALLBACK_MODELS]
         self.models_live = False
         self._model_listeners: list = []
         # Ücretli sağlayıcı modelleri: tarihli katalogdan (api/providers.py)

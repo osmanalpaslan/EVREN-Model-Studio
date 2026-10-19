@@ -5,9 +5,13 @@
 
 ## Doğrulanmamış API yetenekleri
 
-- Görsel girdi, OCR, ASR, embedding, rerank, guard, systemone uçları gerçek
-  istekle test EDİLMEDİ (şema incelemesi yapıldı) → uygulama arayüzünde
-  yokturlar; Aşama 3.
+- Görsel girdi: 2026-10-19'da DOĞRULANDI (MODEL_CAPABILITIES.md); sohbete
+  yapıştırma/sürükle-bırak ile kullanılır. glm-5.3 ve deepseek-v4-flash görsel
+  kabul etmez (400). OpenAI/Anthropic görsel biçimi doğrulanmadı.
+- OCR, ASR, embedding, rerank, guard, systemone uçları gerçek istekle test
+  EDİLMEDİ (şema incelemesi yapıldı) → uygulama arayüzünde yokturlar; Aşama 3.
+- Ekler: bağlam göstergesi görsel token'larını saymaz; 100 KB üstü veya ikili
+  dosyaların içeriği modele gönderilmez (yalnız ad ve yol).
 - Araç çağrısı: 2026-10-16'da 8 sohbet modelinde okuma turuyla DOĞRULANDI
   (MODEL_CAPABILITIES.md). Komut çalıştırma ve uzun çok adımlı görevler gerçek
   modellerle ayrıca denenmedi.

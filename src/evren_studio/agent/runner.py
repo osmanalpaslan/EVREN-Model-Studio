@@ -19,6 +19,7 @@ import json
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
 from ..api.errors import ApiError, ErrorKind
@@ -284,9 +285,23 @@ def history_after_summary(history: list[dict]) -> list[dict]:
             {"role": "assistant", "content": "Anladım, özetten devam ediyorum."}] + rest
 
 
-def to_api_messages(system: str, history: list[dict], protocol: str) -> list[dict]:
+MAX_HISTORY_IMAGES = 6      # geçmişte modele yeniden gönderilen en fazla görsel (en yeniler)
+
+
+def to_api_messages(system: str, history: list[dict], protocol: str,
+                    images: bool = True) -> list[dict]:
+    """Kayıtlı geçmiş → API mesajları. Kullanıcı mesajındaki görseller (meta.images)
+    `_images` iç alanıyla taşınır; istemci gönderirken sağlayıcı biçimine çevirir
+    (api/images.py). images=False (ör. özet isteği) görselleri yalnızca adıyla not eder."""
     msgs: list[dict] = [{"role": "system", "content": system}]
     pending_text_results: list[str] = []
+    kept = 0
+    keep_ids: set[int] = set()
+    for m in reversed(history_after_summary(history)):
+        imgs = (m.get("meta") or {}).get("images") if m.get("role") == "user" else None
+        if imgs and images and kept < MAX_HISTORY_IMAGES:
+            keep_ids.add(id(m))
+            kept += len(imgs)
 
     def flush() -> None:
         if pending_text_results:
@@ -325,7 +340,15 @@ def to_api_messages(system: str, history: list[dict], protocol: str) -> list[dic
                 text = "\n\n".join([content] + blocks if content else blocks) or content
                 msgs.append({"role": "assistant", "content": text})
         elif role in ("user", "system"):
-            msgs.append({"role": role, "content": content})
+            entry = {"role": role, "content": content}
+            imgs = (m.get("meta") or {}).get("images") if role == "user" else None
+            if imgs:
+                if id(m) in keep_ids:
+                    entry["_images"] = list(imgs)
+                else:
+                    names = ", ".join(Path(p).name for p in imgs)
+                    entry["content"] = (content + "\n" if content else "") + f"[ekli görsel: {names}]"
+            msgs.append(entry)
     flush()
     return msgs
 
