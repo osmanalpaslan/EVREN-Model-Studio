@@ -322,5 +322,35 @@ class AppContext:
     def save_settings(self) -> None:
         self.store.save(self.settings)
 
+    # ---- MCP sunucuları (agent/mcp.py) ----------------------------------------------
+
+    @property
+    def mcp(self):
+        """Uygulama boyunca tek MCP yöneticisi (sunucu süreçleri proje başına tutulur)."""
+        if getattr(self, "_mcp", None) is None:
+            from ..agent.mcp import McpManager
+
+            self._mcp = McpManager(self.settings.resolved_data_dir())
+        return self._mcp
+
+    def mcp_configs(self) -> list:
+        from ..agent.mcp import configs_from_settings
+
+        if not self.settings.mcp_enabled:
+            return []
+        return [c for c in configs_from_settings(self.settings.mcp_servers) if c.enabled]
+
+    def mcp_toolset(self, project_root):
+        """Ajan turu için tembel araç kümesi; etkin sunucu yoksa None (davranış değişmez).
+        Sunucular ilk kullanımda ajanın ARKA PLAN iş parçacığında başlatılır (R-04)."""
+        configs = self.mcp_configs()
+        if not configs or project_root is None:
+            return None
+        from ..agent.mcp import LazyToolset
+
+        return LazyToolset(lambda: self.mcp.toolset(configs, Path(project_root)))
+
     def close(self) -> None:
+        if getattr(self, "_mcp", None) is not None:
+            self._mcp.close_all()
         self.db.close()

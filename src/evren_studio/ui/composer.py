@@ -133,12 +133,19 @@ class ComposerEdit(QPlainTextEdit):
             return
         if e.key() in (Qt.Key_Return, Qt.Key_Enter):
             mods = e.modifiers()
-            if self.send_with_enter and not (mods & Qt.ShiftModifier):
+            # Enter gönderir (ayar açıkken); Shift/Alt/Ctrl+Enter yeni satır. Ayar kapalıysa
+            # Ctrl+Enter gönderir, diğerleri yeni satır. Alt+Enter önceden gönderiyordu (2026-10-19).
+            newline_mods = Qt.ShiftModifier | Qt.AltModifier | Qt.ControlModifier
+            if self.send_with_enter:
+                send = not (mods & newline_mods)
+            else:
+                send = bool(mods & Qt.ControlModifier)
+            if send:
                 self.submit.emit()
-                return
-            if not self.send_with_enter and (mods & Qt.ControlModifier):
-                self.submit.emit()
-                return
+            else:
+                self.textCursor().insertText("\n")
+                self.ensureCursorVisible()
+            return
         if e.key() == Qt.Key_Escape:
             self.escape.emit()
             return
@@ -381,31 +388,42 @@ class Composer(QWidget):
         self.run_bar.setVisible(bool(text))
         self.run_text.setText(text or "")
 
-    def set_context(self, used_tokens: int, limit: int | None, compact_at: int | None = None) -> None:
-        """Bağlam göstergesi; compact_at: otomatik özet eşiği (token)."""
+    def set_context(self, used_tokens: int, limit: int | None, compact_at: int | None = None,
+                    model: str = "") -> None:
+        """Bağlam göstergesi. Özet açıksa yüzde ÖZET EŞİĞİNE göredir (dolunca özetlenir);
+        modelin tam penceresi ipucunda yazar. compact_at: otomatik özet eşiği (token)."""
         if not used_tokens:
             self.context_label.setText("")
             self.context_label.setToolTip("")
             return
 
         def k(n: int) -> str:
+            if n >= 1_000_000:
+                return f"{n / 1_000_000:.1f}M".replace(".0M", "M")
             return f"{n / 1000:.1f}k" if n < 100_000 else f"{n // 1000}k"
-        if limit:
-            pct = min(100, int(used_tokens * 100 / limit))
-            text = f"bağlam ~{k(used_tokens)} / {k(limit)} ({pct}%)"
-        else:
-            text = f"bağlam ~{k(used_tokens)}"
+        name = DISPLAY_NAMES.get(model, model)
+        window = f"{name} penceresi {k(limit)}" if (limit and name) else (f"model penceresi {k(limit)}"
+                                                                         if limit else "")
         tip = "Tahmini bağlam (≈3,5 karakter/token)."
         color = ""
         if compact_at:
             ratio = used_tokens / compact_at
-            tip += (f" Otomatik özet ~{k(compact_at)} token'da devreye girer "
-                    f"(şu an %{int(ratio * 100)}). Elle: /compact")
+            text = f"bağlam ~{k(used_tokens)} / {k(compact_at)} ({min(100, int(ratio * 100))}%)"
+            tip += (f" Yüzde, otomatik özetin devreye gireceği ~{k(compact_at)} token'a göredir"
+                    + (f" ({window})" if window else "") + ". Eşik bilinçli olarak pencereden küçüktür: "
+                    "ajan her adımda tüm geçmişi yeniden gönderir; büyük bağlam yavaşlatır, EVREN "
+                    "kotasını (5 dk ve günlük) veya ücretli bütçeyi hızla tüketir. "
+                    "Ayarlar > Otomatik özet'ten değiştirilebilir. Elle: /compact")
             if ratio >= 0.85:
                 color = theme.current().warning
                 text += "  ·  özet yakında"
         else:
-            tip += " Otomatik özet kapalı (Ayarlar). Elle: /compact"
+            if limit:
+                text = f"bağlam ~{k(used_tokens)} / {k(limit)} ({min(100, int(used_tokens * 100 / limit))}%)"
+            else:
+                text = f"bağlam ~{k(used_tokens)}"
+            tip += (f" {window[0].upper() + window[1:]}." if window else "") + \
+                " Otomatik özet kapalı (Ayarlar). Elle: /compact"
         self.context_label.setText(text)
         self.context_label.setToolTip(tip)
         self.context_label.setStyleSheet(f"color: {color};" if color else "")
@@ -421,8 +439,8 @@ class Composer(QWidget):
             self.send_btn.setEnabled(True)
         else:
             has_text = bool(self.edit.toPlainText().strip()) or bool(self.attachments.items())
-            self.send_btn.setIcon(icons.icon("send", p.on_accent if has_text else p.text_faint, 18))
-            self.send_btn.setToolTip("Gönder (Enter) — yeni satır: Shift+Enter")
+            self.send_btn.setIcon(icons.icon("send", p.on_accent if has_text else p.muted, 18))
+            self.send_btn.setToolTip("Gönder (Enter) — yeni satır: Shift+Enter veya Alt+Enter")
             self.send_btn.setEnabled(has_text)
 
     # ---- komut / model seçim listesi -------------------------------------
@@ -526,7 +544,7 @@ class Composer(QWidget):
                     self.popup.setCurrentRow(row)
                     break
             return True
-        if key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Tab) and not (e.modifiers() & Qt.ShiftModifier):
+        if key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Tab) and not (e.modifiers() & (Qt.ShiftModifier | Qt.AltModifier)):
             item = self.popup.currentItem()
             if item is not None and item.flags() & Qt.ItemIsEnabled:
                 self._accept_item(item)

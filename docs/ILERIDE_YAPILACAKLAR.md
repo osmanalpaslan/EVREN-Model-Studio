@@ -212,6 +212,55 @@ Kalanlar / sonraki iyileştirmeler:
 - Proje görevleri yalnız EVREN modelleriyle denendi; ücretli sağlayıcıda bütçe
   onayı penceresi gözetimsiz çalışmayı durdurabilir (ölçülmedi).
 
+## 4. MCP (Model Context Protocol) entegrasyonu — İLK AŞAMA YAPILDI (2026-10-19, dal `feat/mcp`)
+
+**Durum:** Kullanıcı önerilen yolu onayladı ("önerdiğin gibi işlemlere başla ve test et").
+Genel MCP desteği (agent/mcp.py, kendi stdio istemcimiz) + Serena 1.7.0 tek tıkla kurulum
+yapıldı ve gerçek API ile ölçüldü (CHALLENGE_RESULTS.md "MCP / Serena"). Sıradaki:
+Playwright MCP (Node gerekir; isteğe bağlı), Serena'yı başka dillerde denemek, repo
+tarafını (kod dahil etme) lisans/bakım açısından konuşmak. Not: Serena 2.0.0 GPL-3.0'a geçti.
+
+**Sonraki aşama — kullanıcı kararları (2026-10-19):**
+- MCP yalnız gerektiğinde açılsın (ilk araç çağrısında başlat, boşta kapat; araçlar yalnız
+  ilgili projede/görevde sunulsun), gerekmediğinde kapalı kalsın.
+- Ücretli sağlayıcılarla MCP KESİNLİKLE çalışmayacak (uygulamanın amacı ücretsiz hizmet);
+  MCP araçları yalnız EVREN modellerine, Auto Pro MCP işini EVREN'e yönlendirir.
+- Serena Python dışındaki dillerde de çalışacak (gerçek küçük projelerle denenecek).
+- Playwright MCP eklenecek (web projelerini tarayıcıda test).
+- Node.js (Playwright ve TypeScript dil sunucusu için) **winget ile sistem geneline** kurulacak
+  (kullanıcı tercihi; taşınabilir Node yerine).
+- Önerilen ek: düzenlemeden sonra Serena hata denetimi (diagnostics) kendiliğinden çalışıp
+  hataları modele geri versin ("hata bekçisi").
+
+
+**Kullanıcı isteği:** Serena gibi kod, test ve görsel alanında güçlü MCP sunucularını
+uygulamaya bağlamak; uygulamayı geliştirecek repolar varsa koda dahil etmek. Önce MCP
+kapsamı araştırılıp bilgi verilecek, sonra repo tarafına bakılacak. Henüz kod yazılmadı.
+
+**Bulgular (web araştırması, 2026-10-19; doğrulanmadı = denenmedi):**
+- MCP, modele dış araç/kaynak bağlayan açık protokol. EVREN Studio bir **MCP istemcisi**
+  olur: sunucuyu (çoğunlukla stdio ile alt süreç) başlatır, araç listesini alır, araçları
+  modele function calling olarak sunar, çağrıyı sunucuya iletir. Resmî Python SDK `mcp`
+  (MIT); 2.x kararlı hattı spesifikasyon 2026-07-28'i destekliyor (1.x ile API farkı var,
+  sürüm sabitlenmeli).
+- Aday sunucular: **Serena** (oraios/serena, MIT; dil sunucusu tabanlı sembol düzeyinde
+  bul/başvuru/düzenle; uv ile kurulur, Python 3.11+); **Playwright MCP** (Microsoft;
+  tarayıcı sürme, ekran görüntüsü, web testi; Node gerekir, `--isolated` önerilir);
+  **Chrome DevTools MCP** (Google; konsol, ağ, performans hata ayıklama); **Context7**
+  (güncel kütüphane belgeleri); **GitHub MCP** (resmî; PR/issue).
+- Sınırlar: Qt masaüstü uygulamasını süren hazır bir MCP yok (bu oturumda da QTest +
+  ekran görüntüsü aracı kullanılıyor); ekran görüntüsü yoğun sunucular bağlamı hızla
+  doldurur (30 adımlık tarayıcı akışı ~20k token); her MCP aracı ajan izin sistemine
+  (Onaylı/Otomatik) ve kapsam denetimine bağlanmalı; harici sunucu = harici kod
+  (yalnız kullanıcının eklediği, sürümü sabit sunucular).
+
+**Önerilen yol (karar kullanıcıda):** (1) agent/mcp_client.py (Qt'siz, `mcp` SDK, stdio),
+Ayarlar'da sunucu listesi (`mcp_servers`), araçlar `mcp__sunucu__arac` adıyla,
+varsayılan "sor"; (2) ilk sunucu Serena (Python, kod odaklı, EVREN'in kod ajanını
+doğrudan güçlendirir); (3) Playwright MCP isteğe bağlı (Node); (4) her aşamada zorluk
+paketi + gerçek API ölçümü (R-21). Repo tarafı (kod dahil etme) lisans ve bakım yükü
+incelendikten sonra ayrı konuşulacak.
+
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 
 - OpenAI/Anthropic'i gerçek anahtarla doğrula (`tests/e2e_providers_real_api.py --evet`).

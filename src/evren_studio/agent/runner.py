@@ -398,9 +398,14 @@ class AgentRunner:
                  before_model_call: Any = None,
                  stall_retry_body: dict[str, Any] | None = None,
                  install_mode: str = "otomatik",
-                 fallback_models: list[str] | None = None):
+                 fallback_models: list[str] | None = None,
+                 mcp: Any = None):
         self.client = client
         self.model = model
+        # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
+        # Yalnız proje klasörlü oturumda kullanılır; okuma dışındaki araçlar izinden geçer.
+        self.mcp = mcp
+        self._mcp_noted = False
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
         # girerse sıradaki yedeğe geçilir; görev ortasında başka nedenle model DEĞİŞMEZ.
         self.fallback_models = [m for m in (fallback_models or []) if m != model]
@@ -450,7 +455,23 @@ class AgentRunner:
     def _specs(self):
         if not self.agentic:
             return []
-        return READ_ONLY_SPECS if normalize_mode(self.mode) == "plan" else TOOL_SPECS
+        plan = normalize_mode(self.mode) == "plan"
+        base = READ_ONLY_SPECS if plan else TOOL_SPECS
+        if self.mcp is None:
+            return base
+        extra = self.mcp.specs(read_only_only=plan)
+        if not self._mcp_noted:
+            self._mcp_noted = True
+            for note in getattr(self.mcp, "notes", []) or []:
+                self.events.status(note)
+        return list(base) + [s for s in extra if s.name not in SPEC_BY_NAME]
+
+    def _spec(self, name: str):
+        spec = SPEC_BY_NAME.get(name)
+        if spec is None and self.mcp is not None and self.agentic and name.startswith("mcp__"):
+            tool = self.mcp.get(name)
+            spec = tool.spec if tool is not None else None
+        return spec
 
     def _system(self) -> str:
         if not self.agentic:
@@ -463,9 +484,16 @@ class AgentRunner:
                     environment.quick_status(self.workspace.root), self.install_mode)
             except OSError:
                 self._env_section = ""
-        system = build_agent_system(self.workspace, normalize_mode(self.mode), self._specs(),
+        specs = self._specs()
+        system = build_agent_system(self.workspace, normalize_mode(self.mode), specs,
                                     text_protocol=(self.protocol == "text"),
                                     env_section=self._env_section)
+        if self.mcp is not None:
+            from .mcp import prompt_section
+
+            section = prompt_section(specs)
+            if section:
+                system += "\n\n" + section
         hint = getattr(self, "_turn_hint", "")
         return system + "\n\n" + hint if hint else system
 
@@ -766,7 +794,7 @@ class AgentRunner:
     def _guard(self, call: ToolCall, res: ToolResult, repeats: dict[str, int],
                file_states: dict[str, list[int]]) -> tuple[str, str]:
         """Döngü bekçisi. Dönüş: (sonuca eklenecek not, durma nedeni | "flipflop" | "")."""
-        spec = SPEC_BY_NAME.get(call.name)
+        spec = self._spec(call.name)
         if spec is None or spec.kind == META:
             return "", ""
         if spec.kind == WRITE:
@@ -803,10 +831,11 @@ class AgentRunner:
     # -- araç yürütme -------------------------------------------------------------------------
 
     def _execute(self, call: ToolCall) -> ToolResult:
-        spec = SPEC_BY_NAME.get(call.name)
+        spec = self._spec(call.name)
         if spec is None:
+            names = [sp.name for sp in self._specs()] or list(SPEC_BY_NAME)
             return ToolResult(False, f"Bilinmeyen araç: {call.name}. Kullanılabilir araçlar: "
-                              + ", ".join(SPEC_BY_NAME), f"Bilinmeyen araç: {call.name}")
+                              + ", ".join(names), f"Bilinmeyen araç: {call.name}")
         if call.parse_error:
             return ToolResult(False, call.parse_error, "Parametreler okunamadı")
         if self.toolbox is None:
@@ -816,7 +845,9 @@ class AgentRunner:
             return ToolResult(False, reason, "Plan modunda engellendi")
         self.events.tool_started(call, describe_call(call))
         try:
-            if call.name == "install_program":
+            if call.name.startswith("mcp__") and call.name not in SPEC_BY_NAME:
+                res = self._run_mcp(call, spec)
+            elif call.name == "install_program":
                 res = self._run_install(call)
             elif spec.kind == READ:
                 res = self._run_read(call)
@@ -868,6 +899,44 @@ class AgentRunner:
             summary = f"Bulundu: {a['pattern']} — {n} dosya"
         return ToolResult(True, truncate_middle(out, self.output_limit), summary,
                           {"output": truncate_middle(out, 4000)})
+
+    def _run_mcp(self, call: ToolCall, spec) -> ToolResult:
+        """MCP sunucusunun aracı. Salt okuma listesindeki araç sormadan çalışır; diğerleri
+        komut gibi izin sisteminden geçer (Manuel/Kabul: sorulur, Otomatik: sorulmaz, Plan:
+        engelli — üstte). Sunucunun yaptığı dosya değişiklikleri fark kartına GİRMEZ."""
+        from .mcp import McpError
+
+        server = call.name.split("__")[1] if call.name.count("__") >= 2 else "mcp"
+        tool = call.name.split("__", 2)[-1]
+        if spec.kind != READ:
+            key = f"mcp:{call.name}"
+            decision, reason = decide(self.mode, EXEC, self.perms)
+            if key in self.perms.command_prefixes:
+                decision = Decision.ALLOW
+            if decision == Decision.DENY:
+                return ToolResult(False, reason, "Engellendi")
+            if decision == Decision.ASK:
+                args = json.dumps(call.arguments, ensure_ascii=False)[:600]
+                ok, feedback = self._approve(
+                    call, EXEC, f"MCP aracı çalışsın mı? {server} · {tool}", args, prefix=key,
+                    reason="Dış MCP sunucusunun aracı; yaptığı dosya değişiklikleri Değişiklikler "
+                           "paneline düşmez ve geri alınamaz.")
+                if not ok:
+                    msg = "Kullanıcı bu MCP aracının çalışmasına izin vermedi."
+                    if feedback:
+                        msg += f" Kullanıcının notu: {feedback}"
+                    return ToolResult(False, msg, f"Reddedildi: {server}.{tool}", {"denied": True})
+        try:
+            text, is_error = self.mcp.call(call.name, call.arguments)
+        except McpError as exc:
+            return ToolResult(False, f"MCP hatası: {exc}", f"MCP hatası: {server}.{tool}")
+        out = truncate_middle(text, self.output_limit)
+        first = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")[:80]
+        summary = f"MCP {server}.{tool}" + (f": {first}" if first else "")
+        if is_error:
+            return ToolResult(False, f"MCP aracı hata döndürdü: {out}", f"MCP hata: {server}.{tool}",
+                              {"output": truncate_middle(text, 4000)})
+        return ToolResult(True, out, summary, {"output": truncate_middle(text, 4000), "mcp": server})
 
     def _run_todos(self, call: ToolCall) -> ToolResult:
         todos = validate_todos(call.arguments.get("todos"))
@@ -1034,4 +1103,12 @@ def describe_call(call: ToolCall) -> str:
         "run_command": lambda: f"Komut: {a.get('command', '')}",
         "install_program": lambda: f"Program kuruluyor: {a.get('name', '?')}",
         "update_todos": lambda: "Görev listesi güncelleniyor",
-    }.get(call.name, lambda: call.name)()
+    }.get(call.name, lambda: _describe_mcp(call))()
+
+
+def _describe_mcp(call: ToolCall) -> str:
+    if call.name.startswith("mcp__") and call.name.count("__") >= 2:
+        _p, server, tool = call.name.split("__", 2)
+        hint = next((str(v) for v in call.arguments.values() if isinstance(v, str) and v), "")
+        return f"MCP {server}: {tool}" + (f" — {hint[:60]}" if hint else "")
+    return call.name

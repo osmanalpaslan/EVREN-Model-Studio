@@ -84,6 +84,25 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## MCP / Serena (2026-10-19, `tests/e2e_mcp_real_api.py`, Auto Pro, gerçek API)
+
+Her görev Serena AÇIK ve KAPALI koşuldu. Proje tuzaklı: `vergi_hesapla_eski` adlı başka
+fonksiyon, adı geçen yorum ve not dosyası. "buyuk": uygulamanın kendi kaynağının kopyası
+(~17 bin satır), doğru cevap AST ile hesaplanır.
+
+| Ölçüm | Sonuç |
+|---|---|
+| İlk koşu (genel istem notu) | Serena açıkken MCP çağrısı **0** — model search_files'ı seçti |
+| İstem yönlendirmesi sonrası, son koşu | **6/6** koşu tam; Serena açık koşularda find_referencing_symbols + find_symbol çağrıldı |
+| soru (küçük proje) | açık 33,6 sn / kapalı 21,5 sn — ikisi de doğru |
+| duzenle (yeniden adlandırma) | açık 19,1 sn / kapalı 17,3 sn — ikisi de 7/7 (bu koşuda model Serena'yı çağırmadı) |
+| buyuk (~17 bin satır) | açık **4 araç, 23,4 sn** / kapalı 7 araç, 27,6 sn — ikisi de 8/8; bir önceki koşuda araç çıktısı 5,7k / 11,2k karakter |
+| Zorluk paketi, Serena açık (`--serena`) | ilk: 10/12 (Serena proje klasörüne `.serena/` yazdı → plan/kapsam düştü); düzeltme sonrası **12/12**, gereksiz MCP çağrısı 0 |
+| Zorluk paketi, MCP kapalı | **12/12** (gerileme yok) |
+
+Sonuç: doğruluk eşit; Serena'nın kazancı büyük projede daha az araç çağrısı ve yarı bağlam
+(kota). Küçük projede ek süre getirebilir. OpenAI/Anthropic ile denenmedi.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

@@ -103,7 +103,7 @@ def document_css(p: theme.Palette, font_pt: int) -> str:
     return f"""
 body {{ color: {p.text}; }}
 p {{ margin-top: 0px; margin-bottom: 8px; line-height: 145%; }}
-a {{ color: {p.accent}; text-decoration: none; }}
+a {{ color: {p.accent}; text-decoration: underline; }}
 h1 {{ font-size: {font_pt + 7}pt; font-weight: 600; margin-top: 10px; margin-bottom: 6px; }}
 h2 {{ font-size: {font_pt + 4}pt; font-weight: 600; margin-top: 10px; margin-bottom: 6px; }}
 h3 {{ font-size: {font_pt + 2}pt; font-weight: 600; margin-top: 8px; margin-bottom: 4px; }}

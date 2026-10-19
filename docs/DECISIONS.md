@@ -56,6 +56,13 @@
 | 52 | Çok sağlayıcıda "dengeli" politika: plan/inceleme/görsel önce ücretli, diğer roller önce EVREN | Kullanıcı kararı; çok token harcayan işler ücretsiz EVREN'de, az token yüksek değerli işler güçlü modelde | 2026-10-19 |
 | 53 | Uygulamanın kendi yapay zekâ işleri tek yoldan: `AppContext.ai_chat(rol)` (Auto Pro zinciri, bütçe, maliyet, yedek) | Kullanıcı isteği: hangi API bağlıysa onu kullansın; yeni özellikler: başlık, hata açıklaması, commit mesajı | 2026-10-19 |
 | 54 | Kısa iç yapay zekâ isteklerinde EVREN düşünmesi kapalı (`reasoning_effort: none`), boş yanıt = yedeğe geç | Gerçek API: düşünen modeller küçük `max_tokens`'ta boş içerik döndü | 2026-10-19 |
+| 55 | Bağlam göstergesi yüzdesi özet eşiğine göre; Auto Pro penceresi seçilecek modelin (ve yedeklerin) en küçüğü; 100k üst sınır korunur | Kullanıcı "%10'da özetleniyor" dedi; ölçüm: 5 dk'da 2,5M, günde 15M token, ajan her adımda geçmişi yeniden gönderir | 2026-10-19 |
+| 56 | Koyu temada tüm yazı/simge tek parlaklık (#e8e9ec); yalnız yer tutucu ve devre dışı `muted`; vurgu (düğme, onay kutusu, seçili sekme, bağlantı) mavi değil beyaz | Kullanıcı kararı: "Görevler" kadar parlak olsun, düğmeler mavi olmasın; devre dışı öğe etkin sanılmasın | 2026-10-19 |
+| 57 | MCP istemcisi kendi küçük stdio JSON-RPC uygulamamız (yalnız initialize/tools), resmî `mcp` SDK değil | Ajan çekirdeği eşzamanlı; SDK asyncio ve 1.x→2.x API değişti; sahte sunucuyla tam test edilebilir | 2026-10-19 |
+| 58 | İlk MCP sunucusu Serena 1.7.0 (MIT) sabit; 2.0.0 GPL-3.0 ve 6 günlük olduğu için alınmadı | Kullanıcı onayı (öneri); lisans ve tedarik zinciri temkini | 2026-10-19 |
+| 59 | Serena veri klasöründe ayrı venv'e (uv + pyright dahil) kurulur; sisteme program kurulmaz | Kullanıcıda uv yoktu; uvx'in %APPDATA%\uv kurulumu ilk denemede hata verdi; tek yerde, kaldırması kolay | 2026-10-19 |
+| 60 | MCP'de yalnız listelenen okuma araçları sormadan; Serena'da yalnız 3 okuma aracı açık | MCP değişiklikleri fark kartı/geri alma/kapsam denetimine girmez (R-20); sunucunun readOnlyHint'ine güvenilmez | 2026-10-19 |
+| 61 | Sistem istemi sembol işlerinde search_files'tan önce Serena'yı önerir | Ölçüm: yönlendirme olmadan model Serena'yı hiç çağırmadı (MCP 0/4); yönlendirmeyle çağırdı, doğruluk aynı, büyük projede araç çıktısı yarıya indi | 2026-10-19 |
 
 ## Değerlendirilip reddedilenler
 

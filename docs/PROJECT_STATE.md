@@ -64,6 +64,13 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-19) MCP desteği + Serena 1.7.0 tek tıkla kurulum (dal `feat/mcp`, `feat/klavye-baglam-tema`
+    üstünde): ajan MCP araçlarını izin sistemiyle kullanır; gerçek API ölçümü CHALLENGE_RESULTS.md.
+
+  - (2026-10-19) Alt+Enter yeni satır; bağlam göstergesi özet eşiğine göre (Auto Pro
+    penceresi seçilecek modelden); koyu tema tek parlaklık (dal `feat/klavye-baglam-tema`).
+    MCP araştırması: docs/ILERIDE_YAPILACAKLAR.md madde 4 (kod yok, karar bekliyor).
+
   - (2026-10-19) Auto Pro (eski adı EVREN Akıllı) + Proje ajanı uygulandı (dal
     `feat/akilli-yonlendirme`): 8 motor ölçümü, Auto Pro 12/12, proje ajanı gerçek
     API'de kabul 5/5. Auto Pro yalnız anahtarı girilmiş sağlayıcıları kullanır;

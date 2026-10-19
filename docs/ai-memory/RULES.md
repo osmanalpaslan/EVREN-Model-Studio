@@ -132,3 +132,8 @@
 - **Kural:** Uygulamanın kendi yapay zekâ işlerini (başlık, özet, inceleme, commit, hata açıklaması) doğrudan istemciyle değil `AppContext.ai_chat(rol)` ile yap (EVREN'de düşünmeyi kapatır, boş yanıtta yedeğe geçer, bütçe/maliyeti işler) ve en az bir kez gerçek API'de dene; `clicked.connect`'e varsayılan argümanlı lambda verirken ilk parametreyi `_=None` yap.
 - **Neden:** Düşünen EVREN modelleri küçük max_tokens'ta boş içerik döndürdü, sahte istemcili testler bunu yakalamadı; `clicked` sinyalinin `checked` değeri lambda'nın ilk varsayılan argümanını ezdi.
 - **Kaynak:** 2026-10-19-evren-dusunen-modelleri-kisa-ic-yapay-zeka-isteklerinde-bos, 2026-10-19-dugme-lambdasi-clicked-in-checked-degeriyle-varsayilan-argum
+
+### R-25 · Yeni araç eklerken modelin onu gerçekten seçtiğini ve kabul denetimini ölç
+- **Kural:** Ajana yeni araç (MCP dahil) eklediğinde gerçek API ile aracın açık/kapalı karşılaştırmasını yap ve çağrı sayısını kaydet (sunmak, kullanılması demek değildir); e2e kabul denetimini çalıştırmadan önce bilinen doğru ve bilinen yanlış bir cevapla sına.
+- **Neden:** Serena araçları sunulduğu hâlde model istem yönlendirmesi olmadan hiç çağırmadı; ilk kabul denetimi doğru cevabı düşürdü.
+- **Kaynak:** 2026-10-19-model-serena-araclarini-yonlendirme-olmadan-hic-kullanmadi, 2026-10-19-mcp-e2e-kabul-denetimi-dogru-cevabi-yanlislikla-dusurdu

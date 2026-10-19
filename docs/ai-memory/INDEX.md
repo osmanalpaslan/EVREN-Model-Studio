@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 48 · Açık/izlenen: 4 · Oturum: 18 · Kural: 24
+Kayıt: 56 · Açık/izlenen: 4 · Oturum: 20 · Kural: 25
 
 ## Açık ve izlenen kayıtlar
 
@@ -19,15 +19,23 @@ Kayıt: 48 · Açık/izlenen: 4 · Oturum: 18 · Kural: 24
 |---|---|---|---|---|---|---|
 | 2026-10-19 | [2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu](incidents/2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Yeni kullanıcı kurulumu elle Python ve venv gerektiriyordu |
 | 2026-10-19 | [2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma](incidents/2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma.md) | hata | kritik | cozuldu | EVREN Studio | Uygulama ajanı kendi kaynağını düzenlerken uygulamayı açılmaz yaptı |
+| 2026-10-19 | [2026-10-19-uvx-python-3-13-kurulumu-appdata-uv-klasorunde-surum-baglant](incidents/2026-10-19-uvx-python-3-13-kurulumu-appdata-uv-klasorunde-surum-baglant.md) | ortam | orta | cozuldu | Claude Code (masaüstü) | uvx Python 3.13 kurulumu APPDATA uv klasöründe sürüm bağlantısı hatası verdi |
 | 2026-10-19 | [2026-10-19-sunucu-tarafi-auto-yonlendirmesi-ongorulemez-gorunmez](incidents/2026-10-19-sunucu-tarafi-auto-yonlendirmesi-ongorulemez-gorunmez.md) | risk | orta | cozuldu | Claude Code (masaüstü) | Sunucu tarafı auto yönlendirmesi öngörülemez ve görünmez |
 | 2026-10-19 | [2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y](incidents/2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Sohbete dosya ve görsel yapıştırılamıyordu; bırakılan dosya yol yazıyordu |
+| 2026-10-19 | [2026-10-19-serena-proje-klasorune-serena-yazip-plan-modu-sozunu-bozdu](incidents/2026-10-19-serena-proje-klasorune-serena-yazip-plan-modu-sozunu-bozdu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Serena proje klasörüne .serena yazıp Plan modu sözünü bozdu |
 | 2026-10-19 | [2026-10-19-olmayan-dosya-uyarisi-olusturma-isteklerinde-yanlis-alarm-ve](incidents/2026-10-19-olmayan-dosya-uyarisi-olusturma-isteklerinde-yanlis-alarm-ve.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Olmayan dosya uyarısı oluşturma isteklerinde yanlış alarm verdi (kendi gerilemem) |
+| 2026-10-19 | [2026-10-19-model-serena-araclarini-yonlendirme-olmadan-hic-kullanmadi](incidents/2026-10-19-model-serena-araclarini-yonlendirme-olmadan-hic-kullanmadi.md) | risk | orta | cozuldu | Claude Code (masaüstü) | Model Serena araçlarını yönlendirme olmadan hiç kullanmadı |
 | 2026-10-19 | [2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu](incidents/2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Model kısaltılmış dosya çıktısından kesin sayı uydurdu |
+| 2026-10-19 | [2026-10-19-mcp-e2e-kabul-denetimi-dogru-cevabi-yanlislikla-dusurdu](incidents/2026-10-19-mcp-e2e-kabul-denetimi-dogru-cevabi-yanlislikla-dusurdu.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | MCP e2e kabul denetimi doğru cevabı yanlışlıkla düşürdü |
+| 2026-10-19 | [2026-10-19-koyu-temada-isaretli-onay-kutusu-tiksiz-beyaz-kare-gorunuyor](incidents/2026-10-19-koyu-temada-isaretli-onay-kutusu-tiksiz-beyaz-kare-gorunuyor.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Koyu temada işaretli onay kutusu tiksiz beyaz kare görünüyordu |
+| 2026-10-19 | [2026-10-19-koyu-temada-ikincil-yazilar-ve-dugmeler-okunmuyordu](incidents/2026-10-19-koyu-temada-ikincil-yazilar-ve-dugmeler-okunmuyordu.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Koyu temada ikincil yazılar ve düğmeler okunmuyordu |
 | 2026-10-19 | [2026-10-19-istenen-dosya-yokken-ajan-benzer-dosyayi-sormadan-degistirdi](incidents/2026-10-19-istenen-dosya-yokken-ajan-benzer-dosyayi-sormadan-degistirdi.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | İstenen dosya yokken ajan benzer dosyayı sormadan değiştirdi |
 | 2026-10-19 | [2026-10-19-evren-dusunen-modelleri-kisa-ic-yapay-zeka-isteklerinde-bos](incidents/2026-10-19-evren-dusunen-modelleri-kisa-ic-yapay-zeka-isteklerinde-bos.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | EVREN düşünen modelleri kısa iç yapay zekâ isteklerinde boş yanıt verdi |
 | 2026-10-19 | [2026-10-19-dugme-lambdasi-clicked-in-checked-degeriyle-varsayilan-argum](incidents/2026-10-19-dugme-lambdasi-clicked-in-checked-degeriyle-varsayilan-argum.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Düğme lambdası clicked'in checked değeriyle varsayılan argümanı kaybetti |
 | 2026-10-19 | [2026-10-19-celiskili-testte-ajan-aralikli-olarak-test-dosyasini-degisti](incidents/2026-10-19-celiskili-testte-ajan-aralikli-olarak-test-dosyasini-degisti.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Çelişkili testte ajan aralıklı olarak test dosyasını değiştirdi |
 | 2026-10-19 | [2026-10-19-canli-model-listesi-yalniz-modeller-sayfasi-acilinca-yukleni](incidents/2026-10-19-canli-model-listesi-yalniz-modeller-sayfasi-acilinca-yukleni.md) | eksik | dusuk | cozuldu | Claude Code (masaüstü) | Canlı model listesi yalnız Modeller sayfası açılınca yükleniyordu |
+| 2026-10-19 | [2026-10-19-auto-pro-da-baglam-gostergesi-ozeti-yuzde-10-da-baslatiyor-g](incidents/2026-10-19-auto-pro-da-baglam-gostergesi-ozeti-yuzde-10-da-baslatiyor-g.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Auto Pro'da bağlam göstergesi özeti yüzde 10'da başlatıyor gibi görünüyordu |
+| 2026-10-19 | [2026-10-19-alt-enter-yeni-satir-yerine-mesaji-gonderiyordu](incidents/2026-10-19-alt-enter-yeni-satir-yerine-mesaji-gonderiyordu.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Alt+Enter yeni satır yerine mesajı gönderiyordu |
 | 2026-10-17 | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
 | 2026-10-17 | [2026-10-17-tur-basina-40-adim-buyuk-projede-dar](incidents/2026-10-17-tur-basina-40-adim-buyuk-projede-dar.md) | eksik | dusuk | cozuldu | Claude Code (masaüstü) | Tur başına 40 adım büyük projede dar |
 | 2026-10-17 | [2026-10-17-npm-ile-kurulan-araclarin-ps1-kabugu-powershell-betik-politi](incidents/2026-10-17-npm-ile-kurulan-araclarin-ps1-kabugu-powershell-betik-politi.md) | ortam | orta | cozuldu | Claude Code (masaüstü) | npm ile kurulan araçların .ps1 kabuğu PowerShell betik politikasına takılıyor |
@@ -71,9 +79,11 @@ Kayıt: 48 · Açık/izlenen: 4 · Oturum: 18 · Kural: 24
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum](sessions/2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Zorluk paketi ve tek tıkla kurulum |
+| 2026-10-19 | [2026-10-19-claude-code-masaustu-mcp-destegi-ve-serena-entegrasyonu](sessions/2026-10-19-claude-code-masaustu-mcp-destegi-ve-serena-entegrasyonu.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | MCP desteği ve Serena entegrasyonu |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-evren-akilli-yonlendirici-ve-proje-ajani](sessions/2026-10-19-claude-code-masaustu-evren-akilli-yonlendirici-ve-proje-ajani.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | EVREN Akıllı yönlendirici ve Proje ajanı |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-ekler-gorsel-yapistirma-ve-kullanim-dugm](sessions/2026-10-19-claude-code-masaustu-ekler-gorsel-yapistirma-ve-kullanim-dugm.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Ekler (görsel/dosya yapıştırma, sürükle-bırak) ve kullanım düğmesi |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-auto-pro-saglayiciya-duyarli-yonlendirme](sessions/2026-10-19-claude-code-masaustu-auto-pro-saglayiciya-duyarli-yonlendirme.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro: sağlayıcıya duyarlı yönlendirme ve iç yapay zekâ işleri |
+| 2026-10-19 | [2026-10-19-claude-code-masaustu-alt-enter-auto-pro-baglam-penceresi-koyu](sessions/2026-10-19-claude-code-masaustu-alt-enter-auto-pro-baglam-penceresi-koyu.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Alt+Enter, Auto Pro bağlam penceresi, koyu tema okunurluğu, MCP araştırması |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: ortam denetimi ve program kurulumu |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-kapsam-korumasi](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-kapsam-korumasi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: kapsam koruması |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-dongu-analizi-ve-do.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: döngü analizi ve döngü bekçisi |
@@ -115,3 +125,4 @@ Kayıt: 48 · Açık/izlenen: 4 · Oturum: 18 · Kural: 24
 - **R-22** · Otomatik uyarı/denetimin gereksiz tetiklenmesini de test et
 - **R-23** · Uygulamanın kendi kaynağını ajanla düzenlerken ayrı dalda çalış; `%f` ile time.strftime kullanma
 - **R-24** · Kısa iç yapay zekâ isteğini ai_chat'ten geçir ve gerçek API'de dene; düğme lambdasında `_=None`
+- **R-25** · Yeni araç eklerken modelin onu gerçekten seçtiğini ve kabul denetimini ölç

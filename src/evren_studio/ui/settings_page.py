@@ -39,13 +39,14 @@ from ..api.providers import PRICES_AS_OF, PROVIDERS
 from ..budget import current_state, format_usd
 from ..secrets import delete_api_key, load_api_key, mask_api_key, save_api_key
 from .base_page import BasePage, card, kv_row
+from .mcp_settings import McpSettingsCard
 from .workers import Task
 
 PAID_PROVIDERS = ("openai", "anthropic")
 
 DEFAULTS = Settings()
 # Varsayılana dönerken KORUNAN alanlar (kullanıcının verisi/konumu)
-PRESERVED_ON_RESET = {"data_dir", "recent_workspaces", "code_workdir"}
+PRESERVED_ON_RESET = {"data_dir", "recent_workspaces", "code_workdir", "mcp_servers"}
 PROTOCOLS = (
     ("otomatik", "Otomatik (önerilir) — yerel araç çağrısı, reddedilirse metin"),
     ("yerel", "Yerel function calling (tools)"),
@@ -86,7 +87,11 @@ def kv_row_widget(label: str, widget: QWidget, default: str | None = None) -> QW
 
 
 def link(text: str, url: str) -> str:
-    return f'<a href="{url}">{text}</a>'
+    # QSS uygulanınca QLabel bağlantıları paletin Link rengini değil Qt'nin koyu mavisini alıyor;
+    # koyu temada okunmuyordu → tema vurgu rengi (koyu temada beyaz) + alt çizgi açıkça verilir.
+    from . import theme
+
+    return f'<a href="{url}" style="color:{theme.current().accent}; text-decoration: underline;">{text}</a>'
 
 
 def kv_row_with(label: str, widget: QWidget, extra: QWidget) -> QWidget:
@@ -293,6 +298,13 @@ class SettingsPage(BasePage):
         l.addWidget(self.send_enter)
         col.addWidget(c)
 
+        # ---- MCP sunucuları ----
+        c, l = card()
+        l.addWidget(section("MCP Sunucuları (ek ajan araçları)"))
+        self.mcp_card = McpSettingsCard(ctx)
+        l.addWidget(self.mcp_card)
+        col.addWidget(c)
+
         # ---- veri ve görünüm ----
         c, l = card()
         l.addWidget(section("Veri ve Görünüm"))
@@ -385,6 +397,7 @@ class SettingsPage(BasePage):
         self.budget_enforce.setChecked(s.budget_enforce)
         self._refresh_provider_rows()
         self._refresh_spend(s)
+        self.mcp_card.load(s)
 
     def _collect(self, s: Settings) -> None:
         s.base_url = self.base_url.text().strip() or DEFAULTS.base_url
@@ -416,6 +429,7 @@ class SettingsPage(BasePage):
         s.error_log_retention_days = int(self.retention.value())
         s.monthly_budget_usd = float(self.budget.value())
         s.budget_enforce = self.budget_enforce.isChecked()
+        self.mcp_card.collect(s)
 
     def changed_fields(self) -> list[str]:
         """Varsayılandan farklı olan ayarların adları (bilgi amaçlı)."""

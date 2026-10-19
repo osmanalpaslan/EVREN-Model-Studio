@@ -74,6 +74,22 @@
 - OpenAI'de reasoning özeti yalnız model gönderirse görünür; Anthropic
   "extended thinking" ayrıca açılmaz (modelin varsayılanı).
 
+## MCP ve Serena (2026-10-19)
+
+- Yalnız stdio taşıması ve araç (tools) alt kümesi: MCP kaynakları (resources), istemler
+  (prompts), örnekleme (sampling) ve HTTP sunucuları desteklenmez.
+- MCP aracının yaptığı dosya değişiklikleri Değişiklikler paneline, geri almaya ve kapsam
+  denetimine girmez (bu yüzden Serena'da yalnız okuma araçları açık).
+- Serena yalnız Python projesinde denendi (pyright). Diğer dillerin dil sunucuları
+  Serena'nın kendi indirmesine bağlıdır, denenmedi.
+- Serena açılışı ilk seferde birkaç saniye, büyük projede dil sunucusu taraması ek süre
+  alır: ölçümde Serena açıkken görevler daha YAVAŞ bitti (doğruluk aynı), büyük projede
+  araç çıktısı (bağlam/kota) yarıya indi.
+- Serena verisi proje başına veri klasöründe (`mcp/serena/home/`) birikir; uygulama bunu
+  otomatik temizlemez (kaldırmak için klasörü silmek yeterli).
+- Model Serena'yı ancak sistem istemi yönlendirince kullanıyor (ölçüm); farklı modellerde
+  davranış değişebilir.
+
 ## Auto Pro ve Proje ajanı (2026-10-19)
 
 - OpenAI/Anthropic yönlendirme tablosu (`router.PAID_ROUTES`) sağlayıcı
