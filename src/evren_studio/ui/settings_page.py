@@ -296,6 +296,8 @@ class SettingsPage(BasePage):
         l.addWidget(self.ai_titles)
         self.send_enter = QCheckBox("Enter ile gönder (kapalıysa Ctrl+Enter)")
         l.addWidget(self.send_enter)
+        self.edit_diag = QCheckBox("Hata bekçisi: ajan dosya düzenleyince hataları denetle ve modele bildir (önerilir)")
+        l.addWidget(self.edit_diag)
         col.addWidget(c)
 
         # ---- MCP sunucuları ----
@@ -383,6 +385,7 @@ class SettingsPage(BasePage):
         self.show_reasoning.setChecked(s.show_reasoning)
         self.ai_titles.setChecked(s.ai_session_titles)
         self.send_enter.setChecked(s.send_with_enter)
+        self.edit_diag.setChecked(s.edit_diagnostics)
         self.auto_compact.setChecked(s.auto_compact)
         self.compact_percent.setValue(s.auto_compact_percent)
         self.compact_max.setValue(s.auto_compact_max_tokens)
@@ -418,6 +421,7 @@ class SettingsPage(BasePage):
         s.show_reasoning = self.show_reasoning.isChecked()
         s.ai_session_titles = self.ai_titles.isChecked()
         s.send_with_enter = self.send_enter.isChecked()
+        s.edit_diagnostics = self.edit_diag.isChecked()
         s.auto_compact = self.auto_compact.isChecked()
         s.auto_compact_percent = int(self.compact_percent.value())
         s.auto_compact_max_tokens = int(self.compact_max.value())

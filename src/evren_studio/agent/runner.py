@@ -399,13 +399,15 @@ class AgentRunner:
                  stall_retry_body: dict[str, Any] | None = None,
                  install_mode: str = "otomatik",
                  fallback_models: list[str] | None = None,
-                 mcp: Any = None):
+                 mcp: Any = None, edit_check: bool = True):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
         # Yalnız proje klasörlü oturumda kullanılır; okuma dışındaki araçlar izinden geçer.
         self.mcp = mcp
         self._mcp_noted = False
+        # Hata bekçisi (agent/diagnostics.py): düzenlemeden sonra kesin hataları sonuca ekler
+        self.edit_check = edit_check
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
         # girerse sıradaki yedeğe geçilir; görev ortasında başka nedenle model DEĞİŞMEZ.
         self.fallback_models = [m for m in (fallback_models or []) if m != model]
@@ -491,7 +493,7 @@ class AgentRunner:
         if self.mcp is not None:
             from .mcp import prompt_section
 
-            section = prompt_section(specs)
+            section = prompt_section(specs, list(getattr(self.mcp, "hints", []) or []))
             if section:
                 system += "\n\n" + section
         hint = getattr(self, "_turn_hint", "")
@@ -993,6 +995,10 @@ class AgentRunner:
         if decision == Decision.ALLOW and normalize_mode(self.mode) in ("kabul", "auto"):
             extra["auto_approved"] = True
         content = f"{verb}: {change.rel_path} (+{added} −{removed} satır)."
+        warn = self._post_edit_check(change.rel_path, change.after)
+        if warn:
+            content += warn
+            extra["diagnostics"] = warn.strip()
         from .scope import TEST_EDIT_WARNING, is_test_path
 
         if not change.is_new and is_test_path(change.rel_path) and not getattr(self, "_tests_allowed", True):
@@ -1000,6 +1006,21 @@ class AgentRunner:
             self._test_orig.setdefault(change.rel_path, change.before)
             extra["test_edit"] = True
         return ToolResult(True, content, f"{verb}: {change.rel_path}  +{added} −{removed}", extra)
+
+    def _post_edit_check(self, rel_path: str, text: str | None) -> str:
+        """Hata bekçisi: önce yerleşik (sözdizimi/JSON), sorun yoksa Serena teşhisi. Hiçbir
+        hata turu düşürmez."""
+        if not self.edit_check or self.workspace is None:
+            return ""
+        from . import diagnostics
+
+        try:
+            problems = diagnostics.builtin_problems(rel_path, text, self.workspace.root)
+            if not problems and self.mcp is not None and hasattr(self.mcp, "diagnostics"):
+                problems = self.mcp.diagnostics(rel_path)
+        except Exception:
+            return ""
+        return diagnostics.note(rel_path, problems)
 
     def _run_install(self, call: ToolCall) -> ToolResult:
         """Ortam denetimi: bilinen listedeki eksik programı ayara göre sorarak/sormadan kurar."""

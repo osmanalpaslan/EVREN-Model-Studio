@@ -63,6 +63,12 @@
 | 59 | Serena veri klasöründe ayrı venv'e (uv + pyright dahil) kurulur; sisteme program kurulmaz | Kullanıcıda uv yoktu; uvx'in %APPDATA%\uv kurulumu ilk denemede hata verdi; tek yerde, kaldırması kolay | 2026-10-19 |
 | 60 | MCP'de yalnız listelenen okuma araçları sormadan; Serena'da yalnız 3 okuma aracı açık | MCP değişiklikleri fark kartı/geri alma/kapsam denetimine girmez (R-20); sunucunun readOnlyHint'ine güvenilmez | 2026-10-19 |
 | 61 | Sistem istemi sembol işlerinde search_files'tan önce Serena'yı önerir | Ölçüm: yönlendirme olmadan model Serena'yı hiç çağırmadı (MCP 0/4); yönlendirmeyle çağırdı, doğruluk aynı, büyük projede araç çıktısı yarıya indi | 2026-10-19 |
+| 62 | MCP yalnız gerektiğinde: araçlar önbellekten, süreç ilk çağrıda, boşta kapanır; sunucu başına `when` (kod/web) | Kullanıcı kararı; zayıf model az araçla daha iyi seçer; küçük projede Serena yalnız süre ekledi (ölçüm) | 2026-10-19 |
+| 63 | Ücretli sağlayıcıda MCP KESİNLİKLE yok; yedek modeller turun sağlayıcısıyla sınırlı | Kullanıcı kararı: uygulamanın amacı ücretsiz hizmet | 2026-10-19 |
+| 64 | Hata bekçisi: düzenleme sonrası yerleşik denetim + Serena teşhisi, yalnız kesin hatalar | EVREN motorları kontrol etmeden "bitti" diyebiliyor; import/tip çıkarım uyarıları yanlış alarm (ölçüm) | 2026-10-19 |
+| 65 | Playwright: kurulu Edge, `--isolated --headless --image-responses omit`, dosyalar 127.0.0.1 sunucusundan (gizliler hariç) | `file:` engelli; tüm diske izin veren seçenek fazla geniş; görüntü kotayı yer | 2026-10-19 |
+| 66 | Node.js winget ile sistem geneline | Kullanıcı tercihi (taşınabilir Node yerine) | 2026-10-19 |
+| 67 | Serena dil sunucuları ortak, kısa (8.3) klasörde; venv'e sitecustomize yaması | C# yolu 260 karakteri aşıyordu, her proje yeniden indiriyordu; Serena 1.7.0 sabit, yama yalnız env varsa etkin | 2026-10-19 |
 
 ## Değerlendirilip reddedilenler
 

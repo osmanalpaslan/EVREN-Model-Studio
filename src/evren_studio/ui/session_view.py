@@ -997,6 +997,11 @@ class SessionView(QWidget):
         info = self.ctx.model_info(self.model)
         return (info.context_length if info else None), self.model
 
+    @staticmethod
+    def _last_user_text(history: list) -> str:
+        last = next((m for m in reversed(history or []) if m.get("role") == "user"), None)
+        return str((last or {}).get("content") or "")
+
     def _context_tokens(self) -> int | None:
         return self._window()[0]
 
@@ -1291,6 +1296,9 @@ class SessionView(QWidget):
         protocol = row["protocol"] if row and row["protocol"] else self.ctx.resolve_protocol(api_model)
         if self.ctx.settings.tool_protocol != "otomatik":
             protocol = self.ctx.resolve_protocol(api_model)
+        # Yedekler turun sağlayıcısıyla sınırlı: istemci tur boyunca aynıdır; EVREN turu ücretli
+        # modele (veya tersi) geçemez — MCP'nin ücretli modele ulaşmaması da bununla garanti.
+        fallbacks = router.same_provider(fallbacks, api_model, self.ctx.provider_of)
         info = self.ctx.model_info(api_model)
         self.cancel_token = CancelToken()
         self.bridge = AgentBridge()
@@ -1338,8 +1346,11 @@ class SessionView(QWidget):
                               else None),
             install_mode=s.install_mode,
             fallback_models=fallbacks,
-            # MCP (Ayarlar > MCP Sunucuları): etkin sunucu yoksa None, davranış değişmez
-            mcp=self.ctx.mcp_toolset(ws.root) if ws is not None else None,
+            # MCP (Ayarlar > MCP Sunucuları): yalnız EVREN turunda ve gerektiğinde; yoksa None
+            mcp=(self.ctx.mcp_toolset(ws.root, self._last_user_text(history), provider,
+                                      status=b.sig_status.emit)
+                 if ws is not None else None),
+            edit_check=s.edit_diagnostics,
         )
         runner = self.runner
         self.running = True

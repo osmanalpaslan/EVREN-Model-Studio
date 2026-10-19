@@ -103,6 +103,30 @@ fonksiyon, adı geçen yorum ve not dosyası. "buyuk": uygulamanın kendi kayna�
 Sonuç: doğruluk eşit; Serena'nın kazancı büyük projede daha az araç çağrısı ve yarı bağlam
 (kota). Küçük projede ek süre getirebilir. OpenAI/Anthropic ile denenmedi.
 
+## MCP aşama 2: gerektiğinde açma, Playwright, hata bekçisi (2026-10-19, Auto Pro, gerçek API)
+
+`tests/e2e_mcp_real_api.py` — her görev MCP açık (Serena + Playwright) ve kapalı:
+
+| Görev | MCP açık | MCP kapalı |
+|---|---|---|
+| soru (tanım/çağıranlar, tuzaklı) | **6/6**, 22 sn, Serena 3 çağrı | 4/6, 7,5 sn (siparis.py ve ana.py çağrılarını kaçırdı) |
+| duzenle (Python yeniden adlandırma) | 7/7, 40 sn, bekçi 3 | 7/7, 14 sn |
+| web (Artır butonu, JS hatası) | 4/4, 95 sn, Playwright 11 çağrı (aç, özet, tıkla, konsol) | 4/4, 37 sn (kodu okuyarak) |
+| ts (TypeScript yeniden adlandırma) | 6/6, 45 sn, bekçi 3 | 6/6, 16 sn |
+| buyuk (~17 bin satır, çağıranlar) | 8/8, 34 sn | 8/8, 11 sn |
+
+Toplam 9/10 koşu tam; MCP açık 5/5. Hata bekçisinin 6 uyarısının 6'sı gerçek ara hataydı
+(import satırı değişmiş, çağrı satırı henüz değil); yanlış alarm 0. Proje klasörüne `.serena`
+yazılmadı. MCP açıkken süre uzuyor; kazanç doğrulukta ve tarayıcıda gerçek doğrulamada.
+
+Zorluk paketi (12 görev): MCP kapalı + bekçi açık **12/12** (247 sn, bekçi 0); Serena +
+Playwright açık **12/12** (192 sn; gereksiz MCP çağrısı yok, yeniden_adlandir'da 1 Serena
+çağrısı ve 1 doğru bekçi uyarısı). R-13: E2E_OK, ajan 6/6, arayüz 15/15.
+
+Serena dilleri (`build/probe_serena_diller.py`, gerçek dil sunucusu): Python, TypeScript
+(başvuru + teşhis), JavaScript, C# (paylaşımlı kısa klasör düzeltmesinden sonra; teşhis CS0103),
+Java (ilk açılış 88 sn) çalıştı; Go kurulu olmadığı için çalışmadı.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

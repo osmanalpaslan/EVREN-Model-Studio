@@ -119,6 +119,16 @@
   (`SERENA_HOME`, veri klasöründe `mcp/serena/home/<proje>-<özet>`) kullanılır: Serena proje
   klasörüne `.serena/` ve `%USERPROFILE%\.serena`'ya YAZMAZ (Plan modu sözü korunur).
 
+### MCP ek kurallar (2026-10-19)
+
+- MCP araçları YALNIZ EVREN modellerine verilir; ücretli sağlayıcıyla hiçbir MCP aracı çalışmaz.
+- Playwright tarayıcısı izole ve görünmez (`--isolated --headless`); proje dosyaları yalnız
+  127.0.0.1'deki yerel sunucudan verilir, `.env`/anahtar dosyaları/`.git`/`.serena` 403 döner
+  (tarayıcı yoluyla izinsiz dosya okuma kapısı açılmaz). `--allow-unrestricted-file-access` kullanılmaz.
+- Playwright'ta adrese gitme, tıklama, yazma ve sayfada JavaScript çalıştırma onaya tabidir
+  (Otomatik mod hariç); model bir adrese veri sızdırabilir.
+- Serena venv'ine `sitecustomize.py` yazılır: yalnız dil sunucusu klasörünü değiştirir.
+
 ## Repo hijyeni
 
 - `.gitignore`: `.venv`, `data/`, `*.db`, `logs/*.log`, `.env`, `secrets*`
