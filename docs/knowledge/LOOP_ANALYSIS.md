@@ -108,4 +108,5 @@ Maratonda çıkan ve düzeltilenler:
 
 - "auto" yönlendiricisinin tur içinde model değiştirmesi (akışta `routed_model`
   gelmiyor; ölçülemedi).
-- Test dosyası değiştiğinde turu özetleyen uyarı (kural yalnız istemde).
+- ~~Test dosyası değiştiğinde turu özetleyen uyarı~~ — YAPILDI (2026-10-19): anında araç uyarısı +
+  kullanıcıya tur notu (CHALLENGE_RESULTS.md).

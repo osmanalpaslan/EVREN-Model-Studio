@@ -112,3 +112,8 @@
 - **Kural:** prompts.AGENT_RULES'taki "Kapsam" bölümünü kısaltma/kaldırma; AgentRunner'a her turda turn_id ver (değişiklikler tura bağlı kalsın); tur sonu kartını ve kapsam denetimini (agent/scope.py) kapatma, yalnız ayar kapatabilir.
 - **Neden:** EVREN modelleri istenmeyen tasarım/arayüz değişikliği yapıyor; kural tek başına yetmiyor, denetim + tek tıkla geri alma gerekiyor.
 - **Kaynak:** 2026-10-17-ajan-istenmeyen-tasarim-degisikligi-yapiyordu-kapsam-tasmasi
+
+### R-21 · Ajan davranışını değiştirince zorluk paketiyle ölç
+- **Kural:** agent/ (araçlar, istem, koşucu) değiştiyse ve anahtar varsa `tests/e2e_zorluk_real_api.py auto` (ve mümkünse bir model daha) çalıştır; önceki sonuçla docs/knowledge/CHALLENGE_RESULTS.md'de karşılaştır, gerilemeyi düzeltmeden birleştirme.
+- **Neden:** Birim testleri model davranışını ölçmez; istem kuralı tek başına bazen yetmedi (olmayan dosya), araç çıktısı biçimi sonucu değiştirdi (sayım).
+- **Kaynak:** 2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu, 2026-10-19-istenen-dosya-yokken-ajan-benzer-dosyayi-sormadan-degistirdi

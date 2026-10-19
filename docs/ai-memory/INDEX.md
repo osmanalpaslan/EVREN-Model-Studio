@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 38 · Açık/izlenen: 4 · Oturum: 15 · Kural: 20
+Kayıt: 42 · Açık/izlenen: 4 · Oturum: 16 · Kural: 21
 
 ## Açık ve izlenen kayıtlar
 
@@ -17,7 +17,11 @@ Kayıt: 38 · Açık/izlenen: 4 · Oturum: 15 · Kural: 20
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-10-19 | [2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu](incidents/2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Yeni kullanıcı kurulumu elle Python ve venv gerektiriyordu |
 | 2026-10-19 | [2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y](incidents/2026-10-19-sohbete-dosya-ve-gorsel-yapistirilamiyordu-birakilan-dosya-y.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Sohbete dosya ve görsel yapıştırılamıyordu; bırakılan dosya yol yazıyordu |
+| 2026-10-19 | [2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu](incidents/2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Model kısaltılmış dosya çıktısından kesin sayı uydurdu |
+| 2026-10-19 | [2026-10-19-istenen-dosya-yokken-ajan-benzer-dosyayi-sormadan-degistirdi](incidents/2026-10-19-istenen-dosya-yokken-ajan-benzer-dosyayi-sormadan-degistirdi.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | İstenen dosya yokken ajan benzer dosyayı sormadan değiştirdi |
+| 2026-10-19 | [2026-10-19-celiskili-testte-ajan-aralikli-olarak-test-dosyasini-degisti](incidents/2026-10-19-celiskili-testte-ajan-aralikli-olarak-test-dosyasini-degisti.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Çelişkili testte ajan aralıklı olarak test dosyasını değiştirdi |
 | 2026-10-17 | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
 | 2026-10-17 | [2026-10-17-tur-basina-40-adim-buyuk-projede-dar](incidents/2026-10-17-tur-basina-40-adim-buyuk-projede-dar.md) | eksik | dusuk | cozuldu | Claude Code (masaüstü) | Tur başına 40 adım büyük projede dar |
 | 2026-10-17 | [2026-10-17-npm-ile-kurulan-araclarin-ps1-kabugu-powershell-betik-politi](incidents/2026-10-17-npm-ile-kurulan-araclarin-ps1-kabugu-powershell-betik-politi.md) | ortam | orta | cozuldu | Claude Code (masaüstü) | npm ile kurulan araçların .ps1 kabuğu PowerShell betik politikasına takılıyor |
@@ -60,6 +64,7 @@ Kayıt: 38 · Açık/izlenen: 4 · Oturum: 15 · Kural: 20
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-19 | [2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum](sessions/2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Zorluk paketi ve tek tıkla kurulum |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-ekler-gorsel-yapistirma-ve-kullanim-dugm](sessions/2026-10-19-claude-code-masaustu-ekler-gorsel-yapistirma-ve-kullanim-dugm.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Ekler (görsel/dosya yapıştırma, sürükle-bırak) ve kullanım düğmesi |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-ortam-denetimi-ve-p.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: ortam denetimi ve program kurulumu |
 | 2026-10-17 | [2026-10-17-claude-code-masaustu-claude-code-masaustu-kapsam-korumasi](sessions/2026-10-17-claude-code-masaustu-claude-code-masaustu-kapsam-korumasi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: kapsam koruması |
@@ -98,3 +103,4 @@ Kayıt: 38 · Açık/izlenen: 4 · Oturum: 15 · Kural: 20
 - **R-18** · Başlamadan önce GitHub ile eşitle, eşitleme uyarısını yok sayma
 - **R-19** · Ajan turunu araçsız yanıt geldi diye bitmiş sayma; döngü bekçisini koru
 - **R-20** · Ajanın kapsam korumasını kaldırma; değişiklikleri tura bağla
+- **R-21** · Ajan davranışını değiştirince zorluk paketiyle ölç

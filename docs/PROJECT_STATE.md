@@ -64,6 +64,12 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-19) Zorluk paketi eklendi (`tests/e2e_zorluk_real_api.py`, sonuçlar
+    CHALLENGE_RESULTS.md: deepseek-v4-flash 10/10, auto 9/10 → düzeltmelerle
+    tek tek geçiyor); tek tıkla kurulum `kurulum.bat` (temiz kopyada doğrulandı;
+    winget ile Python kurma yolu denenmedi). Sonraki adım önerisi: Aşama 4
+    paketleme (PyInstaller EXE) — Python'suz kurulum.
+
 - (2026-10-17) Proje maratonu YAPILDI (LOOP_ANALYSIS.md); "ortam denetimi" de YAPILDI (Otomatik/Manuel kurulum seçeneği). Otomatik mod artık hiç onay istemiyor (uygulandı). Döngü analizi: docs/knowledge/LOOP_ANALYSIS.md.
 0. OpenAI/Anthropic'i gerçek anahtarla doğrula; geçerse `api/providers.py`'de
    `verified=True` ve MODEL_CAPABILITIES.md güncelle.

@@ -23,10 +23,13 @@ AGENT_RULES = """\
 - YALNIZCA kullanıcının açıkça istediği değişikliği yap. İstenmeyen dosyaya, ekrana, tasarıma, stile veya davranışa dokunma; "bu arada şunu da güzelleştireyim" yapma.
 - Aklına gelen ek iyileştirmeleri UYGULAMA; yanıtının sonunda "Öneriler" başlığıyla kısaca yaz, kullanıcı isterse yapılır.
 - İstek belirsizse veya birden çok şekilde yorumlanabiliyorsa (ör. "simgeyi değiştir": hangi simge, nerede?) dosyaya dokunmadan önce kısa bir soru sor.
+- İstenen dosya, fonksiyon veya ayar bulunamazsa başka bir şeyi onun yerine DEĞİŞTİRME (Otomatik modda da). Ne bulduğunu (benzer adaylar) yaz ve hangisini kastettiğini kullanıcıya sor.
 - Bir değişiklik isteğin doğal ve gerekli parçasıysa (ilgili test, içe aktarma) yapabilirsin; özetinde hangi dosyayı neden değiştirdiğini yaz.
 
 # Çalışma kuralları
 - Değişiklik yapmadan önce ilgili dosyaları oku ve projeyi anla; tahminle kod yazma.
+- Sayım ve istatistik sorularında (kaç satır, kaç kez, toplam) satırları gözle SAYMA: search_files (ilk satırda toplam eşleşme sayısını verir) veya bir komut kullan ve sayıyı araç çıktısından al.
+- Araç çıktısı "⚠ KISALTILDI" diyorsa görmediğin kısım hakkında sayı veya kesin bilgi verme; kalanı oku ya da search_files ile say. Emin olmadığın sayıyı "kesin" diye sunma.
 - Var olan dosyalarda küçük değişiklikler için edit_file kullan; old_string dosyada birebir ve tek olmalı (girinti dahil). Yeni dosya veya tam yeniden yazım için write_file kullan.
 - Üç veya daha fazla adımlı işlerde update_todos ile görev listesi tut ve her adımda güncelle.
 - Komutları yalnızca gerektiğinde çalıştır (test, derleme, git durumu gibi). Komutlar PowerShell 5.1'de çalışır: '&&' yerine ';' kullan. Sunucu başlatma, girdi bekleyen veya sonsuza dek süren komutları çalıştırma.

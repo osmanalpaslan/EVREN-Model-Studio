@@ -1,5 +1,29 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Zorluk paketi ve tek tıkla kurulum
+
+### Eklendi
+
+- **Tek tıkla kurulum**: `kurulum.bat` — Python 3.12+ bulur (yoksa sorup winget
+  ile kullanıcı kapsamında kurar; Microsoft Store'un sahte `python` kısayolunu
+  eler), sanal ortam ve paketleri kurar, masaüstü + Başlat menüsü kısayolu
+  ekler. `run.bat` kurulum yoksa onu çağırır. README/INSTALLATION: "ZIP indir →
+  kurulum.bat".
+- **Zorluk paketi** `tests/e2e_zorluk_real_api.py`: 10 kısa zor görev (Türkçe/
+  BOM/CRLF, yeniden adlandırma, büyük dosyada sayım, çelişkili test, kapsam,
+  JSON, hata ayıklama, olmayan dosya, Plan modu, girdi bekleyen komut), gerçek
+  API, otomatik puanlama. Sonuçlar: docs/knowledge/CHALLENGE_RESULTS.md.
+
+### Düzeltildi (paketin bulduğu)
+
+- Kısaltılmış dosya çıktısından uydurma sayı: açık "⚠ KISALTILDI" uyarısı;
+  `search_files` ilk satırda toplam eşleşme sayısını verir; sayımda gözle sayma kuralı.
+- İstenen dosya yokken benzer dosyanın sormadan değiştirilmesi: istem kuralı +
+  tur başı "adı geçen dosya projede yok" denetimi.
+- Çelişkili testte test dosyasının değiştirilmesi: istenmeden var olan test
+  dosyası düzenlenince ajana anında uyarı, kullanıcıya tur sonu notu.
+- `.bat` dosyaları CRLF'e sabitlendi (`.gitattributes`).
+
 ## Yayınlanmamış — Ekler ve kullanım düğmesi
 
 ### Eklendi

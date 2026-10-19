@@ -1453,6 +1453,11 @@ class SessionView(QWidget):
 
     def _on_done(self, outcome) -> None:
         self._finish()
+        if getattr(outcome, "test_edits", None):
+            self._note("Dikkat: bu turda var olan test dosyaları değiştirildi ve öyle kaldı: "
+                       + ", ".join(outcome.test_edits) + ". Testleri değiştirmek istemediyseniz sağ "
+                       "paneldeki Değişiklikler sekmesinden geri alın; testlerin geçmesi bu durumda "
+                       "kodun doğru olduğunu göstermez.", "alert")
         if outcome.stopped == "cancelled":
             self._note("Durduruldu. Devam etmek için yeni bir mesaj gönderin.", "stop")
         elif outcome.stopped == "max_steps":

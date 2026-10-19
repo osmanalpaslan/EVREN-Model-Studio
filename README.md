@@ -7,7 +7,10 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
 
 ## Hızlı başlangıç
 
-1. `run.bat` dosyasını çalıştırın (ilk kurulum: docs/INSTALLATION.md).
+1. GitHub sayfasında **Code → Download ZIP** ile indirip bir klasöre çıkarın
+   (veya `git clone`). **`kurulum.bat`** dosyasına çift tıklayın: Python'u bulur
+   (yoksa sorup kurar), gerekli paketleri kurar ve masaüstüne **EVREN Studio**
+   kısayolu ekler. Sonraki açılışlar bu kısayoldan (veya `run.bat`) yapılır.
 2. Karşılama ekranındaki **Anahtar gir** düğmesiyle EVREN anahtarınızı
    kaydedin (Windows Credential Manager'da saklanır, ekranda maskelenir).
 3. **Yeni oturum** → bir **proje klasörü** seçin (veya klasörsüz sohbet) →
