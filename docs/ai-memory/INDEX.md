@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 36 · Açık/izlenen: 4 · Oturum: 14 · Kural: 20
+Kayıt: 37 · Açık/izlenen: 4 · Oturum: 14 · Kural: 20
 
 ## Açık ve izlenen kayıtlar
 
@@ -29,6 +29,7 @@ Kayıt: 36 · Açık/izlenen: 4 · Oturum: 14 · Kural: 20
 | 2026-10-17 | [2026-10-17-ajan-istenmeyen-tasarim-degisikligi-yapiyordu-kapsam-tasmasi](incidents/2026-10-17-ajan-istenmeyen-tasarim-degisikligi-yapiyordu-kapsam-tasmasi.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Ajan istenmeyen tasarım değişikliği yapıyordu (kapsam taşması) |
 | 2026-10-17 | [2026-10-17-agir-agents-md-evren-ajanini-asil-isten-uzaklastiriyordu](incidents/2026-10-17-agir-agents-md-evren-ajanini-asil-isten-uzaklastiriyordu.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Ağır AGENTS.md EVREN ajanını asıl işten uzaklaştırıyordu |
 | 2026-10-16 | [2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu](incidents/2026-10-16-test-paketi-silinmeyen-pencerelerle-yavasliyordu.md) | surec | dusuk | cozuldu | Claude Code (masaüstü) | Test paketi silinmeyen pencerelerle yavaşlıyordu |
+| 2026-10-16 | [2026-10-16-tekrar-dongusu-ve-arac-sonucu-uydurma](incidents/2026-10-16-tekrar-dongusu-ve-arac-sonucu-uydurma.md) | hata | yuksek | kabul-edildi | EVREN Studio | Tekrar döngüsü ve araç sonucu uydurma |
 | 2026-10-16 | [2026-10-16-qtimer-silinmis-widgeta-cagri](incidents/2026-10-16-qtimer-silinmis-widgeta-cagri.md) | hata | orta | cozuldu | Claude Code (masaüstü) | QTimer.singleShot silinmiş widget'ı çağırdı |
 | 2026-10-16 | [2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma](incidents/2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma.md) | risk | yuksek | izleniyor | Claude Code (masaüstü) | OpenAI ve Anthropic entegrasyonu gerçek anahtarla doğrulanmadı |
 | 2026-10-16 | [2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk](incidents/2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk.md) | ortam | dusuk | kabul-edildi | Claude Code (masaüstü) | Offscreen ekran görüntülerinde yazılar kutucuk görünüyor |
