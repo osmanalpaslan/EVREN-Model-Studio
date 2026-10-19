@@ -30,6 +30,8 @@ ROLE_ID = Qt.UserRole + 2
 ROLE_SUB = Qt.UserRole + 3
 ROLE_PINNED = Qt.UserRole + 4
 
+# Yalnız EVREN anahtarı varken anlamlı sayfalar (EVREN kotası, sağlık izleme, EVREN modelleri)
+EVREN_ONLY_PAGES = {"models", "usage", "monitor", "connection"}
 TOOL_PAGES = [
     ("models", "Modeller", "cpu"),
     ("usage", "Kullanım ve Kota", "gauge"),
@@ -246,6 +248,14 @@ class Sidebar(QWidget):
             if it.data(ROLE_ID) == session_id and session_id is not None:
                 it.setSelected(True)
                 self.list.setCurrentItem(it)
+
+    def apply_providers(self, providers: set[str]) -> None:
+        """EVREN anahtarı yoksa (yalnız OpenAI/Anthropic) EVREN'e özel sayfaları gizler.
+        Hiç anahtar yoksa gösterilir (kullanıcı EVREN'i keşfetsin)."""
+        show = "evren" in providers or not providers
+        for key in EVREN_ONLY_PAGES:
+            if key in self.nav_buttons:
+                self.nav_buttons[key].setVisible(show)
 
     def set_page(self, key: str | None) -> None:
         for k, b in self.nav_buttons.items():

@@ -79,6 +79,22 @@ MENTION_RE = re.compile(r"(?<!\S)@([^\s]+)")
 MAX_ATTACH_BYTES = 100 * 1024
 
 
+TITLE_SYSTEM = ("Bir sohbet oturumuna başlık veriyorsun. Yalnızca başlığı yaz: Türkçe, 3-6 kelime, "
+                "tırnak, nokta, emoji veya açıklama yok.")
+ERROR_SYSTEM = ("Bir masaüstü yapay zekâ uygulamasında kullanıcının aldığı API/ajan hatasını açıklıyorsun. "
+                "Sade Türkçeyle, teknik olmayan birine: 1) ne olduğunu 1-2 cümleyle, 2) en olası nedeni, "
+                "3) şimdi yapabileceği en fazla 3 adımı yaz. API anahtarı veya gizli bilgi isteme; uydurma "
+                "bilgi verme, emin değilsen söyle. En fazla 8 satır.")
+
+
+def clean_title(text: str) -> str:
+    t = (text or "").strip().splitlines()[0] if (text or "").strip() else ""
+    t = t.strip().strip('"').strip("'").strip("“”").rstrip(".").strip()
+    if t.lower().startswith("başlık:"):
+        t = t.split(":", 1)[1].strip()
+    return t[:60]
+
+
 def file_block(att: Attachment, ws: str | None) -> tuple[str, str]:
     """Ek dosyanın modele gidecek bloğu: (başlık etiketi, blok). Görseller hariç."""
     p = Path(att.path)
@@ -237,8 +253,8 @@ class WelcomeView(QWidget):
         ki = QLabel()
         ki.setPixmap(icons.pixmap("alert", theme.current().warning, 16))
         kl.addWidget(ki)
-        kt = QLabel("API anahtarı tanımlı değil. Başlamak için EVREN anahtarınızı girin; "
-                    "anahtar Windows Credential Manager'da saklanır.")
+        kt = QLabel("Henüz API anahtarı yok. Ücretsiz EVREN anahtarınızı (önerilir) veya OpenAI / "
+                    "Anthropic anahtarınızı Ayarlar'dan girin; anahtarlar Windows Credential Manager'da saklanır.")
         kt.setWordWrap(True)
         kl.addWidget(kt, 1)
         kb = QPushButton("Anahtar gir")
@@ -260,7 +276,7 @@ class WelcomeView(QWidget):
         self.logo.setPixmap(brand.pixmap(72))
 
     def refresh(self) -> None:
-        self.key_card.setVisible(not self.ctx.has_api_key())
+        self.key_card.setVisible(not self.ctx.available_providers())
 
     def set_workspace(self, ws: str | None) -> None:
         self.workspace = ws
@@ -552,7 +568,7 @@ class SessionView(QWidget):
         items = []
         # auto (önerilen varsayılan) EVREN grubunun en üstünde
         models = sorted(self.ctx.chat_models(),
-                        key=lambda m: (m.provider != "evren", m.id != router.AKILLI_ID, m.id != "auto"))
+                        key=lambda m: (m.id != router.AUTO_PRO_ID, m.provider != "evren", m.id != "auto"))
         for m in models:
             desc = []
             if m.supports_tools:
@@ -561,14 +577,17 @@ class SessionView(QWidget):
                 desc.append("görsel")
             if m.context_length:
                 desc.append(f"{m.context_length // 1000}k")
-            if m.id == router.AKILLI_ID:
-                desc = ["uygulama seçer · işe göre motor, görev ortasında değişmez, görünür"]
+            if m.id == router.AUTO_PRO_ID:
+                provs = self.ctx.available_providers()
+                scope = (" + ".join(sorted({"evren": "EVREN", "openai": "OpenAI", "anthropic": "Anthropic"}[p]
+                                           for p in provs)) or "EVREN")
+                desc = [f"önerilen · işe göre motor seçer ({scope})"]
             elif m.id == "auto":
                 desc = ["EVREN sunucusu seçer · her istekte değişebilir"]
             if m.provider != "evren":
                 desc = [d for d in desc if d != "araç"] + [price_hint(m.id)]
-            enabled = m.provider == "evren" or self.ctx.has_provider_key(m.provider)
-            items.append((m.id, " · ".join(d for d in desc if d), m.supports_tools, m.provider, enabled))
+            group = "otomatik" if m.id == router.AUTO_PRO_ID else m.provider
+            items.append((m.id, " · ".join(d for d in desc if d), m.supports_tools, group, True))
         if not items:
             items = [(self.model, "", True, "evren", True)]
         ids = [i[0] for i in items]
@@ -613,7 +632,9 @@ class SessionView(QWidget):
         self.session_id = session_id
         self.workspace = row["workspace"]
         self.mode = normalize_mode(row["mode"])
-        self.model = row["model"]
+        self.model = router.normalize_model_id(row["model"])
+        if self.model != row["model"]:
+            self.ctx.db.update_session(session_id, model=self.model)
         self.edit_from = None
         self.refresh_models()
         self.composer.set_model(self.model)
@@ -769,6 +790,8 @@ class SessionView(QWidget):
         sid = self.ctx.db.create_session(self.model, ws, self.mode, title=title,
                                          provider=self.ctx.provider_of(self.model))
         self.session_id = sid
+        # İlk yanıttan sonra yapay zekâyla kısa başlık üretilecek (proje oturumları hariç)
+        self._auto_title = None if title.startswith("Proje:") else (sid, title, first_text.strip()[:1500])
         self.workspace = ws
         self.stack.setCurrentWidget(self.transcript)
         self.panel.set_session(sid, ws, [])
@@ -927,10 +950,12 @@ class SessionView(QWidget):
     def _summary_model(self) -> str:
         """Özet modeli: ayar (varsayılan hızlı model) yoksa/kullanılamıyorsa oturumun modeli."""
         wanted = (self.ctx.settings.auto_compact_model or "").strip()
-        if not wanted:
-            return self._concrete_model("sohbet")
-        ids = [m.id for m in self.ctx.chat_models()]
-        return wanted if (not ids or wanted in ids) else self._concrete_model("sohbet")
+        avail = self.ctx.available_model_ids()
+        if wanted and wanted in avail:
+            return wanted
+        if not wanted and not router.is_auto_pro(self.model):
+            return self.model
+        return self.ctx.ai_route("ozet").model or self.model
 
     def _concrete_model(self, role: str = "sohbet") -> str:
         """Oturum modeli EVREN Akıllı ise o rol için seçilen gerçek model; değilse kendisi."""
@@ -939,19 +964,19 @@ class SessionView(QWidget):
         return self._route(role=role).model
 
     def _route(self, history: list | None = None, role: str | None = None) -> "router.Route":
-        avail = {m.id for m in self.ctx.evren_chat_models()}
+        avail = self.ctx.available_model_ids()
         health = {}
         try:
             health = {r["model"]: dict(r) for r in self.ctx.db.all_model_health()}
         except Exception:
             pass
         if role:
-            return router.choose(role, available=avail or None, health=health, reason="yardımcı iş")
+            return self.ctx.ai_route(role, reason="yardımcı iş")
         history = history or []
         last_user = next((m for m in reversed(history) if m.get("role") == "user"), None)
         has_images = bool(((last_user or {}).get("meta") or {}).get("images"))
         est = estimate_tokens(to_api_messages("", history, "native")) if history else 0
-        context_of = {m.id: m.context_length or 0 for m in self.ctx.evren_chat_models()}
+        context_of = {m.id: m.context_length or 0 for m in self.ctx.chat_models()}
         return router.route(agentic=self.workspace is not None,
                             mode=("plan" if self._plan_turn else self.mode), has_images=has_images,
                             est_tokens=est, context_of=context_of, available=avail or None, health=health)
@@ -1451,9 +1476,12 @@ class SessionView(QWidget):
                 s.session_in += int(u.get("input_tokens") or 0)
                 s.session_out += int(u.get("output_tokens") or 0)
         prov = self.ctx.provider_of(self.model) if self.model else "evren"
-        if prov in PROVIDERS and PROVIDERS[prov].paid:
+        provs = self.ctx.available_providers()
+        paid_provs = [p for p in provs if p != "evren"]
+        if (prov in PROVIDERS and PROVIDERS[prov].paid) or (paid_provs and "evren" not in provs):
             st = self._budget_state()
-            s.paid_name, s.paid_spent, s.paid_limit = PROVIDERS[prov].name, st.spent, st.limit
+            names = [PROVIDERS[p].name for p in sorted(paid_provs)] or [PROVIDERS[prov].name]
+            s.paid_name, s.paid_spent, s.paid_limit = " + ".join(names), st.spent, st.limit
         return s
 
     def update_usage_view(self) -> None:
@@ -1464,7 +1492,8 @@ class SessionView(QWidget):
         if self._usage_busy:
             return
         if not self.ctx.has_api_key():
-            self._quota, self._quota_error = None, "EVREN API anahtarı yok"
+            # EVREN yok: kota yok; düğme ücretli sağlayıcıların aylık tahmini harcamasını gösterir
+            self._quota, self._quota_error = None, ("" if self.ctx.available_providers() else "API anahtarı yok")
             self.update_usage_view()
             return
         self._usage_busy = True
@@ -1574,6 +1603,7 @@ class SessionView(QWidget):
                     self._offer_plan()
             else:
                 self._turn_review(self._turn_id)
+        self._maybe_auto_title()
 
     def _on_fail(self, exc: Exception) -> None:
         hook, self._turn_hook = self._turn_hook, None
@@ -1599,7 +1629,7 @@ class SessionView(QWidget):
 
                 billing = PROVIDERS[prov].billing_url
                 actions.append((f"{PROVIDERS[prov].name} paneli",
-                                lambda u=billing: QDesktopServices.openUrl(QUrl(u))))
+                                lambda _=None, u=billing: QDesktopServices.openUrl(QUrl(u))))
             if exc.kind == ErrorKind.AUTH:
                 actions.insert(0, ("Anahtarı güncelle", lambda: self.page_requested.emit("settings")))
             elif exc.kind == ErrorKind.UNKNOWN_RESULT:
@@ -1608,7 +1638,12 @@ class SessionView(QWidget):
                 actions.insert(0, ("Yeniden dene", self.start_run))
             if exc.kind in (ErrorKind.SERVER_UNAVAILABLE, ErrorKind.SERVER_ERROR) and prov == "evren":
                 actions.append(("Durum İzleme", lambda: self.page_requested.emit("monitor")))
+            holder: dict = {}
+            # `_=None`: düğme tıklamasında Qt ilk argüman olarak `checked` (bool) geçirir
+            actions.append(("Yapay zekâ ile açıkla",
+                            lambda _=None, e=exc, a=advice: self._explain_error(e, a, holder)))
             card = ErrorCard(f"İstek başarısız (kayıt #{error_id}) — {exc.kind.value}", lines, actions)
+            holder["card"] = card
             self.transcript.add(card)
             if exc.kind == ErrorKind.UNKNOWN_RESULT:
                 self._query_unknown(exc, card)
@@ -1786,7 +1821,8 @@ class SessionView(QWidget):
                    for r in rows]
         wanted = (self.ctx.settings.scope_check_model or "").strip()
         ids = [m.id for m in self.ctx.chat_models()]
-        model = wanted if wanted and (not ids or wanted in ids) else self._concrete_model("inceleme")
+        model = (wanted if wanted and wanted in self.ctx.available_model_ids()
+                 else (self.ctx.ai_route("inceleme").model or self._concrete_model("inceleme")))
         info = self.ctx.model_info(model)
         provider = self.ctx.provider_of(model)
         extra = ({"reasoning_effort": "none"} if provider == "evren" and info
@@ -1824,6 +1860,72 @@ class SessionView(QWidget):
         Task(job, on_done=done, on_error=fail).start()
 
     # ---- ortam denetimi (eksik program) ----
+
+    # ---- uygulamanın yapay zekâ destekli küçük işleri (bağlı API üzerinden, ctx.ai_chat) ----
+
+    def load_live_models(self) -> None:
+        """Canlı EVREN model listesini arka planda alır (R-04); başarısızsa yedek liste kalır."""
+        if not self.ctx.has_api_key():
+            return
+
+        def job():
+            client = self.ctx.make_client()
+            try:
+                return client.list_models()
+            finally:
+                client.close()
+
+        Task(job, on_done=lambda models: self.ctx.set_models(models), on_error=lambda _e: None).start()
+
+    def _maybe_auto_title(self) -> None:
+        """Yeni oturumun ilk yanıtından sonra 3-6 kelimelik başlık (kullanıcı kararı 2026-10-19).
+        Kullanıcı bu arada adı elle değiştirdiyse dokunulmaz. Hata → sessizce eski başlık kalır."""
+        pending = getattr(self, "_auto_title", None)
+        if not pending or pending[0] != self.session_id:
+            return
+        if not self.ctx.settings.ai_session_titles or os.environ.get("EVREN_STUDIO_NO_AI_TITLE"):
+            self._auto_title = None        # kapalı (ayar) / testlerde ek model çağrısı yapılmaz
+            return
+        self._auto_title = None
+        sid, old_title, first = pending
+        msgs = self.ctx.db.get_session_messages(sid)
+        answer = next((m["content"] for m in msgs if m["role"] == "assistant" and (m["content"] or "").strip()), "")
+        prompt = [{"role": "system", "content": TITLE_SYSTEM},
+                  {"role": "user", "content": f"Kullanıcının isteği:\n{first}\n\nYanıtın başı:\n{answer[:800]}"}]
+
+        def job():
+            return self.ctx.ai_chat("baslik", prompt, max_tokens=40, session_id=sid)[0]
+
+        def done(text):
+            title = clean_title(text)
+            row = self.ctx.db.get_session(sid)
+            if title and row and row["title"] == old_title:
+                self.ctx.db.update_session(sid, title=title)
+                self.sessions_changed.emit()
+                if sid == self.session_id:
+                    self._update_header()
+
+        Task(job, on_done=done, on_error=lambda _e: None).start()
+
+    def _explain_error(self, exc, advice, holder: dict) -> None:
+        """Hata kartındaki "Yapay zekâ ile açıkla": hatayı sade Türkçeyle açıklar (yalnız istenince)."""
+        card = holder.get("card")
+        if card is None:
+            return
+        card.append_line("Açıklama hazırlanıyor…")
+        body = (f"Hata türü: {exc.kind.value}\nHTTP: {exc.status or '-'}\nİşlem: {exc.operation or '-'}\n"
+                f"Model: {exc.model or '-'}\nMesaj (maskeli): {str(exc.message)[:600]}\n"
+                f"Uygulamanın önerileri: {'; '.join(advice.recommended_steps)[:600]}")
+        prompt = [{"role": "system", "content": ERROR_SYSTEM}, {"role": "user", "content": body}]
+
+        def job():
+            return self.ctx.ai_chat("hata", prompt, max_tokens=500, session_id=self.session_id)
+
+        def done(res):
+            text, model = res
+            card.append_line(f"Yapay zekâ açıklaması ({model}):\n{text.strip()}")
+
+        Task(job, on_done=done, on_error=lambda e: card.append_line(f"Açıklama alınamadı: {e}")).start()
 
     def _warn_self_source(self, ws: str) -> None:
         """Proje klasörü EVREN Studio'nun KENDİ kaynak kodu ise bir kez uyar (oturum başına).

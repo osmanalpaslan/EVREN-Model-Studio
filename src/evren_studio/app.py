@@ -63,6 +63,9 @@ def main() -> int:
     from PySide6.QtCore import QTimer
 
     QTimer.singleShot(1500, window, window.session.refresh_usage)
+    # Canlı EVREN model listesi (yetenek bayrakları, yeni modeller) açılışta arka planda yüklenir;
+    # önceden yalnız Modeller sayfası açılınca yükleniyordu.
+    QTimer.singleShot(1000, window, window.session.load_live_models)
     return app.exec()
 
 

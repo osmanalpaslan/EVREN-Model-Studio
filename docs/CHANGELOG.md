@@ -1,14 +1,32 @@
 # Değişiklik Günlüğü
 
-## Yayınlanmamış — EVREN Akıllı yönlendirici ve Proje ajanı
+## Yayınlanmamış — Auto Pro yönlendirici ve Proje ajanı
 
 ### Eklendi
 
-- **EVREN Akıllı** (model seçicide en üstte): uygulama içi, ölçüme dayalı
+- **Auto Pro** (eski adı "EVREN Akıllı"; kayıtlı eski seçim kendiliğinden
+  taşınır): yalnız **API anahtarı girilmiş** sağlayıcıların modellerini kullanır.
+  Yalnız EVREN → ölçülmüş EVREN tablosu; yalnız OpenAI/Anthropic → onların
+  tablosu (EVREN motorları ve `auto` listede görünmez); birden fazla → "dengeli":
+  çok token harcayan işler (kod, sohbet, özet, başlık, commit, hata) önce ücretsiz
+  EVREN'de, plan/inceleme/görsel önce güçlü ücretli modelde; aylık bütçe aşılınca
+  ücretli model atlanır.
+- Model listesi ve kenar çubuğu anahtara göre: anahtarı olmayan sağlayıcının
+  modelleri listelenmez; EVREN anahtarı yoksa EVREN'e özgü sayfalar (Modeller,
+  Kullanım ve Kota, Durum İzleme, Bağlantı Testi) gizlenir; kullanım düğmesi
+  ücretli harcamayı ($) gösterir.
+- Uygulamanın kendi yapay zekâ işleri bağlı API üzerinden Auto Pro ile çalışır
+  (`AppContext.ai_chat`): bağlam özeti, proje incelemesi ve yeni olarak
+  **oturum başlığı üretme** (ilk yanıttan sonra; Ayarlar'dan kapatılabilir),
+  **hata kartında "Yapay zekâ ile açıkla"**, **proje ajanında commit mesajı
+  önerisi**. Hata/boş yanıtta sıradaki modele geçer; ücretli maliyet bütçeye yazılır.
+- Canlı EVREN model listesi (yetenek bayrakları) açılışta arka planda yüklenir.
+
+- **Auto Pro** (model seçicide en üstte): uygulama içi, ölçüme dayalı
   yönlendirici. İşe göre motor seçer (sohbet / kod / plan / görsel / büyük bağlam
   / inceleme), görev ortasında motoru değiştirmez; yalnız EVREN hata verirse,
   model döngüye girerse veya görseli reddederse yedeğe geçer ve söyler. Çalışma
-  çubuğunda "EVREN Akıllı → model (rol)". Zorluk paketinde 12/12. auto listede kalır.
+  çubuğunda "Auto Pro → model (rol)". Zorluk paketinde 12/12. auto listede kalır.
 - **Proje ajanı**: `/proje <hedef>` → plan (EVREN_PLAN.md, her görevde bitti
   ölçütü/doğrulama) → **onay kartı** → görevler Otomatik modda, temiz bağlamla,
   gözetimsiz sırayla yürür; her görev doğrulama komutu + ikinci model incelemesiyle
@@ -21,6 +39,11 @@
 
 ### Düzeltildi
 
+- EVREN düşünen modelleri kısa yapay zekâ isteklerinde (başlık, commit, hata
+  açıklaması) boş yanıt veriyordu (düşünme bütçeyi bitiriyordu): bu isteklerde
+  `reasoning_effort: none` gönderilir, boş yanıtta yedeğe geçilir.
+- Hata kartı ve ücretli sağlayıcı düğmeleri tıklanınca çalışmıyordu
+  (`clicked` sinyalinin `checked` değeri lambda'nın varsayılan argümanını ezdi).
 - Uygulama açılmıyordu: uygulamanın kendi ajanının main_window'a eklediği hata
   ayıklama günlüğü (`time.strftime('%f')`, Windows'ta geçersiz) kaldırıldı.
 - "Developed by Osman Alpaslan" yazısı kenar çubuğunda kesiliyordu: adın altına,

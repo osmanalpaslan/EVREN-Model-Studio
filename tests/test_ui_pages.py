@@ -277,7 +277,10 @@ def test_komut_listesi_tiklanir_ve_model_secilir(qa):
     assert comp.popup_visible() and comp.edit.toPlainText() == "/model "
     texts = [comp.popup.item(i).text() for i in range(comp.popup.count())]
     assert any("auto" in t for t in texts) and any("glm-5.3" in t for t in texts)
-    auto_item = next(comp.popup.item(i) for i in range(comp.popup.count()) if "auto" in comp.popup.item(i).text())
+    from evren_studio.ui.composer import ROLE_VALUE
+
+    auto_item = next(comp.popup.item(i) for i in range(comp.popup.count())
+                     if comp.popup.item(i).data(ROLE_VALUE) == "auto")
     comp.popup.itemClicked.emit(auto_item)
     app.processEvents()
     assert comp.model() == "auto" and w.session.model == "auto"

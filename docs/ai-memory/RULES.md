@@ -127,3 +127,8 @@
 - **Kural:** EVREN Studio'nun kaynağı üzerinde (EVREN uygulamasının kendi ajanı dahil) değişiklik yaparken önce ayrı git dalı aç, geçici hata ayıklama kodu bırakma; zaman damgasında `time.strftime(... %f ...)` değil `datetime.now().strftime` kullan. Bir motorun bitmemiş değişikliğini bulursan silme, yedekle ve ayrı ele al.
 - **Neden:** Uygulama ajanının eklediği `time.strftime('%f')` Windows'ta açılışta ValueError verdi; ajanı çalıştıran uygulama bozulunca sorun uygulamayla düzeltilemedi.
 - **Kaynak:** 2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma
+
+### R-24 · Kısa iç yapay zekâ isteğini ai_chat'ten geçir ve gerçek API'de dene; düğme lambdasında `_=None`
+- **Kural:** Uygulamanın kendi yapay zekâ işlerini (başlık, özet, inceleme, commit, hata açıklaması) doğrudan istemciyle değil `AppContext.ai_chat(rol)` ile yap (EVREN'de düşünmeyi kapatır, boş yanıtta yedeğe geçer, bütçe/maliyeti işler) ve en az bir kez gerçek API'de dene; `clicked.connect`'e varsayılan argümanlı lambda verirken ilk parametreyi `_=None` yap.
+- **Neden:** Düşünen EVREN modelleri küçük max_tokens'ta boş içerik döndürdü, sahte istemcili testler bunu yakalamadı; `clicked` sinyalinin `checked` değeri lambda'nın ilk varsayılan argümanını ezdi.
+- **Kaynak:** 2026-10-19-evren-dusunen-modelleri-kisa-ic-yapay-zeka-isteklerinde-bos, 2026-10-19-dugme-lambdasi-clicked-in-checked-degeriyle-varsayilan-argum

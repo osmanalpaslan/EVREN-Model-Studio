@@ -29,7 +29,7 @@ def test_secim_yedekler_ve_gorsel_kurali():
     assert r.model == router.ROUTES["kod"][0] and r.fallbacks == router.ROUTES["kod"][1:]
     g = router.choose("gorsel")
     assert g.model not in router.TEXT_ONLY and all(m not in router.TEXT_ONLY for m in g.fallbacks)
-    assert "EVREN Akıllı →" in r.label
+    assert "Auto Pro →" in r.label
 
 
 def test_listede_olmayan_atlanir_sagliksiz_sona():
@@ -70,7 +70,7 @@ class Client:
 def _run(tmp_path, plan, fallbacks):
     db = Database(tmp_path / "t.db")
     try:
-        sid = db.create_session("akilli", str(tmp_path))
+        sid = db.create_session("auto-pro", str(tmp_path))
         db.add_session_message(sid, "user", "merhaba")
         c, ev = Client(plan), Events()
         out = AgentRunner(c, "deepseek-v4-flash", session_id=sid, store=db, events=ev,
@@ -142,7 +142,7 @@ def test_akilli_secicide_ve_api_ye_gercek_model_gider(win, tmp_path):
     app, w = win
     s = w.session
     ids = s.composer.model_ids()
-    assert ids[0] == "akilli" and ids[1] == "auto"
+    assert ids[0] == "auto-pro" and ids[1] == "auto"
     calls = []
 
     class C:
@@ -158,11 +158,11 @@ def test_akilli_secicide_ve_api_ye_gercek_model_gider(win, tmp_path):
     proj = tmp_path / "proje"
     proj.mkdir()
     s.welcome._choose(str(proj))
-    s.composer.set_model("akilli", emit=True)
+    s.composer.set_model("auto-pro", emit=True)
     s.send("app.py'yi incele")
     assert _wait(app, lambda: not s.running and calls)
-    assert calls[0] == router.ROUTES["kod"][0]             # "akilli" API'ye gitmedi
+    assert calls[0] == router.ROUTES["kod"][0]             # "auto-pro" API'ye gitmedi
     row = w.ctx.db.get_session(s.session_id)
-    assert row["model"] == "akilli"                         # oturum seçimi korunur
+    assert row["model"] == "auto-pro"                       # oturum seçimi korunur
     a = [m for m in w.ctx.db.get_session_messages(s.session_id) if m["role"] == "assistant"][-1]
     assert a["model"] == router.ROUTES["kod"][0] or (a.get("meta") or {}).get("requested_model") == router.ROUTES["kod"][0]

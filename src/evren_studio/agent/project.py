@@ -312,6 +312,7 @@ class ProjectHooks:
     status: Callable[[str], None] = lambda text: None      # arayüz notu
     task_changed: Callable[[ProjectState], None] = lambda s: None
     quota_wait: Callable[[], tuple[float, str]] = lambda: (0.0, "")    # (bekle sn, neden) / (-1, neden)=duraklat
+    commit_message: Callable[[Task, str], str] | None = None          # yapay zekâ commit mesajı (boş → şablon)
     cancelled: Callable[[], bool] = lambda: False
     sleep: Callable[[float], None] = time.sleep
 
@@ -465,7 +466,14 @@ class ProjectRunner:
             ok, reason = self._verify(task, run)
             if ok:
                 if self.git is not None and st.git:
-                    task.commit = self.git.commit_all(f"EVREN proje görev {task.idx}: {task.title}"[:120])
+                    message = f"EVREN proje görev {task.idx}: {task.title}"[:120]
+                    if self.hooks.commit_message is not None:
+                        suggested = self.hooks.commit_message(task, run.diff or self.git.diff_since("HEAD"))
+                        if suggested:
+                            message = f"{suggested.splitlines()[0][:72]}\n\nEVREN proje görev {task.idx}: " \
+                                      f"{task.title}" + ("\n\n" + "\n".join(suggested.splitlines()[1:]).strip()
+                                                       if len(suggested.splitlines()) > 1 else "")
+                    task.commit = self.git.commit_all(message)
                 task.status = "bitti"
                 task.note = reason[:200] if reason else ""
                 self._log(f"Görev {task.idx} bitti" + (f" (commit {task.commit[:8]})" if task.commit else ""))

@@ -80,6 +80,7 @@ class MainWindow(QMainWindow):
         self.session.toggle_panel.connect(self.toggle_panel)
         self.session.notify.connect(self.show_notification)
         self._tray = None
+        self.sidebar.apply_providers(self.ctx.available_providers())
         self.ctx.on_models_changed(self.session.refresh_models)
 
         self._shortcuts()
@@ -222,7 +223,18 @@ class MainWindow(QMainWindow):
         self._tray.show()
         self._tray.showMessage(title, text, QSystemTrayIcon.Information, 15000)
 
+    def _apply_providers(self) -> None:
+        """Anahtar eklenip silinince EVREN'e özel sayfalar ve model listesi güncellenir."""
+        from .sidebar import EVREN_ONLY_PAGES
+
+        provs = self.ctx.available_providers()
+        self.sidebar.apply_providers(provs)
+        cur = next((k for k, p in self.pages.items() if p is self.center.currentWidget()), None)
+        if cur in EVREN_ONLY_PAGES and provs and "evren" not in provs:
+            self.show_sessions()
+
     def _settings_saved(self) -> None:
+        self._apply_providers()
         s = self.ctx.settings
         app = QApplication.instance()
         if app is not None:

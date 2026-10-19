@@ -81,7 +81,7 @@ def _start(w, tmp_path, client):
     s = w.session
     s.new_session()
     s.welcome._choose(str(proj))
-    s.composer.set_model("akilli", emit=True)
+    s.composer.set_model("auto-pro", emit=True)
     s.send("/proje Basit bir not uygulaması: notlar.txt ve README")
     return s, proj, PlanCard
 

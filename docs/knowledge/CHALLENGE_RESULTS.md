@@ -63,7 +63,7 @@ programlar yeniden denetlenerek verilmiştir.
 | mimo-v2.6-pro | 11/12 | 11,5 dk | 80 sn | mini projede 6 dk sınırı aşıldı → kodda yok |
 | qwen3-vl-30b | 9/12 → 10/12* | 1,7 dk | 3 sn | çelişkide test değiştirdi; mini projede Türkçe kural yanlış → görselde son |
 
-**EVREN Akıllı** (yönlendirici, aynı 12 görev): **12/12**, 4 dk 19 sn (rol başına
+**EVREN Akıllı** (yönlendirici; 2026-10-19'da adı **Auto Pro** oldu, aynı 12 görev): **12/12**, 4 dk 19 sn (rol başına
 seçim: kod → deepseek-v4-flash, plan → deepseek-v4.1-flash; mini_proje programı
 UTF-8 denetimiyle 5/5).
 
@@ -72,6 +72,17 @@ sıcaklık dönüştürücü hedefi → 34 sn'de 6 görevlik plan (her görevde 
 doğrulama komutu) → 6/6 görev ilk denemede bitti, toplam 3,5 dk, ayrı dalda 6
 commit, EVREN_PLAN.md + EVREN_RAPOR.md + bildirim; modelin görmediği kabul
 testleri **5/5**.
+
+**Auto Pro yeniden ölçüm** (ad değişikliği + sağlayıcıya duyarlı yönlendirme
+sonrası, yalnız EVREN anahtarı, gerçek API, 2026-10-19): zorluk paketi **12/12**
+(301 sn, yakalanmamış hata 0); Proje ajanı durum=bitti, 6 görev commit'i, kabul
+**5/5** (331 sn); e2e_agent 2/2, e2e_ui 15/15, E2E_OK. `reasoning_effort`
+düzeltmesinden sonra proje yeniden koşuldu: 6 commit'in ilk satırı yapay zekâ
+önerisi (ör. "CLI testleri eklendi (çıktı ve hata kodu 2)"), 216 sn. İlk sayımda
+kabul 4/5 çıktı: üretilen test alt süreç stderr'ini yerel kodlamayla okuyordu ve
+betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal ortamda
+12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
+OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 

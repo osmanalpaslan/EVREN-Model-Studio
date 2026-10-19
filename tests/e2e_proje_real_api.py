@@ -3,7 +3,7 @@
 pytest tarafından toplanmaz. Çalıştırma:
     .\\.venv\\Scripts\\python.exe -u tests\\e2e_proje_real_api.py [model] [--cikti klasör]
 
-Varsayılan model: akilli (EVREN Akıllı). Geçici bir git deposunda `/proje <hedef>` ile
+Varsayılan model: auto-pro (Auto Pro). Geçici bir git deposunda `/proje <hedef>` ile
 plan istenir, plan kartı onaylanır, görevler gözetimsiz yürür. Sonunda modelin
 GÖRMEDİĞİ kabul testleri programı dışarıdan dener; git commit'leri, EVREN_PLAN.md,
 EVREN_RAPOR.md ve Windows bildirimi denetlenir. Ekran görüntüleri: <cikti>/*.png
@@ -33,9 +33,12 @@ HEDEF = ("Python standart kütüphanesiyle bir sıcaklık dönüştürücü yap.
 
 
 def run(cmd, cwd, timeout=60):
+    # Kabul, kullanıcının normal ortamında çalışır: bu betiği çalıştırırken verilen
+    # PYTHONIOENCODING alt süreçlere sızarsa üretilen testler yapay olarak düşer (2026-10-19).
+    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONIOENCODING", "PYTHONUTF8")}
     try:
         r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=timeout)
+                           errors="replace", timeout=timeout, env=env)
         return r.returncode, (r.stdout + r.stderr).strip()
     except subprocess.TimeoutExpired:
         return -9, "zaman aşımı"
@@ -68,7 +71,7 @@ def main() -> int:
         i = args.index("--cikti")
         out = Path(args[i + 1])
         del args[i:i + 2]
-    model = args[0] if args else "akilli"
+    model = args[0] if args else "auto-pro"
     base = out.resolve() / model
     shutil.rmtree(base, ignore_errors=True)
     proj = base / "proje"
@@ -150,7 +153,8 @@ def main() -> int:
     w.grab().save(str(base / "3_bitti.png"))
     st = s.project.state
     branch = subprocess.run(["git", "branch", "--show-current"], cwd=proj, capture_output=True, text=True).stdout.strip()
-    log = subprocess.run(["git", "log", "--oneline"], cwd=proj, capture_output=True, text=True,
+    # Tam mesaj: commit'in ilk satırı yapay zekâ önerisi olabilir, "EVREN proje görev N" gövdededir
+    log = subprocess.run(["git", "log", "--format=%B"], cwd=proj, capture_output=True, text=True,
                          encoding="utf-8").stdout
     checks = kabul(proj)
     passed = sum(1 for _n, o, _d in checks if o)

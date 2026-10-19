@@ -92,3 +92,24 @@ def test_kendi_kaynak_klasoru_uyarisi(win, tmp_path):
     s._warn_self_source(root)
     s._warn_self_source(root)                              # oturumda bir kez
     assert len(s.transcript.findChildren(NoteWidget)) == before + 1
+
+
+def test_dugme_lambdalari_checked_argumanini_yutmaz():
+    """QPushButton.clicked, varsayılan argümanlı lambda'ya ilk argüman olarak `checked` (False)
+    geçirir: `lambda u=adres: ...` tıklanınca u=False olur (2026-10-19: hata açıklaması ve
+    ücretli sağlayıcı paneli düğmeleri bozuktu). ErrorCard eylemlerinde `lambda _=None, ...` kullan."""
+    import ast
+    import re
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "src" / "evren_studio" / "ui" / "session_view.py").read_text(
+        encoding="utf-8")
+    bad = []
+    for node in ast.walk(ast.parse(src)):
+        # actions listesine eklenen ("Etiket", lambda x=...: ...) ikilileri
+        if isinstance(node, ast.Tuple) and len(node.elts) == 2 and isinstance(node.elts[1], ast.Lambda):
+            lam = node.elts[1]
+            if lam.args.args and lam.args.defaults and lam.args.args[0].arg != "_":
+                bad.append(node.lineno)
+    assert not bad, f"checked argümanını yutmayan buton lambda'sı: satır {bad}"
+    assert re.search(r"lambda _=None, u=billing", src)

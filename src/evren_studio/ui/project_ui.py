@@ -139,15 +139,15 @@ class ProjectController(QObject):
         return self.view.workspace if self.view.session_id else (self.view.workspace or self.view.welcome.workspace)
 
     def _evren_ids(self) -> set[str]:
-        return {m.id for m in self.ctx.evren_chat_models()}
+        """Anahtarı olan sağlayıcıların gerçek modelleri (ad tarihsel)."""
+        return self.ctx.available_model_ids()
 
     def _model_for(self, role: str, fallback: bool = False) -> tuple[str, list[str], str]:
         """(model, yedekler, rol). Oturum EVREN Akıllı ise rol tablosu; değilse oturum modeli,
         yedekler rol tablosundan."""
-        avail = self._evren_ids() or None
-        chain = router.choose(role, available=avail)
+        chain = self.ctx.ai_route(role)
         session_model = self.view.model
-        if router.is_akilli(session_model) or not session_model:
+        if router.is_auto_pro(session_model) or not session_model:
             models = [chain.model] + chain.fallbacks
         else:
             models = [session_model] + [m for m in [chain.model] + chain.fallbacks if m != session_model]
@@ -282,6 +282,7 @@ class ProjectController(QObject):
         sv._note("Proje ajanı başladı. Bilgisayar bu sürede uykuya geçmez; bitince bildirim alırsınız.", "spark")
         hooks = pj.ProjectHooks(
             run_task=self._run_task_blocking, review=self._review, run_check=self._run_check,
+            commit_message=self._commit_message,
             save=self._save, status=self.sig_status.emit, task_changed=self.sig_tasks.emit,
             quota_wait=self._quota_wait, cancelled=self._cancel.is_set)
 
@@ -404,14 +405,20 @@ class ProjectController(QObject):
         return pj.TaskRun(stopped=outcome.stopped, summary=summary, model=used, diff=diff)
 
     def _review(self, messages: list[dict]) -> str:
-        model, _fb, _r = self._model_for("inceleme")
-        client = self.ctx.make_client()
+        """İnceleme: bağlı sağlayıcının inceleme rolü modeli (Auto Pro tablosu), yedekli."""
+        text, _model = self.ctx.ai_chat("inceleme", messages, max_tokens=800, session_id=self.view.session_id)
+        return text
+
+    def _commit_message(self, task: pj.Task, diff: str) -> str:
+        """Kontrol noktası commit mesajı (kullanıcı kararı: yapay zekâ önerisi). Hata → şablon."""
+        msgs = [{"role": "system", "content": COMMIT_SYSTEM},
+                {"role": "user", "content": f"Görev: {task.title}\nBitti ölçütü: {task.criteria}\n\n"
+                                            f"Değişiklik özeti (kısaltılmış):\n{diff[:6000]}"}]
         try:
-            return client.chat(model, messages, stream=False, max_tokens=800).content or ""
-        finally:
-            close = getattr(client, "close", None)
-            if close:
-                close()
+            text, _m = self.ctx.ai_chat("commit", msgs, max_tokens=120, session_id=self.view.session_id)
+        except Exception:
+            return ""
+        return clean_commit_message(text)
 
     def _run_check(self, command: str) -> tuple[int | None, str]:
         s = self.ctx.settings
@@ -422,6 +429,8 @@ class ProjectController(QObject):
 
     def _quota_wait(self) -> tuple[float, str]:
         """Görev öncesi kota denetimi (iş parçacığında, 60 sn önbellekli). Hata → beklemeden devam."""
+        if "evren" not in self.ctx.available_providers():
+            return 0.0, ""                 # EVREN kotası yok; ücretli tarafta bütçe koruması geçerli
         now = time.monotonic()
         q = None
         if self._quota_cache and now - self._quota_cache[0] < QUOTA_CACHE_S:
@@ -437,6 +446,23 @@ class ProjectController(QObject):
             except Exception:
                 return 0.0, ""
         return quota_decision(q)
+
+
+COMMIT_SYSTEM = ("Bir yazılım değişikliği için git commit mesajı yazıyorsun. Yalnızca mesajı yaz: Türkçe, "
+                 "en çok 72 karakterlik tek özet satırı; gerekirse boş satırdan sonra en çok 3 kısa madde. "
+                 "Tırnak, kod bloğu veya açıklama ekleme.")
+
+
+def clean_commit_message(text: str) -> str:
+    t = (text or "").strip().strip("`").strip()
+    if t.lower().startswith(("commit mesajı:", "commit:")):
+        t = t.split(":", 1)[1].strip()
+    lines = [x.rstrip() for x in t.splitlines()]
+    if not lines or not lines[0].strip():
+        return ""
+    first = lines[0].strip().strip('"').strip("'")[:72]
+    rest = [x for x in lines[1:] if x.strip()][:3]
+    return first + ("\n\n" + "\n".join(rest) if rest else "")
 
 
 def quota_decision(q) -> tuple[float, str]:

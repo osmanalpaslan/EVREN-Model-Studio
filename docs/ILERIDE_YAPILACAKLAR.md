@@ -170,7 +170,14 @@ iki yol olarak anlatılır.
 
 ---
 
-## 3. EVREN Akıllı yönlendirici ve Proje ajanı — YAPILDI (2026-10-19, dal `feat/akilli-yonlendirme`)
+## 3. Auto Pro (eski adı EVREN Akıllı) yönlendirici ve Proje ajanı — YAPILDI (2026-10-19, dal `feat/akilli-yonlendirme`)
+
+**Ek karar (2026-10-19, aynı gün):** "EVREN Akıllı" adı **Auto Pro** oldu. Yalnız
+anahtarı girilmiş sağlayıcıların modelleri listelenir ve yönlendirilir (yalnız
+OpenAI/Anthropic anahtarında EVREN motorları ve `auto` görünmez); çok sağlayıcıda
+"dengeli" politika; uygulamanın kendi yapay zekâ işleri (özet, inceleme, oturum
+başlığı, hata açıklaması, commit mesajı) bağlı API üzerinden Auto Pro ile çalışır.
+Ücretli tablo doğrulanmadı (anahtar yok).
 
 **Kullanıcı kararları (2026-10-19):** Ana odak EVREN API ve motorları. Sunucu
 tarafı `auto` öngörülemez (her istekte sunucu seçer, akışta hangi model olduğu
@@ -197,7 +204,7 @@ her aşama sonunda zorluk paketiyle ölç (R-21).
 **Durum (2026-10-19):** dört aşama uygulandı ve ölçüldü — sonuçlar
 docs/knowledge/CHALLENGE_RESULTS.md ("8 EVREN motoru", "Proje ajanı uçtan uca").
 Kalanlar / sonraki iyileştirmeler:
-- Varsayılan motoru `auto` yerine EVREN Akıllı yapmak kullanıcıya soruldu
+- Varsayılan motoru `auto` yerine Auto Pro yapmak kullanıcıya soruldu
   (ayarlar korunur; yalnız onayla değişir).
 - Uygulama kapanırsa proje kendiliğinden yeniden başlamaz: açılışta "yarım kalan
   proje" notu çıkar, `/proje-devam` ile sürer (otomatik sürdürme isteğe bağlı eklenebilir).
