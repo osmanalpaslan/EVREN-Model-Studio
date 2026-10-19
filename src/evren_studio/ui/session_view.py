@@ -379,10 +379,16 @@ class SessionView(QWidget):
         self._turn_id: int | None = None            # turu başlatan kullanıcı mesajı (değişiklik kaydı)
         self._plan_turn = False                     # "önce plan": bu tur salt okunur plan turu
         self._turn_hook = None                      # proje ajanı: tur bitince (outcome, exc) çağrılır
+        self._services: dict[str, object] = {}     # proje klasörü → ServiceManager (arka plan servisleri)
+        self.keep_services = False                 # QA çalışması: senaryolar arası servisler açık kalır
         from .project_ui import ProjectController
 
         self.project = ProjectController(self)
         self.project.notify.connect(self.notify.emit)
+        from .qa_ui import QaController
+
+        self.qa = QaController(self)
+        self.qa.notify.connect(self.notify.emit)
         self._skip_plan_once = False
         # Çalışma süresi / model göstergesi
         self.run_model = ""
@@ -1100,6 +1106,11 @@ class SessionView(QWidget):
         if text.startswith("/") and not atts:
             if self._command(text):
                 return
+        if self.qa.active or self.qa.planning:
+            self._note("QA ajanı çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için "
+                       "/qa-durdur yazın (veya Esc).", "alert")
+            back()
+            return
         if self.project.active or self.project.planning:
             self._note("Proje ajanı çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için "
                        "/proje-durdur yazın.", "alert")
@@ -1205,6 +1216,9 @@ class SessionView(QWidget):
         if cmd.startswith("/proje"):
             self.project.command(cmd, arg)
             return True
+        if cmd.startswith("/qa"):
+            self.qa.command(cmd, arg)
+            return True
         if cmd == "/yeni":
             self.new_session()
         elif cmd in MODE_COMMANDS:
@@ -1266,7 +1280,8 @@ class SessionView(QWidget):
     # ---- ajan çalıştırma ----
 
     def start_run(self, history_from: int | None = None, mode_override: str | None = None,
-                  model_override: tuple[str, list[str], str] | None = None) -> None:
+                  model_override: tuple[str, list[str], str] | None = None, no_writes: bool = False,
+                  extra_tools=None, final_marker: str | None = None) -> None:
         """history_from: yalnız bu mesajdan itibaren geçmiş (proje görevi: temiz bağlam).
         mode_override / model_override: proje ajanının plan (salt okunur) ve görev (Otomatik) turları."""
         sid = self.session_id
@@ -1351,6 +1366,11 @@ class SessionView(QWidget):
                                       status=b.sig_status.emit)
                  if ws is not None else None),
             edit_check=s.edit_diagnostics,
+            services=self.service_manager(ws.root) if ws is not None else None,
+            test_check=s.test_check and not no_writes,
+            no_writes=no_writes,
+            extra_tools=extra_tools,
+            final_marker=final_marker,
         )
         runner = self.runner
         self.running = True
@@ -1408,6 +1428,8 @@ class SessionView(QWidget):
         parts = [f"{name}  {self._run_activity}", format_duration(elapsed)]
         if self.project.label:
             parts.insert(0, self.project.label)
+        elif self.qa.label:
+            parts.insert(0, self.qa.label)
         if self._run_step > 1:
             parts.append(f"adım {self._run_step}")
         self.composer.set_run_status("  ·  ".join(parts))
@@ -1553,8 +1575,27 @@ class SessionView(QWidget):
 
         Task(job, on_done=done, on_error=fail).start()
 
+    def service_manager(self, root):
+        """Projenin arka plan servis yöneticisi (start_service/service_logs/stop_service)."""
+        from ..agent.services import ServiceManager
+
+        key = str(root).lower()
+        if key not in self._services:
+            self._services[key] = ServiceManager(root)
+        return self._services[key]
+
+    def stop_services(self, quiet: bool = False) -> list[str]:
+        stopped: list[str] = []
+        for sm in self._services.values():
+            stopped += sm.stop_all()
+        if stopped and not quiet:
+            self._note("Arka plan servisleri kapatıldı: " + ", ".join(stopped), "stop")
+        return stopped
+
     def _finish(self) -> None:
         self.running = False
+        if not self.keep_services:
+            self.stop_services()        # tur bitti: ajanın başlattığı sunucular açık kalmasın
         self._run_timer.stop()
         total = time.monotonic() - self._run_t0 if self._run_t0 is not None else None
         self._run_t0 = None
@@ -2055,6 +2096,7 @@ class SessionView(QWidget):
         self.start_run()
 
     def shutdown(self) -> None:
+        self.stop_services(quiet=True)
         if self.running and self.cancel_token is not None:
             self.cancel_token.cancel()
             for req in self._pending_approvals:

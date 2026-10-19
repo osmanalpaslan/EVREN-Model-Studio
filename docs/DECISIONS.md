@@ -69,6 +69,11 @@
 | 65 | Playwright: kurulu Edge, `--isolated --headless --image-responses omit`, dosyalar 127.0.0.1 sunucusundan (gizliler hariç) | `file:` engelli; tüm diske izin veren seçenek fazla geniş; görüntü kotayı yer | 2026-10-19 |
 | 66 | Node.js winget ile sistem geneline | Kullanıcı tercihi (taşınabilir Node yerine) | 2026-10-19 |
 | 67 | Serena dil sunucuları ortak, kısa (8.3) klasörde; venv'e sitecustomize yaması | C# yolu 260 karakteri aşıyordu, her proje yeniden indiriyordu; Serena 1.7.0 sabit, yama yalnız env varsa etkin | 2026-10-19 |
+| 68 | QA ajanı yalnız web (masaüstü otomasyonu yok) ve yalnız EVREN | Kullanıcı kararı; EVREN görsel modelleri koordinatla tıklamada güvenilir değil (analiz) | 2026-10-19 |
+| 69 | QA senaryoları dosyaya YAZMADAN (no_writes) koşulur; düzeltme Proje ajanına ayrı onayla | Test eden ile düzelten ayrı: bulgu yanlış alarmsa kod bozulmaz | 2026-10-19 |
+| 70 | Arka plan servisleri tur sonunda kapanır (QA hariç) | Kullanıcının bilgisayarında unutulmuş sunucu/port kalmasın | 2026-10-19 |
+| 71 | Test bekçisi yalnız tur başında geçen testler bozulunca uyarır | Önceden bozuk ilgisiz testler modeli kapsam dışına sürüklemesin (R-20) | 2026-10-19 |
+| 72 | QA kota bekçisi yok | Kullanıcı kararı (gerek görmedi) | 2026-10-19 |
 
 ## Değerlendirilip reddedilenler
 

@@ -129,6 +129,16 @@
   (Otomatik mod hariç); model bir adrese veri sızdırabilir.
 - Serena venv'ine `sitecustomize.py` yazılır: yalnız dil sunucusu klasörünü değiştirir.
 
+### QA ajanı ve arka plan servisleri (2026-10-19)
+
+- `start_service` komutu `run_command` ile aynı izin kuralından geçer (Manuel/Kabul: sorulur);
+  yalnız proje klasöründe çalışır; en fazla 3 servis. Normal tur bitince ve uygulama kapanınca
+  hepsi kapatılır (süreç ağacıyla).
+- QA turlarında dosya yazma araçları SUNULMAZ ve çağrılırsa engellenir; uygulama yalnız raporu
+  (`EVREN_QA_RAPORU.md`) yazar. Ekran görüntüleri veri klasörüne kaydedilir.
+- Güvenlik taraması bulunan anahtarın DEĞERİNİ rapora/modele yazmaz (yalnız dosya:satır ve tür).
+- QA ve görsel göz yalnız EVREN modellerine gider (`ai_chat(evren_only=True)`).
+
 ## Repo hijyeni
 
 - `.gitignore`: `.venv`, `data/`, `*.db`, `logs/*.log`, `.env`, `secrets*`

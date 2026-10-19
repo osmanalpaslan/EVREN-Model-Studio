@@ -58,12 +58,17 @@ SLASH_COMMANDS = {
     "/proje-duzelt": "Proje planını değiştir: /proje-duzelt <geri bildirim>",
     "/proje-devam": "Duraklatılan projeyi kaldığı yerden sürdür",
     "/proje-durdur": "Çalışan projeyi güvenli noktada durdur",
+    "/qa": "QA ajanı: /qa <neyi test etsin> — web uygulamasını tarayıcıda test uzmanı gibi dener",
+    "/qa-duzelt": "QA senaryolarını değiştir: /qa-duzelt <geri bildirim>",
+    "/qa-devam": "Duraklatılan QA testini sürdür",
+    "/qa-durdur": "Çalışan QA testini durdur",
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
     "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/disa-aktar": "download",
     "/yardim": "help", "/proje": "list", "/proje-duzelt": "pencil", "/proje-devam": "refresh",
-    "/proje-durdur": "stop",
+    "/proje-durdur": "stop", "/qa": "check", "/qa-duzelt": "pencil", "/qa-devam": "refresh",
+    "/qa-durdur": "stop",
 }
 FOOTER_SENT_TO = {"evren": "EVREN API'sine", "openai": "OpenAI'ye (ücretli)",
                   "anthropic": "Anthropic'e (ücretli)",

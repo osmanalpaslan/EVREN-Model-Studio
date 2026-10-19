@@ -261,6 +261,14 @@ doğrudan güçlendirir); (3) Playwright MCP isteğe bağlı (Node); (4) her aş
 paketi + gerçek API ölçümü (R-21). Repo tarafı (kod dahil etme) lisans ve bakım yükü
 incelendikten sonra ayrı konuşulacak.
 
+## 5. QA ajanı (web) — YAPILDI (2026-10-19, dal `feat/qa`)
+
+Kullanıcı kararları: masaüstü uygulama testi yok, web kısmı gerçek QA gibi; yalnız EVREN; kota bekçisi yok.
+Yapılanlar: arka plan servisleri, test bekçisi, `/qa` (plan → onay → gözetimsiz senaryolar → rapor →
+"Hataları düzelt"), görsel göz, erişilebilirlik/performans/güvenlik denetimi. Ölçüm: CHALLENGE_RESULTS.md
+"QA ajanı". Kalan fikirler: Playwright iz kaydı (trace) ile adımları izleme, API ucu testi için ayrı araç,
+mobil görünüm (browser_resize) senaryoları.
+
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 
 - OpenAI/Anthropic'i gerçek anahtarla doğrula (`tests/e2e_providers_real_api.py --evet`).

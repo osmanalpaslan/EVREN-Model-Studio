@@ -265,7 +265,8 @@ def main() -> int:
         print(f"FAIL: Serena kurulu değil: {serena_data} (önce mcp.install_serena)")
         return 1
     base = (ROOT / "build" / "e2e_mcp" / model).resolve()
-    shutil.rmtree(base, onerror=_force_remove)      # git nesneleri Windows'ta salt okunur
+    if base.exists():
+        shutil.rmtree(base, onerror=_force_remove)  # git nesneleri Windows'ta salt okunur
     base.mkdir(parents=True)
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(base / "data")
 

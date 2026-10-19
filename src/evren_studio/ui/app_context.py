@@ -157,7 +157,7 @@ class AppContext:
         return router.choose(role, available=self.available_model_ids() or None, health=health, reason=reason)
 
     def ai_chat(self, role: str, messages: list[dict], max_tokens: int = 800,
-                session_id: int | None = None) -> tuple[str, str]:
+                session_id: int | None = None, evren_only: bool = False) -> tuple[str, str]:
         """Uygulamanın kendi yapay zekâ işleri (özet hariç: özet akışlıdır) için tek giriş:
         rol → bağlı sağlayıcının uygun modeli; sunucu hatasında sıradaki yedek; ücretli
         modelde aylık bütçe dolduysa o model atlanır; ücretli maliyet kaydedilir.
@@ -168,8 +168,11 @@ class AppContext:
 
         r = self.ai_route(role)
         chain = [m for m in [r.model] + r.fallbacks if m]
+        if evren_only:                      # QA/MCP işleri: ücretli sağlayıcıya ASLA (kullanıcı kararı)
+            chain = [m for m in chain if self.provider_of(m) == "evren"]
         if not chain:
-            raise RuntimeError("Yapay zekâ işi için API anahtarı yok (Ayarlar).")
+            raise RuntimeError("Yapay zekâ işi için API anahtarı yok (Ayarlar)."
+                               if not evren_only else "Bu iş yalnız EVREN ile yapılır: EVREN anahtarı gerekli.")
         last: Exception | None = None
         for model in chain:
             provider = self.provider_of(model)

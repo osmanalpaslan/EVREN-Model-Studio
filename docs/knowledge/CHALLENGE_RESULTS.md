@@ -127,6 +127,23 @@ Serena dilleri (`build/probe_serena_diller.py`, gerçek dil sunucusu): Python, T
 (başvuru + teşhis), JavaScript, C# (paylaşımlı kısa klasör düzeltmesinden sonra; teşhis CS0103),
 Java (ilk açılış 88 sn) çalıştı; Go kurulu olmadığı için çalışmadı.
 
+## QA ajanı (2026-10-19, `tests/e2e_qa_real_api.py`, gerçek EVREN + gerçek Edge)
+
+Mini web uygulaması: sunucu (`python server.py`, port 8765), 3 BİLİNEN hata (Artır JS hatası,
+boş ad uyarısı yok, API çıkarma yapıyor). `/qa sayaç, selamlama formu ve toplama işlevlerini test et`
+→ plan onayı → gözetimsiz.
+
+| Koşu | Plan | Test | Bilinen hata | Denetim | Not |
+|---|---|---|---|---|---|
+| 1 | 105 sn, 11 senaryo | 414 sn | **3/3** | 9/9 | 1 senaryo sonuç bloğunu yazmadı; start_service 10 kez |
+| 2 (servis bilgisi + işaret dürtmesi) | 51 sn, 12 | 223 sn | **3/3** | 9/9 | start_service 2; favicon 404 yüzünden 1 yanlış "kaldı"; 1 boş yanıt |
+| 3 (favicon kuralı + sonuç isteme turu) | 65 sn, 12 | 289 sn | **3/3** | 9/9 | start_service 1; 1 senaryo bozuk JSON → esnek ayrıştırıcı eklendi (aynı yanıt artık "geçti" okunuyor) |
+
+Üç koşuda da proje dosyalarına dokunulmadı, rapor yazıldı, servisler kapatıldı. Model ayrıca bilinmeyen
+gerçek bir eksik buldu (geçersiz sayıda kullanıcıya hata mesajı yok). Görsel göz (gemma-4-31b)
+sayfayı 1,2 sn'de doğru okudu. Zorluk paketi (servis araçları + test bekçisi açık): **12/12**,
+bekçi yanlış uyarısı 0.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

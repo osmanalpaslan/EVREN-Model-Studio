@@ -156,6 +156,32 @@ TOOL_SPECS: list[ToolSpec] = [
         }, ["name"]),
     ),
     ToolSpec(
+        "start_service", EXEC,
+        "SÜREKLİ çalışan bir komutu (geliştirme sunucusu: `npm run dev`, `python -m http.server 8000`, "
+        "`flask run` …) ARKA PLANDA başlatır; port verilirse açılana kadar bekler, adresini ve ilk "
+        "çıktıyı döndürür. Sunucu gerektiren işlerde run_command yerine bunu kullan; sonra tarayıcıyla "
+        "test edip stop_service ile kapat.",
+        _obj({
+            "command": {"type": "string", "description": "Çalıştırılacak komut (proje kökünde)"},
+            "port": {"type": "integer", "description": "Dinlenecek port (biliniyorsa; hazır olmayı bekler)"},
+            "name": {"type": "string", "description": "Servis adı (varsayılan: komutun ilk kelimesi)"},
+            "ready_text": {"type": "string", "description": "Çıktıda görülünce hazır sayılacak metin"},
+        }, ["command"]),
+    ),
+    ToolSpec(
+        "service_logs", READ,
+        "Arka plandaki servisin son çıktısını (hata, istek günlüğü) gösterir.",
+        _obj({
+            "name": {"type": "string", "description": "Servis adı (tek servis varsa gerekmez)"},
+            "lines": {"type": "integer", "description": "Satır sayısı (varsayılan 60)"},
+        }, []),
+    ),
+    ToolSpec(
+        "stop_service", READ,
+        "Arka plandaki servisi kapatır.",
+        _obj({"name": {"type": "string", "description": "Servis adı (tek servis varsa gerekmez)"}}, []),
+    ),
+    ToolSpec(
         "update_todos", META,
         "Çok adımlı işler için görev listesini günceller. Her çağrıda listenin "
         "TAMAMINI gönder; aynı anda yalnızca bir görev in_progress olmalı.",
@@ -171,6 +197,7 @@ TOOL_SPECS: list[ToolSpec] = [
     ),
 ]
 SPEC_BY_NAME = {s.name: s for s in TOOL_SPECS}
+SERVICE_TOOLS = {"start_service", "service_logs", "stop_service"}
 READ_ONLY_SPECS = [s for s in TOOL_SPECS if s.kind in (READ, META)]
 
 

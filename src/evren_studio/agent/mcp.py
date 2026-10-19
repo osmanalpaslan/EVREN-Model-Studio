@@ -232,6 +232,8 @@ def _pyright_version(venv: Path) -> str:
 # Edge yoksa Playwright'ın Chromium'u veri klasörüne indirilir.
 PLAYWRIGHT_VERSION = "0.0.83"
 PLAYWRIGHT_PACKAGE = f"@playwright/mcp@{PLAYWRIGHT_VERSION}"
+# QA erişilebilirlik denetimi (agent/qa.py qa_audit): MPL-2.0, 2026-08-05
+AXE_PACKAGE = "axe-core@4.13.0"
 PLAYWRIGHT_TOOLS = ["browser_navigate", "browser_navigate_back", "browser_snapshot", "browser_click",
                     "browser_type", "browser_fill_form", "browser_select_option", "browser_press_key",
                     "browser_hover", "browser_wait_for", "browser_console_messages",
@@ -330,6 +332,26 @@ def _find_npm() -> str | None:
     return None
 
 
+def axe_path(data_dir: Path) -> Path:
+    return playwright_dir(data_dir) / "node_modules" / "axe-core" / "axe.min.js"
+
+
+def ensure_axe(data_dir: Path, timeout: float = 300) -> Path | None:
+    """axe-core yoksa Playwright klasörüne npm ile kurar (önceki sürümün kurulumları için)."""
+    p = axe_path(data_dir)
+    if p.exists():
+        return p
+    npm = _find_npm()
+    if not npm or not playwright_cli(data_dir).exists():
+        return None
+    try:
+        _run([npm, "install", "--prefix", str(playwright_dir(data_dir)), AXE_PACKAGE, "--save-exact",
+              "--no-fund", "--no-audit", "--loglevel=error"], timeout=timeout, flags=_no_window())
+    except (McpError, OSError, subprocess.TimeoutExpired):
+        return None
+    return p if p.exists() else None
+
+
 def edge_available() -> bool:
     return os.name == "nt" and any(Path(p).exists() for p in EDGE_PATHS)
 
@@ -378,8 +400,8 @@ def install_playwright(data_dir: Path, log: Callable[[str], None] | None = None,
     flags = _no_window()
     if not cli.exists():
         log(f"{PLAYWRIGHT_PACKAGE} kuruluyor (npm)…")
-        _run([npm, "install", "--prefix", str(target), PLAYWRIGHT_PACKAGE, "--save-exact", "--no-fund",
-              "--no-audit", "--loglevel=error"], timeout=timeout, flags=flags)
+        _run([npm, "install", "--prefix", str(target), PLAYWRIGHT_PACKAGE, AXE_PACKAGE, "--save-exact",
+              "--no-fund", "--no-audit", "--loglevel=error"], timeout=timeout, flags=flags)
     if not cli.exists():
         raise McpError(f"Kurulum bitti ama {cli} bulunamadı.")
     if not edge_available():

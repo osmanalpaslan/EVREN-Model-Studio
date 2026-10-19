@@ -38,6 +38,7 @@ from .tools import (
     META,
     READ,
     READ_ONLY_SPECS,
+    SERVICE_TOOLS,
     SPEC_BY_NAME,
     TOOL_SPECS,
     WRITE,
@@ -399,7 +400,9 @@ class AgentRunner:
                  stall_retry_body: dict[str, Any] | None = None,
                  install_mode: str = "otomatik",
                  fallback_models: list[str] | None = None,
-                 mcp: Any = None, edit_check: bool = True):
+                 mcp: Any = None, edit_check: bool = True, services: Any = None,
+                 test_check: bool = False, no_writes: bool = False, extra_tools: Any = None,
+                 final_marker: str | None = None):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -408,6 +411,16 @@ class AgentRunner:
         self._mcp_noted = False
         # Hata bekçisi (agent/diagnostics.py): düzenlemeden sonra kesin hataları sonuca ekler
         self.edit_check = edit_check
+        # Arka plan servisleri (agent/services.py: start_service/service_logs/stop_service); None → yok
+        self.services = services
+        # Test bekçisi (agent/testcheck.py): tur sonunda projenin testleri; tur başında geçenler bozulursa dürt
+        self.test_check = test_check
+        # QA ajanı: dosyaya yazma araçları sunulmaz ve engellenir (test eder, kod değiştirmez)
+        self.no_writes = no_writes
+        # Ek araçlar (QA: visual_check, qa_audit): specs() → ToolSpec listesi, run(call) → ToolResult
+        self.extra_tools = extra_tools
+        # Son yanıtta bulunması gereken işaret (QA: "<qa_sonuc>"); yoksa model bir kez hatırlatılır
+        self.final_marker = final_marker
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
         # girerse sıradaki yedeğe geçilir; görev ortasında başka nedenle model DEĞİŞMEZ.
         self.fallback_models = [m for m in (fallback_models or []) if m != model]
@@ -459,6 +472,11 @@ class AgentRunner:
             return []
         plan = normalize_mode(self.mode) == "plan"
         base = READ_ONLY_SPECS if plan else TOOL_SPECS
+        base = [s for s in base
+                if (self.services is not None or s.name not in SERVICE_TOOLS)
+                and not (self.no_writes and s.kind == WRITE)]
+        if self.extra_tools is not None:
+            base = base + [s for s in self.extra_tools.specs(read_only_only=plan) if s.name not in SPEC_BY_NAME]
         if self.mcp is None:
             return base
         extra = self.mcp.specs(read_only_only=plan)
@@ -470,6 +488,8 @@ class AgentRunner:
 
     def _spec(self, name: str):
         spec = SPEC_BY_NAME.get(name)
+        if spec is None and self.extra_tools is not None:
+            spec = next((s for s in self.extra_tools.specs() if s.name == name), None)
         if spec is None and self.mcp is not None and self.agentic and name.startswith("mcp__"):
             tool = self.mcp.get(name)
             spec = tool.spec if tool is not None else None
@@ -611,6 +631,8 @@ class AgentRunner:
         outcome = TurnOutcome(protocol=self.protocol)
         self._tests_allowed = True
         self._test_orig: dict[str, str | None] = {}     # yol → turdaki ilk hâli
+        self._wrote = False
+        self._test_baseline = None
         self._turn_hint = self._compute_turn_hint(history)
         step = 0
         fallback_used = False
@@ -726,6 +748,20 @@ class AgentRunner:
                 if not content.strip():
                     self.events.status("Model boş yanıt döndürdü (düşünme bütçesi tükenmiş olabilir). "
                                        "Başka bir model seçebilir veya mesajı yeniden gönderebilirsiniz.")
+                if (self.final_marker and self.final_marker not in content and "marker" not in nudged
+                        and step < self.max_steps and not self._cancelled()):
+                    nudged.add("marker")
+                    self._nudge = (f"Yanıtın tamamlanmadı: istenen {self.final_marker} bloğunu yazmadın. "
+                                   f"Şimdi yalnız sonucu {self.final_marker} … bloğu içinde, istenen JSON "
+                                   "biçimiyle ver (yeni araç çağırma gerekmiyorsa çağırma).")
+                    self.events.status("Model sonuç bloğunu yazmadı; bir kez hatırlatıldı.")
+                    continue
+                if "tests" not in nudged and step < self.max_steps and not self._cancelled():
+                    gate = self._test_gate()
+                    if gate:
+                        nudged.add("tests")
+                        self._nudge = gate
+                        continue
                 outcome.stopped = "done"
                 break
 
@@ -842,6 +878,9 @@ class AgentRunner:
             return ToolResult(False, call.parse_error, "Parametreler okunamadı")
         if self.toolbox is None:
             return ToolResult(False, "Bu oturumda proje klasörü yok; araç kullanılamaz.", "Proje yok")
+        if self.no_writes and spec.kind == WRITE:
+            return ToolResult(False, "Bu çalışmada (QA) dosya değiştirilemez: yalnız test et ve bulguyu raporla.",
+                              "Engellendi (QA)")
         if normalize_mode(self.mode) == "plan" and spec.kind in (WRITE, EXEC):
             _d, reason = decide(self.mode, spec.kind, self.perms)
             return ToolResult(False, reason, "Plan modunda engellendi")
@@ -849,6 +888,10 @@ class AgentRunner:
         try:
             if call.name.startswith("mcp__") and call.name not in SPEC_BY_NAME:
                 res = self._run_mcp(call, spec)
+            elif call.name in SERVICE_TOOLS:
+                res = self._run_service(call)
+            elif self.extra_tools is not None and call.name not in SPEC_BY_NAME:
+                res = self.extra_tools.run(call)
             elif call.name == "install_program":
                 res = self._run_install(call)
             elif spec.kind == READ:
@@ -940,6 +983,75 @@ class AgentRunner:
                               {"output": truncate_middle(text, 4000)})
         return ToolResult(True, out, summary, {"output": truncate_middle(text, 4000), "mcp": server})
 
+    def _run_service(self, call: ToolCall) -> ToolResult:
+        if self.services is None:
+            return ToolResult(False, "Bu oturumda arka plan servisi kullanılamıyor.", "Servis yok")
+        a = call.arguments
+        if call.name == "service_logs":
+            out = self.services.logs(str(a.get("name") or ""), int(a.get("lines") or 60))
+            return ToolResult(True, truncate_middle(out, self.output_limit), "Servis çıktısı okundu",
+                              {"output": truncate_middle(out, 4000)})
+        if call.name == "stop_service":
+            out = self.services.stop(str(a.get("name") or ""))
+            return ToolResult(True, out, out)
+        command = _req(a, "command").strip()
+        decision, reason = decide(self.mode, EXEC, self.perms, command,
+                                  root=self.workspace.root if self.workspace else None)
+        if decision == Decision.DENY:
+            return ToolResult(False, reason, "Engellendi")
+        if decision == Decision.ASK:
+            ok, feedback = self._approve(call, EXEC, "Servis (arka planda) başlatılsın mı?", command,
+                                         prefix=command_prefix(command), reason=reason)
+            if not ok:
+                msg = "Kullanıcı bu servisin başlatılmasını reddetti."
+                if feedback:
+                    msg += f" Kullanıcının notu: {feedback}"
+                return ToolResult(False, msg, f"Reddedildi: {command[:80]}", {"command": command, "denied": True})
+        port = a.get("port")
+        try:
+            port = int(port) if port not in (None, "") else None
+        except (TypeError, ValueError):
+            port = None
+        out = self.services.start(command, str(a.get("name") or ""), port, str(a.get("ready_text") or ""),
+                                  cancel=self.cancel)
+        ok = "çalışıyor" in out.split("\n", 1)[0]
+        return ToolResult(ok, truncate_middle(out, self.output_limit), out.split("\n", 1)[0][:120],
+                          {"command": command, "output": truncate_middle(out, 4000)})
+
+    def _test_gate(self) -> str:
+        """Test bekçisi (tur sonu). Dönüş: modele gidecek dürtme metni ya da ""."""
+        from . import testcheck
+
+        base = getattr(self, "_test_baseline", None)
+        if not (self.test_check and getattr(self, "_wrote", False) and self.toolbox is not None
+                and base in ("gecti", "yok") and normalize_mode(self.mode) != "plan"):
+            return ""
+        cmd = testcheck.detect_command(self.workspace.root)
+        if not cmd:
+            return ""
+        self.events.status(f"Test bekçisi: proje testleri çalıştırılıyor ({cmd})…")
+        state, code, out = testcheck.run(self.toolbox, cmd, cancel=self.cancel)
+        if state == "gecti":
+            self.events.status(f"Test bekçisi: testler geçti ({cmd}).")
+            return ""
+        if state != "dustu":
+            return ""
+        self.events.status("Test bekçisi: değişiklikten sonra testler düştü; model düzeltmesi için uyarıldı.")
+        return testcheck.NUDGE.format(cmd=cmd, code=code, tail=testcheck.tail(out))
+
+    def _test_baseline_once(self) -> None:
+        """İlk yazmadan ÖNCE testlerin durumu (yalnız tur başında geçenler korunur)."""
+        if not self.test_check or getattr(self, "_test_baseline", None) is not None or self.toolbox is None:
+            return
+        from . import testcheck
+
+        cmd = testcheck.detect_command(self.workspace.root)
+        if not cmd:
+            self._test_baseline = "yok"
+            return
+        state, _code, _out = testcheck.run(self.toolbox, cmd, cancel=self.cancel)
+        self._test_baseline = state
+
     def _run_todos(self, call: ToolCall) -> ToolResult:
         todos = validate_todos(call.arguments.get("todos"))
         self.store.set_session_todos(self.session_id, todos)
@@ -975,6 +1087,7 @@ class AgentRunner:
         decision, reason = decide(self.mode, WRITE, self.perms, path=change.rel_path)
         if decision == Decision.DENY:
             return ToolResult(False, reason, "Engellendi")
+        self._test_baseline_once()
         if decision == Decision.ASK:
             ok, feedback = self._approve(call, WRITE, change.summary(), change.diff, change=change,
                                          reason=reason)
@@ -985,6 +1098,7 @@ class AgentRunner:
                 return ToolResult(False, msg, f"Reddedildi: {change.rel_path}",
                                   {"diff": change.diff, "path": change.rel_path, "denied": True})
         self.toolbox.apply_change(change)
+        self._wrote = True
         self._writes.append((change.rel_path, change.before, change.after))
         change_id = self.store.add_file_change(self.session_id, self.turn_id, change.rel_path,
                                                change.before, change.after)
@@ -1123,6 +1237,9 @@ def describe_call(call: ToolCall) -> str:
         "edit_file": lambda: f"Düzenleniyor: {a.get('path', '?')}",
         "run_command": lambda: f"Komut: {a.get('command', '')}",
         "install_program": lambda: f"Program kuruluyor: {a.get('name', '?')}",
+        "start_service": lambda: f"Servis başlatılıyor: {a.get('command', '')}",
+        "service_logs": lambda: f"Servis çıktısı: {a.get('name') or ''}".strip(),
+        "stop_service": lambda: f"Servis kapatılıyor: {a.get('name') or ''}".strip(),
         "update_todos": lambda: "Görev listesi güncelleniyor",
     }.get(call.name, lambda: _describe_mcp(call))()
 

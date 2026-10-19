@@ -121,6 +121,8 @@ class Settings:
     mcp_enabled: bool = True
     # Hata bekçisi: ajan düzenlemesinden sonra sözdizimi/dil sunucusu hatalarını modele geri ver
     edit_diagnostics: bool = True
+    # Test bekçisi: dosya değiştiren turun sonunda projenin testleri; tur başında geçenler bozulursa uyar
+    test_check: bool = True
     mcp_servers: list[dict] = field(default_factory=list)
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
     # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).

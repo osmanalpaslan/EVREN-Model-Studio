@@ -64,6 +64,9 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-19) QA ajanı (dal `feat/qa`): `/qa` web uygulamasını tarayıcıda test uzmanı gibi dener;
+    arka plan servisleri, test bekçisi, görsel göz, ek denetimler. Gerçek koşu: bilinen hata 3/3 (3 koşu).
+
   - (2026-10-19) MCP aşama 2 (dal `feat/mcp-akilli`): MCP gerektiğinde açılır/boşta kapanır,
     ücretli sağlayıcıda yok, hata bekçisi, Playwright MCP 0.0.83 (Edge), Serena çok dilli
     (Python/TS/JS/C#/Java). Node.js 24 winget ile kuruldu. Ölçüm: CHALLENGE_RESULTS.md.
