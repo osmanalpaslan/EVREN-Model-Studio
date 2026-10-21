@@ -1,5 +1,35 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Derin Mod ve Proje ajanı düzeltmeleri (hesap kapama oturumundan)
+
+Kullanıcının gerçek Derin Mod oturumu (hesap kapama raporu, 1 sa 50 dk) incelendi: Excel raporu oluşmadı,
+12 görevden 3'ü bitti, ama akış "bitti, sorun yok" dedi. Düzeltmeler:
+
+### Düzeltildi
+
+- **İç içe PowerShell komutu**: ajanın `powershell -Command "…$t…"` biçimindeki komutlarında `$` değişkenleri dış
+  kabukta yutuluyordu (araç hatalarının ~1/3'ü). Bu biçim artık tek PowerShell'de, sarmalanmadan çalışır.
+- **Bozuk doğrulama komutu görevi düşürmez**: komutun kendisi yazım hatası verirse karar inceleme modeline kalır
+  (eskiden iş doğru olduğu hâlde görev 3 kez denenip "takıldı" sayılıyordu).
+- **Proje kısmen biterse "tamamlandı" denmez**: proje duraklar ("Proje kısmen bitti (3/12) …"); `/proje-devam`
+  takılan görevi yeniden dener, ona bağlı atlanan görevler yeniden sıraya girer.
+- **Derin Mod kısmi projede "bitti" demez**: proje tamamlanana kadar bekler; denetçiler önce istenen nihai çıktının
+  (ör. Excel dosyası) gerçekten var olduğunu kontrol eder; iki denetçi farklı modeldir.
+- **.ps1 dosyaları UTF-8 BOM ile yazılır**: Windows PowerShell 5.1 BOM'suz betikteki Türkçe harfleri bozuyordu.
+- **Auto Pro**: `deepseek-v4-flash` EVREN model listesinden kalktı; kod/sohbet yedeğine `deepseek-v4.1-flash` eklendi.
+
+### Eklendi
+
+- **Derin Mod soru kartı**: inceleme, cevabı projede olmayan kararları (eksik veri dosyası, iki geçerli seçenek,
+  çıktı adı) bulursa planlamadan ÖNCE size sorar. Yanıtı kartta veya mesaj kutusunda verirsiniz; "Sormadan devam"
+  derseniz varsayımlar raporda yazılır. Yanıtlar plana ve her göreve iletilir.
+- **Proje ajanı soru sorabilir**: görev, kararınız olmadan doğru yapılamıyorsa `SORU:` ile durur; proje duraklar,
+  yanıtı `/proje-devam <yanıt>` ile verirsiniz.
+- **Görev bağlamı**: Derin Mod'un inceleme notu ve yanıtlarınız her Proje görevine verilir (her görev aynı dosyaları
+  baştan keşfetmez).
+- **Görünürlük**: Derin Mod'un her alt ajanı bitince not düşer (araç sayısı, süre, model); dökümleri veri klasöründe
+  `deep/<zaman>/` altına yazılır. Sonuç bloğu vermeyen alt ajana araçsız "yalnız sonucu yaz" turu açılır.
+
 ## Yayınlanmamış — Derin Mod, plan bekçisi, uzun işler, kota kapısı, kenar çubuğu
 
 ### Eklendi

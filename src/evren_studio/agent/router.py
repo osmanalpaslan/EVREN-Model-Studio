@@ -50,9 +50,12 @@ ROLE_LABELS = {
 #   gemma-4-31b 12/12 · 3 dk, görsel okur → görsel birincil; kodda 3. sıra (LOOP_ANALYSIS #1)
 #   deepseek-v4.1-flash 12/12 · 10 dk, plan 44 sn → plan birincil
 #   qwen3-vl-30b 9/12 → görselde son · glm-5.3, mimo-v2.6-pro: mini projede 6 dk aşıldı → kodda YOK
+#   2026-10-21: deepseek-v4-flash EVREN /v1/models listesinden KALKTI (gerçek istekle görüldü); kod/sohbet
+#   zinciri yalnız qwen → gemma'ya düşüyordu. deepseek-v4.1-flash (12/12) ikinci sıraya alındı; v4-flash geri
+#   gelirse yine birincil olur (chain_for listede olmayanı atlar).
 EVREN_ROUTES: dict[str, list[str]] = {
-    "sohbet": ["deepseek-v4-flash", "qwen3.8-flash-next", "gemma-4-31b"],
-    "kod": ["deepseek-v4-flash", "qwen3.8-flash-next", "gemma-4-31b"],
+    "sohbet": ["deepseek-v4-flash", "qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
+    "kod": ["deepseek-v4-flash", "qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
     "plan": ["deepseek-v4.1-flash", "qwen3.8-flash-next", "deepseek-v4-flash"],
     "gorsel": ["gemma-4-31b", "qwen3.8-flash-next", "qwen3-vl-30b"],
     "buyuk_baglam": ["deepseek-v4-flash", "deepseek-v4.1-flash", "mimo-v2.6-pro"],

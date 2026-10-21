@@ -194,7 +194,7 @@ class ProjectController(QObject):
             self.stop()
             return
         if cmd == "/proje-devam":
-            self.resume()
+            self.resume(arg.strip())
             return
         if self.active or self.planning:
             sv._note("Proje ajanı zaten çalışıyor. Durdurmak için /proje-durdur yazın.", "alert")
@@ -250,11 +250,13 @@ class ProjectController(QObject):
             return
         self.present_plan(self._goal, tasks)
 
-    def present_plan(self, goal: str, tasks: list[pj.Task], title: str = "Proje planı") -> None:
-        """Planı kaydedip onay kartını gösterir (Proje planlaması ve Derin Mod ortak yolu)."""
+    def present_plan(self, goal: str, tasks: list[pj.Task], title: str = "Proje planı",
+                     context: str = "", answers: list[str] | None = None) -> None:
+        """Planı kaydedip onay kartını gösterir (Proje planlaması ve Derin Mod ortak yolu).
+        context: her görev istemine eklenen proje bilgi notu; answers: kullanıcının kararları."""
         sv = self.view
         self._goal = goal
-        self.state = pj.ProjectState(goal=goal, tasks=tasks)
+        self.state = pj.ProjectState(goal=goal, tasks=tasks, context=context, answers=list(answers or []))
         self.run_id = sv.ctx.db.add_project_run(sv.session_id, self._ws(), self.state.status, self.state.to_json())
         self._save(self.state)
         git = pj.Git(Path(self._ws()))
@@ -306,7 +308,7 @@ class ProjectController(QObject):
 
         Task(job, on_done=self._finished, on_error=self._crashed).start()
 
-    def resume(self) -> None:
+    def resume(self, answer: str = "") -> None:
         sv = self.view
         if self.active:
             sv._note("Proje zaten çalışıyor.", "list")
@@ -317,6 +319,22 @@ class ProjectController(QObject):
             return
         self.state = pj.ProjectState.from_json(row["state_json"])
         self.run_id = row["id"]
+        if answer:
+            asked = next((t for t in self.state.tasks if (t.note or "").startswith("SORU:")), None)
+            if asked is not None:
+                self.state.answers.append(f"Görev {asked.idx} sorusu: {asked.note[5:].strip()} → Yanıt: {answer}")
+                asked.note = ""
+            else:
+                self.state.answers.append(f"Kullanıcı notu: {answer}")
+            sv._note("Yanıtınız kaydedildi; bundan sonraki görevlere iletilecek.", "check")
+        elif any((t.note or "").startswith("SORU:") for t in self.state.tasks):
+            sv._note("Proje bir sorunuzun yanıtını bekliyor: /proje-devam <yanıt> yazın. Yanıtsız sürdürülürse "
+                     "görev kendi en makul varsayımıyla ilerler.", "alert")
+            for t in self.state.tasks:
+                if (t.note or "").startswith("SORU:"):
+                    self.state.answers.append(f"Görev {t.idx} sorusu yanıtsız: {t.note[5:].strip()} → en makul "
+                                              "varsayımla ilerle ve varsayımı açıkça yaz")
+                    t.note = ""
         self._show_tasks(self.state)
         sv._note("Proje kaldığı yerden sürdürülüyor.", "refresh")
         self.start()
@@ -359,8 +377,10 @@ class ProjectController(QObject):
             title = "Proje tamamlandı"
             text = summary + (f". Dal: {state.branch}" if state.git else "") + ". Rapor: EVREN_RAPOR.md"
         else:
-            title = "Proje duraklatıldı"
-            text = f"{state.pause_reason} ({summary}). Sürdürmek için /proje-devam."
+            reason = state.pause_reason or ""
+            title = ("Proje kararınızı bekliyor" if "kararınız gerekiyor" in reason
+                     else "Proje kısmen bitti" if reason.startswith("Proje kısmen bitti") else "Proje duraklatıldı")
+            text = f"{reason} ({summary})." + ("" if "/proje-devam" in reason else " Sürdürmek için /proje-devam.")
             auto = schedule_auto_resume(self, state.pause_reason)
             if auto:
                 text += " " + auto

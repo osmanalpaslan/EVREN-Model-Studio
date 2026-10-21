@@ -148,3 +148,8 @@
 - **Kural:** Kenar çubuğu/panel/splitter'a dokunduğunda çok adımlı gerçek fare sürüklemesi testi yaz (`tests/test_kenar_cubugu_surukleme.py` düzeni) ve "görünür bölge boş değil, x >= 0, toplam genişlik <= splitter" değişmezlerini denetle; QStackedWidget orta alana sabit en küçük genişlik ver, uzun etiketleri kaydır.
 - **Neden:** Kenar çubuğu yalnız sürüklemede ekran dışına itiliyordu; büyüt/küçült ve tek setSizes denemesi bunu göstermedi ve "hata yok" diye yanlış kayıt yazıldı.
 - **Kaynak:** 2026-10-21-kenar-cubugu-suruklenince-kayboluyordu-orta-yiginin-en-kucuk, 2026-10-21-kenar-cubugu-icin-splitter-da-hata-yok-iddiasi-surukleme-den
+
+### R-28 · Gözetimsiz akışta "bitti"yi istenen çıktıya bağla, kararı kullanıcıya sor
+- **Kural:** Proje/Derin/QA gibi gözetimsiz akışlarda iş ancak istenen nihai çıktı doğrulanınca "bitti" sayılır; takılan veya atlanan görev varsa duraklat ve nedenini söyle; doğrulama komutunun kendi kabuk/sözdizimi hatasını görev başarısızlığı sayma; kullanıcının kararını gerektiren eksik veri veya seçimi varsayımla geçme (önceden sor ya da `SORU:` ile duraklat); ajan komutlarını ikinci bir `powershell -Command "…"` ile sarmalatma.
+- **Neden:** Hesap kapama oturumunda Derin Mod 3/12 görevle "bitti, sorun yok" dedi; bozuk doğrulama komutu (`$` dış kabukta yutuldu) bir görevi düşürüp 8 görevi atlattı; Anla'nın bulduğu sorular hiç sorulmadı ve ajan onayı kendisi yazdı.
+- **Kaynak:** 2026-10-21-derin-mod-kismi-projede-bitti-dedi-ve-kullaniciya-sorulari-s, 2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8, 2026-10-21-ic-ice-powershell-komutunda-dis-kabuk-degiskenlerini-yuttu

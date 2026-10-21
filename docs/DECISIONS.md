@@ -83,6 +83,11 @@
 | 79 | Ek EVREN API anahtarı / anahtar döndürme YOK | EVREN Kullanım Şartları v1 §2: kota/hız sınırını atlatma, anahtar paylaşımı ve otomatik hesap oluşturma yasak (2026-10-21'de `/v1/terms/text` okundu) | 2026-10-21 |
 | 80 | Uzun işler için ayrı araçlar (start_job/wait_job); bekleme KODLA | 5 dk pencere hız sınırıdır, süre sınırı değil: model çağrılmadan beklemek token harcamaz; run_command 30 dk'da keser | 2026-10-21 |
 | 81 | Kota sonrası otomatik sürdürme, açılıp kapatılabilir (varsayılan açık) | Kullanıcı kararı (önerilen plan onaylandı) | 2026-10-21 |
+| 82 | Tek `powershell … -Command "…"` sarmalaması açılır; -File/-EncodedCommand/belirsiz birleşik komutlar olduğu gibi | Dış kabuk `$`'ı yutuyordu; belirsiz durumda komutu değiştirmek yanlış komut çalıştırma riski taşır | 2026-10-21 |
+| 83 | Doğrulama komutu komut SATIRINDA sözdizimi/bağlama hatası verirse görev düşmez, karar incelemeye | Komut planlayıcının hatası, görevin değil; betik içi hata gerçek başarısızlık | 2026-10-21 |
+| 84 | Takılan görev varsa proje "bitti" değil "duraklatıldı"; sürdürme takılanı sıfır denemeyle yeniden dener | 3/12 ile "tamamlandı" yanıltıcıydı; Derin Mod bu duruma güvenip doğrulamaya geçiyordu | 2026-10-21 |
+| 85 | Kullanıcı kararı gerektiren konular Derin'de planlamadan önce sorulur; görevde `SORU:` ile duraklatılır; yanıtsız sürdürme = açıkça yazılan varsayım | Gözetimsiz ajan onayı kendisi yazdı (R-28) | 2026-10-21 |
+| 86 | ASCII dışı içerikli .ps1/.psm1/.psd1 UTF-8 BOM ile yazılır | PowerShell 5.1 BOM'suz betiği ANSI okur (ölçüm: 19 → 24 karakter) | 2026-10-21 |
 
 ## Değerlendirilip reddedilenler
 

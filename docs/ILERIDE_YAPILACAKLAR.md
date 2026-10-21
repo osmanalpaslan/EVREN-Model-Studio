@@ -280,6 +280,9 @@ Açık kalanlar / ileride:
       tetiklenme riskiyle birlikte ölçülmeli, R-22).
 - [ ] Uygulama kapalıyken otomatik sürdürme (Windows Görev Zamanlayıcı) — gerekirse.
 - EVREN'den sorulacak (şartlarda yok): eşzamanlı istek sınırı; kota anahtar mı hesap mı başına.
+- Düzeltmeler (2026-10-21, dal `feat/derin-duzeltmeler`): kullanıcının hesap kapama oturumundan çıkan 10 madde
+  YAPILDI (CHANGELOG). İleride: Derin bekleme durumunu uygulama kapanınca saklamak; Modeller sayfasında rota
+  modeli listeden kalkınca uyarı; Proje planında "kullanıcı onayı" görevlerini plan kartında soruya çevirme.
 
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 

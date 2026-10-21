@@ -56,7 +56,7 @@ SLASH_COMMANDS = {
     "/yardim": "Komutları ve kısayolları göster",
     "/proje": "Proje ajanı: /proje <hedef> — plan çıkarır, onayınızla görev görev yürütür",
     "/proje-duzelt": "Proje planını değiştir: /proje-duzelt <geri bildirim>",
-    "/proje-devam": "Duraklatılan projeyi kaldığı yerden sürdür",
+    "/proje-devam": "Duraklatılan projeyi sürdür — /proje-devam <yanıt> ile sorusunu yanıtlayın",
     "/proje-durdur": "Çalışan projeyi güvenli noktada durdur",
     "/qa": "QA ajanı: /qa <neyi test etsin> — web uygulamasını tarayıcıda test uzmanı gibi dener",
     "/qa-duzelt": "QA senaryolarını değiştir: /qa-duzelt <geri bildirim>",

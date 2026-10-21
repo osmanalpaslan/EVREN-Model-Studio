@@ -85,6 +85,7 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
 - **Derin Mod**: composer'daki **Derin** düğmesini açın (veya `/derin <istek>`). Zor işler birden çok
   EVREN ajanıyla yürür: anla (paralel inceleme) → planla (iki model + yargıç) → onayınızla uygula →
   iki bağımsız denetçiyle doğrula → düzelt. Rapor `EVREN_DERIN.md`. Daha yavaş, daha çok token.
+  Eksik veri veya karar gerekiyorsa planlamadan önce size sorar (soru kartı).
 - **Plan bekçisi**: ajan fazlara ayırdığı işte bir fazı bitirip durmaz, sıradakine sormadan geçer.
 - **Uzun işler**: saatler süren testler arka planda çalışır; ajan beklerken token harcanmaz,
   bitince bildirim gelir. Kota yüzünden duran Proje/QA/Derin çalışması kota yenilenince sürer.

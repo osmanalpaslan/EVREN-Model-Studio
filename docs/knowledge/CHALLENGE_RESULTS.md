@@ -183,6 +183,23 @@ gerçek yararı orada gösterilmedi (kayıt "izleniyor").
 3. Düzeltme sonrası, Serena açık (`--serena build\mcp_data`): **12/12**, 535 sn, MCP çağrısı 0, yakalanmamış
    hata 0 (planlama 5/5, mini_proje 5/5).
 
+## Derin/Proje düzeltmeleri (2026-10-21 akşam, hesap kapama oturumundan sonra, gerçek EVREN API)
+
+`tests/e2e_derin_real_api.py` (genişletildi):
+
+| Ölçüm | İlk deneme | Düzeltme sonrası |
+|---|---|---|
+| Net istekte (calc div) soru sayısı — R-22, 0 olmalı | 1 ("bölme ondalık mı?") ✗ | **0** ✓ |
+| Eksik veri + belirsiz istekte soru (≥1 olmalı) | 6 (tekrarlı) | **2** (eksik dosyalar; hangi ay) ✓ |
+| Bilinen YANLIŞ değişiklik | 7 onaylı sorun ✓ | 6 onaylı, 5 yüksek ✓ |
+| Bilinen DOĞRU değişiklik | 3 yüksek ✗ (betik değişikliği diske yazmıyordu; denetçi "çıktı dosyada yok" dedi — doğru davranış, betik hatası) | **0** ✓ |
+| Anla bulgu | 3/3 | 2/3 (bir alt ajan bloğu yine vermedi; ikinci katman turuna rağmen) |
+| Planla | 2 geçerli plan, yargıç kapsam dışı README'yi eledi | aynı |
+
+Soru talimatı sıkılaştırıldı (en çok 2/alt ajan, toplam 4; "makul varsayımla yapılabilen ayrıntıyı sorma").
+Zorluk paketi auto-pro (yeni istem + iç içe PowerShell açma + .ps1 BOM): **12/12**, 516 sn, yakalanmamış hata 0.
+R-13: e2e_real_api E2E_OK · e2e_agent 5/6 → tek başına yeniden 6/6 (geçici) · e2e_ui 15/15.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca
