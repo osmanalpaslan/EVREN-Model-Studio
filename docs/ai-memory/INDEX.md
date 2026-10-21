@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 78 · Açık/izlenen: 6 · Oturum: 25 · Kural: 28
+Kayıt: 78 · Açık/izlenen: 6 · Oturum: 26 · Kural: 28
 
 ## Açık ve izlenen kayıtlar
 
@@ -102,6 +102,7 @@ Kayıt: 78 · Açık/izlenen: 6 · Oturum: 25 · Kural: 28
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-21 | [2026-10-21-claude-code-masaustu-hesap-kapama-raporu-gercek-is-sureci-olc](sessions/2026-10-21-claude-code-masaustu-hesap-kapama-raporu-gercek-is-sureci-olc.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Hesap kapama raporu gerçek iş süreci ölçümü |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-hesap-kapama-oturumu-analizi-ve-derin-pr](sessions/2026-10-21-claude-code-masaustu-hesap-kapama-oturumu-analizi-ve-derin-pr.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Hesap kapama oturumu analizi ve Derin/Proje düzeltmeleri |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k](sessions/2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Derin Mod, plan bekçisi, uzun işler, kota kapısı ve kenar çubuğu |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-auto-pro-kod-motoru-sirasi-yeniden-olcum](sessions/2026-10-21-claude-code-masaustu-auto-pro-kod-motoru-sirasi-yeniden-olcum.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro kod motoru sırası yeniden ölçüm |
