@@ -15,7 +15,7 @@ from evren_studio.db import Database
 
 
 def test_rol_secimi_onceligi():
-    ctx = {"deepseek-v4-flash": 1_048_576, "qwen3.8-flash-next": 262_144}
+    ctx = {"deepseek-v4-flash": 1_048_576, "deepseek-v4.1-flash": 1_048_576, "qwen3.8-flash-next": 262_144}
     assert router.classify(agentic=False)[0] == "sohbet"
     assert router.classify(agentic=True)[0] == "kod"
     assert router.classify(agentic=True, mode="plan")[0] == "plan"

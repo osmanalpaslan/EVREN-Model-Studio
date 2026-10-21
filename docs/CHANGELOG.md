@@ -1,5 +1,13 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Auto Pro kod motoru sırası
+
+### Değişti
+
+- **Auto Pro kod işinde artık önce deepseek-v4.1-flash'ı kullanır** (sonra qwen3.8-flash-next, sonra gemma-4-31b).
+  Bugünkü ölçümde üç motor da 12 zor görevin hepsini geçti; deepseek-v4.1-flash qwen'den hızlı (7,0 dk / 8,9 dk)
+  ve çok daha az adımla çalıştı. Proje ajanı görevleri ve Derin Mod düzeltme turları da bu sırayı kullanır.
+
 ## Yayınlanmamış — Derin Mod ve Proje ajanı düzeltmeleri (hesap kapama oturumundan)
 
 Kullanıcının gerçek Derin Mod oturumu (hesap kapama raporu, 1 sa 50 dk) incelendi: Excel raporu oluşmadı,

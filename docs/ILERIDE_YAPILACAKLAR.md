@@ -283,6 +283,11 @@ Açık kalanlar / ileride:
 - Düzeltmeler (2026-10-21, dal `feat/derin-duzeltmeler`): kullanıcının hesap kapama oturumundan çıkan 10 madde
   YAPILDI (CHANGELOG). İleride: Derin bekleme durumunu uygulama kapanınca saklamak; Modeller sayfasında rota
   modeli listeden kalkınca uyarı; Proje planında "kullanıcı onayı" görevlerini plan kartında soruya çevirme.
+- [ ] Motor hızı günden güne değişiyor (deepseek-v4.1-flash 19 Ekim 10 dk → 21 Ekim 7 dk): gerçek kullanımdan
+      motor başına hız/hata/döngü takibi; Auto Pro son saatlerde hızlı ve sorunsuz motoru öne alsın; Proje
+      görevleri arasında belirgin yavaşlayan motor değişsin (görev ORTASINDA değil). İsteğe bağlı: plan onayı
+      beklenirken 20-30 sn'lik yoklama.
+- [ ] gemma-4-31b için maraton ölçümü (kısa görevlerde en hızlı; uzun işte döngü geçmişi var).
 
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 

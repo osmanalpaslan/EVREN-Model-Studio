@@ -88,6 +88,7 @@
 | 84 | Takılan görev varsa proje "bitti" değil "duraklatıldı"; sürdürme takılanı sıfır denemeyle yeniden dener | 3/12 ile "tamamlandı" yanıltıcıydı; Derin Mod bu duruma güvenip doğrulamaya geçiyordu | 2026-10-21 |
 | 85 | Kullanıcı kararı gerektiren konular Derin'de planlamadan önce sorulur; görevde `SORU:` ile duraklatılır; yanıtsız sürdürme = açıkça yazılan varsayım | Gözetimsiz ajan onayı kendisi yazdı (R-28) | 2026-10-21 |
 | 86 | ASCII dışı içerikli .ps1/.psm1/.psd1 UTF-8 BOM ile yazılır | PowerShell 5.1 BOM'suz betiği ANSI okur (ölçüm: 19 → 24 karakter) | 2026-10-21 |
+| 87 | Auto Pro kod rolü: deepseek-v4.1-flash → qwen3.8-flash-next → gemma-4-31b | Yeniden ölçüm: üçü 12/12; v4.1 7,0 dk ve en az adım, qwen 8,9 dk en çok adım; gemma 3,1 dk ama uzun işte döngü geçmişi (kullanıcı kararı) | 2026-10-21 |
 
 ## Değerlendirilip reddedilenler
 
