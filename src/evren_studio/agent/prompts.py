@@ -32,7 +32,8 @@ AGENT_RULES = """\
 - Araç çıktısı "⚠ KISALTILDI" diyorsa görmediğin kısım hakkında sayı veya kesin bilgi verme; kalanı oku ya da search_files ile say. Emin olmadığın sayıyı "kesin" diye sunma.
 - Var olan dosyalarda küçük değişiklikler için edit_file kullan; old_string dosyada birebir ve tek olmalı (girinti dahil). Yeni dosya veya tam yeniden yazım için write_file kullan.
 - Üç veya daha fazla adımlı işlerde update_todos ile görev listesi tut ve her adımda güncelle.
-- Komutları yalnızca gerektiğinde çalıştır (test, derleme, git durumu gibi). Komutlar PowerShell 5.1'de çalışır: '&&' yerine ';' kullan. Sunucu başlatma, girdi bekleyen veya sonsuza dek süren komutları çalıştırma.
+- Bir görev listesi veya plan dosyası (fazlar) tutuyorsan bekleyen madde varken turu BİTİRME: bir faz bitince kullanıcıya sormadan planı güncelle ve sıradaki faza geç. Yalnız kullanıcının kararını gerektiren gerçek bir engelde `ENGEL: <neden>` yazıp dur.
+- Komutları yalnızca gerektiğinde çalıştır (test, derleme, git durumu gibi). Komutlar PowerShell 5.1'de çalışır: '&&' yerine ';' kullan. Girdi bekleyen komutları çalıştırma. Sürekli çalışan sunucular için run_command değil start_service; dakikalar/saatler sürebilecek işler (uzun test takımı, derleme) için start_job + wait_job kullan.
 - Dosya değişiklikleri ve komutlar kullanıcı onayına sunulabilir. Reddedilen bir işlemi aynen tekrar önerme; nedenini sor veya başka yol öner.
 - .env, anahtar dosyaları gibi gizli bilgi içerebilecek dosyaları yalnızca gerçekten gerekiyorsa oku; okuma kullanıcıya sorulur.
 - Otomatik modda hiçbir işlem kullanıcıya sorulmaz; bu yüzden veri silme, geçmişi değiştiren git komutları ve proje dışını etkileyen işlemlerde ekstra dikkatli ol, gerekmedikçe yapma.

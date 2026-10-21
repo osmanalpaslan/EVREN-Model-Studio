@@ -143,3 +143,8 @@
 - **Neden:** Gerçek QA koşularında EVREN modelleri sonucu ya hiç yazmadı, ya boş yanıtla bitirdi, ya da değer içinde kaçışsız çift tırnakla bozuk JSON verdi; senaryo yanlışlıkla "engellendi" sayıldı.
 - **Kaynak:** 2026-10-19-qa-senaryosunda-model-sonuc-blogunu-yazmayi-unuttu
 
+
+### R-27 · Splitter ve düzen değişikliğini gerçek sürüklemeyle doğrula
+- **Kural:** Kenar çubuğu/panel/splitter'a dokunduğunda çok adımlı gerçek fare sürüklemesi testi yaz (`tests/test_kenar_cubugu_surukleme.py` düzeni) ve "görünür bölge boş değil, x >= 0, toplam genişlik <= splitter" değişmezlerini denetle; QStackedWidget orta alana sabit en küçük genişlik ver, uzun etiketleri kaydır.
+- **Neden:** Kenar çubuğu yalnız sürüklemede ekran dışına itiliyordu; büyüt/küçült ve tek setSizes denemesi bunu göstermedi ve "hata yok" diye yanlış kayıt yazıldı.
+- **Kaynak:** 2026-10-21-kenar-cubugu-suruklenince-kayboluyordu-orta-yiginin-en-kucuk, 2026-10-21-kenar-cubugu-icin-splitter-da-hata-yok-iddiasi-surukleme-den

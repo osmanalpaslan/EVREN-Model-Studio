@@ -14,7 +14,7 @@
 | `/v1/quota` | GET | Bearer | ✅ Test edildi | 5 dk pencere + günlük + CR kredi |
 | `/v1/requests/{id}` | GET | Bearer | ✅ Test edildi | `execution_terminal`, `charge_terminal` |
 | `/v1/terms/status` | GET | Bearer | ✅ Test edildi | Sürüm 1, kabul edilmiş |
-| `/v1/terms/text` | GET | Bearer | ⬜ Şema doğrulandı | Uygulamada kullanılmıyor (kabul zaten yapılmış) |
+| `/v1/terms/text` | GET | Bearer | ✅ Test edildi (2026-10-21) | Sürüm 1 metni okundu; özet aşağıda "Kullanım şartları" |
 | `/v1/terms/accept` | POST | Bearer | ⬜ Şema doğrulandı | Kullanıcı adına asla otomatik çağrılmaz |
 | `/v1/embeddings` | POST | Bearer | ⬜ Şema doğrulandı | qwen3-embedding-8b (yetenek kaydı) |
 | `/v1/rerank` | POST | Bearer | ⬜ Şema doğrulandı | qwen3-reranker-8b (yetenek kaydı) |
@@ -34,6 +34,24 @@ kullanmadan önce canlı test yapılmalıdır.
 - Hatalı anahtar → `401` (gövde boş dönebilir).
 - Şart kabulü: `/v1/terms/status` → `accepted: true` değilse sohbet çağrıları
   engellenebilir. Mevcut anahtar için kabul zaten yapılmış (2026-10-15).
+
+## Kullanım şartları (v1, `/v1/terms/text`, 2026-10-21'de okundu)
+
+`docs/legal/LLM_TERMS_OF_SERVICE_v1.md` — esaslı sürüm (`is_material=true`), hesabımızda kabul edilmiş.
+Uygulamayı etkileyen maddeler:
+
+- **§2 Yasak**: hız sınırlarını, kota mekanizmalarını veya kimlik doğrulamasını atlatmaya yönelik
+  teknik girişimler — açıkça "rate-limit bypass, anahtar paylaşımı, otomatik hesap oluşturma".
+  → Uygulama ek API anahtarı/anahtar döndürme ile kotayı genişletmez (DECISIONS #79). Derin Mod
+  kotayı aşmaz; kota kapısıyla yavaşlar ve bekler.
+- §2 ayrıca yasadışı/zararlı içerik ve model lisanslarının kullanım kısıtlarını yasaklar;
+  `content_guard` katmanı bunu kısmen uygular, sorumluluk kullanıcıdadır.
+- §3 Kullanım kredi (CR) ile faturalanır (HOLD → SETTLE). §4 Prompt/yanıt metinleri KVKK kapsamında
+  işlenir (org düzeyi rıza, kullanıcı düzeyi unutulma hakkı). §5 Hizmet "olduğu gibi", SLA yok.
+- §6 İhlalde anahtar askıya alınabilir. §7 Esaslı değişiklikte yeniden kabul gerekir; uygulama
+  kabulü kullanıcı adına asla otomatik yapmaz.
+- Metin "hukuk ekibince nihai gözden geçirilmemiş taslak" notu taşıyor. Eşzamanlı istek sınırı ve
+  kotanın anahtar/hesap başına olup olmadığı şartlarda YAZMIYOR (belgelenmemiş).
 
 ## Yanıt biçimi ayrıntıları (gerçek testlerden)
 

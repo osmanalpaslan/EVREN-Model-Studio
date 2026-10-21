@@ -139,6 +139,18 @@
 - Güvenlik taraması bulunan anahtarın DEĞERİNİ rapora/modele yazmaz (yalnız dosya:satır ve tür).
 - QA ve görsel göz yalnız EVREN modellerine gider (`ai_chat(evren_only=True)`).
 
+## Derin Mod ve uzun işler (2026-10-21)
+
+- Derin Mod alt ajanları salt okunur (Plan modu); yazma/komut onayı istenirse ANINDA reddedilir.
+  Dosyaları yalnız Proje ajanı değiştirir, o da kullanıcı planı onayladıktan sonra ve ayrı git dalında.
+- Derin Mod yalnız EVREN'e gider (alt ajanlar, yargıç, denetçiler, Proje görevleri ve incelemesi);
+  ücretli sağlayıcıya istek yapmaz.
+- Ek API anahtarıyla kotayı genişletme YOK: EVREN Kullanım Şartları v1 §2 anahtar paylaşımını ve
+  kota/hız sınırını atlatmayı yasaklıyor (bkz. docs/knowledge/API_COMPATIBILITY.md).
+- `start_job` komutu `run_command` gibi çalışma modunun onayından geçer, yalnız proje klasöründe
+  çalışır; çıktısı veri klasöründeki günlük dosyasına yazılır (anahtar yazılmaz). Uygulama kapanınca
+  çalışan işler süreç ağacıyla durdurulur.
+
 ## Repo hijyeni
 
 - `.gitignore`: `.venv`, `data/`, `*.db`, `logs/*.log`, `.env`, `secrets*`

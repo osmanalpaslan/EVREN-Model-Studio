@@ -31,6 +31,11 @@ kapsamasında kaldığı için bulunamadı) bu deponun çalışma ağacında iki
    yeniden yazdı ve "geçici" hata ayıklama günlüğü ekledi; `time.strftime`'ın `%f`'i
    Windows'ta desteklememesi uygulamayı açılışta çökertti. Ajanı çalıştıran uygulama
    bozulunca sorun uygulamayla düzeltilemedi.
+> **Düzeltme notu (2026-10-21):** Aşağıdaki "Splitter'da hata YOK" iddiası YANLIŞTI. Senaryo fareyle
+> sürüklemeyi denemedi; çubuk 0 genişliğe değil negatif x'e itiliyordu (orta QStackedWidget'ın en küçük
+> genişliği). Bkz. 2026-10-21-kenar-cubugu-suruklenince-kayboluyordu-orta-yiginin-en-kucuk ve
+> 2026-10-21-kenar-cubugu-icin-splitter-da-hata-yok-iddiasi-surukleme-den.
+
 Splitter'da hata YOK: 4 ayar × 17 adımlık gerçek pencere senaryosunda (büyüt/küçült,
 Ctrl+B/J, sayfa geçişi, simge durumu) genişlik hiç 0'a düşmedi. Ayrı gerçek hata:
 Ctrl+K kenar çubuğunu `setVisible(True)` ile açıyor, ayarı ve başlıktaki "göster"

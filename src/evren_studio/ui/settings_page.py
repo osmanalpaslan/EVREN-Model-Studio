@@ -236,6 +236,9 @@ class SettingsPage(BasePage):
         self.agent_mode = QComboBox()
         for key, label in MODES.items():
             self.agent_mode.addItem(f"{label} — {MODE_HINTS[key]}", key)
+        # Uzun öğe metni kartı (ve sayfayı) 1000+ px'e genişletip yatay kaydırma açıyordu (2026-10-21)
+        self.agent_mode.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.agent_mode.setMinimumContentsLength(24)
         l.addWidget(kv_row_widget("Varsayılan çalışma modu:", self.agent_mode, MODES[d.agent_mode]))
         self.tool_protocol = QComboBox()
         for key, label in PROTOCOLS:
@@ -300,6 +303,12 @@ class SettingsPage(BasePage):
         l.addWidget(self.edit_diag)
         self.test_check = QCheckBox("Test bekçisi: ajan dosya değiştirince tur sonunda projenin testlerini çalıştır (önerilir)")
         l.addWidget(self.test_check)
+        self.plan_guard = QCheckBox("Plan bekçisi: ajan fazlara ayırdığı işte açık madde varken durmasın, sıradakine geçsin (önerilir)")
+        l.addWidget(self.plan_guard)
+        self.suggest_project = QCheckBox("Çok aşamalı uzun istemde Proje ajanını öner")
+        l.addWidget(self.suggest_project)
+        self.auto_resume = QCheckBox("Kota yüzünden duraklayan Proje/QA/Derin çalışmasını kota yenilenince kendiliğinden sürdür")
+        l.addWidget(self.auto_resume)
         col.addWidget(c)
 
         # ---- MCP sunucuları ----
@@ -389,6 +398,9 @@ class SettingsPage(BasePage):
         self.send_enter.setChecked(s.send_with_enter)
         self.edit_diag.setChecked(s.edit_diagnostics)
         self.test_check.setChecked(s.test_check)
+        self.plan_guard.setChecked(s.plan_guard)
+        self.suggest_project.setChecked(s.suggest_project)
+        self.auto_resume.setChecked(s.auto_resume)
         self.auto_compact.setChecked(s.auto_compact)
         self.compact_percent.setValue(s.auto_compact_percent)
         self.compact_max.setValue(s.auto_compact_max_tokens)
@@ -426,6 +438,9 @@ class SettingsPage(BasePage):
         s.send_with_enter = self.send_enter.isChecked()
         s.edit_diagnostics = self.edit_diag.isChecked()
         s.test_check = self.test_check.isChecked()
+        s.plan_guard = self.plan_guard.isChecked()
+        s.suggest_project = self.suggest_project.isChecked()
+        s.auto_resume = self.auto_resume.isChecked()
         s.auto_compact = self.auto_compact.isChecked()
         s.auto_compact_percent = int(self.compact_percent.value())
         s.auto_compact_max_tokens = int(self.compact_max.value())

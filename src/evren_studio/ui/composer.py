@@ -62,13 +62,15 @@ SLASH_COMMANDS = {
     "/qa-duzelt": "QA senaryolarını değiştir: /qa-duzelt <geri bildirim>",
     "/qa-devam": "Duraklatılan QA testini sürdür",
     "/qa-durdur": "Çalışan QA testini durdur",
+    "/derin": "Derin Mod: /derin aç-kapat · /derin <istek> bu işi çok ajanlı anla→planla→uygula→doğrula ile yürüt",
+    "/derin-durdur": "Çalışan Derin Mod akışını durdur",
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
     "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/disa-aktar": "download",
     "/yardim": "help", "/proje": "list", "/proje-duzelt": "pencil", "/proje-devam": "refresh",
     "/proje-durdur": "stop", "/qa": "check", "/qa-duzelt": "pencil", "/qa-devam": "refresh",
-    "/qa-durdur": "stop",
+    "/qa-durdur": "stop", "/derin": "spark", "/derin-durdur": "stop",
 }
 FOOTER_SENT_TO = {"evren": "EVREN API'sine", "openai": "OpenAI'ye (ücretli)",
                   "anthropic": "Anthropic'e (ücretli)",
@@ -177,6 +179,7 @@ class Composer(QWidget):
     submitted = Signal(str)
     stop_requested = Signal()
     mode_changed = Signal(str)
+    deep_toggled = Signal(bool)
     model_changed = Signal(str)
     attach_requested = Signal()
     files_added = Signal(list)          # ComposerEdit veya çerçeveye bırakılan dosyalar
@@ -273,6 +276,11 @@ class Composer(QWidget):
         self.model_menu = QMenu(self)
         self.model_btn.setMenu(self.model_menu)
         row.addWidget(self.model_btn)
+        # Derin Mod: açıkken her iş birden çok EVREN ajanıyla anla→planla→uygula→doğrula→düzelt
+        self.deep_btn = self._chip("spark", "Derin")
+        self.deep_btn.setCheckable(True)
+        self.deep_btn.toggled.connect(self._on_deep)
+        row.addWidget(self.deep_btn)
         self.usage_btn = UsageChip()
         row.addWidget(self.usage_btn)
 
@@ -294,6 +302,7 @@ class Composer(QWidget):
                              "Mesajlar ve dosya içerikleri EVREN API'sine gönderilir.")
         self.footer.setProperty("role", "faint")
         self.footer.setAlignment(Qt.AlignCenter)
+        self.footer.setWordWrap(True)          # dar pencerede orta alanı genişletmesin
         outer.addWidget(self.footer)
         self.set_mode("manuel")
         self._update_send()
@@ -381,6 +390,28 @@ class Composer(QWidget):
 
     def model_ids(self) -> list[str]:
         return [m[0] for m in self._models]
+
+    def set_deep(self, on: bool) -> None:
+        self.deep_btn.blockSignals(True)
+        self.deep_btn.setChecked(bool(on))
+        self.deep_btn.blockSignals(False)
+        self._style_deep(bool(on))
+
+    def _on_deep(self, on: bool) -> None:
+        self._style_deep(on)
+        self.deep_toggled.emit(on)
+
+    def _style_deep(self, on: bool) -> None:
+        p = theme.current()
+        self.deep_btn.setText("Derin · açık" if on else "Derin")
+        self.deep_btn.setIcon(icons.icon("spark", color=p.accent if on else None, size=15))
+        self.deep_btn.setStyleSheet(f"QToolButton {{ border: 1px solid {p.accent}; color: {p.text}; }}" if on else "")
+        self.deep_btn.setToolTip(
+            "Derin Mod AÇIK: her iş anla → planla (iki model + yargıç) → uygula (onaylı plan) → çekişmeli doğrula "
+            "→ düzelt akışıyla birden çok EVREN ajanıyla yürür. Daha yavaş ve daha çok token harcar; yalnız ücretsiz "
+            "EVREN. Kapatmak için tıklayın." if on else
+            "Derin Mod: zor işler için Claude Code'daki ultracode benzeri çok ajanlı çalışma. Açmak için tıklayın "
+            "(veya /derin <istek> ile tek bir işte kullanın).")
 
     def set_running(self, running: bool) -> None:
         self._running = running

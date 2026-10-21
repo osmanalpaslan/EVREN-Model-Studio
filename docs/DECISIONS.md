@@ -74,6 +74,15 @@
 | 70 | Arka plan servisleri tur sonunda kapanır (QA hariç) | Kullanıcının bilgisayarında unutulmuş sunucu/port kalmasın | 2026-10-19 |
 | 71 | Test bekçisi yalnız tur başında geçen testler bozulunca uyarır | Önceden bozuk ilgisiz testler modeli kapsam dışına sürüklemesin (R-20) | 2026-10-19 |
 | 72 | QA kota bekçisi yok | Kullanıcı kararı (gerek görmedi) | 2026-10-19 |
+| 73 | Faz unutma için plan bekçisi + Proje ajanı ÖNERİSİ (sessiz yönlendirme yok) | Kullanıcı kararı; Proje ajanı Otomatik mod, ayrı dal ve commit demek — kullanıcı seçmeli | 2026-10-21 |
+| 74 | Plan bekçisi yalnız BU turda yazılan/düzenlenen plan dosyasını veya bu turun görev listesini sayar; ilerleme = gerçek iş (dosya yazma/komut), işaret değiştirmek değil | Eski TODO dosyaları yanlış tetiklemesin (R-22); model yalnız kutucuk işaretleyerek bekçiyi susturamasın | 2026-10-21 |
+| 75 | Derin Mod düğmeyle açılır; açıkken HER iş anla→planla→uygula→doğrula→düzelt | Kullanıcı kararı | 2026-10-21 |
+| 76 | Derin Mod çalışma modlarına (MODES) eklenmedi; ayrı düğme + `/derin` | R-14: izin modu adları yetki taşır; Derin bir akıştır, izin değil | 2026-10-21 |
+| 77 | Derin Mod'da yazan TEK: Proje ajanı (onaylı plan); alt ajanlar salt okunur ve onay isteği anında reddedilir | Paralel yazıcılar dosya çakışması yaratır; arayüzsüz ajan onay beklerken sonsuza dek takılır | 2026-10-21 |
+| 78 | Derin Mod yalnız EVREN; paralellik varsayılan 2, en çok 3; pencere ≥ %60 → 1 | Uygulamanın amacı ücretsiz hizmet; 5 dk penceresi 2,5M token | 2026-10-21 |
+| 79 | Ek EVREN API anahtarı / anahtar döndürme YOK | EVREN Kullanım Şartları v1 §2: kota/hız sınırını atlatma, anahtar paylaşımı ve otomatik hesap oluşturma yasak (2026-10-21'de `/v1/terms/text` okundu) | 2026-10-21 |
+| 80 | Uzun işler için ayrı araçlar (start_job/wait_job); bekleme KODLA | 5 dk pencere hız sınırıdır, süre sınırı değil: model çağrılmadan beklemek token harcamaz; run_command 30 dk'da keser | 2026-10-21 |
+| 81 | Kota sonrası otomatik sürdürme, açılıp kapatılabilir (varsayılan açık) | Kullanıcı kararı (önerilen plan onaylandı) | 2026-10-21 |
 
 ## Değerlendirilip reddedilenler
 

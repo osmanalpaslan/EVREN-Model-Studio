@@ -6,6 +6,7 @@ from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
+    QLabel,
     QMainWindow,
     QSplitter,
     QStackedWidget,
@@ -27,6 +28,11 @@ from .side_panel import SidePanel
 from .sidebar import Sidebar
 from .usage_page import UsagePage
 
+# Sütun sınırları (px). Orta alanın AÇIK alt sınırı kenar çubuğu kaybolma hatasını önler.
+SIDEBAR_MIN, SIDEBAR_MAX = 220, 420
+PANEL_MIN, PANEL_MAX = 300, 560
+CENTER_MIN = 400
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -41,7 +47,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("EVREN Studio")
         self.setWindowIcon(brand.app_icon())       # ay-yıldız, temaya göre beyaz/kırmızı
         self.resize(1440, 900)
-        self.setMinimumSize(900, 600)
+        # En küçük pencere = kenar çubuğu (220) + orta (CENTER_MIN) + sağ panel (300) + tutamaçlar
+        self.setMinimumSize(SIDEBAR_MIN + CENTER_MIN + PANEL_MIN + 10, 600)
 
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.setObjectName("Root")
@@ -52,6 +59,11 @@ class MainWindow(QMainWindow):
         self.panel = SidePanel(self.ctx)
         self.center = QStackedWidget()
         self.center.setObjectName("CenterStack")
+        # KENAR ÇUBUĞU KAYBOLMA HATASI (2026-10-21): QStackedWidget'ın en küçük boyut ipucu TÜM
+        # sayfaların en büyüğü (kaydırmasız uzun açıklamalar yüzünden 1728 px > pencere). QSplitter
+        # sürüklemede bunu orta alanın alt sınırı sayıp taşanı SOLDAN kesiyordu: çubuk x=-810'a
+        # itiliyor, görünmez oluyordu; genişletmek hiç mümkün değildi. Açık alt sınır bunu keser.
+        self.center.setMinimumWidth(CENTER_MIN)
         self.session = SessionView(self.ctx, self.panel)
         self.center.addWidget(self.session)
 
@@ -66,6 +78,7 @@ class MainWindow(QMainWindow):
         self.splitter.setStretchFactor(2, 0)
         self.setCentralWidget(self.splitter)
         self._sizes_applied = False
+        self.splitter.splitterMoved.connect(self._remember_widths)
 
         # bağlantılar
         self.sidebar.new_session.connect(self.new_session)
@@ -94,9 +107,20 @@ class MainWindow(QMainWindow):
         super().showEvent(event)
         if not self._sizes_applied:
             self._sizes_applied = True
-            total = max(self.width(), 900)
-            side, panel = 264, 360
-            self.splitter.setSizes([side, max(total - side - panel, 420), panel])
+            s = self.ctx.settings
+            side = min(max(int(s.sidebar_width or 264), SIDEBAR_MIN), SIDEBAR_MAX)
+            panel = min(max(int(s.panel_width or 360), PANEL_MIN), PANEL_MAX)
+            total = max(self.splitter.width(), self.width())
+            self.splitter.setSizes([side, max(total - side - panel, CENTER_MIN), panel])
+
+    def _remember_widths(self, *_args) -> None:
+        """Kullanıcı tutamacı sürükleyince genişlikler ayara yazılır (kapanışta kaydedilir)."""
+        sizes = self.splitter.sizes()
+        s = self.ctx.settings
+        if self.sidebar.isVisible() and sizes[0] > 0:
+            s.sidebar_width = min(max(sizes[0], SIDEBAR_MIN), SIDEBAR_MAX)
+        if self.panel.isVisible() and sizes[2] > 0:
+            s.panel_width = min(max(sizes[2], PANEL_MIN), PANEL_MAX)
 
     # ---- sayfalar ----
 
@@ -115,6 +139,12 @@ class MainWindow(QMainWindow):
         settings.settings_saved.connect(self._settings_saved)
         add("settings", settings)
         add("help", HelpPage(self.ctx))
+        # Uzun açıklama yazıları kaydırılsın: kaydırmasız etiket sayfanın (dolayısıyla orta alanın)
+        # en küçük genişliğini 1000+ px'e çıkarıyordu (kenar çubuğu kaybolma hatasının kaynağı).
+        for page in self.pages.values():
+            for lab in page.findChildren(QLabel):
+                if not lab.wordWrap() and len(lab.text()) > 90:
+                    lab.setWordWrap(True)
 
     def show_page(self, key: str) -> None:
         page = self.pages.get(key)

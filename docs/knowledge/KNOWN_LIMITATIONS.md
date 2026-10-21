@@ -125,13 +125,28 @@
 - Rol tablosu 12 görevlik ölçüme dayanır; EVREN model listesi/davranışı değişince
   yeniden ölçülmeli (`router.ROUTES_MEASURED`).
 - Proje ajanı uygulama kapanınca kendiliğinden yeniden başlamaz (`/proje-devam`);
-  günlük kota bitince duraklar, sıfırlanınca otomatik sürmez.
+  günlük kota bitince duraklar; 2026-10-21'den beri uygulama açıksa kota yenilenince kendiliğinden sürer.
 - Git deposu olmayan projede kontrol noktası commit'i yoktur; takılan görevin
   değişiklikleri geri alınmaz (Değişiklikler panelinden geri alınabilir).
 - İnceleme modeli de yanılabilir; doğrulama komutu olmayan görevde kabul yalnız
   incelemeye dayanır.
 - Yalnız EVREN modelleriyle ölçüldü; ücretli sağlayıcıda bütçe onayı penceresi
   gözetimsiz çalışmayı bekletebilir.
+
+## Derin Mod, plan bekçisi, uzun işler (2026-10-21)
+
+- Derin Mod yalnız proje klasörlü oturumda ve EVREN anahtarıyla çalışır; ekli dosyalı mesajlar normal
+  tura gider. Alt ajanlar MCP (Serena/Playwright) kullanmaz.
+- Derin Mod normal turdan birkaç kat fazla token harcar (3 inceleme + 2 plan + yargıç + Proje görevleri
+  + her turda 2 denetçi). Günlük kota azalınca duraklar; kota yenilenince sürdürme uygulama açıkken olur.
+- Denetçiler de yanılabilir: "yüksek" bulgu tek denetçiden kabul edilir, "orta" iki denetçi aynı dosyada
+  söylerse; benzer bulgular metin olarak birleştirilmez (aynı sorun iki satır görünebilir).
+- Plan bekçisi yalnız BU turda yazılan/düzenlenen plan dosyasına ve bu turun görev listesine bakar:
+  kullanıcının hazırladığı plan dosyasını ajan hiç güncellemezse bekçi onu görmez (eski TODO
+  dosyalarının yanlış tetiklemesini önlemek için bilerek).
+- Otomatik sürdürme ve uzun işler uygulama açık kaldıkça çalışır; uygulama kapanınca uzun işler durdurulur.
+- Uzun iş aynı anda en çok 4; tek `wait_job` en çok 240 dk bekler (sonra yeniden çağrılır).
+- EVREN'de eşzamanlı istek sınırı ve kotanın anahtar mı hesap mı başına olduğu belgelenmemiş.
 
 ## Sağlayıcıya bağlı sınırlar
 

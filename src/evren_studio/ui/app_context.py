@@ -325,6 +325,17 @@ class AppContext:
     def save_settings(self) -> None:
         self.store.save(self.settings)
 
+    # ---- uzun işler (agent/jobs.py) ----------------------------------------------------
+
+    @property
+    def jobs(self):
+        """Uygulama boyunca tek uzun iş yöneticisi (işler oturum/tur bitince kapanmaz)."""
+        if getattr(self, "_jobs", None) is None:
+            from ..agent.jobs import JobManager
+
+            self._jobs = JobManager(self.settings.resolved_data_dir() / "jobs")
+        return self._jobs
+
     # ---- MCP sunucuları (agent/mcp.py) ----------------------------------------------
 
     @property
@@ -360,6 +371,8 @@ class AppContext:
         return LazyToolset(lambda: self.mcp.toolset(configs, Path(project_root), message, status))
 
     def close(self) -> None:
+        if getattr(self, "_jobs", None) is not None:
+            self._jobs.stop_all()
         if getattr(self, "_mcp", None) is not None:
             self._mcp.close_all()
         self.db.close()

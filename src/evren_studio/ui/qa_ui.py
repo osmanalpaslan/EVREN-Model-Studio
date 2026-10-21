@@ -276,6 +276,9 @@ class QaController(QObject):
     def start(self) -> None:
         if self.state is None or self.active:
             return
+        from .project_ui import cancel_auto_resume
+
+        cancel_auto_resume(self)
         self._cancel.clear()
         self.active = True
         sv = self.view
@@ -323,7 +326,23 @@ class QaController(QObject):
         sv._note("QA testi kaldığı yerden sürdürülüyor.", "refresh")
         self.start()
 
+    def _auto_resume(self) -> None:
+        self._resume_timer = None
+        if self.active or self.view.running:
+            return
+        from .project_ui import return_to_session
+
+        return_to_session(self)
+        self.view._note("Kota yenilendi: QA testi kaldığı yerden otomatik sürdürülüyor.", "refresh")
+        self.resume()
+
     def stop(self) -> None:
+        if getattr(self, "_resume_timer", None) is not None and not self.active:
+            from .project_ui import cancel_auto_resume
+
+            cancel_auto_resume(self)
+            self.view._note("QA testinin otomatik sürdürülmesi iptal edildi.", "stop")
+            return
         if not self.active:
             self.view._note("Çalışan bir QA testi yok.", "check")
             return
@@ -350,7 +369,12 @@ class QaController(QObject):
         if state.status == "bitti":
             title, text = "QA testi tamamlandı", summary + ". Rapor: EVREN_QA_RAPORU.md"
         else:
+            from .project_ui import schedule_auto_resume
+
             title, text = "QA testi duraklatıldı", f"{state.pause_reason} ({summary}). Sürdürmek için /qa-devam."
+            auto = schedule_auto_resume(self, state.pause_reason)
+            if auto:
+                text += " " + auto
         sv._note(f"{title}: {text}", "check" if state.status == "bitti" else "alert")
         if state.status == "bitti":
             card = QaDoneCard(state)

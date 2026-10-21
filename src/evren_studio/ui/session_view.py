@@ -35,6 +35,8 @@ from PySide6.QtWidgets import (
 
 from ..agent import environment, prompts, scope
 from ..agent.compaction import MAX_AUTO_RESUMES, CompactPolicy, needs_compaction, summarize
+
+PLAN_AUTO_CONTINUES = 2      # plan bekçisi: kullanıcı mesajı başına adım sınırı sonrası otomatik devam
 from ..agent.permissions import MODES, SessionPermissions, normalize_mode
 from ..agent.runner import (
     AgentEvents,
@@ -59,6 +61,7 @@ from .transcript import (
     COLUMN_WIDTH,
     AssistantMessageWidget,
     ActionCard,
+    ChoiceCard,
     ErrorCard,
     InstallCard,
     NoteWidget,
@@ -381,6 +384,11 @@ class SessionView(QWidget):
         self._turn_hook = None                      # proje ajanı: tur bitince (outcome, exc) çağrılır
         self._services: dict[str, object] = {}     # proje klasörü → ServiceManager (arka plan servisleri)
         self.keep_services = False                 # QA çalışması: senaryolar arası servisler açık kalır
+        # Uzun iş bitince (sonucu model wait_job ile almadıysa) not + Windows bildirimi
+        self._job_timer = QTimer(self)
+        self._job_timer.setInterval(5000)
+        self._job_timer.timeout.connect(self._check_jobs)
+        self._job_timer.start()
         from .project_ui import ProjectController
 
         self.project = ProjectController(self)
@@ -399,6 +407,8 @@ class SessionView(QWidget):
         self._run_timer.setInterval(500)
         self._run_timer.timeout.connect(self._tick_run)
         self._auto_resumes = 0          # bu kullanıcı mesajından beri otomatik devam sayısı
+        self._plan_continues = 0        # plan bekçisi: adım sınırından sonra otomatik devam sayısı
+        self._project_offered: set[int] = set()   # Proje ajanı önerisi gösterilen metinler (hash)
         self._budget_override = ""      # "YYYY-MM": kullanıcı bu ay bütçe aşımını onayladı
         self._budget_warned = ""        # "YYYY-MM": %80 uyarısı gösterildi
 
@@ -437,6 +447,12 @@ class SessionView(QWidget):
         self.composer.mode_changed.connect(self.set_mode)
         self.composer.model_changed.connect(self.set_model)
         self.composer.attach_requested.connect(self.attach_files)
+        from .deep_ui import DeepController
+
+        self.deep = DeepController(self)
+        self.deep.notify.connect(self.notify.emit)
+        self.composer.set_deep(ctx.settings.deep_mode)
+        self.composer.deep_toggled.connect(self.deep.set_enabled)
         self.composer.edit.send_with_enter = ctx.settings.send_with_enter
         host.addWidget(self.composer, 100)
         host.addStretch(1)
@@ -1116,9 +1132,21 @@ class SessionView(QWidget):
                        "/proje-durdur yazın.", "alert")
             back()
             return
+        if self.deep.active:
+            self._note("Derin Mod çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için Esc veya "
+                       "/derin-durdur.", "alert")
+            back()
+            return
         if self.running:
             back()
             return
+        if self.deep_on and not atts and self.edit_from is None:
+            reason = self.deep.unavailable_reason()
+            if not reason:
+                self.composer.set_text("")
+                self.deep.start(text)
+                return
+            self._note(reason + " Bu mesaj normal ajan turuyla gönderildi.", "alert")
         images = [a for a in atts if a.kind == "image"]
         if images and not self._sees_images(self.model):
             if QMessageBox.question(
@@ -1163,6 +1191,9 @@ class SessionView(QWidget):
             meta = {"attachments": [a.to_meta() for a in atts], "file_labels": labels,
                     "images": [a.path for a in images]}
         self._auto_resumes = 0
+        self._plan_continues = 0
+        if self._offer_project(text, atts, back):
+            return
         need, tokens, limit = needs_compaction(self.ctx.db.get_session_messages(sid), self._policy(),
                                                self._context_tokens(), content)
         if need:
@@ -1218,6 +1249,15 @@ class SessionView(QWidget):
             return True
         if cmd.startswith("/qa"):
             self.qa.command(cmd, arg)
+            return True
+        if cmd == "/derin-durdur":
+            if self.deep.active or getattr(self.deep, "_resume_timer", None) is not None:
+                self.deep.stop()
+            else:
+                self._note("Çalışan bir Derin Mod akışı yok.", "spark")
+            return True
+        if cmd == "/derin":
+            self.deep.command(arg)
             return True
         if cmd == "/yeni":
             self.new_session()
@@ -1367,10 +1407,13 @@ class SessionView(QWidget):
                  if ws is not None else None),
             edit_check=s.edit_diagnostics,
             services=self.service_manager(ws.root) if ws is not None else None,
+            jobs=self.ctx.jobs if ws is not None else None,
             test_check=s.test_check and not no_writes,
             no_writes=no_writes,
             extra_tools=extra_tools,
             final_marker=final_marker,
+            # Plan bekçisi yalnız normal turlarda (Proje/QA/Derin akışları fazları zaten kodla sürer)
+            plan_guard=s.plan_guard and model_override is None and not no_writes,
         )
         runner = self.runner
         self.running = True
@@ -1392,6 +1435,14 @@ class SessionView(QWidget):
         Task(job, on_done=self._on_done, on_error=self._on_fail).start()
 
     def stop(self) -> None:
+        if self.deep.active or getattr(self.deep, "_resume_timer", None) is not None:
+            self.deep.stop()
+            if self.running and not self.project.active:
+                self._stop_run()
+            return
+        self._stop_run()
+
+    def _stop_run(self) -> None:
         if not self.running or self.cancel_token is None:
             return
         self.cancel_token.cancel()
@@ -1428,6 +1479,8 @@ class SessionView(QWidget):
         parts = [f"{name}  {self._run_activity}", format_duration(elapsed)]
         if self.project.label:
             parts.insert(0, self.project.label)
+        elif self.deep.label:
+            parts.insert(0, self.deep.label)
         elif self.qa.label:
             parts.insert(0, self.qa.label)
         if self._run_step > 1:
@@ -1584,6 +1637,15 @@ class SessionView(QWidget):
             self._services[key] = ServiceManager(root)
         return self._services[key]
 
+    def _check_jobs(self) -> None:
+        jm = getattr(self.ctx, "_jobs", None)
+        if jm is None:
+            return
+        for job in jm.finished_unnotified():
+            text = f"Uzun iş bitti: {job.id} — {job.state()}, {job.elapsed() / 60:.1f} dk. Çıktı: {job.log_path}"
+            self._note(text, "check" if job.exit_code == 0 else "alert")
+            self.notify.emit("EVREN Studio — uzun iş bitti", text[:200])
+
     def stop_services(self, quiet: bool = False) -> list[str]:
         stopped: list[str] = []
         for sm in self._services.values():
@@ -1648,7 +1710,12 @@ class SessionView(QWidget):
         if outcome.stopped == "cancelled":
             self._note("Durduruldu. Devam etmek için yeni bir mesaj gönderin.", "stop")
         elif outcome.stopped == "max_steps":
-            pass  # durum notu runner tarafından gönderildi
+            # Plan bekçisi: adım sınırı doldu ama planda açık madde var → sınırlı otomatik devam
+            if getattr(outcome, "open_plan_items", None) and self._plan_continues < PLAN_AUTO_CONTINUES:
+                self._plan_continues += 1
+                self._auto_continue(note=f"Adım sınırı doldu; planda {len(outcome.open_plan_items)} açık madde "
+                                         f"var, ajan otomatik devam ediyor ({self._plan_continues}/"
+                                         f"{PLAN_AUTO_CONTINUES}).")
         elif outcome.stopped == "budget":
             if self._ask_budget():
                 self.start_run()          # geçmiş araç sonuçlarıyla biter; kaldığı yerden sürer
@@ -2085,15 +2152,50 @@ class SessionView(QWidget):
 
         Task(lambda: [environment.install(k) for k in keys], on_done=done, on_error=fail).start()
 
-    def _auto_continue(self) -> None:
-        """Güvenli noktada duran turu özetten sonra otomatik sürdürür."""
+    def _auto_continue(self, note: str = "") -> None:
+        """Güvenli noktada duran turu (özet veya adım sınırı sonrası) otomatik sürdürür."""
         if not self.session_id:
             return
         self.ctx.db.add_session_message(self.session_id, "user", prompts.AUTO_CONTINUE_PROMPT,
                                         meta={"auto_continue": True})
-        self.transcript.add(NoteWidget("Bağlam özetlendi; ajan kaldığı yerden otomatik devam ediyor.",
+        self.transcript.add(NoteWidget(note or "Bağlam özetlendi; ajan kaldığı yerden otomatik devam ediyor.",
                                        "refresh"))
         self.start_run()
+
+    @property
+    def deep_on(self) -> bool:
+        return bool(self.ctx.settings.deep_mode)
+
+    def _offer_project(self, text: str, atts: list, back) -> bool:
+        """Çok aşamalı uzun istemde Proje ajanını ÖNERİR (sessizce yönlendirmez: Otomatik mod,
+        ayrı git dalı ve commit demektir). True → mesaj kartın kararına bırakıldı."""
+        from ..agent.planguard import looks_multi_phase, plan_only_request
+
+        s = self.ctx.settings
+        key = hash(text)
+        if (not s.suggest_project or not self.workspace or atts or key in self._project_offered
+                or self.deep_on or not looks_multi_phase(text)
+                or plan_only_request([{"role": "user", "content": text}])):
+            return False
+        self._project_offered.add(key)
+        def choose(run) -> None:
+            self.composer.set_text("")
+            run()
+        card = ChoiceCard(
+            "Bu iş çok aşamalı görünüyor",
+            "Proje ajanı işi plana böler, onayınızdan sonra her fazı/görevi ayrı turda, doğrulayarak ve "
+            "unutmadan sırayla yürütür (ayrı git dalı, görev başına commit). Normal devam ederseniz plan "
+            "bekçisi açık maddeler bitene kadar ajanı sürdürmeye çalışır.",
+            [("Proje ajanıyla yürüt", lambda: choose(lambda: self.project.command("/proje", text))),
+             ("Normal devam", lambda: choose(lambda: self.send(text)))])
+        self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome)
+        if not self.session_id:
+            self._ensure_session(text[:60])
+            self.stack.setCurrentWidget(self.transcript)
+        self.transcript.add(card)
+        self.transcript.scroll_to_bottom()
+        back()
+        return True
 
     def shutdown(self) -> None:
         self.stop_services(quiet=True)

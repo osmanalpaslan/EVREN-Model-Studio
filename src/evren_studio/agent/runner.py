@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ..api.errors import ApiError, ErrorKind
-from . import textproto
+from . import planguard, textproto
 from .permissions import (
     Decision,
     SessionPermissions,
@@ -38,6 +38,7 @@ from .tools import (
     META,
     READ,
     READ_ONLY_SPECS,
+    JOB_TOOLS,
     SERVICE_TOOLS,
     SPEC_BY_NAME,
     TOOL_SPECS,
@@ -268,6 +269,7 @@ class TurnOutcome:
     protocol: str = "native"
     last_text: str = ""
     test_edits: list[str] = field(default_factory=list)   # istenmeden değiştirilen var olan test dosyaları
+    open_plan_items: list[str] = field(default_factory=list)  # tur bittiğinde plan/görev listesinde açık kalanlar
     model_switches: list[tuple[str, str, str]] = field(default_factory=list)   # (eski, yeni, neden)
 
 
@@ -402,7 +404,7 @@ class AgentRunner:
                  fallback_models: list[str] | None = None,
                  mcp: Any = None, edit_check: bool = True, services: Any = None,
                  test_check: bool = False, no_writes: bool = False, extra_tools: Any = None,
-                 final_marker: str | None = None):
+                 final_marker: str | None = None, plan_guard: bool = False, jobs: Any = None):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -421,6 +423,12 @@ class AgentRunner:
         self.extra_tools = extra_tools
         # Son yanıtta bulunması gereken işaret (QA: "<qa_sonuc>"); yoksa model bir kez hatırlatılır
         self.final_marker = final_marker
+        # Plan bekçisi (agent/planguard.py): plan/görev listesinde açık madde varken tur bitmesin
+        self.plan_guard = plan_guard
+        # Uzun işler (agent/jobs.py: start_job/wait_job/job_status/stop_job); None → yok
+        self.jobs = jobs
+        self._history_ref: list[dict] | None = None
+        self._work = 0                       # gerçek iş sayacı (başarılı yazma/komut/servis/iş)
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
         # girerse sıradaki yedeğe geçilir; görev ortasında başka nedenle model DEĞİŞMEZ.
         self.fallback_models = [m for m in (fallback_models or []) if m != model]
@@ -474,6 +482,7 @@ class AgentRunner:
         base = READ_ONLY_SPECS if plan else TOOL_SPECS
         base = [s for s in base
                 if (self.services is not None or s.name not in SERVICE_TOOLS)
+                and (self.jobs is not None or s.name not in JOB_TOOLS)
                 and not (self.no_writes and s.kind == WRITE)]
         if self.extra_tools is not None:
             base = base + [s for s in self.extra_tools.specs(read_only_only=plan) if s.name not in SPEC_BY_NAME]
@@ -516,6 +525,10 @@ class AgentRunner:
             section = prompt_section(specs, list(getattr(self.mcp, "hints", []) or []))
             if section:
                 system += "\n\n" + section
+        if self._plan_guard_active():
+            section = planguard.system_section(*self._open_plan())
+            if section:
+                system += "\n\n" + section          # özetten/kısaltmadan sonra da plan görünür kalsın
         hint = getattr(self, "_turn_hint", "")
         return system + "\n\n" + hint if hint else system
 
@@ -633,6 +646,10 @@ class AgentRunner:
         self._test_orig: dict[str, str | None] = {}     # yol → turdaki ilk hâli
         self._wrote = False
         self._test_baseline = None
+        self._history_ref = history
+        plan_nudges = 0
+        plan_strikes = 0
+        plan_work_mark = -1
         self._turn_hint = self._compute_turn_hint(history)
         step = 0
         fallback_used = False
@@ -756,6 +773,24 @@ class AgentRunner:
                                    "biçimiyle ver (yeni araç çağırma gerekmiyorsa çağırma).")
                     self.events.status("Model sonuç bloğunu yazmadı; bir kez hatırlatıldı.")
                     continue
+                if self._plan_guard_active() and "ENGEL:" not in content and not self._cancelled():
+                    items, source = self._open_plan()
+                    if items:
+                        if plan_work_mark >= 0 and self._work == plan_work_mark:
+                            plan_strikes += 1
+                        else:
+                            plan_strikes = 0
+                        if plan_nudges < planguard.PLAN_NUDGE_MAX and plan_strikes < planguard.NO_PROGRESS_STOP \
+                                and step < self.max_steps:
+                            plan_nudges += 1
+                            plan_work_mark = self._work
+                            self._nudge = planguard.nudge_text(items, source)
+                            self.events.status(f"Plan bekçisi: planda {len(items)} açık madde var; ajan "
+                                               f"sıradakine devam ettiriliyor ({plan_nudges}).")
+                            continue
+                        outcome.open_plan_items = items
+                        self.events.status(f"Plan bekçisi: planda {len(items)} açık madde kaldı ama ajan "
+                                           "ilerleme göstermiyor; durdu. 'devam' yazarak sürdürebilirsiniz.")
                 if "tests" not in nudged and step < self.max_steps and not self._cancelled():
                     gate = self._test_gate()
                     if gate:
@@ -816,9 +851,24 @@ class AgentRunner:
                 break
         else:
             outcome.stopped = "max_steps"
+            if self._plan_guard_active():
+                outcome.open_plan_items = self._open_plan()[0]
             self.events.status(f"Adım sınırına ({self.max_steps}) ulaşıldı; devam etmek için mesaj gönderin.")
         outcome.test_edits = self._remaining_test_edits()
         return outcome
+
+    def _plan_guard_active(self) -> bool:
+        return bool(self.plan_guard and self.agentic and normalize_mode(self.mode) != "plan"
+                    and not self.no_writes and not self.final_marker
+                    and not planguard.plan_only_request(self._history_ref or []))
+
+    def _open_plan(self) -> tuple[list[str], str]:
+        if self._history_ref is None:
+            return [], ""
+        try:
+            return planguard.open_items(self._history_ref, self.workspace.root if self.workspace else None)
+        except Exception:
+            return [], ""
 
     @staticmethod
     def _stall_kind(content: str, result: Any) -> str | None:
@@ -890,6 +940,8 @@ class AgentRunner:
                 res = self._run_mcp(call, spec)
             elif call.name in SERVICE_TOOLS:
                 res = self._run_service(call)
+            elif call.name in JOB_TOOLS:
+                res = self._run_job(call)
             elif self.extra_tools is not None and call.name not in SPEC_BY_NAME:
                 res = self.extra_tools.run(call)
             elif call.name == "install_program":
@@ -1015,8 +1067,49 @@ class AgentRunner:
         out = self.services.start(command, str(a.get("name") or ""), port, str(a.get("ready_text") or ""),
                                   cancel=self.cancel)
         ok = "çalışıyor" in out.split("\n", 1)[0]
+        self._work += 1
         return ToolResult(ok, truncate_middle(out, self.output_limit), out.split("\n", 1)[0][:120],
                           {"command": command, "output": truncate_middle(out, 4000)})
+
+    def _run_job(self, call: ToolCall) -> ToolResult:
+        if self.jobs is None:
+            return ToolResult(False, "Bu oturumda uzun iş kullanılamıyor.", "Uzun iş yok")
+        a = call.arguments
+        jid = str(a.get("job_id") or "")
+        if call.name == "job_status":
+            job = self.jobs.get(jid)
+            out = job.summary(int(a.get("lines") or 40))
+            return ToolResult(True, truncate_middle(out, self.output_limit), f"İş {job.id}: {job.state()}")
+        if call.name == "stop_job":
+            job = self.jobs.stop(jid)
+            return ToolResult(True, f"İş {job.id} durduruldu.\n{job.summary(15)}", f"İş durduruldu: {job.id}")
+        if call.name == "wait_job":
+            job, why = self.jobs.wait(jid, a.get("max_minutes") or 60, cancel=self.cancel,
+                                      progress=lambda t: self.events.tool_output(call, t))
+            if not job.running:
+                job.notified = True                       # sonucu model aldı; ayrıca bildirim gerekmez
+            ok = (not job.running) and job.exit_code == 0
+            return ToolResult(ok, truncate_middle(f"Bekleme: {why}.\n{job.summary(60)}", self.output_limit),
+                              f"İş {job.id}: {job.state()} ({job.elapsed() / 60:.1f} dk)",
+                              {"output": truncate_middle(job.summary(40), 4000)})
+        command = _req(a, "command").strip()
+        decision, reason = decide(self.mode, EXEC, self.perms, command,
+                                  root=self.workspace.root if self.workspace else None)
+        if decision == Decision.DENY:
+            return ToolResult(False, reason, "Engellendi")
+        if decision == Decision.ASK:
+            ok, feedback = self._approve(call, EXEC, "Uzun iş (arka planda) başlatılsın mı?", command,
+                                         prefix=command_prefix(command), reason=reason)
+            if not ok:
+                msg = "Kullanıcı bu uzun işin başlatılmasını reddetti."
+                if feedback:
+                    msg += f" Kullanıcının notu: {feedback}"
+                return ToolResult(False, msg, f"Reddedildi: {command[:80]}", {"command": command, "denied": True})
+        job = self.jobs.start(self.workspace.root, command, str(a.get("name") or ""))
+        self._work += 1
+        return ToolResult(True, f"Uzun iş başlatıldı: {job.id}\nKomut: {command}\nTam çıktı: {job.log_path}\n"
+                                "Sonucu almak için wait_job çağır (bekleme kota harcamaz).",
+                          f"Uzun iş başlatıldı: {job.id}", {"command": command, "job_id": job.id})
 
     def _test_gate(self) -> str:
         """Test bekçisi (tur sonu). Dönüş: modele gidecek dürtme metni ya da ""."""
@@ -1099,6 +1192,10 @@ class AgentRunner:
                                   {"diff": change.diff, "path": change.rel_path, "denied": True})
         self.toolbox.apply_change(change)
         self._wrote = True
+        from .planguard import is_plan_file
+
+        if not is_plan_file(change.rel_path):
+            self._work += 1                  # plan dosyasını işaretlemek tek başına ilerleme sayılmaz
         self._writes.append((change.rel_path, change.before, change.after))
         change_id = self.store.add_file_change(self.session_id, self.turn_id, change.rel_path,
                                                change.before, change.after)
@@ -1209,6 +1306,7 @@ class AgentRunner:
             on_output=lambda chunk: self.events.tool_output(call, chunk),
         )
         ok = result.exit_code == 0 and not result.timed_out and not result.cancelled
+        self._work += 1                      # komut çalıştı (sonucu ne olursa olsun bir iş adımı)
         state = "zaman aşımı" if result.timed_out else (
             "durduruldu" if result.cancelled else f"çıkış {result.exit_code}")
         return ToolResult(ok, result.to_text(self.output_limit), f"Çalıştırıldı: {command[:80]} ({state})",
@@ -1240,6 +1338,10 @@ def describe_call(call: ToolCall) -> str:
         "start_service": lambda: f"Servis başlatılıyor: {a.get('command', '')}",
         "service_logs": lambda: f"Servis çıktısı: {a.get('name') or ''}".strip(),
         "stop_service": lambda: f"Servis kapatılıyor: {a.get('name') or ''}".strip(),
+        "start_job": lambda: f"Uzun iş başlatılıyor: {a.get('command', '')}",
+        "wait_job": lambda: f"Uzun iş bekleniyor: {a.get('job_id') or ''}".strip(),
+        "job_status": lambda: f"Uzun iş durumu: {a.get('job_id') or ''}".strip(),
+        "stop_job": lambda: f"Uzun iş durduruluyor: {a.get('job_id') or ''}".strip(),
         "update_todos": lambda: "Görev listesi güncelleniyor",
     }.get(call.name, lambda: _describe_mcp(call))()
 

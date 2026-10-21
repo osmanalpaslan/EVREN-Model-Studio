@@ -94,7 +94,8 @@ class ServiceManager:
             for raw in iter(proc.stdout.readline, b""):
                 svc.log.append(raw.decode("utf-8", errors="replace").replace("\r\n", "\n"))
 
-        threading.Thread(target=reader, daemon=True, name=f"servis-{name}").start()
+        reader_thread = threading.Thread(target=reader, daemon=True, name=f"servis-{name}")
+        reader_thread.start()
         deadline = time.monotonic() + max(2.0, min(float(wait_seconds or 60), 300.0))
         ready = False
         while time.monotonic() < deadline:
@@ -118,6 +119,9 @@ class ServiceManager:
                 break
             time.sleep(0.25)
         if not svc.alive:
+            # Süreç hızlı kapanınca okuyucu çıktıyı henüz almamış olabilir (yük altında yarış):
+            # hata çıktısı iletiden düşmesin
+            reader_thread.join(timeout=3)
             return (f"Servis '{name}' başladıktan hemen sonra kapandı (çıkış kodu {svc.proc.returncode}).\n"
                     f"Son çıktı:\n{svc.tail(30)}")
         url = f"http://127.0.0.1:{svc.port}/" if svc.port else ""
