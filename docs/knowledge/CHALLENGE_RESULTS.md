@@ -216,6 +216,35 @@ Sonuç ve karar (kullanıcı, 2026-10-21): kod rolü = **deepseek-v4.1-flash →
 gerçek kullanımdan hız takibi ve Proje görevleri arasında yavaşlayan motoru değiştirme ILERIDE_YAPILACAKLAR'da.
 Yeni sırayla Auto Pro zorluk paketi: **12/12, 249 sn (4,2 dk)** — aynı gün qwen birincilken 516 sn; yakalanmamış hata 0. e2e_ui_real_api 15/15.
 
+## Gerçek iş süreci: hesap kapama raporu (2026-10-21, `tests/e2e_hesap_kapama_real_api.py`)
+
+Kullanıcının skill'i (SKILL.md + references) ile, gerçek yapıda ama SAHTE veriyle (32 iş, 6 dosya + kullanıcı
+sözlüğü; her kural için tuzak satırı; `tests/hesap_kapama/hk_veri.py`). Ajan: Otomatik mod, Auto Pro kod rolü
+(deepseek-v4.1-flash), 10 dk sınırı, sütun eşlemesi önceden onaylı. Denetçi önce bilinen doğru (25/25) ve bilinen
+yanlış (eski "Kaynak" kuralı → açılış kaynağı hatası yakalandı) raporla sınandı (R-25).
+
+| | Koşu 1 | Koşu 2 |
+|---|---|---|
+| Süre / adım / hatalı araç | 537 sn · 30 · 3 | 528 sn · 49 · 7 (döngü: `_build.py` geri alındı → qwen'e geçildi) |
+| Otomatik denetim | **24/25** | **23/26** |
+| Hesaplamalar (açılış kaynağı, açılma/kapama türü, fırsat/sözleşme, CRS, kapsam dışı, kapanması gereken, öncelik) | hepsi doğru | Kısmi Özet doğru; **Yönetim Özeti dağılımları 30 iş üzerinden** (kapsam dışı düşülmüş; SKILL §5.1: toplam = kaynak iş = 32) |
+| Kural/biçim ihlali | Yönetim Özeti'nde "Notlar:" bloğu (SKILL yasaklıyor) | Yönetim Özeti sütun genişliği 46 (> 42); skill klasöründe `_build.py` kaldı |
+| Belirsiz kurala farklı yorum | — | açık işte Kapatan Kullanıcı = "(iş açık)"; sözlükte olmayan id = "19999 - (sözlükte yok)" |
+| Ham dosyalar | dokunulmadı | dokunulmadı |
+| Kullanıcının Excel'i | dokunulmadı (openpyxl kullandı) | dokunulmadı |
+
+Tuzakların hepsi iki koşuda da doğru: log metni önceliği, Hesap Uyum + personel, yanıltıcı `Kaynak`, `#N/A`,
+`Kazanıldı` istisnası, Müşteri Kaybetme Nedeni ≠ Kaybetme Nedeni, baştaki sıfırlı VKN, kapanış kodu 0 → `+100`,
+çoğullama ve birebir tekrar eden sözleşme satırı. Skill'in kendi çelişkisi: Kapama Türü değeri `Manuel / Kullanıcı`
+§5 kural 5'teki " / " yasağına takılır (denetçide ayrık tutuldu).
+
+**Sabit betik yolu** (`--betik`; skill + `tests/hesap_kapama/SKILL_DUZELTME_ONERILERI.md`): ajan 15 dk'da (24 adım,
+0 hatalı araç; son rötuşta süre doldu) 1.167 satırlık `rapor_uret.py` yazdı; kısa düzeltme turu (118 sn: sütun
+genişliği ≤ 42). Denetçi güçlendirildi (Yönetim Özeti dağılımları, tarih tipi; R-25 ile doğru 27/27, bozuk yakalandı).
+Betik AJANSIZ: aynı veri 27/27 · tekrar 27/27 ve hücre hücre aynı · 96 iş, karışık sütun/satır 27/27 · zorunlu sütun
+eksik → çıkış 2, dosya yok. Çalışma süresi ~0,5 sn. Sonuç: tekrarlayan iş için "bir kez yazdır, denetle, sonra
+betiği çalıştır" yolu, her ay ajana ürettirmekten hem tutarlı hem ~1.000 kat hızlı.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca
