@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 78 · Açık/izlenen: 6 · Oturum: 24 · Kural: 28
+Kayıt: 78 · Açık/izlenen: 6 · Oturum: 25 · Kural: 28
 
 ## Açık ve izlenen kayıtlar
 
@@ -104,6 +104,7 @@ Kayıt: 78 · Açık/izlenen: 6 · Oturum: 24 · Kural: 28
 |---|---|---|---|---|
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-hesap-kapama-oturumu-analizi-ve-derin-pr](sessions/2026-10-21-claude-code-masaustu-hesap-kapama-oturumu-analizi-ve-derin-pr.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Hesap kapama oturumu analizi ve Derin/Proje düzeltmeleri |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k](sessions/2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Derin Mod, plan bekçisi, uzun işler, kota kapısı ve kenar çubuğu |
+| 2026-10-21 | [2026-10-21-claude-code-masaustu-auto-pro-kod-motoru-sirasi-yeniden-olcum](sessions/2026-10-21-claude-code-masaustu-auto-pro-kod-motoru-sirasi-yeniden-olcum.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro kod motoru sırası yeniden ölçüm |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum](sessions/2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Zorluk paketi ve tek tıkla kurulum |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-qa-ajani-arka-plan-servisleri-test-bekci](sessions/2026-10-19-claude-code-masaustu-qa-ajani-arka-plan-servisleri-test-bekci.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | QA ajanı, arka plan servisleri, test bekçisi, görsel göz |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-mcp-gerektiginde-acma-playwright-hata-be](sessions/2026-10-19-claude-code-masaustu-mcp-gerektiginde-acma-playwright-hata-be.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | MCP gerektiğinde açma, Playwright, hata bekçisi, çok dilli Serena |

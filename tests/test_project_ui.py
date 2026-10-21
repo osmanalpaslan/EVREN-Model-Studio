@@ -105,7 +105,7 @@ def test_proje_akisi_plan_onay_yurutme_rapor(win, tmp_path):
     st = s.project.state
     assert [t.status for t in st.tasks] == ["bitti", "bitti"]
     tasks = [c for c in client.calls if c[0] == "task" and "PROJE GÖREVİ" in c[2]]
-    assert tasks[0][1] == "deepseek-v4-flash" and "PROJE GÖREVİ 1/2" in tasks[0][2]
+    assert tasks[0][1] == "deepseek-v4.1-flash" and "PROJE GÖREVİ 1/2" in tasks[0][2]   # kod rolü birincili
     assert len([c for c in client.calls if c[0] == "review"]) == 2
     assert (proj / pj.REPORT_FILE).is_file()
     assert "[x] 2. README yaz" in (proj / pj.PLAN_FILE).read_text(encoding="utf-8")

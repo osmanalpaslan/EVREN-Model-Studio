@@ -102,7 +102,7 @@ gönderildi; kare rengi ve CSV toplamı doğru yanıtlandı.
 
 ## MCP araçlarıyla gerçek test (2026-10-19, `tests/e2e_mcp_real_api.py`)
 
-- Auto Pro (kod rolü → deepseek-v4-flash) yerel function calling ile `mcp__serena__*`
+- Auto Pro (o tarihte kod rolü → deepseek-v4-flash; 2026-10-21'den beri deepseek-v4.1-flash) yerel function calling ile `mcp__serena__*`
   araçlarını doğru şemayla çağırdı (find_symbol, find_referencing_symbols); şema
   (Serena'nın Pydantic şemaları, `$defs` dahil) EVREN'de 400 vermedi.
 - Sistem istemi yönlendirmesi olmadan model Serena'yı hiç seçmedi (search_files'ı tercih etti).

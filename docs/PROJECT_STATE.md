@@ -64,6 +64,9 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-21) Auto Pro kod sırası yeniden ölçümle değişti (dal `feat/kod-motor-sirasi`):
+    deepseek-v4.1-flash → qwen3.8-flash-next → gemma-4-31b. Ölçüm: CHALLENGE_RESULTS.md "Kod motoru sırası".
+
   - (2026-10-21) Derin/Proje düzeltmeleri (dal `feat/derin-duzeltmeler`): kullanıcının gerçek hesap kapama
     oturumundaki 10 kusur giderildi (iç içe PowerShell, bozuk doğrulama komutu, kısmi projede "bitti", soru kartı ve
     `SORU:` duraklaması, görev bağlamı, görünürlük/dökümler, .ps1 BOM, deepseek-v4-flash'ın listeden kalkması).

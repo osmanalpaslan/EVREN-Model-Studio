@@ -53,9 +53,13 @@ ROLE_LABELS = {
 #   2026-10-21: deepseek-v4-flash EVREN /v1/models listesinden KALKTI (gerçek istekle görüldü); kod/sohbet
 #   zinciri yalnız qwen → gemma'ya düşüyordu. deepseek-v4.1-flash (12/12) ikinci sıraya alındı; v4-flash geri
 #   gelirse yine birincil olur (chain_for listede olmayanı atlar).
+#   2026-10-21 akşam yeniden ölçüm (12 görev, CHALLENGE_RESULTS.md "Kod motoru sırası"): üçü de 12/12;
+#   gemma-4-31b 3,1 dk · deepseek-v4.1-flash 7,0 dk (19 Ekim'de 10 dk) · qwen3.8-flash-next 8,9 dk (en çok
+#   adım). Kullanıcı kararı: kod = deepseek-v4.1-flash → qwen3.8-flash-next → gemma-4-31b (gemma uzun işte
+#   döngüye girmişti; maratonla ölçülmeden öne alınmaz). v4-flash listeye dönerse yeniden ölçülmeli.
 EVREN_ROUTES: dict[str, list[str]] = {
     "sohbet": ["deepseek-v4-flash", "qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
-    "kod": ["deepseek-v4-flash", "qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
+    "kod": ["deepseek-v4.1-flash", "qwen3.8-flash-next", "gemma-4-31b"],
     "plan": ["deepseek-v4.1-flash", "qwen3.8-flash-next", "deepseek-v4-flash"],
     "gorsel": ["gemma-4-31b", "qwen3.8-flash-next", "qwen3-vl-30b"],
     "buyuk_baglam": ["deepseek-v4-flash", "deepseek-v4.1-flash", "mimo-v2.6-pro"],
@@ -69,7 +73,7 @@ EVREN_ROUTES: dict[str, list[str]] = {
     "hata": ["deepseek-v4-flash", "qwen3.8-flash-next", "gemma-4-31b"],
 }
 ROUTES = EVREN_ROUTES               # eski ad
-ROUTES_MEASURED = "2026-10-19"
+ROUTES_MEASURED = "2026-10-21"
 
 # OpenAI + Anthropic: sağlayıcı belgelerindeki konumlandırmaya göre (api/providers.py
 # kataloğu, PRICES_AS_OF) — DOĞRULANMADI. Pahalı amiral modeller yalnız plan rolünde önde.

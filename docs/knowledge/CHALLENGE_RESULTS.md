@@ -200,6 +200,22 @@ Soru talimatı sıkılaştırıldı (en çok 2/alt ajan, toplam 4; "makul varsay
 Zorluk paketi auto-pro (yeni istem + iç içe PowerShell açma + .ps1 BOM): **12/12**, 516 sn, yakalanmamış hata 0.
 R-13: e2e_real_api E2E_OK · e2e_agent 5/6 → tek başına yeniden 6/6 (geçici) · e2e_ui 15/15.
 
+## Kod motoru sırası — yeniden ölçüm (2026-10-21 akşam, 12 görev, gerçek EVREN API)
+
+Neden: kullanıcının hesap kapama oturumu neredeyse tamamen qwen3.8-flash-next ile koştu; deepseek-v4-flash
+EVREN listesinden kalkmıştı. Aynı 12 görev, her motor tek başına (`tests/e2e_zorluk_real_api.py <model>`):
+
+| Motor | Bugün | 19 Ekim | Adım: planlama / mini_proje | Not |
+|---|---|---|---|---|
+| gemma-4-31b | 12/12 · 3,1 dk (185 sn) | 12/12 · 3 dk | 2 / 10 | En hızlı; uzun işte (maraton) döngüye girmişti — maratonla ölçülmedi |
+| deepseek-v4.1-flash | 12/12 · 7,0 dk (420 sn) | 12/12 · 10 dk | 5 / 7 | Bir günde %30 hızlandı; en az adım; 1M bağlam |
+| qwen3.8-flash-next | 12/12 · 8,9 dk (531 sn) | 12/12 · 9 dk | 19 / 25 | En çok adım; mini_proje'de testleri 2 kez bozdu (test bekçisi düzeltti) |
+
+Sonuç ve karar (kullanıcı, 2026-10-21): kod rolü = **deepseek-v4.1-flash → qwen3.8-flash-next → gemma-4-31b**
+(DECISIONS #87). Motor performansı günden güne değişebiliyor (v4.1-flash 10 → 7 dk): kalıcı çözüm için
+gerçek kullanımdan hız takibi ve Proje görevleri arasında yavaşlayan motoru değiştirme ILERIDE_YAPILACAKLAR'da.
+Yeni sırayla Auto Pro zorluk paketi: **12/12, 249 sn (4,2 dk)** — aynı gün qwen birincilken 516 sn; yakalanmamış hata 0. e2e_ui_real_api 15/15.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

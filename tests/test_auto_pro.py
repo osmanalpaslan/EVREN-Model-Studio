@@ -24,7 +24,8 @@ ANTH_IDS = {"claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"}
 
 
 def test_zincir_yalniz_evren_yalniz_ucretli_ve_dengeli():
-    assert router.chain_for("kod", EVREN_IDS)[0] == "deepseek-v4-flash"
+    # 2026-10-21 yeniden ölçüm + kullanıcı kararı: kod = deepseek-v4.1-flash → qwen3.8-flash-next → gemma-4-31b
+    assert router.chain_for("kod", EVREN_IDS)[:3] == ["deepseek-v4.1-flash", "qwen3.8-flash-next", "gemma-4-31b"]
     only_openai = router.chain_for("kod", OPENAI_IDS)
     assert only_openai and all(m in OPENAI_IDS for m in only_openai)          # EVREN yok → EVREN çıkmaz
     mixed = EVREN_IDS | ANTH_IDS
