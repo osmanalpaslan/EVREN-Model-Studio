@@ -1,6 +1,11 @@
 """Hesap kapama raporu — gerçek iş süreci ölçümü (EVREN anahtarı gerekir; pytest toplamaz).
 
     .\\.venv\\Scripts\\python.exe -u tests\\e2e_hesap_kapama_real_api.py [model] [--dakika 10] [--skill <klasör>]
+    .\\.venv\\Scripts\\python.exe -u tests\\e2e_hesap_kapama_real_api.py --betik [--dakika 15]
+
+--betik: ajan raporu doğrudan üretmek yerine TEKRAR ÇALIŞTIRILABİLİR `rapor_uret.py` yazar (skill + düzeltme
+önerileri). Betik sonra ajansız sınanır: (a) aynı veri, (b) aynı veri ikinci kez → çıktı birebir aynı mı,
+(c) 96 işlik, sütun ve satır sırası karışık ikinci veri seti. Her çıktı denetçiden geçer.
 
 1. `tests/hesap_kapama/hk_veri.py` ile SAHTE ama gerçek yapıda 6 dosya + kullanıcı sözlüğü üretilir
    (her SKILL kuralı için tuzak satırı; beklenen sonuç kurallardan hesaplanır).
@@ -31,6 +36,7 @@ from evren_studio.api.client import CancelToken  # noqa: E402
 from evren_studio.ui.app_context import AppContext  # noqa: E402
 
 VERI = ROOT / "tests" / "hesap_kapama" / "hk_veri.py"
+ONERILER = ROOT / "tests" / "hesap_kapama" / "SKILL_DUZELTME_ONERILERI.md"
 SKILL_VARSAYILAN = Path(r"C:\Users\Osman Alpaslan\OneDrive - Uyumsoft\Masaüstü\Hesap kapama Raporları\Yeni"
                         r"\hesap-kapama-raporu")
 ISTEM = """hesap-kapama-raporu klasöründeki skill'i (SKILL.md ve references) uygula: bu klasördeki kaynak dosyalardan
@@ -44,6 +50,20 @@ Hesap Kapama Raporu'nu Excel olarak üret ve "Hesap Kapama Raporu.xlsx" adıyla 
   KULLANMA; yalnız kendi açtığın Excel nesnesini Quit et ve COM nesnesini serbest bırak.
 - Bitince skill'in §7'sindeki özeti ver (sayılar, dağılımlar, kapanması gereken, kapsam dışı, varsayımlar)."""
 
+ISTEM_BETIK = """Bu klasördeki hesap-kapama-raporu skill'ini (SKILL.md ve references) ve KURAL_NETLESTIRMELERI.md'deki
+netleştirmeleri uygulayan, HER AY TEKRAR ÇALIŞTIRILABİLİR bir Python betiği yaz: rapor_uret.py
+
+Kullanım: python rapor_uret.py <kaynak_klasör> <çıktı.xlsx>
+- Yalnız standart kütüphane + openpyxl kullan (bu bilgisayarda Python 3.12 ve openpyxl var).
+- Kaynak dosyaları klasörde ADINDAN değil içerik/başlıktan bul; sütunları BAŞLIK ADIYLA bul (büyük/küçük harf,
+  ı/i, boşluk ve Türkçe karakter farklarını tolere et). Sütun SIRASI her ay değişebilir: sütun numarasıyla
+  eşleme YAPMA. Zorunlu bir sütun bulunamazsa ne eksik olduğunu yazıp çıkış kodu 2 ile dur; tahmin etme.
+- Kuralları SKILL.md ve KURAL_NETLESTIRMELERI.md'den uygula. Betiğe veriye özel sabit değer (İş ID, fırsat kodu,
+  satır sayısı vb.) YAZMA; kullanıcı sözlüğü kaynak klasördeki kullanici_listesi.tsv'den okunur.
+- §5 doğrulamalarını betiğin içinde yap; tutmazsa dosyayı yazma, nedenini yazdırıp çıkış kodu 3 ile dur.
+- Ham kaynak dosyalara ve skill klasörüne YAZMA. Geçici dosya bırakma.
+- Sonra betiği bu klasördeki veriyle çalıştır, "Hesap Kapama Raporu.xlsx" üret ve özetini ver.
+Süre sınırı {dakika} dakika."""
 
 def sistem_python() -> str:
     for cand in ([sys.executable], ["py", "-3.12"], ["py", "-3"],
@@ -100,6 +120,11 @@ def main() -> int:
         i = args.index("--dakika")
         dakika = float(args[i + 1])
         del args[i:i + 2]
+    betik = "--betik" in args
+    if betik:
+        args.remove("--betik")
+        if "--dakika" not in sys.argv:
+            dakika = 15.0
     skill = SKILL_VARSAYILAN
     if "--skill" in args:
         i = args.index("--skill")
@@ -115,14 +140,16 @@ def main() -> int:
     fallbacks = [m for m in chain if m != model]
     py = sistem_python()
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    kosu = ROOT / "build" / "hk" / f"kosu-{model}-{stamp}"
+    kosu = ROOT / "build" / "hk" / f"{'betik' if betik else 'kosu'}-{model}-{stamp}"
     kosu.mkdir(parents=True)
     subprocess.run(py.split(" ") + [str(VERI), "uret", str(kosu)], check=True, capture_output=True)
     shutil.copytree(skill, kosu / "hesap-kapama-raporu")
+    if betik:
+        shutil.copy(ONERILER, kosu / "KURAL_NETLESTIRMELERI.md")
     print(f"Klasör: {kosu}\nModel: {model} (yedek {fallbacks}) · sınır {dakika:g} dk", flush=True)
 
     store = MemoryStore()
-    history = [{"id": 0, "role": "user", "content": ISTEM.format(dakika=int(dakika))}]
+    history = [{"id": 0, "role": "user", "content": (ISTEM_BETIK if betik else ISTEM).format(dakika=int(dakika))}]
     store.messages.append(history[0])
     olay = Olay()
     cancel = CancelToken()
@@ -169,7 +196,55 @@ def main() -> int:
     for h in olay.hatalar[:12]:
         print("   araç hatası:", h[:200], flush=True)
     print("=== AJANIN SON ÖZETİ\n" + (son or "(yok)")[:3000], flush=True)
+    if betik:
+        betik_sina(py, kosu, olcum)
     return 0
+
+
+def _degerler(py: str, xlsx: Path) -> str:
+    kod = ("import sys,openpyxl;wb=openpyxl.load_workbook(sys.argv[1],data_only=True);"
+           "print(repr([[ [c for c in r] for r in ws.iter_rows(values_only=True)] for ws in wb]))")
+    r = subprocess.run(py.split(" ") + ["-c", kod, str(xlsx)], capture_output=True, text=True, encoding="utf-8")
+    return r.stdout
+
+
+def betik_sina(py: str, kosu: Path, olcum: dict) -> None:
+    """Ajanın yazdığı rapor_uret.py'yi AJANSIZ sınar: tekrar, tekrarlanabilirlik, ikinci veri seti."""
+    script = kosu / "rapor_uret.py"
+    sonuc: dict = {"betik": script.is_file()}
+    if not script.is_file():
+        print("=== BETİK YOK", flush=True)
+        (kosu / "betik_sinama.json").write_text(json.dumps(sonuc, ensure_ascii=False), encoding="utf-8")
+        return
+    sinama = kosu / "sinama"
+    for ad, varyant in (("veri1", 1), ("veri2", 2)):
+        subprocess.run(py.split(" ") + [str(VERI), "uret", str(sinama / ad), str(varyant)], check=True,
+                       capture_output=True)
+    satirlar = []
+    for etiket, klasor, cikti in (("A: aynı veri", "veri1", "a.xlsx"), ("B: aynı veri tekrar", "veri1", "b.xlsx"),
+                                  ("C: 96 iş, karışık sütun/satır", "veri2", "c.xlsx")):
+        t0 = time.monotonic()
+        r = subprocess.run(py.split(" ") + [str(script), str(sinama / klasor), str(sinama / cikti)],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+        sure = time.monotonic() - t0
+        d = subprocess.run(py.split(" ") + [str(VERI), "denetle", str(sinama / klasor), str(sinama / cikti)],
+                           capture_output=True, text=True, encoding="utf-8")
+        try:
+            den = json.loads(d.stdout)
+        except json.JSONDecodeError:
+            den = {"puan": "?", "hatalar": [d.stderr[-300:]]}
+        satirlar.append({"durum": etiket, "cikis": r.returncode, "sure_sn": round(sure, 1), "puan": den.get("puan"),
+                         "hatalar": den.get("hatalar", []), "cikti_sonu": (r.stdout + r.stderr)[-600:]})
+        print(f"=== BETİK {etiket}: çıkış {r.returncode} · {sure:.1f} sn · denetim {den.get('puan')}", flush=True)
+        for h in den.get("hatalar", []):
+            print("   ✗", h[:240], flush=True)
+        if r.returncode != 0:
+            print("   betik çıktısı:", (r.stdout + r.stderr)[-400:], flush=True)
+    a, b = sinama / "a.xlsx", sinama / "b.xlsx"
+    ayni = a.is_file() and b.is_file() and _degerler(py, a) == _degerler(py, b)
+    print(f"=== BETİK tekrarlanabilir (A ve B hücre değerleri aynı): {ayni}", flush=True)
+    sonuc.update({"sinamalar": satirlar, "tekrarlanabilir": ayni, "ajan": olcum})
+    (kosu / "betik_sinama.json").write_text(json.dumps(sonuc, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
 if __name__ == "__main__":

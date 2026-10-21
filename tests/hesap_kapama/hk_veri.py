@@ -88,10 +88,14 @@ def _kullanici(uid: int) -> str:
     return str(uid)
 
 
-def kayitlar() -> list[dict]:
-    base = dt.date(2026, 9, 1)
+def kayitlar(varyant: int = 1) -> list[dict]:
+    """varyant 1: 32 iş. varyant 2: senaryo 3 kat (96 iş), başka kimlik/tarih, karışık satır sırası."""
+    import random
+
+    base = dt.date(2026, 9, 1) if varyant == 1 else dt.date(2026, 8, 3)
+    senaryo = SENARYO if varyant == 1 else SENARYO * 3
     out = []
-    for i, s in enumerate(SENARYO):
+    for i, s in enumerate(senaryo):
         (sonuc, ekleyen, hu, log, kaynak, urun, statu, soz, son, kayb, mkayb, vkn_mi, crs) = s
         vkn = f"00{12345600 + i:08d}" if vkn_mi else ""          # baştaki sıfırlı 10 haneli VKN
         tckn = "" if vkn_mi else f"{30000000000 + i * 1111:011d}"
@@ -102,6 +106,14 @@ def kayitlar() -> list[dict]:
             "tarih": base + dt.timedelta(days=i), "musteri": f"Örnek Müşteri {i + 1} Ltd. Şti.",
             "soz_id": 41000000 + i * 13, "soz_id2": 41000000 + i * 13 + 5,
         })
+    if varyant != 1:
+        for r in out:                                   # başka kimlikler: betik sabit değer ezberleyemesin
+            r["id"] += 500000
+            r["firsat"] = f"F-{700300 + r['i']:09d}"
+            r["is_no"] = f"DNS-2025{300000 + r['i']}"
+            r["soz_id"] += 9000000
+            r["soz_id2"] += 9000000
+        random.Random(varyant).shuffle(out)
     return out
 
 
@@ -126,7 +138,7 @@ def beklenen(rows: list[dict]) -> dict:
         acilma[at] = acilma.get(at, 0) + 1
         kapali = r["sonuc"] == "Kapali"
         if kapali:
-            kt = {24153: "oto hesapkapama", 12055: "webservis"}.get(r["son"], "Manuel / Kullanıcı")
+            kt = {24153: "oto hesapkapama", 12055: "webservis"}.get(r["son"], "Manuel")
             kapama[kt] = kapama.get(kt, 0) + 1
         else:
             kt = "(iş açık)"
@@ -156,26 +168,34 @@ def beklenen(rows: list[dict]) -> dict:
 
 # ---- dosya üretimi ---------------------------------------------------------------------------------
 
-def uret(klasor: Path) -> dict:
+def uret(klasor: Path, varyant: int = 1) -> dict:
+    import random
+
     from openpyxl import Workbook
 
     klasor.mkdir(parents=True, exist_ok=True)
-    rows = kayitlar()
+    (klasor / ".varyant").write_text(str(varyant), encoding="utf-8")
+    rows = kayitlar(varyant)
+    sira = list(range(len(ISLER_BASLIK)))
+    if varyant != 1:
+        random.Random(varyant * 7).shuffle(sira)        # sütun sırası değişir: konumla eşleme yapan betik bozulur
     for sonuc, ad in (("Acik", "Açık işler.xlsx"), ("Kapali", "Kapalı işler.xlsx")):
         wb = Workbook()
         ws = wb.active
         ws.title = "UyumExcel"
-        ws.append(ISLER_BASLIK)
+        ws.append([ISLER_BASLIK[j] for j in sira])
+        ilk = True
         for r in rows:
             if r["sonuc"] != sonuc:
                 continue
             acik = LOG_METNI if r["log"] else f"{r['urun']} hizmeti için hesap kapama talebi.\tMüşteri arandı."
-            ws.append([r["tarih"], r["ekleyen"], "", r["sonuc"], r["id"], "True" if r["hu"] else "False",
-                       r["kaynak"], "", "MRK", "Hesap Kapama", r["musteri"], r["tckn"], r["vkn"], "",
-                       "", "Hesap kapama", r["is_no"], "", "Tamamlandı" if sonuc == "Kapali" else "Açık",
-                       f"{r['urun']} kapama", acik, "", "Normal", r["urun"], r["firsat"], "Kapama",
-                       f"M{1000 + r['i']}", "S01", r["kayb"] or "", r["mkayb"] or "", r["son"]])
-        ws.cell(row=2, column=3, value="nefise.gungor")             # İşi Açan Kodu ≠ Ekleyen (tuzak)
+            satir = [r["tarih"], r["ekleyen"], "nefise.gungor" if ilk else "", r["sonuc"], r["id"],
+                     "True" if r["hu"] else "False", r["kaynak"], "", "MRK", "Hesap Kapama", r["musteri"], r["tckn"],
+                     r["vkn"], "", "", "Hesap kapama", r["is_no"], "", "Tamamlandı" if sonuc == "Kapali" else "Açık",
+                     f"{r['urun']} kapama", acik, "", "Normal", r["urun"], r["firsat"], "Kapama",
+                     f"M{1000 + r['i']}", "S01", r["kayb"] or "", r["mkayb"] or "", r["son"]]
+            ilk = False                                  # İşi Açan Kodu ≠ Ekleyen (tuzak)
+            ws.append([satir[j] for j in sira])
         wb.save(klasor / ad)
     wb = Workbook()
     ws = wb.active
@@ -243,8 +263,9 @@ def referans(cikti: Path, bozuk: bool = False) -> None:
     ws0.title = SAYFALAR[0]
     ws0.append(["Hesap Kapama Raporu — Yönetim Özeti"])
     ws0.append(["Kaynak iş", exp["is_sayisi"], "Açık", exp["acik"], "Kapalı", exp["kapali"]])
-    for k, v in exp["acilis"].items():
-        ws0.append(["Açılış Kaynağı", k, v])
+    for grup in ("acilis", "acilma", "kapama"):
+        for k, v in exp[grup].items():
+            ws0.append([k, v if not bozuk or grup != "acilis" else v - 1])   # bozuk: kapsam dışı düşülmüş gibi
     ws0.append(["Kapanması gereken", exp["kapanmasi_gereken"]])
 
     def sayfa(ad, basl, satirlar):
@@ -265,7 +286,7 @@ def referans(cikti: Path, bozuk: bool = False) -> None:
         ak = e["Açılış Kaynağı"]
         if bozuk:
             ak = {"CRMIs": "CRMIs", "CRMTalep": "CRMTalep"}.get(r["kaynak"], "Kaynak bilgisi yok")
-        ozet.append([e["İş ID"], r["is_no"], r["tarih"].isoformat(), r["musteri"], _vkn(r), r["urun"], r["firsat"], ak,
+        ozet.append([e["İş ID"], r["is_no"], r["tarih"], r["musteri"], _vkn(r), r["urun"], r["firsat"], ak,
                      e["Açılma Türü"], e["Açan Kullanıcı"], r["sonuc"], "Kapalı" if r["sonuc"] == "Kapali" else "Açık",
                      e["Kapama Türü"], e["Kapatan Kullanıcı"], e["Kaybetme Nedeni"], e["Müşteri Kaybetme Nedeni"],
                      e["Fırsat Durumu"], e["Fırsat Durum Kodu"], e["Sözleşme Durumu"], e["Sözleşme ID"],
@@ -293,7 +314,9 @@ def _s(v) -> str:
 def denetle(klasor: Path, cikti: Path) -> dict:
     from openpyxl import load_workbook
 
-    exp = beklenen(kayitlar())
+    vf = klasor / ".varyant"
+    varyant = int(vf.read_text(encoding="utf-8")) if vf.is_file() else 1
+    exp = beklenen(kayitlar(varyant))
     hatalar: list[str] = []
     gecen: list[str] = []
 
@@ -325,6 +348,11 @@ def denetle(klasor: Path, cikti: Path) -> dict:
     turkce = any("Ş" in v or "ş" in v or "ı" in v for r in rows for v in r)
     bozuk = sum(1 for r in rows for v in r if "Ã" in v or "Ä" in v or "�" in v)
     kontrol("Türkçe karakterler bozulmamış", turkce and bozuk == 0, f"bozuk hücre {bozuk}")
+    if "Oluşturma Tarihi" in head:
+        ci = head.index("Oluşturma Tarihi") + 1
+        tip = ws.cell(row=2, column=ci).value
+        kontrol("Oluşturma Tarihi gerçek tarih değeri (metin değil)", isinstance(tip, (dt.date, dt.datetime)),
+                f"{type(tip).__name__}: {tip!r}")
     by_id: dict[str, list[list[str]]] = {}
     for r in rows:
         by_id.setdefault(r[idx["İş ID"]] if "İş ID" in idx else "", []).append(r)
@@ -385,6 +413,17 @@ def denetle(klasor: Path, cikti: Path) -> dict:
     if yo is not None:
         metin = " ".join(_s(c) for r in yo.iter_rows(values_only=True) for c in r)
         kontrol("Yönetim Özeti dolu", len(metin) > 100, f"{len(metin)} karakter")
+        yo_rows = [[_s(c) for c in r] for r in yo.iter_rows(values_only=True)]
+        eksik = []
+        for grup in ("acilis", "acilma", "kapama"):
+            for etiket, sayi in exp[grup].items():
+                # etiketin geçtiği satırda (veya "etiket: sayı" metninde) beklenen sayı var mı
+                bul = any(any(c.strip().casefold() == etiket.casefold() for c in r) and str(sayi) in r
+                          for r in yo_rows)
+                bul = bul or any(f"{etiket.casefold()}: {sayi}" in c.casefold() for r in yo_rows for c in r)
+                if not bul:
+                    eksik.append(f"{etiket}={sayi}")
+        kontrol("Yönetim Özeti dağılımları (tüm kaynak işler üzerinden)", not eksik, ", ".join(eksik[:6]))
         kontrol("Yönetim Özeti'nde NOTLAR bloğu yok", "NOTLAR" not in metin.upper(), "")
     toplam = len(gecen) + len(hatalar)
     return {"dosya": True, "gecen": gecen, "hatalar": hatalar, "puan": f"{len(gecen)}/{toplam}"}
@@ -397,8 +436,8 @@ if __name__ == "__main__":
         except (AttributeError, ValueError):
             pass
     cmd = sys.argv[1]
-    if cmd == "uret":
-        e = uret(Path(sys.argv[2]))
+    if cmd == "uret":                               # uret <klasör> [varyant]
+        e = uret(Path(sys.argv[2]), int(sys.argv[3]) if len(sys.argv) > 3 else 1)
         print(json.dumps({"is": e["is_sayisi"], "acilis": e["acilis"], "acilma": e["acilma"], "kapama": e["kapama"],
                           "ozet_satir": len(e["ozet"]), "kapsam_disi": e["kapsam_disi_is"],
                           "kapanmasi_gereken": e["kapanmasi_gereken"]}, ensure_ascii=False))

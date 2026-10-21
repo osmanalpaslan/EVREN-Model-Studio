@@ -238,6 +238,13 @@ Tuzakların hepsi iki koşuda da doğru: log metni önceliği, Hesap Uyum + pers
 çoğullama ve birebir tekrar eden sözleşme satırı. Skill'in kendi çelişkisi: Kapama Türü değeri `Manuel / Kullanıcı`
 §5 kural 5'teki " / " yasağına takılır (denetçide ayrık tutuldu).
 
+**Sabit betik yolu** (`--betik`; skill + `tests/hesap_kapama/SKILL_DUZELTME_ONERILERI.md`): ajan 15 dk'da (24 adım,
+0 hatalı araç; son rötuşta süre doldu) 1.167 satırlık `rapor_uret.py` yazdı; kısa düzeltme turu (118 sn: sütun
+genişliği ≤ 42). Denetçi güçlendirildi (Yönetim Özeti dağılımları, tarih tipi; R-25 ile doğru 27/27, bozuk yakalandı).
+Betik AJANSIZ: aynı veri 27/27 · tekrar 27/27 ve hücre hücre aynı · 96 iş, karışık sütun/satır 27/27 · zorunlu sütun
+eksik → çıkış 2, dosya yok. Çalışma süresi ~0,5 sn. Sonuç: tekrarlayan iş için "bir kez yazdır, denetle, sonra
+betiği çalıştır" yolu, her ay ajana ürettirmekten hem tutarlı hem ~1.000 kat hızlı.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

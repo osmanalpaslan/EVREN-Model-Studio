@@ -31,12 +31,23 @@ EVREN'i iş süreçlerimde kullanmak istiyorum, ne kadar yetenekli görmeliyim?"
   istiyor) — denetçi bunu ölçmüyordu, elle bulundu; `_build.py` skill klasöründe kaldı.
 - pytest: bitişte koşuldu (yalnız yeni test dosyaları; src değişmedi).
 
+## Devam: skill önerileri ve sabit betik (aynı gün)
+- `tests/hesap_kapama/SKILL_DUZELTME_ONERILERI.md`: 9 öneri (Manuel / Kullanıcı çelişkisi, dağılım tabanı, açık
+  işte Kapatan Kullanıcı, sözlükte olmayan id biçimi, Soru 1–5, tarih biçimi, teknik tuzak #9 Excel'i öldürme,
+  skill klasörüne yazmama, tekrarlanabilirlik). Skill dosyası değiştirilmedi.
+- Denetçi: Yönetim Özeti dağılımları ve tarih tipi eklendi; varyant 2 (96 iş, karışık sütun/satır). R-25: doğru
+  27/27, bozuk yakalandı.
+- `--betik`: EVREN 15 dk'da `rapor_uret.py` yazdı (süre doldu ama betik çalışıyordu); 118 sn'lik düzeltme turu.
+  Ajansız sınama: A 27/27 · B 27/27 + hücre hücre aynı · C (96 iş) 27/27 · eksik zorunlu sütun → çıkış 2.
+  Betik `tests/hesap_kapama/rapor_uret.py` olarak depoda.
+
 ## Sorunlar ve kayıtlar
 - Yeni kayıt açılmadı: ajan tarafı bulgular (koşular arası tutarsızlık, geçici betiğin kaynak klasöre yazılması)
   kullanıcıyla konuşulacak; skill çelişkileri kullanıcının dosyası (değiştirilmedi).
 
 ## Sonraki motor için notlar
-- Denetçi Yönetim Özeti sayılarını ölçmüyor: eklenmeli (dağılım toplamı = kaynak iş sayısı).
+- Denetçi artık Yönetim Özeti dağılımlarını ölçüyor (eklendi); Soru 1–5 içeriğini ölçmüyor.
+- Betiğin eksik sütun mesajı sütun adını değil "dosya tanınamadı" diyor; klasörde `__pycache__` bıraktı.
 - Skill çelişkileri: `Manuel / Kullanıcı` ↔ " / " yasağı; dağılım tabanı (kapsam dışı dahil mi) açık değil;
   açık işte Kapatan Kullanıcı ve sözlükte olmayan id biçimi tanımsız; "Soru 1–5" tanımsız; tarih biçimi yok.
 - Test gerçek veriden kolay: 32 satır, temiz başlık, önceden onay. Gerçek 2.500 satırda ve bozuk başlıkta
