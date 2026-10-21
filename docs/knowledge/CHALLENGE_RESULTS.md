@@ -144,6 +144,45 @@ gerçek bir eksik buldu (geçersiz sayıda kullanıcıya hata mesajı yok). Gör
 sayfayı 1,2 sn'de doğru okudu. Zorluk paketi (servis araçları + test bekçisi açık): **12/12**,
 bekçi yanlış uyarısı 0.
 
+## Derin Mod ve plan bekçisi (2026-10-21, gerçek EVREN API)
+
+**Derin Mod** (`tests/e2e_derin_real_api.py`; görev: calc.py'ye `div`, b=0 → ValueError, test yaz):
+
+| Faz | Sonuç | Süre |
+|---|---|---|
+| Anla (3 paralel salt okunur alt ajan, kota kapısı 2) | 3/3 `<bulgu>` | 71 sn |
+| Planla (deepseek-v4.1-flash + qwen3.8-flash-next, yargıç qwen3.8-flash-next) | 2 geçerli plan; yargıç README ekleyen planı "kapsam dışı" diye eledi, B seçildi (5 görev) | 64 sn |
+| Doğrula — BİLİNEN YANLIŞ değişiklik (b=0 kontrolü yok, import eksik) | 7 onaylı sorun, 5 yüksek → beklenen | 30 sn |
+| Doğrula — BİLİNEN DOĞRU değişiklik | 0 onaylı sorun → beklenen | 41 sn |
+
+Toplam kota: pencere %8, günlük ~217k token. Uygula fazı Proje ajanıdır (ayrı ölçüm: e2e_proje).
+Arayüz akışının tamamı (anla → plan kartı → onay → Proje → doğrula → düzelt turu → yeniden doğrula →
+rapor) sahte modelle `tests/test_derin_mod.py`'de.
+
+**Plan bekçisi** (`tests/e2e_plan_bekcisi_real_api.py`, Otomatik mod, açık/kapalı):
+
+| Senaryo | Model | Bekçi açık | Bekçi kapalı |
+|---|---|---|---|
+| A: 5 faz, ajan PLAN.md yazar | deepseek-v4-flash | tüm fazlar, testler geçti, dürtme 0 · 15 adım 43 sn | aynı · 18 adım 40 sn |
+| A | qwen3.8-flash-next | aynı, dürtme 0 · 17 adım 74 sn | aynı · 18 adım 74 sn |
+| C: kullanıcının PLAN.md'si, 6 büyük faz | deepseek-v4-flash | 6/6, testler geçti, dürtme 0 · 41 adım 528 sn | 6/6 · 16 adım 133 sn |
+| C | qwen3.8-flash-next | 6/6, dürtme 0 · 23 adım 154 sn | 6/6 · 32 adım 244 sn |
+| B: eski TODO.md + kısa soru | iki model | yanlış dürtme 0 | — |
+
+Dürüst sonuç: kısa, tek turluk denemelerde modeller fazları unutmadı; bekçi hiç tetiklenmedi (süre farkı
+model değişkenliği — dürtme 0). Kullanıcının bildirdiği unutma uzun oturum/özet koşullarında; bekçinin
+gerçek yararı orada gösterilmedi (kayıt "izleniyor").
+
+**Zorluk paketi** (auto-pro, 12 görev):
+1. İlk koşu 11/12 — `planlama` ("henüz KOD YAZMA, yalnız plan yaz") DÜŞTÜ: bekçi yazılan plandaki `- [ ]`
+   maddelerini bitmemiş iş saydı ve ajanı uygulamaya itti (R-22 yanlış tetiklenme). Düzeltme:
+   `planguard.plan_only_request`.
+2. Düzeltme sonrası 11/12 — `planlama` 5/5 (81 sn); bu kez `mini_proje` 365 sn sınırında kendi testi düşük
+   kaldı; tek başına iki kez yeniden: 5/5 (203 sn) ve 5/5 (76 sn), bekçi notu yok → model değişkenliği (R-08).
+   İlk koşuda `mini_proje` 5/5 (167 sn) geçmişti.
+3. Düzeltme sonrası, Serena açık (`--serena build\mcp_data`): **12/12**, 535 sn, MCP çağrısı 0, yakalanmamış
+   hata 0 (planlama 5/5, mini_proje 5/5).
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

@@ -182,6 +182,36 @@ TOOL_SPECS: list[ToolSpec] = [
         _obj({"name": {"type": "string", "description": "Servis adı (tek servis varsa gerekmez)"}}, []),
     ),
     ToolSpec(
+        "start_job", EXEC,
+        "Dakikalar/SAATLER sürebilecek bir komutu (uzun test takımı, derleme, veri işleme) arka planda "
+        "UZUN İŞ olarak başlatır; iş tur bitince kapanmaz, tüm çıktısı dosyaya yazılır. Başlattıktan "
+        "sonra sonucu almak için wait_job çağır. 2 dakikadan kısa komutlar için run_command kullan.",
+        _obj({
+            "command": {"type": "string", "description": "Çalıştırılacak komut (proje kökünde)"},
+            "name": {"type": "string", "description": "Kısa iş adı (ör. 'testler')"},
+        }, ["command"]),
+    ),
+    ToolSpec(
+        "wait_job", READ,
+        "Uzun işin bitmesini BEKLER (bekleme sırasında model çağrılmaz, kota harcanmaz) ve bitince çıkış "
+        "kodunu ve çıktının sonunu verir. max_minutes dolarsa iş sürüyor der; tekrar çağırabilirsin.",
+        _obj({
+            "job_id": {"type": "string", "description": "İş kimliği (tek iş varsa gerekmez)"},
+            "max_minutes": {"type": "integer", "description": "En çok bekleme (dk, varsayılan 60, üst sınır 240)"},
+        }, []),
+    ),
+    ToolSpec(
+        "job_status", READ,
+        "Uzun işin anlık durumu ve son çıktısı (beklemeden).",
+        _obj({"job_id": {"type": "string", "description": "İş kimliği (tek iş varsa gerekmez)"},
+              "lines": {"type": "integer", "description": "Son kaç satır (varsayılan 40)"}}, []),
+    ),
+    ToolSpec(
+        "stop_job", READ,
+        "Uzun işi durdurur.",
+        _obj({"job_id": {"type": "string", "description": "İş kimliği (tek iş varsa gerekmez)"}}, []),
+    ),
+    ToolSpec(
         "update_todos", META,
         "Çok adımlı işler için görev listesini günceller. Her çağrıda listenin "
         "TAMAMINI gönder; aynı anda yalnızca bir görev in_progress olmalı.",
@@ -198,6 +228,7 @@ TOOL_SPECS: list[ToolSpec] = [
 ]
 SPEC_BY_NAME = {s.name: s for s in TOOL_SPECS}
 SERVICE_TOOLS = {"start_service", "service_logs", "stop_service"}
+JOB_TOOLS = {"start_job", "wait_job", "job_status", "stop_job"}
 READ_ONLY_SPECS = [s for s in TOOL_SPECS if s.kind in (READ, META)]
 
 

@@ -16,7 +16,7 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 
 from ..agent import project as pj
@@ -45,7 +45,7 @@ class PlanCard(QFrame):
     edit_requested = Signal()
     cancelled = Signal()
 
-    def __init__(self, state: pj.ProjectState, warnings: list[str], parent=None):
+    def __init__(self, state: pj.ProjectState, warnings: list[str], parent=None, title: str = "Proje planı"):
         super().__init__(parent)
         self.setObjectName("PlanCard")
         p = theme.current()
@@ -58,7 +58,7 @@ class PlanCard(QFrame):
         ic = QLabel()
         ic.setPixmap(icons.pixmap("list", p.accent, 18))
         head.addWidget(ic)
-        title = QLabel(f"<b>Proje planı</b> — {len(state.tasks)} görev (EVREN_PLAN.md)")
+        title = QLabel(f"<b>{title}</b> — {len(state.tasks)} görev (EVREN_PLAN.md)")
         head.addWidget(title, 1)
         lay.addLayout(head)
         for t in state.tasks:
@@ -124,6 +124,8 @@ class ProjectController(QObject):
         self._cancel = threading.Event()
         self._quota_cache: tuple[float, object] | None = None
         self.label = ""                    # çalışma çubuğu öneki: "Proje 3/8"
+        self.finished_hooks: list = []     # proje bitince/duraklayınca (state) — Derin Mod doğrulaması
+        self.evren_only = False            # Derin Mod: görev ve inceleme modelleri yalnız EVREN
         self.sig_run_task.connect(self._do_run_task, Qt.QueuedConnection)
         self.sig_status.connect(lambda t: view._note(t, "list"), Qt.QueuedConnection)
         self.sig_tasks.connect(self._show_tasks, Qt.QueuedConnection)
@@ -151,6 +153,8 @@ class ProjectController(QObject):
             models = [chain.model] + chain.fallbacks
         else:
             models = [session_model] + [m for m in [chain.model] + chain.fallbacks if m != session_model]
+        if self.evren_only:                 # Derin Mod: ücretli sağlayıcıya ASLA (kullanıcı kararı)
+            models = [m for m in models if self.ctx.provider_of(m) == "evren"] or models
         if fallback and len(models) > 1:
             models = models[1:] + models[:1]
         return models[0], models[1:], role
@@ -244,7 +248,13 @@ class ProjectController(QObject):
             sv._note("Model planı beklenen biçimde vermedi. /proje-duzelt yazıp yeniden deneyin "
                      "(örn. /proje-duzelt planı <plan> bloğu içinde ver).", "alert")
             return
-        self.state = pj.ProjectState(goal=self._goal, tasks=tasks)
+        self.present_plan(self._goal, tasks)
+
+    def present_plan(self, goal: str, tasks: list[pj.Task], title: str = "Proje planı") -> None:
+        """Planı kaydedip onay kartını gösterir (Proje planlaması ve Derin Mod ortak yolu)."""
+        sv = self.view
+        self._goal = goal
+        self.state = pj.ProjectState(goal=goal, tasks=tasks)
         self.run_id = sv.ctx.db.add_project_run(sv.session_id, self._ws(), self.state.status, self.state.to_json())
         self._save(self.state)
         git = pj.Git(Path(self._ws()))
@@ -255,7 +265,7 @@ class ProjectController(QObject):
         elif git.dirty():
             warnings.append("Kaydedilmemiş değişiklikleriniz var: proje dalının ilk commit'ine alınacak "
                             "(kaybolmaz, ana dalınız değişmez).")
-        card = PlanCard(self.state, warnings)
+        card = PlanCard(self.state, warnings, title=title)
         card.approved.connect(self.start)
         card.edit_requested.connect(lambda: (sv.composer.set_text("/proje-duzelt "), sv.composer.focus()))
         card.cancelled.connect(self._cancel_plan)
@@ -275,6 +285,7 @@ class ProjectController(QObject):
     def start(self) -> None:
         if self.state is None or self.active:
             return
+        cancel_auto_resume(self)
         self._cancel.clear()
         self.active = True
         state, ws = self.state, Path(self._ws())
@@ -310,8 +321,20 @@ class ProjectController(QObject):
         sv._note("Proje kaldığı yerden sürdürülüyor.", "refresh")
         self.start()
 
+    def _auto_resume(self) -> None:
+        self._resume_timer = None
+        if self.active or self.view.running:
+            return
+        return_to_session(self)
+        self.view._note("Kota yenilendi: proje kaldığı yerden otomatik sürdürülüyor.", "refresh")
+        self.resume()
+
     def stop(self) -> None:
         sv = self.view
+        if getattr(self, "_resume_timer", None) is not None and not self.active:
+            cancel_auto_resume(self)
+            sv._note("Projenin otomatik sürdürülmesi iptal edildi.", "stop")
+            return
         if not self.active:
             sv._note("Çalışan bir proje yok.", "list")
             return
@@ -338,9 +361,14 @@ class ProjectController(QObject):
         else:
             title = "Proje duraklatıldı"
             text = f"{state.pause_reason} ({summary}). Sürdürmek için /proje-devam."
+            auto = schedule_auto_resume(self, state.pause_reason)
+            if auto:
+                text += " " + auto
         sv._note(f"{title}: {text}", "check" if state.status == "bitti" else "alert")
         self.notify.emit(f"EVREN Studio — {title}", text)
         self._show_tasks(state)
+        for hook in list(self.finished_hooks):
+            hook(state)
 
     def _crashed(self, exc: Exception) -> None:
         self.active = False
@@ -406,7 +434,8 @@ class ProjectController(QObject):
 
     def _review(self, messages: list[dict]) -> str:
         """İnceleme: bağlı sağlayıcının inceleme rolü modeli (Auto Pro tablosu), yedekli."""
-        text, _model = self.ctx.ai_chat("inceleme", messages, max_tokens=800, session_id=self.view.session_id)
+        text, _model = self.ctx.ai_chat("inceleme", messages, max_tokens=800, session_id=self.view.session_id,
+                                        evren_only=self.evren_only)
         return text
 
     def _commit_message(self, task: pj.Task, diff: str) -> str:
@@ -463,6 +492,53 @@ def clean_commit_message(text: str) -> str:
     first = lines[0].strip().strip('"').strip("'")[:72]
     rest = [x for x in lines[1:] if x.strip()][:3]
     return first + ("\n\n" + "\n".join(rest) if rest else "")
+
+
+def schedule_auto_resume(ctrl, reason: str) -> str:
+    """Kota yüzünden duraklayan çalışmayı kota yenilenince sürdürmek üzere zamanlar (Qt ana iş
+    parçacığı). Yenilenme saati son kota sorgusunun ÖNBELLEĞİNDEN okunur (ağ isteği yok, R-04).
+    Dönüş: kullanıcıya gösterilecek not ("" → zamanlanmadı)."""
+    from datetime import datetime
+
+    from ..agent.quota import resume_delay_ms
+
+    if not ctrl.ctx.settings.auto_resume:
+        return ""
+    low = (reason or "").lower()
+    cache = getattr(ctrl.view.project, "_quota_cache", None)
+    q = cache[1] if cache else None
+    if "günlük" in low:
+        delay = resume_delay_ms(getattr(q, "daily_reset_at", None))
+    elif "kota" in low or "pencere" in low or "rate" in low:
+        delay = 6 * 60 * 1000                # 5 dk penceresi + pay
+    else:
+        return ""
+    old = getattr(ctrl, "_resume_timer", None)
+    if old is not None:
+        old.stop()
+    timer = QTimer(ctrl)
+    timer.setSingleShot(True)
+    timer.timeout.connect(ctrl._auto_resume)
+    timer.start(delay)
+    ctrl._resume_timer = timer
+    ctrl._resume_sid = ctrl.view.session_id
+    when = datetime.fromtimestamp(datetime.now().timestamp() + delay / 1000).strftime("%d.%m %H:%M")
+    return (f"Kota yenilenince (yaklaşık {when}) otomatik sürdürülecek; uygulama açık kalmalı. "
+            "İptal için durdur komutunu yazın.")
+
+
+def return_to_session(ctrl) -> None:
+    """Otomatik sürdürmeden önce, bekleme sırasında başka oturuma geçildiyse çalışmanın oturumuna dön."""
+    sid = getattr(ctrl, "_resume_sid", None)
+    if sid and ctrl.view.session_id != sid:
+        ctrl.view.open_session(sid)
+
+
+def cancel_auto_resume(ctrl) -> None:
+    t = getattr(ctrl, "_resume_timer", None)
+    if t is not None:
+        t.stop()
+        ctrl._resume_timer = None
 
 
 def quota_decision(q) -> tuple[float, str]:

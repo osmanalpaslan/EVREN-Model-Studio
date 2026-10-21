@@ -269,6 +269,18 @@ Yapılanlar: arka plan servisleri, test bekçisi, `/qa` (plan → onay → göze
 "QA ajanı". Kalan fikirler: Playwright iz kaydı (trace) ile adımları izleme, API ucu testi için ayrı araç,
 mobil görünüm (browser_resize) senaryoları.
 
+## 6. Derin Mod, plan bekçisi, uzun işler, kota kapısı — YAPILDI (2026-10-21, dal `feat/derin-mod`)
+
+Kullanıcı istekleri: faz bitince sonrakine geçmeyi unutma sorunu; Claude Code ultracode benzeri mod;
+90 dakikayı aşan testler; kenar çubuğu. Yapılanlar CHANGELOG'da; ölçüm CHALLENGE_RESULTS.md.
+Açık kalanlar / ileride:
+- [ ] Derin Mod alt ajanlarına MCP (Serena) — eşzamanlı alt ajanlarda paylaşılan süreç güvenli mi ölçülmeli.
+- [ ] Denetçi bulgularını anlamca birleştirme (şu an yalnız dosya + metin başı).
+- [ ] Plan bekçisinin kullanıcı yazdığı ve ajanın hiç güncellemediği plan dosyasını görmesi (yanlış
+      tetiklenme riskiyle birlikte ölçülmeli, R-22).
+- [ ] Uygulama kapalıyken otomatik sürdürme (Windows Görev Zamanlayıcı) — gerekirse.
+- EVREN'den sorulacak (şartlarda yok): eşzamanlı istek sınırı; kota anahtar mı hesap mı başına.
+
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 
 - OpenAI/Anthropic'i gerçek anahtarla doğrula (`tests/e2e_providers_real_api.py --evet`).

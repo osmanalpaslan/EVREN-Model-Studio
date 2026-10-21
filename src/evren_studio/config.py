@@ -113,6 +113,9 @@ class Settings:
     show_reasoning: bool = True
     sidebar_visible: bool = True
     panel_visible: bool = True
+    # Kullanıcının sürükleyerek ayarladığı genişlikler (px); açılışta sınırlar içinde uygulanır
+    sidebar_width: int = 264
+    panel_width: int = 360
     send_with_enter: bool = True
     # İlk yanıttan sonra oturuma yapay zekâyla kısa başlık (bağlı API; ücretli sağlayıcıda çok küçük maliyet)
     ai_session_titles: bool = True
@@ -123,6 +126,16 @@ class Settings:
     edit_diagnostics: bool = True
     # Test bekçisi: dosya değiştiren turun sonunda projenin testleri; tur başında geçenler bozulursa uyar
     test_check: bool = True
+    # Plan bekçisi: model plan/görev listesi tutarken açık madde varken turu bitirmesin (otomatik devam)
+    plan_guard: bool = True
+    # Çok aşamalı uzun istemde "Proje ajanıyla yürütülsün mü?" önerisi
+    suggest_project: bool = True
+    # Kota yüzünden duraklayan Proje/QA/Derin çalışması, kota yenilenince kendiliğinden sürdürülsün
+    auto_resume: bool = True
+    # Derin Mod (composer "Derin" düğmesi): açıkken her iş anla→planla→uygula→doğrula→düzelt akışıyla
+    deep_mode: bool = False
+    # Derin Mod'da aynı anda çalışan alt ajan sayısı (1-3; kota penceresi doluysa kendiliğinden 1'e iner)
+    deep_parallel: int = 2
     mcp_servers: list[dict] = field(default_factory=list)
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
     # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).

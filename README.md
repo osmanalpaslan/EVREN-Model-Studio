@@ -82,6 +82,12 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
 - **Test bekçisi**: ajan dosya değiştirince tur sonunda projenin testleri çalışır; bozulursa model düzeltir.
 - **Hata bekçisi**: ajan bir dosyayı düzenleyince sözdizimi ve dil sunucusu hataları aynı
   turda modele bildirilir; model "bitti" demeden düzeltir.
+- **Derin Mod**: composer'daki **Derin** düğmesini açın (veya `/derin <istek>`). Zor işler birden çok
+  EVREN ajanıyla yürür: anla (paralel inceleme) → planla (iki model + yargıç) → onayınızla uygula →
+  iki bağımsız denetçiyle doğrula → düzelt. Rapor `EVREN_DERIN.md`. Daha yavaş, daha çok token.
+- **Plan bekçisi**: ajan fazlara ayırdığı işte bir fazı bitirip durmaz, sıradakine sormadan geçer.
+- **Uzun işler**: saatler süren testler arka planda çalışır; ajan beklerken token harcanmaz,
+  bitince bildirim gelir. Kota yüzünden duran Proje/QA/Derin çalışması kota yenilenince sürer.
 - **Proje ajanı**: `/proje <hedef>` yazın; plan çıkarır, onayınızdan sonra
   görevleri siz başında olmadan sırayla yapar, her birini test eder, ayrı git
   dalında commit'ler, bitince bildirim ve rapor (EVREN_RAPOR.md) verir.

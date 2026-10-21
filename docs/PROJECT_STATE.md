@@ -64,6 +64,12 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-21) Derin Mod (dal `feat/derin-mod`): composer "Derin" düğmesi / `/derin`; anla → planla
+    (iki model + yargıç) → onaylı Proje uygulaması → çekişmeli doğrulama → düzeltme. Plan bekçisi ve Proje
+    ajanı önerisi (faz unutma), uzun işler (`start_job`/`wait_job`), kota kapısı ve kota sonrası otomatik
+    sürdürme, kenar çubuğu sürükleme düzeltmesi (gerçek kök neden). EVREN şartları okundu: ek anahtarla
+    kota genişletme yasak. Ölçüm: CHALLENGE_RESULTS.md "Derin Mod ve plan bekçisi".
+
   - (2026-10-19) QA ajanı (dal `feat/qa`): `/qa` web uygulamasını tarayıcıda test uzmanı gibi dener;
     arka plan servisleri, test bekçisi, görsel göz, ek denetimler. Gerçek koşu: bilinen hata 3/3 (3 koşu).
 

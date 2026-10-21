@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 62 · Açık/izlenen: 4 · Oturum: 22 · Kural: 26
+Kayıt: 70 · Açık/izlenen: 6 · Oturum: 23 · Kural: 27
 
 ## Açık ve izlenen kayıtlar
 
@@ -10,13 +10,23 @@ Kayıt: 62 · Açık/izlenen: 4 · Oturum: 22 · Kural: 26
 |---|---|---|---|---|
 | yuksek | [2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma](incidents/2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma.md) | risk | api | OpenAI ve Anthropic entegrasyonu gerçek anahtarla doğrulanmadı |
 | yuksek | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | agent | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
+| yuksek | [2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor](incidents/2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor.md) | eksik | ajan | Ajan çok fazlı işte faz bitince sonrakine geçmeyi unutuyor |
 | orta | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | api | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
 | dusuk | [2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz](incidents/2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz.md) | hata | test/izleme | İzleme döngüsü testi zamanlamaya bağlı ve kararsız |
+| dusuk | [2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi](incidents/2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi.md) | ortam | test | Alt süreçler yük altında ara sıra boş çıktıyla dönüyor (bu bilgisayar) |
 
 ## Tüm kayıtlar (yeniden eskiye)
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-10-21 | [2026-10-21-plan-bekcisi-yalniz-plan-yaz-kod-yazma-isteginde-ajani-plani](incidents/2026-10-21-plan-bekcisi-yalniz-plan-yaz-kod-yazma-isteginde-ajani-plani.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Plan bekçisi "yalnız plan yaz, kod yazma" isteğinde ajanı planı uygulamaya itti |
+| 2026-10-21 | [2026-10-21-kota-kapisi-bekleme-dongusu-kayan-noktada-sonsuz-donebilirdi](incidents/2026-10-21-kota-kapisi-bekleme-dongusu-kayan-noktada-sonsuz-donebilirdi.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Kota kapısı bekleme döngüsü kayan noktada sonsuz dönebilirdi |
+| 2026-10-21 | [2026-10-21-kenar-cubugu-suruklenince-kayboluyordu-orta-yiginin-en-kucuk](incidents/2026-10-21-kenar-cubugu-suruklenince-kayboluyordu-orta-yiginin-en-kucuk.md) | hata | yuksek | cozuldu | bilinmiyor | Kenar çubuğu sürüklenince kayboluyordu: orta yığının en küçük genişliği |
+| 2026-10-21 | [2026-10-21-kenar-cubugu-icin-splitter-da-hata-yok-iddiasi-surukleme-den](incidents/2026-10-21-kenar-cubugu-icin-splitter-da-hata-yok-iddiasi-surukleme-den.md) | yanlis-iddia | orta | cozuldu | Claude Code (masaüstü) | Kenar çubuğu için "splitter'da hata yok" iddiası sürükleme denenmeden yazıldı |
+| 2026-10-21 | [2026-10-21-bash-heredoc-icindeki-python-yamasi-regex-teki-b-yi-geri-sil](incidents/2026-10-21-bash-heredoc-icindeki-python-yamasi-regex-teki-b-yi-geri-sil.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Bash heredoc içindeki Python yaması regex'teki \b'yi geri silme karakterine çevirdi |
+| 2026-10-21 | [2026-10-21-ayarlar-sayfasi-uzun-acilir-liste-yuzunden-yatay-kayiyordu](incidents/2026-10-21-ayarlar-sayfasi-uzun-acilir-liste-yuzunden-yatay-kayiyordu.md) | hata | dusuk | cozuldu | bilinmiyor | Ayarlar sayfası uzun açılır liste yüzünden yatay kayıyordu |
+| 2026-10-21 | [2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi](incidents/2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi.md) | ortam | dusuk | izleniyor | bilinmiyor | Alt süreçler yük altında ara sıra boş çıktıyla dönüyor (bu bilgisayar) |
+| 2026-10-21 | [2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor](incidents/2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor.md) | eksik | yuksek | izleniyor | EVREN Studio | Ajan çok fazlı işte faz bitince sonrakine geçmeyi unutuyor |
 | 2026-10-19 | [2026-10-19-yerel-web-sunucusu-turkce-403-iletisinde-yanitsiz-kaldi](incidents/2026-10-19-yerel-web-sunucusu-turkce-403-iletisinde-yanitsiz-kaldi.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Yerel web sunucusu Türkçe 403 iletisinde yanıtsız kaldı |
 | 2026-10-19 | [2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu](incidents/2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Yeni kullanıcı kurulumu elle Python ve venv gerektiriyordu |
 | 2026-10-19 | [2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma](incidents/2026-10-19-uygulama-ajani-kendi-kaynagini-duzenlerken-uygulamayi-acilma.md) | hata | kritik | cozuldu | EVREN Studio | Uygulama ajanı kendi kaynağını düzenlerken uygulamayı açılmaz yaptı |
@@ -84,6 +94,7 @@ Kayıt: 62 · Açık/izlenen: 4 · Oturum: 22 · Kural: 26
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-21 | [2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k](sessions/2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Derin Mod, plan bekçisi, uzun işler, kota kapısı ve kenar çubuğu |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum](sessions/2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Zorluk paketi ve tek tıkla kurulum |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-qa-ajani-arka-plan-servisleri-test-bekci](sessions/2026-10-19-claude-code-masaustu-qa-ajani-arka-plan-servisleri-test-bekci.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | QA ajanı, arka plan servisleri, test bekçisi, görsel göz |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-mcp-gerektiginde-acma-playwright-hata-be](sessions/2026-10-19-claude-code-masaustu-mcp-gerektiginde-acma-playwright-hata-be.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | MCP gerektiğinde açma, Playwright, hata bekçisi, çok dilli Serena |
@@ -135,3 +146,4 @@ Kayıt: 62 · Açık/izlenen: 4 · Oturum: 22 · Kural: 26
 - **R-24** · Kısa iç yapay zekâ isteğini ai_chat'ten geçir ve gerçek API'de dene; düğme lambdasında `_=None`
 - **R-25** · Yeni araç eklerken modelin onu gerçekten seçtiğini ve kabul denetimini ölç
 - **R-26** · Gözetimsiz akışta yapılandırılmış sonucu üç katmanla güvenceye al
+- **R-27** · Splitter ve düzen değişikliğini gerçek sürüklemeyle doğrula

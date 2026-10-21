@@ -858,6 +858,57 @@ class ActionCard(QFrame):
         self.body.setText((self.body.text() + "\n" if self.body.text() else "") + text)
 
 
+class ChoiceCard(QFrame):
+    """Öneri/seçim kartı (vurgu çerçeveli): başlık, açıklama ve düğmeler. Bir düğmeye basılınca
+    düğmeler kilitlenir ve seçilen yazılır (çift tıklama olmaz)."""
+
+    def __init__(self, title: str, text: str, actions: list[tuple[str, Callable[[], None]]],
+                 icon_name: str = "list", parent=None):
+        super().__init__(parent)
+        self.setObjectName("PlanCard")
+        p = theme.current()
+        self.setStyleSheet(f"QFrame#PlanCard {{ background: {p.surface}; border: 1px solid {p.accent};"
+                           f" border-radius: 12px; }}")
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(16, 12, 16, 12)
+        lay.setSpacing(6)
+        head = QHBoxLayout()
+        ic = QLabel()
+        ic.setPixmap(icons.pixmap(icon_name, p.accent, 18))
+        head.addWidget(ic)
+        t = QLabel(f"<b>{title}</b>")
+        t.setWordWrap(True)
+        head.addWidget(t, 1)
+        lay.addLayout(head)
+        body = QLabel(text)
+        body.setWordWrap(True)
+        body.setProperty("role", "dim")
+        lay.addWidget(body)
+        row = QHBoxLayout()
+        row.addStretch(1)
+        self.buttons: list[QPushButton] = []
+        for i, (label, cb) in enumerate(actions):
+            b = QPushButton(label)
+            if i == 0:
+                b.setProperty("variant", "primary")
+            b.clicked.connect(lambda _=None, c=cb, lb=label: self._choose(lb, c))
+            row.addWidget(b)
+            self.buttons.append(b)
+        lay.addLayout(row)
+        self.result = QLabel("")
+        self.result.setProperty("role", "dim")
+        self.result.setVisible(False)
+        lay.addWidget(self.result)
+
+    def _choose(self, label: str, cb: Callable[[], None]) -> None:
+        for b in self.buttons:
+            b.setEnabled(False)
+            b.setVisible(False)
+        self.result.setText("✓ " + label)
+        self.result.setVisible(True)
+        cb()
+
+
 class ErrorCard(QFrame):
     def __init__(self, title: str, lines: list[str],
                  actions: list[tuple[str, Callable[[], None]]] | None = None, parent=None):

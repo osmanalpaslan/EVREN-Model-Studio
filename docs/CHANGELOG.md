@@ -1,5 +1,43 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Derin Mod, plan bekçisi, uzun işler, kota kapısı, kenar çubuğu
+
+### Eklendi
+
+- **Derin Mod** (composer'daki **Derin** düğmesi veya `/derin <istek>`; `/derin-durdur`): Claude Code'un
+  ultracode moduna benzer çok ajanlı çalışma. Düğme açıkken her iş şu akışla yürür; fazları KOD sürer:
+  1. **Anla**: 2-3 bağımsız, salt okunur alt ajan projeyi farklı açılardan inceler (yapı, ilgili kod,
+     test yolu), aynı anda.
+  2. **Planla**: iki farklı EVREN modeli bağımsız plan yazar; yargıç model birini seçer (kapsam dışı iş
+     ekleyen planı eler).
+  3. **Uygula**: seçilen plan onay kartıyla size sunulur; onaylarsanız Proje ajanı görev görev yürütür.
+  4. **Çekişmeli doğrula**: iki bağımsız denetçi değişikliği isteğe karşı çürütmeye çalışır.
+  5. **Düzelt**: onaylanan sorunlar düzeltilir (en çok 2 tur), sonra yeniden doğrulanır.
+  Soru türü isteklerde yalnız Anla + yanıt yapılır, dosya değişmez. Rapor: `EVREN_DERIN.md`.
+  Yalnız ücretsiz EVREN; daha yavaş ve daha çok token harcar.
+- **Plan bekçisi**: ajan bir plan dosyası veya görev listesi tutarken açık madde varken turu bitirmez;
+  "sıradakine geçeyim mi?" demeden devam etmesi için en çok 8 kez dürtülür, gerçek iş ilerlemiyorsa
+  durur. Gerçek engelde ajan `ENGEL: <neden>` yazar. Adım sınırında açık madde kalırsa tur en çok 2 kez
+  kendiliğinden sürer. Ayarlar'dan kapatılabilir.
+- **Proje ajanı önerisi**: çok aşamalı uzun bir istem yazınca "Proje ajanıyla yürüt / Normal devam"
+  kartı çıkar (sessizce yönlendirmez). Ayarlar'dan kapatılabilir.
+- **Uzun işler** (`start_job`, `wait_job`, `job_status`, `stop_job`): 90 dakikalık test takımı gibi uzun
+  komutlar arka planda çalışır, tur bitince kapanmaz. Ajan beklerken modele istek gitmez (token
+  harcanmaz); iş bitince not ve Windows bildirimi gelir. Tam çıktı veri klasöründe günlük dosyasındadır.
+- **Kota kapısı**: Derin Mod'un paralel alt ajanları EVREN'in 5 dakikalık hız penceresi dolarken tek tek
+  çalışır, pencere çok doluysa yenilenmesini bekler (token harcamaz); günlük kota azalınca durur.
+- **Kota sonrası otomatik sürdürme**: kota yüzünden duraklayan Proje/QA/Derin çalışması kota yenilenince
+  kendiliğinden sürer (uygulama açık kalmalı; durdur komutuyla iptal). Ayarlar'dan kapatılabilir.
+- Kenar çubuğu ve sağ panel genişliği hatırlanır.
+
+### Düzeltildi
+
+- **Sol kenar çubuğu sürüklenince kayboluyordu** (2026-10-19'da "düzeldi" denmişti, düzelmemişti):
+  orta alanın en küçük genişliği en büyük sayfanın uzun etiketlerine göre 1700+ px'e çıkıyor, çubuk
+  ekranın dışına itiliyordu. Gerçek fare sürüklemesiyle 9 test eklendi.
+- Ayarlar sayfası dar pencerede yatay kayıyordu (uzun açılır liste).
+- Arka plan servisi hemen kapanırsa son çıktı mesajdan eksik kalabiliyordu.
+
 ## Yayınlanmamış — QA ajanı, arka plan servisleri, test bekçisi
 
 ### Eklendi
