@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 70 · Açık/izlenen: 6 · Oturum: 23 · Kural: 27
+Kayıt: 78 · Açık/izlenen: 6 · Oturum: 24 · Kural: 28
 
 ## Açık ve izlenen kayıtlar
 
@@ -19,13 +19,21 @@ Kayıt: 70 · Açık/izlenen: 6 · Oturum: 23 · Kural: 27
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-10-21 | [2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8](incidents/2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Proje ajanı bozuk doğrulama komutu yüzünden görevi düşürüp 8 görevi atladı |
 | 2026-10-21 | [2026-10-21-plan-bekcisi-yalniz-plan-yaz-kod-yazma-isteginde-ajani-plani](incidents/2026-10-21-plan-bekcisi-yalniz-plan-yaz-kod-yazma-isteginde-ajani-plani.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Plan bekçisi "yalnız plan yaz, kod yazma" isteğinde ajanı planı uygulamaya itti |
 | 2026-10-21 | [2026-10-21-kota-kapisi-bekleme-dongusu-kayan-noktada-sonsuz-donebilirdi](incidents/2026-10-21-kota-kapisi-bekleme-dongusu-kayan-noktada-sonsuz-donebilirdi.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Kota kapısı bekleme döngüsü kayan noktada sonsuz dönebilirdi |
 | 2026-10-21 | [2026-10-21-kenar-cubugu-suruklenince-kayboluyordu-orta-yiginin-en-kucuk](incidents/2026-10-21-kenar-cubugu-suruklenince-kayboluyordu-orta-yiginin-en-kucuk.md) | hata | yuksek | cozuldu | bilinmiyor | Kenar çubuğu sürüklenince kayboluyordu: orta yığının en küçük genişliği |
 | 2026-10-21 | [2026-10-21-kenar-cubugu-icin-splitter-da-hata-yok-iddiasi-surukleme-den](incidents/2026-10-21-kenar-cubugu-icin-splitter-da-hata-yok-iddiasi-surukleme-den.md) | yanlis-iddia | orta | cozuldu | Claude Code (masaüstü) | Kenar çubuğu için "splitter'da hata yok" iddiası sürükleme denenmeden yazıldı |
+| 2026-10-21 | [2026-10-21-ic-ice-powershell-komutunda-dis-kabuk-degiskenlerini-yuttu](incidents/2026-10-21-ic-ice-powershell-komutunda-dis-kabuk-degiskenlerini-yuttu.md) | hata | yuksek | cozuldu | bilinmiyor | İç içe PowerShell komutunda dış kabuk $ değişkenlerini yuttu |
+| 2026-10-21 | [2026-10-21-derin-mod-kismi-projede-bitti-dedi-ve-kullaniciya-sorulari-s](incidents/2026-10-21-derin-mod-kismi-projede-bitti-dedi-ve-kullaniciya-sorulari-s.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Derin Mod kısmi projede bitti dedi ve kullanıcıya soruları sormadı |
+| 2026-10-21 | [2026-10-21-derin-mod-alt-ajanlari-gorunmuyordu-ve-sonuc-blogu-ikinci-ka](incidents/2026-10-21-derin-mod-alt-ajanlari-gorunmuyordu-ve-sonuc-blogu-ikinci-ka.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Derin Mod alt ajanları görünmüyordu ve sonuç bloğu ikinci katmanı yoktu |
+| 2026-10-21 | [2026-10-21-deepseek-v4-flash-evren-model-listesinden-kalkti](incidents/2026-10-21-deepseek-v4-flash-evren-model-listesinden-kalkti.md) | risk | orta | cozuldu | bilinmiyor | deepseek-v4-flash EVREN model listesinden kalktı |
+| 2026-10-21 | [2026-10-21-claude-masaustu-surecleri-appdata-local-i-sanal-goruyor-gerc](incidents/2026-10-21-claude-masaustu-surecleri-appdata-local-i-sanal-goruyor-gerc.md) | ortam | orta | kabul-edildi | bilinmiyor | Claude masaüstü süreçleri AppData Local'i sanal görüyor; gerçek EVREN verisi UNC yolundan okunur |
+| 2026-10-21 | [2026-10-21-bulgu-listesini-kullaniciya-yazmadan-1-10-u-uygulayayim-mi-d](incidents/2026-10-21-bulgu-listesini-kullaniciya-yazmadan-1-10-u-uygulayayim-mi-d.md) | surec | dusuk | cozuldu | Claude Code (masaüstü) | Bulgu listesini kullanıcıya yazmadan "1-10'u uygulayayım mı" diye soruldu |
 | 2026-10-21 | [2026-10-21-bash-heredoc-icindeki-python-yamasi-regex-teki-b-yi-geri-sil](incidents/2026-10-21-bash-heredoc-icindeki-python-yamasi-regex-teki-b-yi-geri-sil.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Bash heredoc içindeki Python yaması regex'teki \b'yi geri silme karakterine çevirdi |
 | 2026-10-21 | [2026-10-21-ayarlar-sayfasi-uzun-acilir-liste-yuzunden-yatay-kayiyordu](incidents/2026-10-21-ayarlar-sayfasi-uzun-acilir-liste-yuzunden-yatay-kayiyordu.md) | hata | dusuk | cozuldu | bilinmiyor | Ayarlar sayfası uzun açılır liste yüzünden yatay kayıyordu |
 | 2026-10-21 | [2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi](incidents/2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi.md) | ortam | dusuk | izleniyor | bilinmiyor | Alt süreçler yük altında ara sıra boş çıktıyla dönüyor (bu bilgisayar) |
+| 2026-10-21 | [2026-10-21-ajanin-yazdigi-ps1-bom-suz-oldugu-icin-turkce-bozuldu](incidents/2026-10-21-ajanin-yazdigi-ps1-bom-suz-oldugu-icin-turkce-bozuldu.md) | eksik | orta | cozuldu | bilinmiyor | Ajanın yazdığı .ps1 BOM'suz olduğu için Türkçe bozuldu |
 | 2026-10-21 | [2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor](incidents/2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor.md) | eksik | yuksek | izleniyor | EVREN Studio | Ajan çok fazlı işte faz bitince sonrakine geçmeyi unutuyor |
 | 2026-10-19 | [2026-10-19-yerel-web-sunucusu-turkce-403-iletisinde-yanitsiz-kaldi](incidents/2026-10-19-yerel-web-sunucusu-turkce-403-iletisinde-yanitsiz-kaldi.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Yerel web sunucusu Türkçe 403 iletisinde yanıtsız kaldı |
 | 2026-10-19 | [2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu](incidents/2026-10-19-yeni-kullanici-kurulumu-elle-python-ve-venv-gerektiriyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Yeni kullanıcı kurulumu elle Python ve venv gerektiriyordu |
@@ -94,6 +102,7 @@ Kayıt: 70 · Açık/izlenen: 6 · Oturum: 23 · Kural: 27
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-21 | [2026-10-21-claude-code-masaustu-hesap-kapama-oturumu-analizi-ve-derin-pr](sessions/2026-10-21-claude-code-masaustu-hesap-kapama-oturumu-analizi-ve-derin-pr.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Hesap kapama oturumu analizi ve Derin/Proje düzeltmeleri |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k](sessions/2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Derin Mod, plan bekçisi, uzun işler, kota kapısı ve kenar çubuğu |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum](sessions/2026-10-19-claude-code-masaustu-zorluk-paketi-ve-tek-tikla-kurulum.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Zorluk paketi ve tek tıkla kurulum |
 | 2026-10-19 | [2026-10-19-claude-code-masaustu-qa-ajani-arka-plan-servisleri-test-bekci](sessions/2026-10-19-claude-code-masaustu-qa-ajani-arka-plan-servisleri-test-bekci.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | QA ajanı, arka plan servisleri, test bekçisi, görsel göz |
@@ -147,3 +156,4 @@ Kayıt: 70 · Açık/izlenen: 6 · Oturum: 23 · Kural: 27
 - **R-25** · Yeni araç eklerken modelin onu gerçekten seçtiğini ve kabul denetimini ölç
 - **R-26** · Gözetimsiz akışta yapılandırılmış sonucu üç katmanla güvenceye al
 - **R-27** · Splitter ve düzen değişikliğini gerçek sürüklemeyle doğrula
+- **R-28** · Gözetimsiz akışta "bitti"yi istenen çıktıya bağla, kararı kullanıcıya sor

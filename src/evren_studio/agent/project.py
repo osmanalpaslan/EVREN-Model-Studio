@@ -13,7 +13,11 @@ Akış (kullanıcı kararları, 2026-10-19 — docs/ILERIDE_YAPILACAKLAR.md madd
    başarısız denemenin değişiklikleri `git stash` ile kenara alınır (silinmez).
 6. TAKILMA — en fazla MAX_ATTEMPTS deneme (geri bildirimle; son deneme yedek
    modelle); olmazsa "takıldı" işaretlenir, ona bağlı görevler atlanır, bağımsız
-   görevlerle devam edilir.
+   görevlerle devam edilir. Sonunda takılan görev varsa proje "bitti" DEĞİL,
+   duraklatılır; `/proje-devam` takılan görevi yeniden dener (2026-10-21: tek
+   takılan görev yüzünden 8 görev atlanıp proje "tamamlandı" sayılmıştı).
+   Görev, kullanıcının kararını gerektiren bir durumda `SORU: …` ile durursa proje
+   duraklar; yanıt `/proje-devam <yanıt>` ile verilir ve sonraki görevlere taşınır.
 7. GÖZETİMSİZ — kota penceresi / günlük kota / EVREN kesintisinde beklenir veya
    temiz noktada duraklatılır; durum DB'de tutulur, kaldığı yerden devam edilir.
 8. RAPOR — `EVREN_RAPOR.md` + arayüz kartı + Windows bildirimi.
@@ -39,7 +43,9 @@ MAX_TASKS = 15
 MAX_ATTEMPTS = 3                  # 1: birincil · 2: geri bildirimle · 3: yedek modelle
 OUTAGE_WAITS = (60, 120, 300, 600, 900)          # EVREN kesintisinde bekleme (sn), toplam ~33 dk
 REVIEW_DIFF_LIMIT = 14_000
+CONTEXT_LIMIT = 4_000             # görev istemine eklenen proje bilgi notu (karakter)
 
+REOPEN_NOTE = "önceki çalıştırmada takıldı: "
 STATUS_LABEL = {"bekliyor": "bekliyor", "calisiyor": "çalışıyor", "bitti": "bitti",
                 "takildi": "takıldı", "atlandi": "atlandı"}
 STATUS_MARK = {"bekliyor": " ", "calisiyor": "~", "bitti": "x", "takildi": "!", "atlandi": "-"}
@@ -80,6 +86,8 @@ class ProjectState:
     finished_at: str = ""
     pause_reason: str = ""
     log: list[str] = field(default_factory=list)
+    context: str = ""                 # her göreve verilen proje bilgi notu (ör. Derin Mod incelemesi)
+    answers: list[str] = field(default_factory=list)   # kullanıcının SORU yanıtları ve kararları
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -112,7 +120,14 @@ PLAN_FORMAT = """Yanıtının SONUNDA planı tam olarak şu biçimde ver (başka
 Kurallar: 3-{max} görev; her görev tek turda (en çok ~40 araç adımı) bitirilebilecek
 büyüklükte olsun; testler ilgili görevin içinde yazılsın; son görev "tüm testleri
 çalıştır ve README'yi güncelle" türünde bir toparlama olsun. Doğrulama komutu yalnız
-proje klasöründe çalışan, kısa süren, girdi beklemeyen bir komut olabilir."""
+proje klasöründe çalışan, kısa süren, girdi beklemeyen bir komut olabilir.
+- Görevler kullanıcı BAŞINDA OLMADAN yürütülür: "kullanıcıya sun / onay al" türü görev yazma.
+  Kullanıcının kararını gerektiren konuları (eksik veri, iki geçerli seçenek) plandan ÖNCE,
+  yanıtının plan dışı kısmında soru olarak yaz.
+- Doğrulama komutu zaten PowerShell içinde çalışır: `powershell -Command "..."` diye SARMALAMA.
+  `$` değişkenli uzun komut yerine bir betik dosyası yazdırıp `powershell -File betik.ps1` kullan.
+- Doğrulama gerçek sonucu ölçsün (dosya var mı, satır sayısı tutuyor mu); bir kelimenin geçme
+  sayısını saymak doğrulama değildir."""
 
 
 def planning_prompt(goal: str, feedback: str = "") -> str:
@@ -181,12 +196,45 @@ def task_prompt(state: ProjectState, task: Task, feedback: str = "") -> str:
     fb = (f"\n\nÖNCEKİ DENEME BAŞARISIZ OLDU. Neden:\n{feedback}\nBu sorunu gider; aynı yaklaşımı "
           "tekrarlama.") if feedback else ""
     check = f"\nDoğrulama komutu: `{task.check}` — bitirmeden önce çalıştır ve geçtiğini göster." if task.check else ""
+    ctx = (f"Proje bilgi notu (önceki inceleme; dosyaları yeniden keşfetmek yerine bundan yararlan):\n"
+           f"{state.context.strip()[:CONTEXT_LIMIT]}\n\n") if state.context.strip() else ""
+    answers = ("Kullanıcının kararları (bunlara uy):\n" + "\n".join(f"- {a}" for a in state.answers[-12:])
+               + "\n\n") if state.answers else ""
     return (f"PROJE GÖREVİ {task.idx}/{len(state.tasks)}: {task.title}\n\n"
             f"Bitti ölçütü: {task.criteria or '(belirtilmedi — görevin açık sonucu)'}{check}\n\n"
             f"Projenin genel hedefi (bağlam için, bu turda YALNIZ yukarıdaki görevi yap):\n{state.goal.strip()}\n\n"
+            f"{ctx}{answers}"
             f"Tamamlanan görevler:\n{prev}\n\n"
             "Gerekirse önce ilgili dosyaları oku. Bu görevin kapsamı dışına çıkma; sonraki görevleri "
-            "yapma. Bitirince ne yaptığını ve ölçütün nasıl sağlandığını kısaca yaz." + fb)
+            "yapma. Bitirince ne yaptığını ve ölçütün nasıl sağlandığını kısaca yaz.\n"
+            "Kullanıcı başında DEĞİL: onay gerektiren bir adımı kendi kendine onaylama, eksik veri veya "
+            "kullanıcı kararını uydurma. Böyle bir karar olmadan görev doğru yapılamıyorsa yanıtının son "
+            "satırına `SORU: <tek, net soru>` yazıp dur; proje duraklar ve kullanıcıya sorulur." + fb)
+
+
+def extract_question(summary: str) -> str:
+    """Görevin son yanıtındaki `SORU: …` satırı (yoksa "")."""
+    for line in reversed((summary or "").strip().splitlines()[-8:]):
+        m = re.match(r"\s*(?:[*_>`-]\s*)*SORU\s*[:：]\s*(.+)", line)
+        if m:
+            return m.group(1).strip().strip("*`_ ")[:400]
+    return ""
+
+
+# Doğrulama komutunun KENDİSİ bozuksa (kabuk/sözdizimi hatası, komut satırında) bu görevin başarısızlığı
+# değildir: 2026-10-21'de iş doğru yapıldığı hâlde `$t` dış kabukta yutulduğu için görev 3 kez denendi.
+_CHECK_BROKEN = re.compile(
+    r"ParserError|ParameterBindingException|MissingMandatoryParameter|is not recognized as the name of a cmdlet"
+    r"|An expression was expected|Missing expression|missing the terminator|Unexpected token"
+    r"|Missing '\)'|Missing closing", re.I)
+
+
+def check_command_broken(output: str) -> bool:
+    """Hata komut SATIRINDA mı (At line:N) ve bir kabuk/sözdizimi hatası mı? Betik dosyasının içindeki
+    hata (`At C:\\...\\x.ps1:15`) gerçek başarısızlıktır, bozuk komut sayılmaz."""
+    text = output or ""
+    return bool(re.search(r"(?:At line|Satır)\s*:\s*\d+\s+(?:char|karakter)\s*:\s*\d+", text, re.I)
+                and _CHECK_BROKEN.search(text))
 
 
 # ---- inceleme --------------------------------------------------------------------------------
@@ -375,12 +423,23 @@ class ProjectRunner:
         by = {t.idx: t for t in self.state.tasks}
         return [d for d in task.depends if by.get(d) and by[d].status in ("takildi", "atlandi")]
 
+    def _reopen_stuck(self) -> None:
+        """Sürdürmede takılan görevler yeniden denenir; onlar yüzünden atlananlar beklemeye döner."""
+        for t in self.state.tasks:
+            if t.status == "takildi":
+                t.status, t.attempts = "bekliyor", 0
+                t.note = REOPEN_NOTE + (t.note or "")[:300]
+                self._log(f"Görev {t.idx} yeniden denenecek (önceki çalıştırmada takılmıştı).")
+            elif t.status == "atlandi" and (t.note or "").startswith("bağlı olduğu görev"):
+                t.status, t.note = "bekliyor", ""
+
     # -- ana döngü --
     def run(self) -> ProjectState:
         st = self.state
         st.status = "calisiyor"
         st.pause_reason = ""
         st.started_at = st.started_at or datetime.now().isoformat(timespec="seconds")
+        self._reopen_stuck()
         self._prepare_git()
         self._save()
         for task in st.tasks:
@@ -397,6 +456,15 @@ class ProjectRunner:
             result = self._run_task(task)
             if result == "pause":
                 return st
+        stuck = [t for t in st.tasks if t.status == "takildi"]
+        if stuck:
+            skipped = [t for t in st.tasks if t.status == "atlandi"]
+            done = st.counts().get("bitti", 0)
+            return self._pause(
+                f"Proje kısmen bitti ({done}/{len(st.tasks)}): görev "
+                + ", ".join(str(t.idx) for t in stuck) + " takıldı"
+                + (f", ona bağlı {len(skipped)} görev yapılamadı" if skipped else "")
+                + ". /proje-devam takılan görevi yeniden dener (isterseniz yanına not yazın: /proje-devam <not>)")
         st.status = "bitti"
         st.finished_at = datetime.now().isoformat(timespec="seconds")
         self._log("Proje tamamlandı: " + ", ".join(f"{STATUS_LABEL[k]} {v}" for k, v in st.counts().items()))
@@ -417,6 +485,9 @@ class ProjectRunner:
     def _run_task(self, task: Task) -> str:
         st = self.state
         feedback = ""
+        if (task.note or "").startswith(REOPEN_NOTE):
+            feedback = task.note[len(REOPEN_NOTE):]
+            task.note = ""
         outages = 0
         while task.attempts < MAX_ATTEMPTS:
             wait, why = self.hooks.quota_wait()
@@ -464,6 +535,13 @@ class ProjectRunner:
                     return "pause"
                 feedback = f"API hatası: {kind.value} {run.error.message[:200]}"
                 continue
+            question = extract_question(run.summary)
+            if question and run.stopped == "done":
+                task.attempts -= 1                       # soru sormak başarısız deneme değildir
+                task.status, task.note = "bekliyor", f"SORU: {question}"
+                self._pause(f"Görev {task.idx} için kararınız gerekiyor: {question} — yanıtınızı "
+                            "`/proje-devam <yanıt>` ile yazın.")
+                return "pause"
             ok, reason = self._verify(task, run)
             if ok:
                 if self.git is not None and st.git:
@@ -503,7 +581,12 @@ class ProjectRunner:
         if task.check:
             code, out = self.hooks.run_check(task.check)
             check_out = f"$ {task.check}\n(çıkış {code})\n{out}"
-            if code != 0:
+            if code != 0 and check_command_broken(out):
+                self._log(f"Görev {task.idx}: doğrulama komutunun kendisi bozuk (kabuk/sözdizimi hatası); "
+                          "karar incelemeye bırakıldı.")
+                check_out += ("\n\nNOT: Bu hata doğrulama KOMUTUNUN yazımından (kabuk/sözdizimi), görevin "
+                              "işinden değil. Görevi ölçüte, ajan özetine ve değişikliklere göre değerlendir.")
+            elif code != 0:
                 return False, f"doğrulama komutu başarısız (çıkış {code}): {out.strip()[-300:]}"
         diff = run.diff
         if not diff and self.git is not None and self.state.git:

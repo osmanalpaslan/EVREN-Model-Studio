@@ -773,7 +773,8 @@ class AgentRunner:
                                    "biçimiyle ver (yeni araç çağırma gerekmiyorsa çağırma).")
                     self.events.status("Model sonuç bloğunu yazmadı; bir kez hatırlatıldı.")
                     continue
-                if self._plan_guard_active() and "ENGEL:" not in content and not self._cancelled():
+                if (self._plan_guard_active() and "ENGEL:" not in content and "SORU:" not in content
+                        and not self._cancelled()):
                     items, source = self._open_plan()
                     if items:
                         if plan_work_mark >= 0 and self._work == plan_work_mark:

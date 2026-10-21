@@ -1132,6 +1132,10 @@ class SessionView(QWidget):
                        "/proje-durdur yazın.", "alert")
             back()
             return
+        if self.deep.awaiting_answers and not atts:
+            self.composer.set_text("")
+            self.deep.answer(text)                  # soru kartının yanıtı mesaj kutusundan da verilebilir
+            return
         if self.deep.active:
             self._note("Derin Mod çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için Esc veya "
                        "/derin-durdur.", "alert")
@@ -1251,7 +1255,8 @@ class SessionView(QWidget):
             self.qa.command(cmd, arg)
             return True
         if cmd == "/derin-durdur":
-            if self.deep.active or getattr(self.deep, "_resume_timer", None) is not None:
+            if (self.deep.active or self.deep.waiting_project
+                    or getattr(self.deep, "_resume_timer", None) is not None):
                 self.deep.stop()
             else:
                 self._note("Çalışan bir Derin Mod akışı yok.", "spark")

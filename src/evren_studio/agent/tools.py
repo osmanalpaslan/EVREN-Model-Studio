@@ -287,6 +287,17 @@ def decode_bytes(data: bytes) -> TextFile:
     return TextFile(raw.replace("\r\n", "\n"), enc, newline, bom)
 
 
+PS_SCRIPT_SUFFIXES = {".ps1", ".psm1", ".psd1"}
+
+
+def needs_ps_bom(path: Path, text: str | None) -> bool:
+    """Windows PowerShell 5.1 BOM'suz .ps1'i ANSI okur ve Türkçe harfleri bozar: ASCII dışı karakter
+    içeren PowerShell betiği UTF-8 BOM ile yazılır (2026-10-21: ajan bu yüzden betikleri ASCII'ye
+    zorlayıp metni ayrı dosyalara taşımak zorunda kalıyordu)."""
+    return (Path(path).suffix.lower() in PS_SCRIPT_SUFFIXES and text is not None
+            and any(ord(ch) > 127 for ch in text))
+
+
 def make_diff(before: str | None, after: str | None, rel_path: str,
               context: int = 3) -> str:
     a = (before or "").splitlines(keepends=True)
@@ -467,6 +478,53 @@ def project_env(root: Path) -> dict[str, str]:
     return env
 
 
+# powershell.exe seçenekleri: değer alanlar (bir sonraki sözcük değerdir)
+_PS_VALUE_FLAGS = {"executionpolicy", "ep", "exec", "outputformat", "of", "inputformat", "if", "inp",
+                   "windowstyle", "w", "win", "version", "v", "workingdirectory", "wd", "configurationname"}
+_PS_KEEP_FLAGS = {"file", "f", "encodedcommand", "e", "ec", "enc"}
+_PS_HEAD = re.compile(r"(?i)^\s*(?:&\s*)?(?:powershell|pwsh)(?:\.exe)?\s+")
+
+
+def unwrap_powershell(command: str) -> str:
+    """`powershell -NoProfile -Command "…$x…"` → `…$x…`.
+
+    Komutlar zaten PowerShell içinde çalışır; modeller sık sık bir PowerShell daha sarıyor. Dıştaki
+    kabuk çift tırnak içindeki `$x`'i (kendi boş değişkeniyle) değiştirdiğinden iç komut bozuluyordu
+    (2026-10-21 hesap kapama oturumu: 23 araç hatasının 7'si ve Proje doğrulama komutu). Yalnız TÜM
+    komut tek bir `-Command` çağrısıysa açılır; `-File`, `-EncodedCommand` ve birleşik komutlar olduğu
+    gibi kalır."""
+    m = _PS_HEAD.match(command or "")
+    if not m:
+        return command
+    rest = command[m.end():]
+    while True:
+        fm = re.match(r"-{1,2}([A-Za-z]+)(?:\s+|$)", rest)
+        if not fm:
+            return command                       # -Command yok (ör. çıplak betik adı): dokunma
+        name = fm.group(1).lower()
+        rest = rest[fm.end():]
+        if name in ("command", "c"):
+            break
+        if name in _PS_KEEP_FLAGS:
+            return command
+        if name in _PS_VALUE_FLAGS:
+            vm = re.match(r'(?:"[^"]*"|\S+)\s*', rest)
+            rest = rest[vm.end():] if vm else rest
+    body = rest.strip()
+    if not body:
+        return command
+    if body.startswith('"'):
+        if len(body) < 2 or not body.endswith('"'):
+            return command
+        inner = body[1:-1].replace('\\"', "\x00")
+        if '"' in inner:                         # ortada kaçışsız tırnak: birden çok komut, belirsiz
+            return command
+        return inner.replace("\x00", '"')
+    if body.startswith("'"):
+        return command                           # tek tırnak: dış kabuk genişletmez, sorun yok
+    return body
+
+
 def shell_argv(command: str) -> list[str]:
     if os.name == "nt":
         prefix = (
@@ -474,7 +532,7 @@ def shell_argv(command: str) -> list[str]:
             "$OutputEncoding=[System.Text.Encoding]::UTF8; "
         )
         return ["powershell.exe", "-NoProfile", "-NonInteractive",
-                "-Command", prefix + command]
+                "-Command", prefix + unwrap_powershell(command)]
     return ["/bin/bash", "-lc", command]
 
 
@@ -712,6 +770,8 @@ class ToolBox:
                     "Dosyayı yeniden okuyun."
                 )
         meta = change.file_meta or TextFile("", "utf-8", "\n")
+        if needs_ps_bom(change.abs_path, change.after):
+            meta = TextFile(meta.text, "utf-8", meta.newline, bom=True)
         change.abs_path.parent.mkdir(parents=True, exist_ok=True)
         change.abs_path.write_bytes(meta.to_disk(change.after))
 

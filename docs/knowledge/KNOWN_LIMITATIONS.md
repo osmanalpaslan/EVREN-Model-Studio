@@ -147,6 +147,14 @@
 - Otomatik sürdürme ve uzun işler uygulama açık kaldıkça çalışır; uygulama kapanınca uzun işler durdurulur.
 - Uzun iş aynı anda en çok 4; tek `wait_job` en çok 240 dk bekler (sonra yeniden çağrılır).
 - EVREN'de eşzamanlı istek sınırı ve kotanın anahtar mı hesap mı başına olduğu belgelenmemiş.
+- Soru kartı yalnız Anla'nın bulduğu soruları gösterir; alt ajanlar soru uydurmaz diye yönlendirildi ama bir
+  sorunun gerçekten gerekli olup olmadığını yine model seçer. Yanıtsız devam edilirse varsayımlar raporda yazılır.
+- Proje görevinin `SORU:` satırı yalnız turun son satırlarında aranır; model soruyu düz metin içinde sorarsa
+  proje duraklamaz (inceleme modeli görevi değerlendirmeye devam eder).
+- İç içe PowerShell yalnız TEK `-Command` çağrısında açılır; `powershell -Command "a"; powershell -Command "b"`
+  gibi birleşik komutlar hâlâ dış kabukta `$` kaybedebilir (istem bu biçimi yasaklıyor).
+- Derin Mod beklerken (proje kısmen bitti) normal mesaj gönderilebilir; Derin düğmesi açıksa yeni mesaj YENİ bir
+  Derin akışı başlatır ve önceki bekleme bırakılır (bunu bir notla söyler). Bekleme uygulama kapanınca saklanmaz.
 
 ## Sağlayıcıya bağlı sınırlar
 

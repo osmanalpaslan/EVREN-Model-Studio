@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -47,7 +48,7 @@ ANGLES = [
 class DeepState:
     goal: str
     kind: str = "is"                         # "is" (değişiklik) | "soru"
-    phase: str = "anla"                       # anla | planla | uygula | dogrula | duzelt | bitti
+    phase: str = "anla"                       # anla | soru | planla | uygula | dogrula | duzelt | bitti
     findings: list[dict] = field(default_factory=list)
     plans: list[dict] = field(default_factory=list)
     chosen: str = ""
@@ -58,6 +59,10 @@ class DeepState:
     pause_reason: str = ""
     started_at: str = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
     log: list[str] = field(default_factory=list)
+    questions: list[str] = field(default_factory=list)   # Anla'nın bulduğu, kullanıcıya sorulan kararlar
+    answers: str = ""                                     # kullanıcının yanıtı ("" → sorulmadı/yanıtsız)
+    log_dir: str = ""                                     # alt ajan dökümlerinin klasörü
+    project_note: str = ""                                # Proje sonucu (kısmi ise neden)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -108,6 +113,10 @@ class HeadlessEvents(AgentEvents):
     def __init__(self, status: Callable[[str], None] | None = None):
         self.notes: list[str] = []
         self._status = status
+        self.tools = 0
+
+    def tool_finished(self, call, result) -> None:
+        self.tools += 1
 
     def approval_needed(self, request: ApprovalRequest) -> None:
         request.resolve(ApprovalRequest.DENY, "Derin Mod alt ajanı salt okunurdur; bu işlem yapılmaz.")
@@ -121,31 +130,75 @@ class SubResult:
     text: str
     stopped: str
     error: str = ""
+    tools: int = 0
+    seconds: float = 0.0
+    transcript: str = ""
+    model: str = ""
+
+    @property
+    def summary(self) -> str:
+        return f"{self.tools} araç, {self.seconds:.0f} sn, {self.model or '?'}, durma: {self.stopped}"
+
+
+def transcript_of(messages: list[dict], limit: int = 3000) -> str:
+    """Alt ajan dökümü (hata ayıklama ve kullanıcının görmesi için; araç çıktıları kısaltılır)."""
+    out = []
+    for m in messages:
+        role = m.get("role")
+        content = str(m.get("content") or "")
+        if role == "tool":
+            out.append(f"### araç sonucu: {m.get('name')}\n```\n{content[:limit]}\n```")
+        elif role == "assistant":
+            calls = ", ".join(str((c.get("function") or c).get("name")) for c in (m.get("tool_calls") or []))
+            out.append(f"### asistan ({m.get('model') or ''})\n{content}" + (f"\n\n[araçlar: {calls}]" if calls else ""))
+        else:
+            out.append(f"### {role}\n{content}")
+    return "\n\n".join(out)
 
 
 def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, prompt: str,
                  marker: str, gate=None, cancel=None, mcp=None, max_steps: int = SUB_MAX_STEPS,
                  context_tokens: int | None = None) -> SubResult:
-    """Salt okunur (Plan modu) arayüzsüz alt ajan. Son yanıt metnini döndürür."""
+    """Salt okunur (Plan modu) arayüzsüz alt ajan. Son yanıt metnini döndürür.
+    R-26: blok ilk turda yoksa koşucu bir kez dürter (final_marker); tur yine bloksuz biterse aynı
+    bağlamla kısa "yalnız sonucu ver" turu açılır (2026-10-21: ikinci planlayıcı plan vermemişti)."""
     store = MemoryStore()
     history = [{"id": 0, "role": "user", "content": prompt}]
     store.messages.append(history[0])
+    events = HeadlessEvents()
+    t0 = time.monotonic()
 
     def before(_step):
         if gate is None:
             return None
         r = gate.before_call(cancel=cancel)
         return {"daily": "quota_daily", "cancelled": "cancelled"}.get(r) if r else None
-    runner = AgentRunner(client, model, session_id=0, store=store, events=HeadlessEvents(),
-                         workspace=Workspace(root), mode="plan", stream=False, cancel=cancel,
-                         max_steps=max_steps, before_model_call=before, fallback_models=list(fallbacks),
-                         final_marker=marker, mcp=mcp, context_tokens=context_tokens)
+    def make(steps):
+        return AgentRunner(client, model, session_id=0, store=store, events=events,
+                           workspace=Workspace(root), mode="plan", stream=False, cancel=cancel,
+                           max_steps=steps, before_model_call=before, fallback_models=list(fallbacks),
+                           final_marker=marker, mcp=mcp, context_tokens=context_tokens)
+
+    def last_text():
+        texts = [m.get("content") or "" for m in history if m.get("role") == "assistant" and (m.get("content") or "").strip()]
+        return texts[-1] if texts else ""
+    used = model
     try:
+        runner = make(max_steps)
         out = runner.run(history)
+        used = runner.model
+        if marker and marker not in last_text() and out.stopped in ("done", "max_steps", "loop", "context_limit"):
+            end = marker.replace("<", "</", 1)
+            history.append({"id": len(history) + 1000, "role": "user",
+                            "content": f"Araç KULLANMADAN, şimdiye kadar öğrendiklerinle yalnız {marker} … {end} "
+                                       "bloğunu istenen biçimde yaz."})
+            runner = make(2)
+            out = runner.run(history)
+            used = runner.model
     except Exception as exc:  # alt ajan hatası tüm Derin koşuyu düşürmesin
-        return SubResult("", "error", f"{type(exc).__name__}: {exc}")
-    texts = [m.get("content") or "" for m in history if m.get("role") == "assistant" and (m.get("content") or "").strip()]
-    return SubResult(texts[-1] if texts else "", out.stopped)
+        return SubResult("", "error", f"{type(exc).__name__}: {exc}", events.tools, time.monotonic() - t0,
+                         transcript_of(history), used)
+    return SubResult(last_text(), out.stopped, "", events.tools, time.monotonic() - t0, transcript_of(history), used)
 
 
 def _block(text: str, tag: str) -> dict | None:
@@ -166,8 +219,13 @@ Projeyi bu açıdan incele (gerekirse sembol/arama araçlarını kullan) ve yan�
 {{"ozet": "bu açıdan en önemli 3-6 tespit (kısa)",
   "dosyalar": ["ilgili/yol.py: neden"],
   "riskler": ["dikkat edilmesi gereken"],
-  "oneri": "bu açıdan nasıl ilerlenmeli"}}
-</bulgu>"""
+  "oneri": "bu açıdan nasıl ilerlenmeli",
+  "sorular": ["kullanıcıya sorulması gereken karar (yoksa boş liste)"]}}
+</bulgu>
+"sorular": YALNIZ kullanıcı yanıtlamadan işin doğru yapılamayacağı durumlar: istekte/kurallarda adı geçen ama
+projede OLMAYAN veri dosyası, birbirini dışlayan ve sonucu değiştiren iş kararı, açıkça belirsiz bırakılmış çıktı.
+Makul bir varsayımla doğru yapılabilen ayrıntıyı (ör. bölme türü, değişken adı, test sayısı) SORMA. En çok 2,
+kısa, tek tek yanıtlanabilir. Çoğu istekte doğru yanıt [] olur; soru uydurma."""
 
 
 def findings_text(findings: list[dict]) -> str:
@@ -179,11 +237,50 @@ def findings_text(findings: list[dict]) -> str:
     return "\n\n".join(out) or "(bulgu yok)"
 
 
-def plan_prompt(goal: str, findings: list[dict]) -> str:
+def collect_questions(findings: list[dict], limit: int = 4) -> list[str]:
+    """Alt ajanların sorularını birleştirir (aynı/çok benzer olanlar bir kez)."""
+    out: list[str] = []
+    seen: list[set] = []
+    for f in findings:
+        for q in ((f.get("data") or {}).get("sorular") or []):
+            q = str(q).strip()
+            if len(q) < 8:
+                continue
+            words = {w for w in re.findall(r"\w{4,}", q.lower())}
+            if any(len(words & s) >= max(2, len(words) // 2) for s in seen):
+                continue
+            seen.append(words)
+            out.append(q[:300])
+    return out[:limit]
+
+
+def answers_text(st: "DeepState") -> str:
+    if not st.questions:
+        return ""
+    if not st.answers.strip():
+        return ("Kullanıcı şu soruları yanıtlamadan devam etmeyi seçti; en makul varsayımı kullan ve varsayımı "
+                "açıkça raporla:\n" + "\n".join(f"- {q}" for q in st.questions))
+    return ("Kullanıcıya sorulan kararlar:\n" + "\n".join(f"- {q}" for q in st.questions)
+            + f"\n\nKullanıcının yanıtı:\n{st.answers.strip()}")
+
+
+def plan_prompt(goal: str, findings: list[dict], answers: str = "") -> str:
     from .project import planning_prompt
 
     return (planning_prompt(goal) + "\n\nÖnceki inceleme bulguları (bağımsız alt ajanlar):\n"
-            + findings_text(findings))
+            + findings_text(findings) + (f"\n\n{answers}" if answers else ""))
+
+
+def context_note(st: "DeepState", limit: int = 3500) -> str:
+    """Proje görevlerine verilen bilgi notu: Anla bulgularının özeti (her görev baştan keşfetmesin)."""
+    parts = []
+    for f in st.findings:
+        d = f.get("data") or {}
+        if d:
+            parts.append(f"[{f.get('angle')}] {d.get('ozet', '')}\nÖnemli dosyalar: "
+                         + "; ".join(str(x) for x in (d.get("dosyalar") or [])[:8])
+                         + "\nRiskler: " + "; ".join(str(x) for x in (d.get("riskler") or [])[:6]))
+    return "\n\n".join(parts)[:limit]
 
 
 def judge_messages(goal: str, plans: list[dict]) -> list[dict]:
@@ -194,10 +291,14 @@ def judge_messages(goal: str, plans: list[dict]) -> list[dict]:
                                         '{"secim": "A" veya "B", "neden": "kısa", "eklenecek": "diğer plandan alınacak iyi fikir (yoksa boş)"}'}]
 
 
-def verify_prompt(goal: str, diff: str, lens: str) -> str:
+def verify_prompt(goal: str, diff: str, lens: str, tasks: str = "") -> str:
+    tasks = f"\nProje görevlerinin durumu:\n{tasks}\n" if tasks else ""
     return f"""DERİN MOD · ÇEKİŞMELİ DOĞRULAMA (salt okunur; dosya değiştirme).
 Kullanıcının isteği: {goal}
 Bakış açın: {lens}
+{tasks}
+ÖNCE istenen nihai çıktının (ör. rapor dosyası, özellik) gerçekten var olduğunu dosyalardan doğrula;
+yoksa bu "yuksek" bir sorundur.
 
 Aşağıdaki değişiklik isteği DOĞRU ve EKSİKSİZ karşılıyor mu? Sen bir denetçisin: hatayı bulmaya,
 iddiayı ÇÜRÜTMEYE çalış. Gerekirse dosyaları oku. Uydurma; emin değilsen "orta" ya da "dusuk" ver.
@@ -215,7 +316,8 @@ Sorun yoksa "sorunlar": []."""
 
 VERIFY_LENSES = [
     "doğruluk: mantık hataları, kenar durumlar, istenen davranış gerçekten sağlanıyor mu",
-    "bütünlük ve kapsam: eksik kalan parça, bozulan mevcut davranış, istenmeyen ek değişiklik",
+    "bütünlük ve kabul: istenen nihai çıktı gerçekten üretildi mi, eksik kalan parça, bozulan mevcut "
+    "davranış, istenmeyen ek değişiklik",
 ]
 
 
@@ -259,6 +361,11 @@ def render_report(st: DeepState) -> str:
     lines = [f"# EVREN Derin Mod raporu", "", f"- İstek: {st.goal}", f"- Tür: {st.kind}", f"- Başlangıç: {st.started_at}",
              f"- Durum: {st.status}" + (f" ({st.pause_reason})" if st.pause_reason else ""), "", "## Anla — bulgular", "",
              findings_text(st.findings), ""]
+    if st.questions:
+        lines += ["## Kullanıcıya sorulanlar", ""] + [f"- {q}" for q in st.questions]
+        lines += ["", f"Yanıt: {st.answers.strip() or '(yanıtlanmadı — varsayımlarla devam edildi)'}", ""]
+    if st.project_note:
+        lines += ["## Uygula (Proje ajanı)", "", st.project_note, ""]
     if st.plans:
         lines += ["## Planla", ""] + [f"- Plan {chr(65 + i)} ({p['model']}): {len(p.get('tasks') or [])} görev"
                                       for i, p in enumerate(st.plans)]
@@ -267,6 +374,8 @@ def render_report(st: DeepState) -> str:
         lines += ["## Doğrula", ""] + ([f"- [{i.get('ciddiyet')}] {i.get('dosya', '')}: {i.get('aciklama')}"
                                         for i in st.issues] or ["- Onaylanan sorun yok."]) + [""]
         lines.append(f"- Düzeltme turu: {st.fix_round}")
+    if st.log_dir:
+        lines += ["", f"Alt ajan dökümleri: `{st.log_dir}`"]
     lines += ["", "## Günlük", ""] + [f"- {x}" for x in st.log[-40:]]
     return "\n".join(lines) + "\n"
 
@@ -297,13 +406,15 @@ def understand(st: DeepState, sub: Callable[[str, str], SubResult], gate=None, m
     angles = ANGLES if st.kind == "is" else ANGLES[:2]
 
     def one(key, angle):
-        res = sub(understand_prompt(st.goal, angle), "<bulgu>")
+        res = sub(understand_prompt(st.goal, angle), "<bulgu>", f"anla-{key}")
         data = _block(res.text, "bulgu") or {}
         return {"angle": key, "data": data, "raw": res.text[-1500:], "stopped": res.stopped, "error": res.error}
     results = run_parallel([lambda k=k, a=a: one(k, a) for k, a in angles], gate, max_parallel)
     st.findings = [r for r in results if isinstance(r, dict)]
     ok = sum(1 for f in st.findings if f.get("data"))
     log(f"Anla: {ok}/{len(angles)} inceleme bulgu verdi")
+    if st.kind == "is":
+        st.questions = collect_questions(st.findings)
 
 
 def plan(st: DeepState, sub_with_model: Callable[[str, str, str], SubResult], models: list[str],
@@ -312,11 +423,13 @@ def plan(st: DeepState, sub_with_model: Callable[[str, str, str], SubResult], mo
     """PLANLA: iki model bağımsız plan; yargıç seçer. Dönüş: seçilen görev listesi (project.Task)."""
     from . import project as pj
 
-    prompt = plan_prompt(st.goal, st.findings)
+    prompt = plan_prompt(st.goal, st.findings, answers_text(st))
 
     def one(model):
         res = sub_with_model(model, prompt, "<plan>")
         tasks = pj.parse_plan(res.text)
+        if not tasks:
+            log(f"Planla: {model} geçerli <plan> vermedi ({res.summary})")
         return {"model": model, "tasks": tasks, "render": "\n".join(f"{t.idx}. {t.title} — ölçüt: {t.criteria}"
                                                                      for t in tasks)}
     results = [r for r in run_parallel([lambda m=m: one(m) for m in models[:2]], gate, max_parallel)
@@ -345,14 +458,15 @@ def plan(st: DeepState, sub_with_model: Callable[[str, str, str], SubResult], mo
     return tasks
 
 
-def verify(st: DeepState, diff: str, sub: Callable[[str, str], SubResult], gate=None, max_parallel: int = 2,
-           log: Callable[[str], None] = lambda t: None) -> list[dict]:
+def verify(st: DeepState, diff: str, sub: Callable[..., SubResult], gate=None, max_parallel: int = 2,
+           log: Callable[[str], None] = lambda t: None, tasks: str = "") -> list[dict]:
     if not diff.strip():
         log("Doğrula: değişiklik bulunamadı")
         st.issues = []
         return []
-    results = run_parallel([lambda l=l: _block(sub(verify_prompt(st.goal, diff, l), "<denetim>").text, "denetim") or {}
-                            for l in VERIFY_LENSES], gate, max_parallel)
+    results = run_parallel([lambda i=i, l=l: _block(sub(verify_prompt(st.goal, diff, l, tasks), "<denetim>",
+                                                        f"denetim-{i + 1}").text, "denetim") or {}
+                            for i, l in enumerate(VERIFY_LENSES)], gate, max_parallel)
     st.issues = confirmed_issues([r for r in results if isinstance(r, dict)])
     log(f"Doğrula: {len(st.issues)} onaylanmış sorun")
     return st.issues

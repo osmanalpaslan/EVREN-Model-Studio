@@ -64,6 +64,11 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-21) Derin/Proje düzeltmeleri (dal `feat/derin-duzeltmeler`): kullanıcının gerçek hesap kapama
+    oturumundaki 10 kusur giderildi (iç içe PowerShell, bozuk doğrulama komutu, kısmi projede "bitti", soru kartı ve
+    `SORU:` duraklaması, görev bağlamı, görünürlük/dökümler, .ps1 BOM, deepseek-v4-flash'ın listeden kalkması).
+    Ayrıntı: CHANGELOG, incidents 2026-10-21-*.
+
   - (2026-10-21) Derin Mod (dal `feat/derin-mod`): composer "Derin" düğmesi / `/derin`; anla → planla
     (iki model + yargıç) → onaylı Proje uygulaması → çekişmeli doğrulama → düzeltme. Plan bekçisi ve Proje
     ajanı önerisi (faz unutma), uzun işler (`start_job`/`wait_job`), kota kapısı ve kota sonrası otomatik

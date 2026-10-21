@@ -31,6 +31,14 @@ BASE_TEST = ("import unittest\n\nfrom calc import add, sub\n\n\nclass T(unittest
              "    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n\n"
              "    def test_sub(self):\n        self.assertEqual(sub(5, 3), 2)\n")
 
+BAD_CALC = BASE_CALC + "\n\ndef div(a, b):\n    return a / b\n"
+BAD_TEST = BASE_TEST + "\n    def test_div(self):\n        self.assertEqual(div(6, 3), 2)\n"
+GOOD_CALC = BASE_CALC + ('\n\ndef div(a, b):\n    if b == 0:\n        raise ValueError("b sıfır olamaz")\n'
+                         "    return a / b\n")
+GOOD_TEST = (BASE_TEST.replace("from calc import add, sub", "from calc import add, div, sub")
+             + "\n    def test_div(self):\n        self.assertEqual(div(6, 3), 2)\n"
+             + "\n    def test_div_zero(self):\n        self.assertRaises(ValueError, div, 1, 0)\n")
+
 BAD_DIFF = """--- a/calc.py
 +++ b/calc.py
 @@ -9,0 +10,4 @@
@@ -92,7 +100,7 @@ def main() -> int:
         return [m for m in [r.model] + r.fallbacks if ctx.provider_of(m) == "evren"]
 
     def sub_for(model_chain):
-        def run(prompt, marker):
+        def run(prompt, marker, label=""):
             c = ctx.make_client()
             try:
                 return dp.run_subagent(client=c, model=model_chain[0], fallbacks=model_chain[1:], root=tmp,
@@ -108,7 +116,38 @@ def main() -> int:
         got = [f["angle"] for f in st.findings if f.get("data")]
         print(f"1 ANLA: {len(got)}/{len(st.findings)} bulgu ({', '.join(got)}) · {time.monotonic() - t0:.0f} sn "
               f"· durum: {[f['stopped'] for f in st.findings]}", flush=True)
+        print(f"   net istekte sorular ({len(st.questions)}): {st.questions}", flush=True)
+        ok &= len(st.questions) == 0                     # R-22: net istekte soru kartı çıkmamalı
         ok &= len(got) >= 2
+
+        # Belirsiz istek + eksik veri: soru ÇIKMALI (2026-10-21 hesap kapama oturumu)
+        amb = Path(tempfile.mkdtemp(prefix="derin_soru_"))
+        try:
+            (amb / "musteriler.csv").write_text("id;ad;sehir\n1;Ayşe;İzmir\n2;Mehmet;Ankara\n", encoding="utf-8")
+            (amb / "RAPOR_KURALLARI.md").write_text(
+                "# Aylık satış raporu\n\n- Kaynak: satislar.xlsx (müşteri id, tutar, tarih) ve musteriler.csv\n"
+                "- Bölge eşlemesi bolgeler.tsv dosyasından yapılır (şehir → bölge)\n"
+                "- Çıktı: Excel, sayfa başına bir bölge\n", encoding="utf-8")
+            ast = dp.DeepState(goal="RAPOR_KURALLARI.md'ye göre aylık satış raporunu Excel olarak oluştur.",
+                               kind="is")
+
+            def sub_amb(prompt, marker, label=""):
+                c = ctx.make_client()
+                try:
+                    ch = chain("kod")
+                    return dp.run_subagent(client=c, model=ch[0], fallbacks=ch[1:], root=amb, prompt=prompt,
+                                           marker=marker, gate=gate)
+                finally:
+                    c.close()
+            t0 = time.monotonic()
+            dp.understand(ast, sub_amb, gate, 2, lambda t: None)
+            print(f"1b ANLA (eksik veri, belirsiz): {len(ast.questions)} soru · {time.monotonic() - t0:.0f} sn",
+                  flush=True)
+            for q in ast.questions:
+                print("     ?", q[:160], flush=True)
+            ok &= len(ast.questions) >= 1
+        finally:
+            shutil.rmtree(amb, ignore_errors=True)
 
         t0 = time.monotonic()
         plan_models = chain("plan")[:2]
@@ -129,11 +168,15 @@ def main() -> int:
         verifier = [sub_for(chain("inceleme")), sub_for(chain("kod"))]
         n = {"i": 0}
 
-        def vsub(prompt, marker):
+        def vsub(prompt, marker, label=""):
             n["i"] += 1
             return verifier[n["i"] % 2](prompt, marker)
+        files = {"YANLIŞ": (BAD_CALC, BAD_TEST), "DOĞRU": (GOOD_CALC, GOOD_TEST)}
         for name, diff, expect_issue in (("YANLIŞ", BAD_DIFF, True), ("DOĞRU", GOOD_DIFF, False)):
             t0 = time.monotonic()
+            # gerçek akıştaki gibi değişiklik DİSKTE (denetçi nihai çıktıyı dosyadan doğrular)
+            (tmp / "calc.py").write_text(files[name][0], encoding="utf-8")
+            (tmp / "test_calc.py").write_text(files[name][1], encoding="utf-8")
             vst = dp.DeepState(goal=GOAL)
             issues = dp.verify(vst, diff, vsub, gate, 2, lambda t: None)
             high = [i for i in issues if str(i.get("ciddiyet", "")).lower().startswith(("yuk", "yük"))]
