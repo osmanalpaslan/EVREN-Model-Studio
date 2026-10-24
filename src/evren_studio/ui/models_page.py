@@ -63,9 +63,9 @@ class ModelsPage(BasePage):
         self.change_label.setWordWrap(True)
         self.change_label.setVisible(False)
         l3.addWidget(self.change_label)
-        self.stats = QTableWidget(0, 7)
+        self.stats = QTableWidget(0, 8)
         self.stats.setHorizontalHeaderLabels([
-            "Model", "Çağrı", "Hata", "Ortanca hız (token/sn)", "İlk yanıt (sn)", "Yedeğe geçiş", "Sıra durumu",
+            "Model", "Çağrı", "Hata", "Ortanca hız (token/sn)", "İlk yanıt (sn)", "Yedeğe geçiş", "Kalite", "Sıra durumu",
         ])
         self.stats.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.stats.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -130,17 +130,28 @@ class ModelsPage(BasePage):
         except Exception:
             rows, health = [], {}
         summ = modelstats.summary(rows)
+        qual = modelstats.quality(rows)
+        pen = modelstats.penalized(rows)
         now = datetime.now(timezone.utc)
         self.stats.setRowCount(0)
         for model, st in sorted(summ.items(), key=lambda kv: -kv[1]["calls"]):
             r = self.stats.rowCount()
             self.stats.insertRow(r)
             cooling = router._unhealthy(health, model, now)
+            q = qual.get(model) or {}
+            score = q.get("score")
+            # A5: puan az örnekte gösterilir ama kural yalnız QUALITY_MIN_CALLS çağrıdan sonra işler
+            kalite = "-" if score is None else f"{score:.2f}"
+            durum = ("bekleme süresinde (sona alındı)" if cooling else
+                     "kalite nedeniyle geride" if model in pen else "normal")
             vals = [model, st["calls"], f"%{int(st['error_rate'] * 100)}", st["tps"] or "-",
-                    st["first_chunk_s"] or "-", st["switches"],
-                    "bekleme süresinde (sona alındı)" if cooling else "normal"]
+                    st["first_chunk_s"] or "-", st["switches"], kalite, durum]
+            tips = {6: ", ".join(f"{k}: {n}" for k, n in sorted((q.get("events") or {}).items())) or "kalite olayı yok",
+                    7: pen.get(model, "")}
             for col, v in enumerate(vals):
                 item = QTableWidgetItem(str(v))
+                if tips.get(col):
+                    item.setToolTip(tips[col])
                 if col:
                     item.setTextAlignment(Qt.AlignCenter)
                 self.stats.setItem(r, col, item)

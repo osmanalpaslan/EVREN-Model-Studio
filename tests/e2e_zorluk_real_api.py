@@ -322,14 +322,20 @@ GOREVLER: dict[str, dict] = {
 # ---- sürücü ----------------------------------------------------------------------------------
 
 
-def main() -> int:
+def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi", alt: str = "zorluk") -> int:
+    """Ortak sürücü: rol paketleri (tests/e2e_rol_paketi_real_api.py) aynı düzenekle kendi görevlerini koşar.
+    --mimar: Auto Pro "planlayan + yazan" (A13) AÇIK koşar (açık/kapalı ölçümü için)."""
+    gorevler = gorevler if gorevler is not None else GOREVLER
     for s in (sys.stdout, sys.stderr):
         try:
             s.reconfigure(encoding="utf-8")
         except (AttributeError, ValueError):
             pass
     args = sys.argv[1:]
-    out = ROOT / "build" / "zorluk"
+    out = ROOT / "build" / alt
+    mimar = "--mimar" in args
+    if mimar:
+        args.remove("--mimar")
     if "--cikti" in args:
         i = args.index("--cikti")
         out = Path(args[i + 1])
@@ -342,8 +348,8 @@ def main() -> int:
     if not args:
         print(__doc__)
         return 2
-    model, secim = args[0], args[1:] or list(GOREVLER)
-    base = out.resolve() / model.replace("/", "_")      # mutlak: kontroller cwd=proje ile çalışır
+    model, secim = args[0], args[1:] or list(gorevler)
+    base = out.resolve() / (model.replace("/", "_") + ("-mimar" if mimar else ""))      # mutlak: kontroller cwd=proje ile çalışır
     shutil.rmtree(base, ignore_errors=True)
     base.mkdir(parents=True)
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(base / "data")
@@ -386,7 +392,8 @@ def main() -> int:
             t0 = time.monotonic()
             o = super().run(history)
             outcomes.append({"stopped": o.stopped, "steps": o.steps, "protocol": o.protocol,
-                             "sure": round(time.monotonic() - t0, 1)})
+                             "sure": round(time.monotonic() - t0, 1), "rol": self.route_role,
+                             "model": self.model, "gecis": len(o.model_switches)})
             return o
 
     sv.AgentRunner = RecordingRunner
@@ -396,6 +403,7 @@ def main() -> int:
     w = MainWindow()
     w.resize(1440, 900)
     w.show()
+    w.ctx.settings.autopro_architect = mimar
     # --serena KLASÖR: tüm görevler Serena (MCP) AÇIKKEN koşulur — gereksiz/yanlış MCP
     # kullanımı ve gerileme ölçümü (R-21, R-22). KLASÖR: Serena'nın kurulu olduğu veri klasörü.
     if serena_data is not None:
@@ -432,15 +440,16 @@ def main() -> int:
         return False, approvals
 
     results = []
-    print(f"== Zorluk paketi · model={model} · {len(secim)} görev", flush=True)
+    print(f"== {baslik} · model={model}" + (" · planlayan+yazan AÇIK" if mimar else "")
+          + f" · {len(secim)} görev", flush=True)
     for ad in secim:
-        g = GOREVLER[ad]
+        g = gorevler[ad]
         proj = base / ad
         proj.mkdir()
         durum = g["kur"](proj)
         n_out, n_notes, n_mcp, n_bekci = len(outcomes), len(notes), len(mcp_calls), len(bekci)
         w.new_session()
-        w.session.welcome._choose(str(proj))
+        w.session.welcome._choose(None if g.get("klasorsuz") else str(proj))
         w.session.composer.set_model(model, emit=True)
         mod = g.get("mod", "auto")
         w.session.composer.set_mode(mod, emit=True)
@@ -469,6 +478,9 @@ def main() -> int:
             "gorev": ad, "sure": round(time.monotonic() - t0, 1), "zaman_icinde": bitti,
             "durma": [k["stopped"] for k in kos], "adim": sum(k["steps"] for k in kos),
             "protokol": [k["protocol"] for k in kos], "onay": onay,
+            "rol": [k["rol"] for k in kos], "son_model": [k["model"] for k in kos],
+            "gecis": sum(k["gecis"] for k in kos),
+            "planlayici": sum(1 for n in notes[n_notes:] if n.startswith("Plan hazır")),
             "arac_cagrisi": sum(sigs.values()), "tekrar_3": {k[:100]: v for k, v in sigs.items() if v >= 3},
             "hata_karti": len(w.session.findChildren(ErrorCard)) - n_err, "notlar": notes[n_notes:][:6],
             "kontroller": [{"ad": n, "gecti": ok, "ayrinti": d} for n, ok, d in checks],
@@ -478,7 +490,8 @@ def main() -> int:
         results.append(rec)
         tam = all(ok for _n, ok, _d in checks)
         print(f"[{'TAMAM' if tam else 'SORUN'}] {ad:17s} {rec['skor']:>5} · {rec['sure']:6.1f} sn · adım {rec['adim']:2d} · "
-              f"durma={rec['durma']} · hata kartı={rec['hata_karti']}"
+              f"durma={rec['durma']} · rol={rec['rol']} · model={rec['son_model']} · hata kartı={rec['hata_karti']}"
+              + (f" · plan {rec['planlayici']}" if mimar else "")
               + (f" · MCP {len(mcp_calls) - n_mcp}" if serena_data is not None else "")
               + f" · bekçi {len(bekci) - n_bekci}", flush=True)
         for n, ok, d in checks:
@@ -487,7 +500,7 @@ def main() -> int:
     w.close()
     pump(1)
     gecen = sum(1 for r in results if all(c["gecti"] for c in r["kontroller"]))
-    rapor = {"model": model, "gorev": len(results), "tam_gecen": gecen,
+    rapor = {"model": model, "paket": baslik, "mimar": mimar, "gorev": len(results), "tam_gecen": gecen,
              "toplam_sure_sn": round(sum(r["sure"] for r in results), 1), "sonuclar": results,
              "yakalanmamis_hata": errors[:5]}
     (base / "rapor.json").write_text(json.dumps(rapor, ensure_ascii=False, indent=1), encoding="utf-8")

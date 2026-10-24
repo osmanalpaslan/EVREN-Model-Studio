@@ -253,6 +253,40 @@ sessizlik ≤ 0,7 sn (düşünme metni de akıyor). Zorluk paketi auto-pro (yeni
 **12/12**, 477 sn (21 Ekim 249 sn — o gün deepseek ~51 token/sn ölçüldü), yavaşlık geçişi 0 (yanlış tetiklenme
 yok), 57 çağrı kaydedildi, en uzun ilk parça 10,1 sn. R-13: E2E_OK · ajan 6/6 · arayüz 15/15.
 
+## Rol paketleri ve Auto Pro akıllı seçim F2 (2026-10-24)
+
+`tests/e2e_rol_paketi_real_api.py <paket> <model>` — paket başına 2 görev, modelin görmediği kontroller; kontroller
+önce bilinen doğru/yanlış çözümle sınandı (`tests/test_rol_paketi_kontrolleri.py`, R-25). Tek koşu: küçük örnek.
+
+| Paket | deepseek-v4.1-flash | qwen3.8-flash-next | gemma-4-31b |
+|---|---|---|---|
+| veri (CSV toplam → rapor.md, iptal hariç ilk 3 → JSON) | 1/2 · 253 sn (JSON BOM'lu) | **2/2 · 66 sn** | 2/2 · 44 sn |
+| web (form, kimlik hatası düzeltme) | 2/2 · 83 sn | **2/2 · 41 sn** | 1/2 · 66 sn (`required` yok) |
+| oyun (tic-tac-toe mantığı + test, canvas yılan) | 2/2 · 534 sn | **2/2 · 89 sn** | 2/2 · 130 sn |
+| metin (e-posta, yazım düzeltme; klasörsüz) | 2/2 · 107 sn | **2/2 · 22 sn** | 2/2 · 34 sn |
+| Toplam | 7/8 · ~16 dk | **8/8 · ~3,6 dk** | 7/8 · ~4,6 dk |
+
+İlk puanlamada gemma 4/8 görünüyordu: kontrol `keyCode` (eski ama çalışan), `score` değişkenini ve TDK'ye uygun
+"10.00'da"yı reddediyordu → kontrol düzeltildi, doğru varyantlar doğrulama testine eklendi; sonuçlar aynı
+kontrollerle yeniden puanlandı. deepseek JSON'u `ConvertTo-Json | Out-File` ile BOM'lu yazdı → ajan kuralına
+"çıktı dosyasını PowerShell yönlendirmesiyle yazma" eklendi.
+
+Auto Pro ile (yeni zincirler, rol talimatı): veri 2/2 · 46 sn · web 2/2 · 72 sn · oyun 2/2 · 166 sn · metin 2/2 ·
+13 sn — rol seçimi kayıtta görüldü (veri/web/oyun/metin → qwen). İlk koşuda web_form "kod", metin_duzelt "sohbet"
+rolüne düştü (ifadeler kaçmıştı: "JavaScript", "yazım ve noktalama") → kurala eklendi.
+
+**A13 planlayan + yazan** (zor paket: 3 dosyalı yapılacaklar uygulaması, tüm projede print → logging; Auto Pro):
+kapalı **2/2 · 271 sn · 19 adım** (deepseek-v4.1) · açık 1/2 · 307 sn · 40 adım (plan deepseek-v4.1, yazan gemma;
+`tamamla` komutu çalışmadı). Kazanç yok → ayar varsayılan KAPALI (DECISIONS #96).
+
+**A10 tutarlılık:** MODEL_CAPABILITIES.md "Tutarlılık" — seed yalnız gemma'da etkili.
+
+**Zorluk paketi auto-pro (R-21)**, ilk koşu: 10/12 · 778 sn. `girdi` kolay sayılıp gemma'ya gitti, gemma girdiyi
+kendisi verdi (sınıflama hatası → "çalıştır/başlat/komut" artık kolay değil). `mini_proje`: deepseek o gün
+10 token/sn'ye düştü (normali ~26), **yavaşlama kuralı (F1, #88) ilk kez gerçek kullanımda tetiklendi** ve qwen'e
+geçti; görev paket düzeneğinin 6 dk sınırında kesildi. Sınıflama düzeltmesinden sonra ikinci tam koşu: **12/12 · 473 sn** (F1 477 sn); kolay 5 görev gemma'da 4,5–7,5 sn; açılışta yoklama 3 motor; deepseek ilk yanıtı 12 sn'ye çıkınca (normali ~2 sn) yine yavaşlık geçişi → 30 dk beklemede kalan 3 görev qwen ile geçti.
+R-13: E2E_OK · ajan 6/6 · arayüz 15/15.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

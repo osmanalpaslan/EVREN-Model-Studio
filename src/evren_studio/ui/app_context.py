@@ -5,6 +5,7 @@ Windows Credential Manager'dan okunur ve bellekte tutulur.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from .. import __version__
@@ -107,9 +108,12 @@ class AppContext:
     def set_models(self, models: list[ModelInfo]) -> None:
         if not models:
             return
+        first = not self.models_live
         self.models = [apply_measured(m) for m in models]
         self.models_live = True
         self._check_model_list_change()
+        if first:
+            self.probe_models("açılış")             # A8: canlı liste ilk gelince (en çok 30 dk'da bir)
         for cb in list(self._model_listeners):
             cb()
 
@@ -184,7 +188,8 @@ class AppContext:
             health = {r["model"]: dict(r) for r in self.db.all_model_health()}
         except Exception:
             pass
-        return router.choose(role, available=self.available_model_ids() or None, health=health, reason=reason)
+        return router.choose(role, available=self.available_model_ids() or None, health=health, reason=reason,
+                             penalties=self.model_penalties())
 
     def ai_chat(self, role: str, messages: list[dict], max_tokens: int = 800,
                 session_id: int | None = None, evren_only: bool = False) -> tuple[str, str]:
@@ -323,6 +328,130 @@ class AppContext:
                 self.db.upsert_model_health(rec.get("model") or "?", False, error=(rec.get("detail") or "")[:200])
         except Exception:
             pass
+
+    def model_penalties(self) -> dict[str, str]:
+        """A5: kalite puanı düşen modeller → gerekçe (son 24 saat). Okunamazsa ceza yok."""
+        from ..agent import modelstats
+
+        try:
+            return modelstats.penalized(self.db.recent_model_calls(modelstats.QUALITY_HOURS))
+        except Exception:
+            return {}
+
+    def record_feedback_bad(self, model: str, msg_id: int = 0) -> None:
+        """A5: kullanıcının 👎 işareti (mesaj kimliğiyle: aynı yanıt iki kez sayılmasın)."""
+        if not model:
+            return
+        if msg_id and msg_id in self.db.marked_bad_messages():
+            return
+        self.record_model_call({"model": model, "ok": False, "event": "feedback_bad",
+                                "detail": f"mesaj:{msg_id}" if msg_id else "mesaj:0"})
+
+    # ---- A8: hafif yoklama ------------------------------------------------------------------
+
+    PROBE_EVERY_S = 30 * 60
+    PROBE_ROLES = ("kod", "kod_kolay", "plan", "veri", "web", "oyun", "sohbet")
+
+    def probe_candidates(self) -> list[str]:
+        """Yoklanacak EVREN modelleri: ajan rollerinin zincirlerinde geçen ve listede olanlar."""
+        from ..agent import router
+
+        avail = {m.id for m in self.models if m.supports_chat}
+        out: list[str] = []
+        for role in self.PROBE_ROLES:
+            for m in router.EVREN_ROUTES.get(role, []):
+                if m in avail and m not in out:
+                    out.append(m)
+        return out
+
+    def probe_due(self) -> bool:
+        from ..agent import modelstats
+
+        try:
+            recent = self.db.recent_model_calls(self.PROBE_EVERY_S / 3600)
+        except Exception:
+            return False
+        return not any(r.get("role") == modelstats.PROBE_ROLE for r in recent)
+
+    def probe_models(self, reason: str = "", force: bool = False, on_done=None) -> bool:
+        """Adaylara birkaç tokenlık istek (sağlık + gecikme) — ARKA PLAN iş parçacığında (R-04).
+        En çok 30 dk'da bir (veritabanı kaydına bakılır: uygulama yeniden açılsa da tekrarlamaz).
+        Hata veren model 30 dk sıranın sonuna alınır (router.HEALTH_FRESH); başarılı yoklama yalnız
+        önceki YOKLAMA hatasını temizler (yavaşlık/döngü nedeniyle konan bekleme süresine dokunmaz).
+        Dönüş: yoklama başlatıldı mı. `on_done(sonuçlar)` iş parçacığından çağrılır."""
+        import threading
+
+        if not force and (not self.settings.autopro_probe or os.environ.get("EVREN_STUDIO_NO_PROBE")):
+            return False                              # testler: conftest kapatır (gerçek ağ isteği olmasın)
+        if "evren" not in self.available_providers():
+            return False
+        if not force and (getattr(self, "_probing", False) or not self.probe_due()):
+            return False
+        models = self.probe_candidates()
+        if not models:
+            return False
+        self._probing = True
+
+        def work():
+            results = []
+            try:
+                results = [self._probe_one(m) for m in models]
+            finally:
+                self._probing = False
+                if on_done is not None:
+                    try:
+                        on_done(results)
+                    except Exception:
+                        pass
+        threading.Thread(target=work, name=f"autopro-yoklama {reason}", daemon=True).start()
+        return True
+
+    def _probe_one(self, model: str) -> dict:
+        import time as _t
+
+        from ..agent import modelstats
+        from ..api.errors import ApiError, ErrorKind
+
+        rec: dict = {"model": model, "role": modelstats.PROBE_ROLE}
+        t0 = _t.monotonic()
+        client = None
+        try:
+            factory = getattr(self, "probe_client_factory", None)       # testler sahte istemci verir
+            client = (factory() if factory is not None else
+                      EvrenClient(base_url=self.settings.base_url, api_key=self.api_key() or "", timeout=30.0,
+                                  max_retries=0, stream_idle_timeout=20.0))
+            info = self.model_info(model)
+            body = {"reasoning_effort": "none"} if info and (info.capabilities or {}).get("reasoning_effort") else None
+            r = client.chat(model, [{"role": "user", "content": "Yalnız tek kelime yaz: tamam"}], max_tokens=32,
+                            stream=True, extra_body=body)
+            rec.update(ok=True, duration_s=round(_t.monotonic() - t0, 2), first_chunk_s=r.first_chunk_s,
+                       out_tokens=r.token_usage().get("output_tokens") or None)
+            h = self.db.get_model_health(model)
+            if h is not None and not h["healthy"] and str(h["last_error"] or "").startswith("yoklama:"):
+                self.db.upsert_model_health(model, True, latency_ms=int(rec["duration_s"] * 1000))
+        except ApiError as exc:
+            rec.update(ok=False, error_kind=exc.kind.value, duration_s=round(_t.monotonic() - t0, 2),
+                       detail=(exc.message or "")[:200])
+            # Yalnız altyapı hataları modelin sağlığıdır; kota/hız sınırı ve anahtar hatası hesap başınadır
+            if exc.kind in (ErrorKind.SERVER_UNAVAILABLE, ErrorKind.SERVER_ERROR, ErrorKind.TIMEOUT,
+                            ErrorKind.NOT_FOUND, ErrorKind.NETWORK, ErrorKind.UNKNOWN_RESULT):
+                self.db.upsert_model_health(model, False, http_status=exc.status,
+                                            error=f"yoklama: {exc.kind.value}"[:200])
+        except Exception as exc:                      # yoklama hiçbir zaman uygulamayı bozmasın
+            rec.update(ok=False, error_kind="bilinmeyen", detail=f"{type(exc).__name__}: {exc}"[:200])
+        finally:
+            if client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+        try:
+            self.db.add_model_call(model, role=rec["role"], ok=bool(rec.get("ok")), error_kind=rec.get("error_kind"),
+                                   duration_s=rec.get("duration_s"), first_chunk_s=rec.get("first_chunk_s"),
+                                   out_tokens=rec.get("out_tokens"), detail=rec.get("detail"))
+        except Exception:
+            pass
+        return rec
 
     def model_baselines(self) -> dict:
         """Model başına o günkü normal hız (A3): son 6 saat; yetersizse son 24 saat."""

@@ -1,5 +1,28 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Auto Pro akıllı seçim (F2)
+
+### Eklendi
+- **İşin zorluğuna göre motor:** Kısa, tek dosyalık işler (yazım düzeltme, tek değer değiştirme) hızlı motora
+  gider; test, çok dosya, hata ayıklama veya program çalıştırma içeren işler güçlü motora. Hızlı motorla tur
+  başarısız olursa ya da "olmadı" derseniz sonraki tur güçlü motorla yapılır.
+- **İş türü rolleri:** veri/rapor (Excel, CSV), web, oyun ve Türkçe metin işleri için ayrı motor sırası; her biri
+  gerçek ölçüm paketiyle belirlendi. Veri işlerinde model sayıları elle değil betikle hesaplamaya yönlendirilir.
+- **Kötü yanıt düğmesi (👎):** Yanıtın üstünde; aynı motor 24 saatte iki kez işaretlenirse Auto Pro onu sıralamada
+  geri alır. Döngü, testi bozma ve plan takılması da motorun kalite puanına işlenir (Modeller > son 24 saat
+  tablosunda "Kalite" sütunu). Puan yalnız sıralamayı değiştirir, motoru kapatmaz.
+- **Motor yoklaması:** Açılışta ve Derin/Proje başlarken motorlara birkaç tokenlık istek; bozuk motor işe
+  başlamadan sona alınır (en çok 30 dakikada bir).
+- **Normal turda kota koruması:** 5 dakikalık EVREN penceresi dolarken tur, pencere yenilenene kadar bekler (token
+  harcamaz); günlük kota azalınca uyarır ama durdurmaz.
+- **Planlayan + yazan (deneysel, varsayılan kapalı):** Zor işte önce bir motor planlar, başka bir motor yazar.
+  Ölçümde kazanç göstermediği için kapalı; Ayarlar'dan açılabilir.
+- Ayarlar'da dört yeni kutu (akıllı seçim, yoklama, planlayan + yazan, kota koruması).
+
+### Düzeltildi
+- Ajan çıktı dosyalarını (JSON/CSV) PowerShell yönlendirmesiyle BOM'lu yazabiliyordu; artık write_file veya
+  Python kullanması söyleniyor.
+
 ## Yayınlanmamış — Auto Pro çekirdeği (F1)
 
 ### Eklendi

@@ -55,6 +55,13 @@ def _yapay_zeka_basligi_kapali(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _yoklama_kapali(monkeypatch):
+    """A8 hafif yoklama gerçek EVREN'e istek atar; testlerde otomatik tetiklenmesin (anahtar bu bilgisayarda
+    kayıtlı olabilir). Yoklamanın kendisi test_autopro_akilli.py'de sahte istemciyle `force=True` sınanır."""
+    monkeypatch.setenv("EVREN_STUDIO_NO_PROBE", "1")
+
+
+@pytest.fixture(autouse=True)
 def _qt_pencere_temizligi():
     """Her testten sonra açık kalan Qt pencerelerini gerçekten yok eder.
 

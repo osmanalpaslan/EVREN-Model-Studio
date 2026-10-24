@@ -153,3 +153,8 @@
 - **Kural:** Proje/Derin/QA gibi gözetimsiz akışlarda iş ancak istenen nihai çıktı doğrulanınca "bitti" sayılır; takılan veya atlanan görev varsa duraklat ve nedenini söyle; doğrulama komutunun kendi kabuk/sözdizimi hatasını görev başarısızlığı sayma; kullanıcının kararını gerektiren eksik veri veya seçimi varsayımla geçme (önceden sor ya da `SORU:` ile duraklat); ajan komutlarını ikinci bir `powershell -Command "…"` ile sarmalatma.
 - **Neden:** Hesap kapama oturumunda Derin Mod 3/12 görevle "bitti, sorun yok" dedi; bozuk doğrulama komutu (`$` dış kabukta yutuldu) bir görevi düşürüp 8 görevi atlattı; Anla'nın bulduğu sorular hiç sorulmadı ve ajan onayı kendisi yazdı.
 - **Kaynak:** 2026-10-21-derin-mod-kismi-projede-bitti-dedi-ve-kullaniciya-sorulari-s, 2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8, 2026-10-21-ic-ice-powershell-komutunda-dis-kabuk-degiskenlerini-yuttu
+
+### R-29 · Python kodunu bash heredoc ile yazma
+- **Kural:** Ters bölü, regex veya iç içe tırnak içeren Python kodunu/yamasını bash heredoc ile dosyaya yazma; Write/Edit aracıyla `.py` dosyasına yaz, sonra çalıştır ve içe aktarma denetimi yap.
+- **Neden:** Heredoc gövdesinde çift ters bölü teke indi, `\b` geri silme karakterine döndü; bozuk regex modülü içe aktarılamaz hâle getirdi (bu kuralın ilk yazımı da heredoc'ta bozuldu).
+- **Kaynak:** 2026-10-21-bash-heredoc-icindeki-python-yamasi-regex-teki-b-yi-geri-sil, 2026-10-24-bash-heredoc-ile-yazilan-python-kodunda-ters-bolu-yine-bozul

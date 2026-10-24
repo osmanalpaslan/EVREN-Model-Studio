@@ -486,6 +486,17 @@ class Database:
             params += (model,)
         return [dict(r) for r in self._exec(sql + " ORDER BY id", params).fetchall()]
 
+    def marked_bad_messages(self) -> set[int]:
+        """A5: 👎 ile işaretlenmiş yanıtların mesaj kimlikleri (detail = "mesaj:<id>")."""
+        rows = self._exec("SELECT detail FROM model_calls WHERE event='feedback_bad' AND detail LIKE 'mesaj:%'")
+        out = set()
+        for r in rows.fetchall():
+            try:
+                out.add(int(str(r["detail"]).split(":", 1)[1]))
+            except (ValueError, IndexError):
+                pass
+        return out
+
     def get_model_health(self, model: str) -> sqlite3.Row | None:
         return self._exec(
             "SELECT * FROM model_health WHERE model=?", (model,)
