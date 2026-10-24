@@ -184,7 +184,48 @@ def status_line(statuses: list[ToolStatus]) -> str:
     return ", ".join(parts)
 
 
-def prompt_section(statuses: list[ToolStatus], install_mode: str) -> str:
+# F3 #2: kurulu Python paketleri baştan söylenir. Hesap kapama oturumunda ajan "openpyxl var mı?" diye
+# deneme komutları çalıştırıp pandas'ı yok bularak adım harcıyordu. Yalnız bulunma denetimi (içe aktarmadan).
+PY_PACKAGES = ("openpyxl", "pandas", "numpy", "xlrd", "matplotlib", "requests", "pytest")
+PY_PACKAGES_TTL = 600.0
+_py_cache: dict[str, tuple[float, dict[str, bool]]] = {}
+
+
+def python_packages(exe: str | None = None, timeout: float = 15.0) -> dict[str, bool]:
+    """PATH'teki (veya verilen) Python'da paketlerin kurulu olup olmadığı. Bulunamazsa {}. 10 dk önbellek."""
+    import json as _json
+    import time as _time
+
+    exe = exe or find_exe(KNOWN_TOOLS["python"])
+    if not exe:
+        return {}
+    hit = _py_cache.get(exe)
+    if hit and _time.monotonic() - hit[0] < PY_PACKAGES_TTL:
+        return hit[1]
+    code = ("import importlib.util,json;print(json.dumps({n: importlib.util.find_spec(n) is not None "
+            f"for n in {list(PY_PACKAGES)!r}}}))")
+    try:
+        r = subprocess.run([exe, "-I", "-c", code], capture_output=True, text=True, timeout=timeout,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        found = _json.loads((r.stdout or "").strip().splitlines()[-1]) if r.returncode == 0 else {}
+    except (OSError, subprocess.SubprocessError, ValueError, IndexError):
+        found = {}
+    _py_cache[exe] = (_time.monotonic(), found)
+    return found
+
+
+def packages_line(found: dict[str, bool]) -> str:
+    if not found:
+        return ""
+    have = [n for n, ok in found.items() if ok]
+    miss = [n for n, ok in found.items() if not ok]
+    return ("- Python paketleri (PATH'teki python): kurulu: " + (", ".join(have) or "yok")
+            + ("; KURULU DEĞİL: " + ", ".join(miss) if miss else "")
+            + ". Kurulu olmayanı içe aktarmayı deneme; kurulu olanla çöz ya da gerçekten gerekiyorsa "
+              "`python -m pip install <paket>` ile kur (kurulum ayarına uy).")
+
+
+def prompt_section(statuses: list[ToolStatus], install_mode: str, packages: dict[str, bool] | None = None) -> str:
     """Sistem istemine eklenen ortam bölümü."""
     known = ", ".join(sorted(KNOWN_TOOLS))
     lines = ["# Ortam denetimi"]
@@ -192,6 +233,8 @@ def prompt_section(statuses: list[ToolStatus], install_mode: str) -> str:
         lines.append("- Projenin gerektirdiği programlar: " + status_line(statuses))
     else:
         lines.append("- Proje dosyalarından gereken program belirlenemedi (klasör boş olabilir).")
+    if packages:
+        lines.append(packages_line(packages))
     how = ("sorulmadan kurulur" if install_mode == "otomatik"
            else "kullanıcıya sorulur, onaylarsa kurulur")
     lines.append(

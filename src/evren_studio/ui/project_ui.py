@@ -12,6 +12,7 @@ SessionView'a bağlar:
 from __future__ import annotations
 
 import difflib
+import json
 import threading
 import time
 from pathlib import Path
@@ -448,10 +449,23 @@ class ProjectController(QObject):
                     (r["before_text"] or "").splitlines(True), (r["after_text"] or "").splitlines(True),
                     f"a/{r['path']}", f"b/{r['path']}")))
             diff = "\n".join(parts)
+        reads = []                                    # F3 #3: sonraki görevlere paylaşılacak okumalar
+        for m in msgs:
+            for c in m.get("tool_calls") or []:
+                if c.get("name") == "read_file":
+                    try:
+                        path = str((json.loads(c.get("arguments") or "{}") or {}).get("path") or "")
+                    except (ValueError, TypeError, AttributeError):
+                        path = ""
+                    path = path.replace("\\", "/")
+                    while path.startswith("./"):
+                        path = path[2:]
+                    if path:
+                        reads.append(path)
         if exc is not None:
             return pj.TaskRun(stopped="error", summary=summary, model=used,
-                              error=exc if isinstance(exc, ApiError) else None)
-        return pj.TaskRun(stopped=outcome.stopped, summary=summary, model=used, diff=diff)
+                              error=exc if isinstance(exc, ApiError) else None, reads=reads)
+        return pj.TaskRun(stopped=outcome.stopped, summary=summary, model=used, diff=diff, reads=reads)
 
     def _review(self, messages: list[dict]) -> str:
         """İnceleme: bağlı sağlayıcının inceleme rolü modeli (Auto Pro tablosu), yedekli."""

@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 84 · Açık/izlenen: 6 · Oturum: 28 · Kural: 29
+Kayıt: 87 · Açık/izlenen: 6 · Oturum: 29 · Kural: 30
 
 ## Açık ve izlenen kayıtlar
 
@@ -21,7 +21,10 @@ Kayıt: 84 · Açık/izlenen: 6 · Oturum: 28 · Kural: 29
 |---|---|---|---|---|---|---|
 | 2026-10-24 | [2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot](incidents/2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Zorluk kuralı program çalıştırma işini kolay sayıp hızlı motora gönderdi |
 | 2026-10-24 | [2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast](incidents/2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | SQLite datetime ile ISO zaman damgası metin olarak karşılaştırılınca aynı gün hep "yeni" sayılır |
+| 2026-10-24 | [2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok](incidents/2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Hesap kapama ölçümü alt klasöre kaydedilen raporu çıktı yok sandı |
+| 2026-10-24 | [2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s](incidents/2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Gerçek API testleri her maddeden sonra koşulunca faz 1,5-2 saat test bekliyordu |
 | 2026-10-24 | [2026-10-24-evren-seed-ve-temperature-0-yalniz-gemma-4-31b-de-yaniti-sab](incidents/2026-10-24-evren-seed-ve-temperature-0-yalniz-gemma-4-31b-de-yaniti-sab.md) | yanlis-iddia | orta | cozuldu | Claude Code (masaüstü) | EVREN seed ve temperature=0 yalnız gemma-4-31b'de yanıtı sabitliyor |
+| 2026-10-24 | [2026-10-24-evren-evren-tools-uzantisi-acikken-de-canli-veri-getirmedi](incidents/2026-10-24-evren-evren-tools-uzantisi-acikken-de-canli-veri-getirmedi.md) | yanlis-iddia | dusuk | cozuldu | Claude Code (masaüstü) | EVREN evren_tools uzantısı açıkken de canlı veri getirmedi |
 | 2026-10-24 | [2026-10-24-bash-heredoc-ile-yazilan-python-kodunda-ters-bolu-yine-bozul](incidents/2026-10-24-bash-heredoc-ile-yazilan-python-kodunda-ters-bolu-yine-bozul.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Bash heredoc ile yazılan Python kodunda ters bölü yine bozuldu (regex karakter sınıfı) |
 | 2026-10-24 | [2026-10-24-auto-pro-saglik-kurali-gercek-kullanimda-hic-beslenmiyordu](incidents/2026-10-24-auto-pro-saglik-kurali-gercek-kullanimda-hic-beslenmiyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Auto Pro sağlık kuralı gerçek kullanımda hiç beslenmiyordu |
 | 2026-10-24 | [2026-10-24-akis-koptugunda-veya-model-sustugunda-yedege-gecilmiyor-tur](incidents/2026-10-24-akis-koptugunda-veya-model-sustugunda-yedege-gecilmiyor-tur.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Akış koptuğunda veya model sustuğunda yedeğe geçilmiyor, tur hatayla bitiyordu |
@@ -108,6 +111,7 @@ Kayıt: 84 · Açık/izlenen: 6 · Oturum: 28 · Kural: 29
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-24 | [2026-10-24-claude-code-masaustu-f3-ajan-verimliligi](sessions/2026-10-24-claude-code-masaustu-f3-ajan-verimliligi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F3 ajan verimliliği |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-auto-pro-cekirdegi-f1-ve-rakip-analizi](sessions/2026-10-24-claude-code-masaustu-auto-pro-cekirdegi-f1-ve-rakip-analizi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro çekirdeği F1 ve rakip analizi |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-auto-pro-akilli-secim-f2](sessions/2026-10-24-claude-code-masaustu-auto-pro-akilli-secim-f2.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro akıllı seçim F2 |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-hesap-kapama-raporu-gercek-is-sureci-olc](sessions/2026-10-21-claude-code-masaustu-hesap-kapama-raporu-gercek-is-sureci-olc.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Hesap kapama raporu gerçek iş süreci ölçümü |
@@ -168,3 +172,4 @@ Kayıt: 84 · Açık/izlenen: 6 · Oturum: 28 · Kural: 29
 - **R-27** · Splitter ve düzen değişikliğini gerçek sürüklemeyle doğrula
 - **R-28** · Gözetimsiz akışta "bitti"yi istenen çıktıya bağla, kararı kullanıcıya sor
 - **R-29** · Python kodunu bash heredoc ile yazma
+- **R-30** · Testi değişikliğin türüne göre seç; gerçek API ölçümünü faz sonunda topla

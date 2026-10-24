@@ -140,3 +140,17 @@ def test_anahtarsiz_ucretli_model_hatirlanmaz(win, monkeypatch, tmp_path):
 ])
 def test_adim_siniri_tasima(raw, expected):
     assert migrate_raw(dict(raw)).get("agent_max_steps", 80) == expected
+
+
+def test_kalkmis_hizli_model_varsayilani_auto_pro_ya_tasinir(tmp_path):
+    """2026-10-24: özet/kapsam modeli varsayılanı (deepseek-v4-flash) EVREN listesinden kalkmıştı."""
+    assert Settings().auto_compact_model == "auto-pro" and Settings().scope_check_model == "auto-pro"
+    (tmp_path / "config.json").write_text(json.dumps({
+        "settings_version": 3, "auto_compact_model": "deepseek-v4-flash", "scope_check_model": "deepseek-v4-flash"}),
+        encoding="utf-8")
+    s = ConfigStore(tmp_path).load()                                   # R-03: okuma yolu
+    assert s.auto_compact_model == "auto-pro" and s.scope_check_model == "auto-pro"
+    secili = migrate_raw({"settings_version": 3, "auto_compact_model": "glm-5.3", "scope_check_model": ""})
+    assert secili["auto_compact_model"] == "glm-5.3" and secili["scope_check_model"] == ""   # bilerek seçilen korunur
+    yeni = migrate_raw({"settings_version": 4, "auto_compact_model": "deepseek-v4-flash"})
+    assert yeni["auto_compact_model"] == "deepseek-v4-flash"           # yeni sürümde seçilmiş: dokunulmaz

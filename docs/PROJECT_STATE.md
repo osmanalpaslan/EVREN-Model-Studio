@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-24) F3 ajan verimliliği (dal `feat/f3-ajan-verimliligi`): read_table, Python paket bilgisi, proje
+    haritası, Proje görevleri arası okuma paylaşımı, EVREN.md ders önerisi, web_fetch (evren_tools etkisiz çıktı);
+    özet/kapsam modeli varsayılanı auto-pro; test politikası R-30. Sıradaki faz F4.
+
   - (2026-10-24) Auto Pro akıllı seçim F2 (dal `feat/autopro-akilli-secim`): zorluk (A6) ve iş türü (A7)
     rolleri + rol ölçüm paketleri, kalite puanı ve 👎 (A5), yoklama (A8), normal turda kota kapısı (A11), seed
     yalnız gemma + veri rolünde (A10), planlayan + yazan (A13, ölçümde kazanç yok → ayar kapalı). Sıradaki faz F3.

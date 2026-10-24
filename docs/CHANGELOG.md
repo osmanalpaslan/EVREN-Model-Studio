@@ -1,5 +1,25 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Ajan verimliliği (F3)
+
+### Eklendi
+- **Tablo inceleme aracı:** Ajan Excel (.xlsx) ve CSV dosyalarının sayfalarını, başlıklarını, satır sayısını ve ilk
+  satırlarını tek adımda görür (eskiden Excel'i okumak için önce betik yazıyordu).
+- **Ortam bilgisi:** Ajan bilgisayarda hangi Python paketlerinin kurulu olduğunu baştan bilir (ör. openpyxl var,
+  pandas yok); deneme komutlarıyla vakit kaybetmez.
+- **Proje haritası:** Ajan projenin dosya ağacını ve fonksiyon/sınıf adlarını baştan görür (Ayarlar'dan kapatılabilir).
+- **Proje ajanında görevler arası paylaşım:** Bir görevde okunan dosya (ör. SKILL.md) sonraki görevlere güncel
+  hâliyle verilir; her görevde baştan okunmaz.
+- **Proje hafızası önerisi:** Ajan bir ders çıkardığında (çalışan komut, ortam tuzağı) EVREN.md'ye eklemek için
+  onay kartı çıkar; onaylamadan hiçbir şey yazılmaz.
+- **Web sayfası okuma:** Ajan verdiğiniz bir web adresini okuyabilir (arama yapmaz; her alan adı için izin ister).
+
+### Düzeltildi
+- "Özeti üreten model" ayarı EVREN listesinden kalkmış bir motoru gösteriyordu; artık Auto Pro uygun motoru seçer.
+
+### Değişti
+- Gerçek API testleri her maddeden sonra değil, faz sonunda birleştirmeden önce bir kez çalıştırılır.
+
 ## Yayınlanmamış — Auto Pro akıllı seçim (F2)
 
 ### Eklendi
