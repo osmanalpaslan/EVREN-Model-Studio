@@ -47,7 +47,8 @@ from ..agent.runner import (
     estimate_tokens,
     to_api_messages,
 )
-from ..agent import router
+from ..agent import architect, router
+from ..agent.quota import QuotaGate
 from ..agent.tools import FileChange, ToolBox, ToolError, Workspace
 from ..api.client import CancelToken
 from ..api.providers import PROVIDERS, estimate_cost, price_hint
@@ -437,6 +438,9 @@ class SessionView(QWidget):
         self.composer.usage_btn.refresh_requested.connect(self.refresh_usage)
         self.composer.usage_btn.details_requested.connect(lambda: self.page_requested.emit("usage"))
         self._quota = None
+        # A6: kolay işte (hızlı motor) tur başarısız olduysa veya kullanıcı "olmadı" derse güçlü motora yüksel
+        self._kolay_fail = False
+        self._last_route_role = ""
         self._quota_error = ""
         self._quota_time = None
         self._usage_busy = False
@@ -629,6 +633,7 @@ class SessionView(QWidget):
         self.session_id = None
         self.workspace = None
         self.edit_from = None
+        self._kolay_fail, self._last_route_role = False, ""
         self.mode = normalize_mode(self.ctx.settings.agent_mode)
         self.model = self.ctx.settings.default_model
         self.refresh_models()
@@ -653,6 +658,8 @@ class SessionView(QWidget):
         row = self.ctx.db.get_session(session_id)
         if not row:
             return
+        if session_id != self.session_id:
+            self._kolay_fail, self._last_route_role = False, ""
         self.session_id = session_id
         self.workspace = row["workspace"]
         self.mode = normalize_mode(row["mode"])
@@ -718,6 +725,10 @@ class SessionView(QWidget):
         agentic = self.workspace is not None
         last_assistant: AssistantMessageWidget | None = None
         turn = {"total": 0.0, "steps": 0}
+        try:
+            marked = self.ctx.db.marked_bad_messages()      # A5: işaretli yanıt yeniden işaretlenmesin
+        except Exception:
+            marked = set()
 
         def close_turn() -> None:
             # Çok adımlı turlarda son yanıtın altına tur toplamını yaz
@@ -754,6 +765,7 @@ class SessionView(QWidget):
                 w = AssistantMessageWidget(shown, agentic)
                 w.finalize(m["content"] or "", m.get("reasoning") if self.ctx.settings.show_reasoning else None,
                            meta.get("finish_reason"), shown, meta.get("duration_s"))
+                self._bind_feedback(w, m, marked)
                 if meta.get("duration_s") is not None:
                     turn["total"] += float(meta["duration_s"])
                 turn["steps"] += 1
@@ -1001,9 +1013,49 @@ class SessionView(QWidget):
         has_images = bool(((last_user or {}).get("meta") or {}).get("images"))
         est = estimate_tokens(to_api_messages("", history, "native")) if history else 0
         context_of = {m.id: m.context_length or 0 for m in self.ctx.chat_models()}
-        return router.route(agentic=self.workspace is not None,
+        agentic = self.workspace is not None
+        level = lreason = kind = kreason = ""
+        if self.ctx.settings.autopro_smart:
+            # "devam" gibi otomatik mesajlar işin kendisi değildir: son GERÇEK kullanıcı isteğine bakılır
+            real = next((m for m in reversed(history) if m.get("role") == "user"
+                         and not (m.get("meta") or {}).get("auto_continue")), None)
+            text = (real or {}).get("content") or ""
+            if agentic:
+                level, lreason = modelstats.difficulty(text)
+                if level == "kolay" and (self._kolay_fail or (self._last_route_role == "kod_kolay"
+                                                               and modelstats.is_complaint(text))):
+                    level, lreason = "normal", "kolay işte önceki deneme olmadı → güçlü motor"
+            kind, kreason = modelstats.task_kind(text, agentic=agentic, files=self._ws_names())
+        return router.route(agentic=agentic,
                             mode=("plan" if self._plan_turn else self.mode), has_images=has_images,
-                            est_tokens=est, context_of=context_of, available=avail or None, health=health)
+                            est_tokens=est, context_of=context_of, available=avail or None, health=health,
+                            level=level, level_reason=lreason, kind=kind, kind_reason=kreason,
+                            penalties=self.ctx.model_penalties())
+
+    def _ws_names(self) -> list[str]:
+        """İş türü (A7) için proje dosya adları: kök + bir alt düzey, en çok ~600 ad; 60 sn önbellek."""
+        if not self.workspace:
+            return []
+        now = time.monotonic()
+        c = getattr(self, "_ws_names_cache", None)
+        if c and c[0] == self.workspace and now - c[1] < 60:
+            return c[2]
+        names: list[str] = []
+        skip = {"node_modules", "venv", ".venv", "__pycache__", ".git", "build", "dist"}
+        try:
+            for e in Path(self.workspace).iterdir():
+                names.append(e.name)
+                if e.is_dir() and e.name not in skip and not e.name.startswith("."):
+                    for i, x in enumerate(e.iterdir()):
+                        if i >= 200:
+                            break
+                        names.append(x.name)
+                if len(names) > 600:
+                    break
+        except OSError:
+            pass
+        self._ws_names_cache = (self.workspace, now, names)
+        return names
 
     def _route_explain(self, model: str, fallbacks: list[str]) -> str:
         """A12: çalışma çubuğu ipucu — neden bu motor ve bugünkü ölçümü."""
@@ -1380,6 +1432,21 @@ class SessionView(QWidget):
         elif router.is_akilli(self.model):
             self._run_route = self._route(history)
             api_model, fallbacks = self._run_route.model, list(self._run_route.fallbacks)
+        # A13: zor işte planlayan + yazan (ayar açıksa; planlayıcı "plan", yazan "kod_kolay" zincirinden)
+        planner = None
+        r0 = self._run_route
+        if (model_override is None and r0 is not None and r0.role == "kod"
+                and self.ctx.settings.autopro_smart):
+            p_route, w_route = self.ctx.ai_route("plan"), self.ctx.ai_route("kod_kolay")
+            if architect.wanted(enabled=self.ctx.settings.autopro_architect, auto_pro=True, agentic=self.workspace is not None,
+                                mode=(mode_override or ("plan" if self._plan_turn else self.mode)), level=r0.level,
+                                planner=p_route.model, writer=w_route.model):
+                planner = p_route
+                self._run_route = router.Route(w_route.model, "kod", f"{r0.reason} · planlayan {p_route.model}, "
+                                               f"yazan {w_route.model}", list(w_route.fallbacks), r0.level)
+                api_model, fallbacks = w_route.model, list(w_route.fallbacks)
+        run_role = (model_override[2] if model_override is not None
+                    else (self._run_route.role if self._run_route is not None else ""))
         self.composer.run_text.setToolTip(self._route_explain(api_model, fallbacks))
         row = self.ctx.db.get_session(sid)
         protocol = row["protocol"] if row and row["protocol"] else self.ctx.resolve_protocol(api_model)
@@ -1414,8 +1481,23 @@ class SessionView(QWidget):
                                           [("Ayarlar", lambda: self.page_requested.emit("settings"))]))
             return
 
+        # A11: normal EVREN turunda da kota kapısı — 5 dk pencere %85 doluysa yenilenmesini bekler (token
+        # harcamaz); günlük kota azsa DURDURMAZ, bir kez uyarır. Derin/Proje kendi kapısını kullanır.
+        gate = (QuotaGate(self._fetch_quota) if provider == "evren" and s.quota_guard_turns
+                and model_override is None else None)
+        warned: list[bool] = []
+
         def before_call(_step: int):
-            return "budget" if self._budget_blocks(provider) else None
+            if provider != "evren":
+                return "budget" if self._budget_blocks(provider) else None
+            if gate is None:
+                return None
+            low, reset = gate.daily_low()
+            if low and not warned:
+                warned.append(True)
+                b.sig_status.emit("Günlük EVREN kotası azaldı" + (f" (yenilenme: {reset})" if reset else "")
+                                  + ". Tur sürüyor; uzun işleri kota yenilenince başlatmanız önerilir.")
+            return gate.before_call(cancel=self.cancel_token, status=b.sig_status.emit, daily_blocks=False)
         self.runner = AgentRunner(
             client, api_model, session_id=sid, store=self.ctx.db, events=b,
             workspace=ws, mode=(mode_override or ("plan" if self._plan_turn else self.mode)), protocol=protocol,
@@ -1427,7 +1509,7 @@ class SessionView(QWidget):
             context_tokens=info.context_length if info else None,
             hard_context_limit=(self._policy().hard_limit(info.context_length if info else None)
                                 if s.auto_compact else None),
-            before_model_call=before_call if provider != "evren" else None,
+            before_model_call=before_call if (provider != "evren" or gate is not None) else None,
             # Boş yanıt (düşünme bütçesi tükendi) sonrası tek yeniden denemede düşünmeyi kapat;
             # yalnız EVREN kaydı reasoning_effort desteği bildiren modellerde.
             stall_retry_body=({"reasoning_effort": "none"}
@@ -1453,8 +1535,10 @@ class SessionView(QWidget):
             stats_sink=self.ctx.record_model_call,
             baselines=self.ctx.model_baselines() if fallbacks else None,
             slow_factor=(modelstats.FACTOR_TASK if model_override is not None else modelstats.FACTOR_TURN),
-            route_role=(model_override[2] if model_override is not None
-                        else (self._run_route.role if self._run_route is not None else "")),
+            route_role=run_role,
+            # A10: tutarlılık (yalnız seed'i dinleyen modelde) · A7: rol talimatı (ör. veri → betikle hesapla)
+            base_body=router.consistent_body(run_role, api_model),
+            extra_hint=router.ROLE_HINTS.get(run_role, ""),
         )
         runner = self.runner
         self.running = True
@@ -1467,13 +1551,74 @@ class SessionView(QWidget):
         self._run_timer.start()
         self._tick_run()
 
+        cancel = self.cancel_token
+        ws_root = ws.root if ws is not None else None
+
         def job():
             try:
+                if planner is not None and ws_root is not None:
+                    self._architect_plan(client, planner, ws_root, history, runner, cancel, b)
                 return runner.run(history)
             finally:
                 client.close()
 
         Task(job, on_done=self._on_done, on_error=self._on_fail).start()
+
+    def _bind_feedback(self, w: AssistantMessageWidget, msg: dict, marked: set | None = None) -> None:
+        """A5: 👎 düğmesi — yalnız gerçek modelin yazdığı, içerikli yanıtta."""
+        model = msg.get("model") or ""
+        if not model or router.is_auto_pro(model) or not (msg.get("content") or "").strip():
+            return
+        w.api_model = model
+        w.msg_id = int(msg.get("id") or 0)
+        if marked and w.msg_id in marked:
+            w.set_marked_bad()
+        w.feedback_bad.connect(self._on_feedback_bad)
+
+    def _on_feedback_bad(self, model: str, msg_id: int) -> None:
+        self.ctx.record_feedback_bad(model, msg_id)
+        pen = self.ctx.model_penalties().get(model)
+        self._note(f"Yanıt kötü olarak işaretlendi ({model})."
+                   + (f" Auto Pro bu motoru bugün sıralamada geri alıyor: {pen}." if pen else
+                      " Aynı motor 24 saatte bir kez daha işaretlenirse Auto Pro onu sıralamada geri alır."))
+
+    def _fetch_quota(self):
+        """Kota kapısı (A11) için; koşucu iş parçacığında çağrılır (R-04)."""
+        client = self.ctx.make_client()
+        try:
+            return client.get_quota()
+        finally:
+            client.close()
+
+    def _architect_plan(self, client, planner, root, history, runner, cancel, b) -> None:
+        """A13 — İŞ PARÇACIĞINDA: planlayıcı motor salt okunur planı yazar, yazan motorun tur ipucuna eklenir.
+        Plan alınamazsa iş plansız sürer (planlayıcı hatası turu bozmaz)."""
+        real = next((m for m in reversed(history) if m.get("role") == "user"
+                     and not (m.get("meta") or {}).get("auto_continue")), None)
+        request = (real or {}).get("content") or ""
+        b.sig_status.emit(f"Auto Pro planlayan + yazan: {planner.model} işi inceleyip planlıyor; "
+                          f"ardından {runner.model} yazacak.")
+        t0 = time.monotonic()
+        info = self.ctx.model_info(planner.model)
+        try:
+            plan, res = architect.make_plan(client=client, model=planner.model, fallbacks=planner.fallbacks,
+                                            root=root, request=request, cancel=cancel,
+                                            context_tokens=info.context_length if info else None)
+        except Exception as exc:                       # planlayıcı hatası yazanı durdurmasın
+            plan, res = "", None
+            b.sig_status.emit(f"Planlayıcı çalışamadı ({type(exc).__name__}); iş plansız sürüyor.")
+        if getattr(cancel, "cancelled", False):
+            return
+        took = time.monotonic() - t0
+        self.ctx.record_model_call({"model": getattr(res, "model", "") or planner.model, "role": "plan",
+                                    "ok": bool(plan), "duration_s": round(took, 1),
+                                    "error_kind": None if plan else "plan_yok"})
+        if plan:
+            runner.extra_hint = "\n\n".join(h for h in (runner.extra_hint, architect.hint(plan, planner.model)) if h)
+            short = plan if len(plan) <= 900 else plan[:900] + " …"
+            b.sig_status.emit(f"Plan hazır ({took:.0f} sn, {planner.model}):\n{short}")
+        elif res is not None:
+            b.sig_status.emit(f"Planlayıcı plan bloğu vermedi ({took:.0f} sn); iş plansız sürüyor.")
 
     def stop(self) -> None:
         if self.deep.active or getattr(self.deep, "_resume_timer", None) is not None:
@@ -1543,6 +1688,7 @@ class SessionView(QWidget):
             shown = model_display(msg.get("model"), meta.get("routed_model"), meta.get("requested_model"))
             self.current.finalize(msg.get("content") or "", msg.get("reasoning") if self.ctx.settings.show_reasoning else None,
                                   meta.get("finish_reason"), shown, meta.get("duration_s"))
+            self._bind_feedback(self.current, msg)
             self._run_activity = "araç çalıştırıyor" if msg.get("tool_calls") else "yanıt üretiyor"
             self._record_cost(meta.get("requested_model") or self.model, meta.get("usage"))
             for c in msg.get("tool_calls") or []:
@@ -1743,6 +1889,12 @@ class SessionView(QWidget):
             hook(outcome, None)
             return
         self._finish()
+        role = self._run_route.role if getattr(self, "_run_route", None) is not None else ""
+        if role == "kod_kolay":
+            self._kolay_fail = outcome.stopped != "done" or bool(getattr(outcome, "model_switches", None))
+        elif role:
+            self._kolay_fail = False
+        self._last_route_role = role
         if getattr(outcome, "test_edits", None):
             self._note("Dikkat: bu turda var olan test dosyaları değiştirildi ve öyle kaldı: "
                        + ", ".join(outcome.test_edits) + ". Testleri değiştirmek istemediyseniz sağ "

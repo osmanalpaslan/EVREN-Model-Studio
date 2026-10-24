@@ -199,6 +199,7 @@ class DeepController(QObject):
         self._tasks_text, self._subs_done = "", 0
         par = max(1, min(int(getattr(self.ctx.settings, "deep_parallel", 2) or 2), MAX_PARALLEL))
         self._gate = QuotaGate(self._quota, max_parallel=par)
+        self.ctx.probe_models("Derin")              # A8: bozuk/yavaş motor işe başlamadan sona alınsın
         self.active = True
         self._log("başladı — 1/5 ANLA: bağımsız alt ajanlar projeyi farklı açılardan inceliyor (salt okunur). "
                   "Her biri bitince burada not düşer.")

@@ -293,6 +293,7 @@ class ProjectController(QObject):
         state, ws = self.state, Path(self._ws())
         sv = self.view
         sv._note("Proje ajanı başladı. Bilgisayar bu sürede uykuya geçmez; bitince bildirim alırsınız.", "spark")
+        self.ctx.probe_models("Proje")              # A8 (en çok 30 dk'da bir; arka planda)
         hooks = pj.ProjectHooks(
             run_task=self._run_task_blocking, review=self._review, run_check=self._run_check,
             commit_message=self._commit_message,

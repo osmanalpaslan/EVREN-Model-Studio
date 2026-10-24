@@ -78,6 +78,14 @@ class Settings:
     # Auto Pro yedeğe geçer (A2). Ölçüm 2026-10-24: sağlıklı motorlarda ilk parça ≤ 2,7 sn, en uzun sessizlik
     # ≤ 0,7 sn (küçük istek); büyük bağlam için pay bırakıldı. 0 → kapalı (yalnız genel zaman aşımı).
     stream_idle_timeout_seconds: int = 60
+    # F2 Auto Pro akıllı seçim (2026-10-24): zorluk (A6) ve iş türüne (A7) göre rol; kapalı → eski kod/sohbet rolü
+    autopro_smart: bool = True
+    # A8 hafif yoklama: açılışta ve Derin/Proje başlarken adaylara birkaç tokenlık istek (en çok 30 dk'da bir)
+    autopro_probe: bool = True
+    # A13 planlayan + yazan: zor işte önce planlayıcı motor plan yazar. Ölçüme göre varsayılan (CHALLENGE_RESULTS "A13")
+    autopro_architect: bool = False
+    # A11 normal turlarda kota kapısı: 5 dk pencere %85 doluysa bekle, günlük kota azsa uyar
+    quota_guard_turns: bool = True
     # Son görülen EVREN sohbet modelleri (A9): liste değişince (ör. deepseek-v4-flash kalktı) kullanıcı uyarılır
     known_model_ids: list[str] = field(default_factory=list)
     max_retries: int = 3

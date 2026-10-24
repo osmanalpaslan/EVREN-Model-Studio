@@ -42,6 +42,12 @@ ROLE_LABELS = {
     "baslik": "başlık",
     "commit": "commit mesajı",
     "hata": "hata açıklaması",
+    # F2 (A6/A7, 2026-10-24)
+    "kod_kolay": "kolay kod işi",
+    "veri": "veri / rapor",
+    "oyun": "oyun",
+    "web": "web",
+    "metin": "Türkçe metin",
 }
 
 # EVREN: 2026-10-19 ölçümü (12 görev, gerçek API; CHALLENGE_RESULTS.md "8 motor"):
@@ -71,6 +77,16 @@ EVREN_ROUTES: dict[str, list[str]] = {
     "baslik": ["deepseek-v4-flash", "qwen3.8-flash-next", "gemma-4-31b"],
     "commit": ["deepseek-v4-flash", "gemma-4-31b", "qwen3.8-flash-next"],
     "hata": ["deepseek-v4-flash", "qwen3.8-flash-next", "gemma-4-31b"],
+    # F2 — A6 zorluk: kısa, tek dosyalık iş → hızlı model (gemma 12 görev 3,1 dk; uzun işte döngüye girdiği
+    # için YALNIZ bu rolde önde). A7 iş türü rolleri: tests/e2e_rol_paketi_real_api.py, 2026-10-24, paket başına
+    # 2 görev × 1 koşu (küçük örnek; CHALLENGE_RESULTS.md "Rol paketleri"): qwen3.8-flash-next 8/8 ve her pakette
+    # en hızlı (toplam ~3,6 dk) · gemma-4-31b 7/8 (~4,6 dk; formda `required` eksik) · deepseek-v4.1-flash 7/8
+    # (~16 dk; JSON'u PowerShell ile BOM'lu yazdı). Sıra: doğruluk, sonra süre.
+    "kod_kolay": ["gemma-4-31b", "deepseek-v4.1-flash", "qwen3.8-flash-next"],
+    "veri": ["qwen3.8-flash-next", "gemma-4-31b", "deepseek-v4.1-flash"],
+    "oyun": ["qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
+    "web": ["qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
+    "metin": ["qwen3.8-flash-next", "gemma-4-31b", "deepseek-v4.1-flash"],
 }
 ROUTES = EVREN_ROUTES               # eski ad
 ROUTES_MEASURED = "2026-10-21"
@@ -88,6 +104,11 @@ PAID_ROUTES: dict[str, list[str]] = {
     "baslik": ["gpt-6-luna", "claude-haiku-5-5"],
     "commit": ["claude-haiku-5-5", "gpt-6-luna"],
     "hata": ["claude-haiku-5-5", "gpt-6-luna", "claude-sonnet-5-5"],
+    "kod_kolay": ["claude-haiku-5-5", "gpt-6-luna", "claude-sonnet-5-5"],
+    "veri": ["claude-sonnet-5-5", "gpt-6.1-sol", "claude-haiku-5-5"],
+    "oyun": ["claude-sonnet-5-5", "gpt-5.3-codex", "gpt-6.1-sol"],
+    "web": ["claude-sonnet-5-5", "gpt-5.3-codex", "gpt-6.1-sol"],
+    "metin": ["claude-sonnet-5-5", "gpt-6.1-sol", "claude-haiku-5-5"],
 }
 PAID_ROUTES_VERIFIED = False
 # Dengeli politika: bu rollerde (az token, yüksek değer) ücretli güçlü model önce gelir
@@ -98,6 +119,25 @@ TEXT_ONLY = {"glm-5.3", "deepseek-v4-flash"}
 BIG_CONTEXT_RATIO = 0.6
 HEALTH_FRESH = timedelta(minutes=30)
 
+# A10 tutarlılık (2026-10-24 ölçümü, tests/e2e_tutarlilik_real_api.py, aynı istem 3 kez): temperature=0 +
+# seed=42 YALNIZ gemma-4-31b'de yanıtı sabitledi (3/3 aynı); deepseek-v4.1-flash ve qwen3.8-flash-next her
+# seferinde farklı metin yazdı (sayılar 18/18 aynıydı). Bu yüzden seed yalnız onu dinleyen modelde gönderilir;
+# veri işlerinde tutarlılığı asıl sağlayan "hesabı betikle yap" talimatıdır (ROLE_HINTS["veri"]).
+SEED_HONORED = {"gemma-4-31b"}
+CONSISTENT_BODY = {"temperature": 0, "seed": 42}
+CONSISTENT_ROLES = {"veri"}
+ROLE_HINTS = {
+    "veri": ("# Veri / rapor işi (Auto Pro)\n"
+             "Sayıları, toplamları ve tabloları elle sayma veya tahmin etme: bir Python betiğiyle (csv, openpyxl "
+             "kuruluysa o) hesapla, betiği projeye kaydet ve sonucu betiğin çıktısından al. Aynı veri aynı "
+             "betikle her seferinde aynı raporu vermeli."),
+}
+
+
+def consistent_body(role: str, model: str) -> dict | None:
+    """A10: tutarlılık rolünde, seed'i gerçekten dinleyen modele gönderilecek alanlar (yoksa None)."""
+    return dict(CONSISTENT_BODY) if role in CONSISTENT_ROLES and model in SEED_HONORED else None
+
 
 @dataclass
 class Route:
@@ -105,6 +145,7 @@ class Route:
     role: str
     reason: str
     fallbacks: list[str] = field(default_factory=list)
+    level: str = ""                 # A6 zorluk ("kolay" | "normal" | "zor" | "")
 
     @property
     def label(self) -> str:
@@ -132,8 +173,10 @@ def chain_for(role: str, available: set[str] | None = None) -> list[str]:
 
 def classify(*, agentic: bool, mode: str = "", has_images: bool = False,
              est_tokens: int = 0, context_of: dict[str, int] | None = None,
-             available: set[str] | None = None) -> tuple[str, str]:
-    """(rol, gerekçe). Öncelik: görsel > büyük bağlam > plan > kod > sohbet."""
+             available: set[str] | None = None, level: str = "", level_reason: str = "",
+             kind: str = "", kind_reason: str = "") -> tuple[str, str]:
+    """(rol, gerekçe). Öncelik: görsel > büyük bağlam > plan > iş türü (A7) > kolay iş (A6) > kod > sohbet.
+    `level`/`kind`: modelstats.difficulty / task_kind sonucu (boş → eski davranış)."""
     if has_images:
         return "gorsel", "mesajda görsel var"
     if est_tokens and context_of:
@@ -143,7 +186,13 @@ def classify(*, agentic: bool, mode: str = "", has_images: bool = False,
             return "buyuk_baglam", f"bağlam ~{est_tokens // 1000}k token"
     if agentic and mode == "plan":
         return "plan", "Plan modu"
+    if kind and kind in EVREN_ROUTES and (agentic or kind == "metin"):
+        return kind, kind_reason or ROLE_LABELS.get(kind, kind)
+    if agentic and level == "kolay":
+        return "kod_kolay", level_reason or "kısa iş"
     if agentic:
+        if level == "zor":
+            return "kod", "zor iş" + (f": {level_reason}" if level_reason else "")
         return "kod", "proje klasöründe ajan görevi"
     return "sohbet", "klasörsüz sohbet"
 
@@ -162,14 +211,19 @@ def _unhealthy(health: dict[str, dict] | None, model: str, now: datetime) -> boo
 
 
 def choose(role: str, *, available: set[str] | None = None, health: dict[str, dict] | None = None,
-           reason: str = "", now: datetime | None = None) -> Route:
-    """Rol için birincil model + yedekler. Son 30 dk'da sağlıksız ölçülenler sona alınır."""
+           reason: str = "", now: datetime | None = None, penalties: dict[str, str] | None = None) -> Route:
+    """Rol için birincil model + yedekler. Son 30 dk'da sağlıksız ölçülenler en sona, kalite puanı düşenler
+    (A5, `penalties`: model → gerekçe) sağlamların arkasına alınır; hiçbiri zincirden ÇIKARILMAZ."""
     now = now or datetime.now(timezone.utc)
+    pen = penalties or {}
     chain = chain_for(role, available)
-    chain.sort(key=lambda m: _unhealthy(health, m, now))           # kararlı sıralama
+    first = chain[0] if chain else ""
+    chain.sort(key=lambda m: (_unhealthy(health, m, now), m in pen))   # kararlı sıralama
     if role == "gorsel":
         chain = [m for m in chain if m not in TEXT_ONLY] or chain
     note = reason
+    if first in pen and chain and chain[0] != first:
+        note += f" · {first} geri alındı: {pen[first]}"
     if chain and _unhealthy(health, chain[0], now):
         note += " · tüm adaylar yakın zamanda sorunlu ölçüldü"
     if not chain:
@@ -179,10 +233,14 @@ def choose(role: str, *, available: set[str] | None = None, health: dict[str, di
 
 def route(*, agentic: bool, mode: str = "", has_images: bool = False, est_tokens: int = 0,
           context_of: dict[str, int] | None = None, available: set[str] | None = None,
-          health: dict[str, dict] | None = None) -> Route:
+          health: dict[str, dict] | None = None, level: str = "", level_reason: str = "",
+          kind: str = "", kind_reason: str = "", penalties: dict[str, str] | None = None) -> Route:
     role, reason = classify(agentic=agentic, mode=mode, has_images=has_images,
-                            est_tokens=est_tokens, context_of=context_of, available=available)
-    return choose(role, available=available, health=health, reason=reason)
+                            est_tokens=est_tokens, context_of=context_of, available=available,
+                            level=level, level_reason=level_reason, kind=kind, kind_reason=kind_reason)
+    r = choose(role, available=available, health=health, reason=reason, penalties=penalties)
+    r.level = level
+    return r
 
 
 def same_provider(models: list[str], model: str, provider_of) -> list[str]:

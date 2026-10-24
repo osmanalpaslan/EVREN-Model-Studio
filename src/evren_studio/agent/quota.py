@@ -77,11 +77,13 @@ class QuotaGate:
         rem = _num(getattr(q, "daily_remaining_tokens", None))
         return (rem is not None and rem < DAILY_MIN_TOKENS), getattr(q, "daily_reset_at", None)
 
-    def before_call(self, cancel=None, status: Callable[[str], None] | None = None) -> str | None:
+    def before_call(self, cancel=None, status: Callable[[str], None] | None = None,
+                    daily_blocks: bool = True) -> str | None:
         """Model çağrısından önce: pencere çok doluysa yenilenene kadar bekler. Dönüş: None → devam,
-        "daily" → günlük kota bitti (çağıran duraklatır), "cancelled"."""
+        "daily" → günlük kota bitti (çağıran duraklatır), "cancelled". `daily_blocks=False` (normal tur, A11):
+        günlük kota azlığı durdurmaz — çağıran `daily_low()` ile kullanıcıyı uyarır."""
         low, _reset = self.daily_low()
-        if low:
+        if low and daily_blocks:
             return "daily"
         r = self.window_ratio()
         if r is None or r < WINDOW_WAIT:

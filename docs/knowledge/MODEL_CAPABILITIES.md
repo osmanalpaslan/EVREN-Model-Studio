@@ -129,6 +129,13 @@ kota sayfası `remaining_cr` gösterir.
 `SQLite model_health` tablosu: model başına son test zamanı, HTTP kodu,
 hata özeti, gecikme. Ayrıca bkz. `EVREN_STATUS_HISTORY.md`.
 
+## Tutarlılık: seed ve temperature (2026-10-24, `tests/e2e_tutarlilik_real_api.py`)
+
+Aynı istem (5 iş için kural tabanlı sayım + JSON + tek cümle yorum) her modele 3 kez: varsayılan ve
+`temperature=0, seed=42`. Farklı yanıt sayısı: deepseek-v4.1-flash 3 / 3 · qwen3.8-flash-next 3 / 3 ·
+gemma-4-31b 3 / **1**. Yani seed yalnız gemma'da yanıtı sabitledi; sayılar her koşuda (18/18) doğru ve aynıydı,
+fark serbest metindeydi. Uygulama: seed yalnız gemma + veri rolünde (`router.SEED_HONORED`).
+
 ## Düşünme ayarı, ajan davranışı ve döngü (2026-10-17, ayrıntı: LOOP_ANALYSIS.md)
 
 - `reasoning_effort: "none"` düşünmeyi kapatır (deepseek-v4-flash, qwen3.8-flash-next

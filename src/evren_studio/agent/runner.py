@@ -406,7 +406,8 @@ class AgentRunner:
                  test_check: bool = False, no_writes: bool = False, extra_tools: Any = None,
                  final_marker: str | None = None, plan_guard: bool = False, jobs: Any = None,
                  stats_sink: Any = None, baselines: dict | None = None,
-                 slow_factor: float = modelstats.FACTOR_TURN, route_role: str = ""):
+                 slow_factor: float = modelstats.FACTOR_TURN, route_role: str = "",
+                 base_body: dict[str, Any] | None = None, extra_hint: str = ""):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -434,6 +435,11 @@ class AgentRunner:
         self.stats_sink = stats_sink
         self.route_role = route_role
         self._slow = modelstats.SlowDetector(baselines, slow_factor)
+        # F2: her çağrıya eklenecek alanlar (A10 tutarlılık: temperature/seed — yalnız seed'i dinleyen modelde;
+        # model değişince bırakılır) ve tur ipucuna eklenecek metin (A7 rol talimatı, A13 planlayıcının planı).
+        self.base_body = dict(base_body) if base_body else None
+        self._base_body_model = model
+        self.extra_hint = (extra_hint or "").strip()
         self._history_ref: list[dict] | None = None
         self._work = 0                       # gerçek iş sayacı (başarılı yazma/komut/servis/iş)
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
@@ -569,6 +575,10 @@ class AgentRunner:
         except Exception:
             pass                                  # kayıt hatası turu bozmasın
 
+    def _quality(self, event: str, detail: str = "") -> None:
+        """A5: kalite olayı (modelstats.QUALITY_WEIGHTS) — o anki model adına kaydedilir."""
+        self._record(model=self.model, ok=False, event=event, detail=detail[:200])
+
     def _switch_model(self, outcome: "TurnOutcome", exc: ApiError | None, loop_reason: str = "",
                       slow_reason: str = "") -> bool:
         """Yedek model varsa ona geçer. Kota/hız sınırı hesap başınadır: model değiştirmek
@@ -649,6 +659,8 @@ class AgentRunner:
                     guard.repetition = True
 
         kwargs: dict[str, Any] = {}
+        if self.base_body and self.model == self._base_body_model:
+            extra_body = {**self.base_body, **(extra_body or {})}
         if extra_body:
             kwargs["extra_body"] = extra_body
         result = self.client.chat(
@@ -673,7 +685,7 @@ class AgentRunner:
         plan_nudges = 0
         plan_strikes = 0
         plan_work_mark = -1
-        self._turn_hint = self._compute_turn_hint(history)
+        self._turn_hint = "\n\n".join(h for h in (self._compute_turn_hint(history), self.extra_hint) if h)
         step = 0
         fallback_used = False
         # döngü bekçisi durumu (tur başına)
@@ -829,11 +841,14 @@ class AgentRunner:
                                                f"sıradakine devam ettiriliyor ({plan_nudges}).")
                             continue
                         outcome.open_plan_items = items
+                        if plan_strikes >= planguard.NO_PROGRESS_STOP:
+                            self._quality("plan_stall", f"{len(items)} açık madde")
                         self.events.status(f"Plan bekçisi: planda {len(items)} açık madde kaldı ama ajan "
                                            "ilerleme göstermiyor; durdu. 'devam' yazarak sürdürebilirsiniz.")
                 if "tests" not in nudged and step < self.max_steps and not self._cancelled():
                     gate = self._test_gate()
                     if gate:
+                        self._quality("test_break")
                         nudged.add("tests")
                         self._nudge = gate
                         continue
@@ -873,6 +888,8 @@ class AgentRunner:
             if self._cancelled():
                 outcome.stopped = "cancelled"
                 break
+            if loop_reason:
+                self._quality("loop", loop_reason)
             if loop_reason and self._switch_model(outcome, None, loop_reason):
                 repeats.clear()
                 file_states.clear()
@@ -895,6 +912,8 @@ class AgentRunner:
                 outcome.open_plan_items = self._open_plan()[0]
             self.events.status(f"Adım sınırına ({self.max_steps}) ulaşıldı; devam etmek için mesaj gönderin.")
         outcome.test_edits = self._remaining_test_edits()
+        if outcome.test_edits:
+            self._quality("test_edit", ", ".join(outcome.test_edits))
         return outcome
 
     def _plan_guard_active(self) -> bool:

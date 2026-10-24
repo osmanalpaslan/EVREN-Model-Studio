@@ -304,10 +304,16 @@ class ThinkingBlock(QWidget):
 
 
 class AssistantMessageWidget(QWidget):
+    # A5: kullanıcı yanıtı kötü işaretledi → (gerçek model). Auto Pro kalite puanına işlenir.
+    feedback_bad = Signal(str, int)
+
     def __init__(self, model: str = "", agentic: bool = False, parent=None):
         super().__init__(parent)
         self.agentic = agentic
         self._raw = ""
+        self.api_model = ""             # yanıtı yazan gerçek model (yoksa 👎 gösterilmez)
+        self.msg_id = 0
+        self._marked_bad = False
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(8)
@@ -326,6 +332,11 @@ class AssistantMessageWidget(QWidget):
         self.copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(self._raw))
         self.copy_btn.setVisible(False)
         head.addWidget(self.copy_btn)
+        self.bad_btn = _retain(icon_button("thumbs-down", "Kötü yanıt: bu motor Auto Pro sıralamasında geri "
+                                           "düşebilir (yalnız sıralamayı etkiler)", 14))
+        self.bad_btn.clicked.connect(self._mark_bad)
+        self.bad_btn.setVisible(False)
+        head.addWidget(self.bad_btn)
         lay.addLayout(head)
 
         self.thinking = ThinkingBlock()
@@ -370,11 +381,31 @@ class AssistantMessageWidget(QWidget):
 
     def enterEvent(self, e) -> None:
         self.copy_btn.setVisible(bool(self._raw))
+        self.bad_btn.setVisible(bool(self._raw and self.api_model) or self._marked_bad)
         super().enterEvent(e)
 
     def leaveEvent(self, e) -> None:
         self.copy_btn.setVisible(False)
+        self.bad_btn.setVisible(self._marked_bad)
         super().leaveEvent(e)
+
+    def set_marked_bad(self) -> None:
+        """Kayıtlı işareti geri yükler (oturum yeniden açılınca aynı yanıt ikinci kez işaretlenmesin)."""
+        self._marked_bad = True
+        self.bad_btn.setEnabled(False)
+        self.bad_btn.setToolTip("Kötü yanıt olarak işaretlendi.")
+        self.bad_btn.setVisible(True)
+
+    def _mark_bad(self, _=None) -> None:
+        """Bir kez işaretlenir (geri alınamaz; tekrar tıklamak puanı ikinci kez düşürmez)."""
+        if self._marked_bad or not self.api_model:
+            return
+        self._marked_bad = True
+        self.bad_btn.setEnabled(False)
+        self.bad_btn.setToolTip(f"Kötü yanıt olarak işaretlendi ({self.api_model}). Auto Pro bu motoru "
+                                "bugün sıralamada geri alabilir.")
+        self.bad_btn.setVisible(True)
+        self.feedback_bad.emit(self.api_model, int(self.msg_id or 0))
 
     # -- canlı süre --
 

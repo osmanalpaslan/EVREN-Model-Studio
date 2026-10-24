@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-24) Auto Pro akıllı seçim F2 (dal `feat/autopro-akilli-secim`): zorluk (A6) ve iş türü (A7)
+    rolleri + rol ölçüm paketleri, kalite puanı ve 👎 (A5), yoklama (A8), normal turda kota kapısı (A11), seed
+    yalnız gemma + veri rolünde (A10), planlayan + yazan (A13, ölçümde kazanç yok → ayar kapalı). Sıradaki faz F3.
+
   - (2026-10-24) Auto Pro çekirdeği F1 (dal `feat/autopro-cekirdek`): gerçek kullanım kaydı, yavaşlama kuralı
     (#88), bekleme süresi, yanıt vermeme süresi, akış kopmasında yedeğe geçiş, model listesi uyarısı, son 24 saat
     tablosu. Sıradaki faz F2 (ILERIDE_YAPILACAKLAR 7.5).

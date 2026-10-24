@@ -161,8 +161,10 @@ def test_akilli_secicide_ve_api_ye_gercek_model_gider(win, tmp_path):
     s.composer.set_model("auto-pro", emit=True)
     s.send("app.py'yi incele")
     assert _wait(app, lambda: not s.running and calls)
-    assert calls[0] == router.ROUTES["kod"][0]             # "auto-pro" API'ye gitmedi
+    # F2 (A6): kısa, tek dosyalık istek "kolay iş" → hızlı motor zinciri
+    expected = router.ROUTES["kod_kolay"][0]
+    assert calls[0] == expected                             # "auto-pro" API'ye gitmedi
     row = w.ctx.db.get_session(s.session_id)
     assert row["model"] == "auto-pro"                       # oturum seçimi korunur
     a = [m for m in w.ctx.db.get_session_messages(s.session_id) if m["role"] == "assistant"][-1]
-    assert a["model"] == router.ROUTES["kod"][0] or (a.get("meta") or {}).get("requested_model") == router.ROUTES["kod"][0]
+    assert a["model"] == expected or (a.get("meta") or {}).get("requested_model") == expected
