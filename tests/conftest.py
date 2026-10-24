@@ -59,6 +59,8 @@ def _yoklama_kapali(monkeypatch):
     """A8 hafif yoklama gerçek EVREN'e istek atar; testlerde otomatik tetiklenmesin (anahtar bu bilgisayarda
     kayıtlı olabilir). Yoklamanın kendisi test_autopro_akilli.py'de sahte istemciyle `force=True` sınanır."""
     monkeypatch.setenv("EVREN_STUDIO_NO_PROBE", "1")
+    # E6 ders önerisi de ek model çağrısı yapar (yalnız sinyal varsa); learnings testleri açıkça sınar
+    monkeypatch.setenv("EVREN_STUDIO_NO_LEARNINGS", "1")
 
 
 @pytest.fixture(autouse=True)

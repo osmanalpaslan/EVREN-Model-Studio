@@ -47,7 +47,7 @@ from ..agent.runner import (
     estimate_tokens,
     to_api_messages,
 )
-from ..agent import architect, router
+from ..agent import architect, learnings, router
 from ..agent.quota import QuotaGate
 from ..agent.tools import FileChange, ToolBox, ToolError, Workspace
 from ..api.client import CancelToken
@@ -1539,6 +1539,7 @@ class SessionView(QWidget):
             # A10: tutarlılık (yalnız seed'i dinleyen modelde) · A7: rol talimatı (ör. veri → betikle hesapla)
             base_body=router.consistent_body(run_role, api_model),
             extra_hint=router.ROLE_HINTS.get(run_role, ""),
+            project_map=s.project_map,
         )
         runner = self.runner
         self.running = True
@@ -1932,6 +1933,8 @@ class SessionView(QWidget):
                     self._offer_plan()
             else:
                 self._turn_review(self._turn_id)
+                if outcome.stopped == "done":
+                    self._suggest_learnings(self._turn_id, list(getattr(self.runner, "quality_events", []) or []))
         self._maybe_auto_title()
 
     def _on_fail(self, exc: Exception) -> None:
@@ -2205,6 +2208,46 @@ class SessionView(QWidget):
                 client.close()
 
         Task(job, on_done=lambda models: self.ctx.set_models(models), on_error=lambda _e: None).start()
+
+    def _suggest_learnings(self, turn_id: int | None, events: list[str]) -> None:
+        """E6: ders sinyali varsa (learnings.signals) kısa model çağrısıyla en çok 3 ders → onay kartı. Sinyal
+        yoksa model ÇAĞRILMAZ (R-22). Onaysız EVREN.md'ye yazılmaz."""
+        if (not self.ctx.settings.learnings_suggest or not self.workspace or not self.session_id or turn_id is None
+                or os.environ.get("EVREN_STUDIO_NO_LEARNINGS")):
+            return
+        msgs = [m for m in self.ctx.db.get_session_messages(self.session_id) if m["id"] >= turn_id]
+        sig = learnings.signals(msgs, events)
+        if not sig:
+            return
+        sid, root = self.session_id, Path(self.workspace)
+        prompt = [{"role": "system", "content": learnings.SYSTEM},
+                  {"role": "user", "content": "Ders sinyalleri: " + "; ".join(sig) + "\n\nAraç kaydı:\n"
+                                              + learnings.transcript(msgs)}]
+
+        def job():
+            return self.ctx.ai_chat("ozet", prompt, max_tokens=400, session_id=sid)[0]
+
+        def done(text):
+            items = learnings.parse(text)
+            if not items or sid != self.session_id:
+                return
+
+            def add():
+                try:
+                    p = learnings.append(root, items)
+                    self._note(f"{p.name} \"Öğrenilenler\" bölümüne {len(items)} madde eklendi; sonraki turlarda "
+                               "ajan bunu okur.", "check")
+                except OSError as exc:
+                    self.transcript.add(ErrorCard("EVREN.md yazılamadı", [str(exc)]))
+            card = ActionCard("Bu turdan öğrenilenler — EVREN.md'ye eklensin mi?",
+                              [f"• {i}" for i in items]
+                              + ["Eklenirse sonraki turlarda ajan bunları okur (Ayarlar'dan kapatılabilir)."],
+                              [("EVREN.md'ye ekle", add, "primary"), ("Geç", lambda: None, "ghost")],
+                              icon_name="bulb")
+            self.transcript.add(card)
+            self.transcript.scroll_to_bottom()
+
+        Task(job, on_done=done, on_error=lambda _e: None).start()
 
     def _maybe_auto_title(self) -> None:
         """Yeni oturumun ilk yanıtından sonra 3-6 kelimelik başlık (kullanıcı kararı 2026-10-19).

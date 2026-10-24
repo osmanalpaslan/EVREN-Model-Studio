@@ -74,9 +74,9 @@
 - **Kaynak:** 2026-10-16-ayarlar-fare-tekerlegiyle-farkinda-olmadan-degisiyordu, 2026-10-17-gecmis-oturum-acma-ve-ekran-gecisleri-yavasti
 
 ### R-13 · API/ajan değişikliğinden sonra gerçek uçtan uca testleri çalıştır
-- **Kural:** api/ veya agent/ ya da oturum arayüzüne dokunduysan ve API anahtarı varsa tests/e2e_real_api.py, tests/e2e_agent_real_api.py ve tests/e2e_ui_real_api.py çalıştır; sonucu oturum günlüğüne yaz.
+- **Kural:** api/ veya agent/ ya da oturum arayüzüne dokunduysan ve API anahtarı varsa tests/e2e_real_api.py, tests/e2e_agent_real_api.py ve tests/e2e_ui_real_api.py'yi faz/dal sonunda, birleştirmeden ÖNCE bir kez (son kodla) çalıştır; sonucu oturum günlüğüne yaz.
 - **Neden:** Sahte istemcili testler gerçek sağlayıcı davranışını kanıtlamaz; araç çağrısı ancak gerçek testle doğrulandı.
-- **Kaynak:** 2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi
+- **Kaynak:** 2026-10-16-evren-arac-cagrisi-gercek-apide-dogrulanmadi, 2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s
 
 ### R-14 · Eski izin anahtarını asla daha yetkili moda çevirme
 - **Kural:** Mod/izin adlarını değiştirirken yeni anahtar kullan; eski değerleri normalize_mode ile eşdeğer veya daha kısıtlı moda eşle ve bunu test et.
@@ -114,9 +114,9 @@
 - **Kaynak:** 2026-10-17-ajan-istenmeyen-tasarim-degisikligi-yapiyordu-kapsam-tasmasi
 
 ### R-21 · Ajan davranışını değiştirince zorluk paketiyle ölç
-- **Kural:** agent/ (araçlar, istem, koşucu) değiştiyse ve anahtar varsa `tests/e2e_zorluk_real_api.py auto` (ve mümkünse bir model daha) çalıştır; önceki sonuçla docs/knowledge/CHALLENGE_RESULTS.md'de karşılaştır, gerilemeyi düzeltmeden birleştirme.
+- **Kural:** agent/ (araçlar, istem, koşucu) değiştiyse ve anahtar varsa faz/dal sonunda, birleştirmeden önce `tests/e2e_zorluk_real_api.py auto-pro` paketinin TAMAMINI bir kez çalıştır; önceki sonuçla docs/knowledge/CHALLENGE_RESULTS.md'de karşılaştır, gerilemeyi düzeltmeden birleştirme. Düzeltmeden sonra önce yalnız düşen görevi, sonra birleştirmeden önce tam paketi tekrarla.
 - **Neden:** Birim testleri model davranışını ölçmez; istem kuralı tek başına bazen yetmedi (olmayan dosya), araç çıktısı biçimi sonucu değiştirdi (sayım).
-- **Kaynak:** 2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu, 2026-10-19-istenen-dosya-yokken-ajan-benzer-dosyayi-sormadan-degistirdi
+- **Kaynak:** 2026-10-19-model-kisaltilmis-dosya-ciktisindan-kesin-sayi-uydurdu, 2026-10-19-istenen-dosya-yokken-ajan-benzer-dosyayi-sormadan-degistirdi, 2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s
 
 ### R-22 · Otomatik uyarı/denetimin gereksiz tetiklenmesini de test et
 - **Kural:** Ajana otomatik eklenen her uyarı, not veya denetim için hem tetiklenmesi gereken hem de tetiklenmemesi gereken (ör. kullanıcı dosyayı oluşturmak istiyor) senaryoyu birim testiyle yaz ve zorluk paketinin TAMAMIYLA ölç; yalnız hedef görevle ölçme.
@@ -158,3 +158,8 @@
 - **Kural:** Ters bölü, regex veya iç içe tırnak içeren Python kodunu/yamasını bash heredoc ile dosyaya yazma; Write/Edit aracıyla `.py` dosyasına yaz, sonra çalıştır ve içe aktarma denetimi yap.
 - **Neden:** Heredoc gövdesinde çift ters bölü teke indi, `\b` geri silme karakterine döndü; bozuk regex modülü içe aktarılamaz hâle getirdi (bu kuralın ilk yazımı da heredoc'ta bozuldu).
 - **Kaynak:** 2026-10-21-bash-heredoc-icindeki-python-yamasi-regex-teki-b-yi-geri-sil, 2026-10-24-bash-heredoc-ile-yazilan-python-kodunda-ters-bolu-yine-bozul
+
+### R-30 · Testi değişikliğin türüne göre seç; gerçek API ölçümünü faz sonunda topla
+- **Kural:** Her değişiklikte pytest; arayüzde yalnız değişen ekranın iki temalı ekran görüntüsü; gerçek API (R-13, zorluk paketi R-21) faz sonunda bir kez; yeni araç/özellikte yalnız onun küçük açık/kapalı ölçümü (R-25); çok motorlu sıralama ölçümünü yalnız motor sırası değişirken veya EVREN model listesi değişince yap.
+- **Neden:** Her maddeden sonra tekrarlanan uçtan uca testler faz başına 1,5–2 saat sürüyordu; birleştirme öncesi tam kontrol korunduğu için bozuk kod master'a girmez (kullanıcı onayı 2026-10-24).
+- **Kaynak:** 2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s

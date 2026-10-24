@@ -2,6 +2,8 @@
 
     .\\.venv\\Scripts\\python.exe -u tests\\e2e_hesap_kapama_real_api.py [model] [--dakika 10] [--skill <klasör>]
     .\\.venv\\Scripts\\python.exe -u tests\\e2e_hesap_kapama_real_api.py --betik [--dakika 15]
+    ... [--f3-kapali]   F3 verimlilik özellikleri KAPALI (proje haritası, Python paket bilgisi, read_table) —
+                        R-25 açık/kapalı karşılaştırması için
 
 --betik: ajan raporu doğrudan üretmek yerine TEKRAR ÇALIŞTIRILABİLİR `rapor_uret.py` yazar (skill + düzeltme
 önerileri). Betik sonra ajansız sınanır: (a) aynı veri, (b) aynı veri ikinci kez → çıktı birebir aynı mı,
@@ -19,6 +21,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from collections import Counter
 import subprocess
 import sys
 import threading
@@ -120,6 +123,12 @@ def main() -> int:
         i = args.index("--dakika")
         dakika = float(args[i + 1])
         del args[i:i + 2]
+    f3_kapali = "--f3-kapali" in args
+    if f3_kapali:
+        args.remove("--f3-kapali")
+        from evren_studio.agent import environment
+
+        environment.python_packages = lambda *a, **k: {}
     betik = "--betik" in args
     if betik:
         args.remove("--betik")
@@ -140,7 +149,7 @@ def main() -> int:
     fallbacks = [m for m in chain if m != model]
     py = sistem_python()
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    kosu = ROOT / "build" / "hk" / f"{'betik' if betik else 'kosu'}-{model}-{stamp}"
+    kosu = ROOT / "build" / "hk" / f"{'betik' if betik else 'kosu'}-{model}{'-f3kapali' if f3_kapali else ''}-{stamp}"
     kosu.mkdir(parents=True)
     subprocess.run(py.split(" ") + [str(VERI), "uret", str(kosu)], check=True, capture_output=True)
     shutil.copytree(skill, kosu / "hesap-kapama-raporu")
@@ -159,7 +168,10 @@ def main() -> int:
     runner = AgentRunner(client, model, session_id=0, store=store, events=olay, workspace=Workspace(kosu),
                          mode="auto", stream=True, cancel=cancel, max_steps=150, fallback_models=fallbacks,
                          context_tokens=getattr(info, "context_length", None), plan_guard=True,
-                         command_timeout=600)
+                         command_timeout=600, project_map=not f3_kapali)
+    if f3_kapali:
+        _specs = runner._specs
+        runner._specs = lambda: [sp for sp in _specs() if sp.name not in ("read_table", "web_fetch")]
     excel_once = excel_pids()
     t0 = time.monotonic()
     zamanlayici.start()
@@ -172,9 +184,15 @@ def main() -> int:
     excel_sonra = excel_pids()
     (kosu / "transcript.md").write_text(transcript_of(history, limit=4000), encoding="utf-8")
     hedef = kosu / "Hesap Kapama Raporu.xlsx"
+    yanlis_yer = None
     if not hedef.is_file():
         adaylar = [p for p in kosu.glob("*.xlsx") if "rapor" in p.name.lower()]
-        hedef = adaylar[0] if adaylar else hedef
+        # 2026-10-24: ajan raporu skill alt klasörüne kaydetti; düzenek yalnız kökte arıyordu → "çıktı yok"
+        # sanıldı. Alt klasördeki rapor da denetlenir ama "yanlış yerde" olarak işaretlenir.
+        alt = [p for p in kosu.rglob("*.xlsx") if "rapor" in p.name.lower() and p.parent != kosu]
+        hedef = adaylar[0] if adaylar else (alt[0] if alt else hedef)
+        if not adaylar and alt:
+            yanlis_yer = str(alt[0].relative_to(kosu))
     d = subprocess.run(py.split(" ") + [str(VERI), "denetle", str(kosu), str(hedef)], capture_output=True,
                        text=True, encoding="utf-8")
     try:
@@ -186,7 +204,8 @@ def main() -> int:
     olcum = {"model": model, "kullanilan_model": runner.model, "sure_sn": round(sure), "durma": out.stopped,
              "adim": out.steps, "arac": len(olay.araclar), "hatali_arac": len(olay.hatalar),
              "excel_oldurulen": sorted(excel_once - excel_sonra), "excel_kalan": sorted(excel_sonra - excel_once),
-             "cikti": hedef.name if hedef.is_file() else None, "puan": denetim.get("puan")}
+             "cikti": hedef.name if hedef.is_file() else None, "puan": denetim.get("puan"),
+             "f3": not f3_kapali, "yanlis_yer": yanlis_yer, "arac_sayim": dict(sorted(Counter(olay.araclar).items(), key=lambda kv: -kv[1]))}
     (kosu / "denetim.json").write_text(json.dumps(denetim, ensure_ascii=False, indent=1), encoding="utf-8")
     (kosu / "olcum.json").write_text(json.dumps(olcum, ensure_ascii=False, indent=1), encoding="utf-8")
     print("\n=== ÖLÇÜM", json.dumps(olcum, ensure_ascii=False), flush=True)

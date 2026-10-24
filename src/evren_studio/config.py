@@ -36,7 +36,8 @@ TASK_LABELS = {
 }
 
 
-SETTINGS_VERSION = 3
+SETTINGS_VERSION = 4
+_OLD_FAST_MODEL = "deepseek-v4-flash"
 # Eski sürümün varsayılanı: kullanıcı değiştirmediyse yeni varsayılana taşınır.
 _OLD_DEFAULT_MODEL = "glm-5.3"
 _OLD_DEFAULT_MAX_STEPS = 40
@@ -57,6 +58,13 @@ def migrate_raw(raw: dict[str, Any]) -> dict[str, Any]:
         # 2026-10-17 maraton: büyük projede ilk mesaj tam 40 adımda bitti; döngü bekçisi
         # kontrolden çıkan turu durdurduğu için varsayılan 80 (yalnız eski varsayılan taşınır).
         raw["agent_max_steps"] = 80
+    if version < 4:
+        # 2026-10-24: eski varsayılan deepseek-v4-flash EVREN listesinden kalktı (2026-10-21); ayar ekranda kalkmış
+        # motoru gösteriyordu. Eski VARSAYILAN "auto-pro"ya (Auto Pro'nun özet/inceleme rolü) taşınır; kullanıcının
+        # bilerek seçtiği başka bir model korunur.
+        for key in ("auto_compact_model", "scope_check_model"):
+            if raw.get(key) == _OLD_FAST_MODEL:
+                raw[key] = "auto-pro"
     raw["settings_version"] = max(version, SETTINGS_VERSION)
     return raw
 
@@ -86,6 +94,10 @@ class Settings:
     autopro_architect: bool = False
     # A11 normal turlarda kota kapısı: 5 dk pencere %85 doluysa bekle, günlük kota azsa uyar
     quota_guard_turns: bool = True
+    # F3/E2: ajan sistem istemine otomatik proje haritası (dosya ağacı + semboller, ~3 bin token)
+    project_map: bool = True
+    # F3/E6: ders sinyali olan turdan sonra EVREN.md "Öğrenilenler" için öneri kartı (onaysız yazmaz)
+    learnings_suggest: bool = True
     # Son görülen EVREN sohbet modelleri (A9): liste değişince (ör. deepseek-v4-flash kalktı) kullanıcı uyarılır
     known_model_ids: list[str] = field(default_factory=list)
     max_retries: int = 3
@@ -109,7 +121,8 @@ class Settings:
     # Kapsam koruması (2026-10-17): tur bitince istenmemiş değişiklikleri hızlı bir modelle
     # işaretle (onay istemez, yalnız uyarır). plan_first: dosyaya dokunmadan önce plan sun.
     scope_check: bool = True
-    scope_check_model: str = "deepseek-v4-flash"
+    # "auto-pro" = Auto Pro'nun inceleme rolü (sağlık ve kalite sırasıyla); başka değer = o model (yoksa yine Auto Pro)
+    scope_check_model: str = "auto-pro"
     plan_first: bool = False
     command_timeout_seconds: int = 120
     tool_output_limit: int = 20000
@@ -118,9 +131,9 @@ class Settings:
     auto_compact: bool = True
     auto_compact_percent: int = 75
     auto_compact_max_tokens: int = 100_000
-    # Özeti üreten model ("" = oturumun modeli). Ölçüm 2026-10-16: aynı özet
-    # glm-5.3 ile 153 sn, deepseek-v4-flash ile 41 sn, kalite eşdeğer.
-    auto_compact_model: str = "deepseek-v4-flash"
+    # Özeti üreten model ("auto-pro" = Auto Pro'nun özet rolü, "" = oturumun modeli). Ölçüm 2026-10-16: aynı
+    # özet glm-5.3 ile 153 sn, deepseek-v4-flash ile 41 sn, kalite eşdeğer (v4-flash 2026-10-21'de listeden kalktı).
+    auto_compact_model: str = "auto-pro"
     # Ücretli sağlayıcılar (OpenAI/Anthropic) için aylık TAHMİNİ bütçe (USD, tüm sağlayıcılar toplamı)
     monthly_budget_usd: float = 5.0
     budget_enforce: bool = True             # sınıra gelince her yeni istekten önce onay iste

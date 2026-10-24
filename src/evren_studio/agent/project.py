@@ -44,6 +44,10 @@ MAX_ATTEMPTS = 3                  # 1: birincil · 2: geri bildirimle · 3: yede
 OUTAGE_WAITS = (60, 120, 300, 600, 900)          # EVREN kesintisinde bekleme (sn), toplam ~33 dk
 REVIEW_DIFF_LIMIT = 14_000
 CONTEXT_LIMIT = 4_000             # görev istemine eklenen proje bilgi notu (karakter)
+# F3 #3 görevler arası paylaşım: önceki görevlerde read_file ile okunan dosyaların GÜNCEL içeriği sonraki göreve
+# eklenir (hesap kapama oturumunda her görev SKILL.md'yi baştan okuyordu: görev başına 1-2 adım).
+SHARED_FILE_LIMIT = 12_000        # tek dosya (karakter); daha büyüğü eklenmez, model aralıkla okur
+SHARED_TOTAL_LIMIT = 16_000       # toplam (karakter; ~5 bin token)
 
 REOPEN_NOTE = "önceki çalıştırmada takıldı: "
 STATUS_LABEL = {"bekliyor": "bekliyor", "calisiyor": "çalışıyor", "bitti": "bitti",
@@ -87,6 +91,7 @@ class ProjectState:
     pause_reason: str = ""
     log: list[str] = field(default_factory=list)
     context: str = ""                 # her göreve verilen proje bilgi notu (ör. Derin Mod incelemesi)
+    reads: dict[str, int] = field(default_factory=dict)  # görevlerde okunan dosya → kaç görevde okundu
     answers: list[str] = field(default_factory=list)   # kullanıcının SORU yanıtları ve kararları
 
     def to_json(self) -> str:
@@ -190,7 +195,36 @@ def render_plan(state: ProjectState) -> str:
     return "\n".join(lines) + "\n"
 
 
-def task_prompt(state: ProjectState, task: Task, feedback: str = "") -> str:
+def shared_reads(state: ProjectState, root: Path) -> str:
+    """Önceki görevlerde okunan dosyaların ŞU ANKİ içeriği (en çok okunan önce; sınırlar içinde). Gizli olabilecek
+    dosyalar (permissions.is_sensitive_read) ve proje dışı/ikili/büyük dosyalar eklenmez."""
+    from .permissions import is_sensitive_read
+
+    root = Path(root).resolve()
+    out, total = [], 0
+    for rel, _n in sorted(state.reads.items(), key=lambda kv: (-kv[1], kv[0])):
+        if is_sensitive_read(rel):
+            continue
+        p = (root / rel).resolve()
+        try:
+            p.relative_to(root)
+            data = p.read_bytes()
+        except (OSError, ValueError):
+            continue
+        if b"\x00" in data[:4096]:
+            continue
+        text = data.decode("utf-8-sig", errors="replace")
+        if len(text) > SHARED_FILE_LIMIT or total + len(text) > SHARED_TOTAL_LIMIT:
+            continue
+        total += len(text)
+        out.append(f"--- {rel} ---\n{text.rstrip()}")
+    if not out:
+        return ""
+    return ("Önceki görevlerde okunan dosyalar (GÜNCEL içerik; bunları yeniden read_file ile okuma, değiştirmeden "
+            "önce gerekirse yalnız ilgili aralığı oku):\n" + "\n\n".join(out) + "\n\n")
+
+
+def task_prompt(state: ProjectState, task: Task, feedback: str = "", shared: str = "") -> str:
     done = [t for t in state.tasks if t.status == "bitti"]
     prev = "\n".join(f"- {t.idx}. {t.title}" + (f" — {t.note}" if t.note else "") for t in done) or "- (yok)"
     fb = (f"\n\nÖNCEKİ DENEME BAŞARISIZ OLDU. Neden:\n{feedback}\nBu sorunu gider; aynı yaklaşımı "
@@ -203,7 +237,7 @@ def task_prompt(state: ProjectState, task: Task, feedback: str = "") -> str:
     return (f"PROJE GÖREVİ {task.idx}/{len(state.tasks)}: {task.title}\n\n"
             f"Bitti ölçütü: {task.criteria or '(belirtilmedi — görevin açık sonucu)'}{check}\n\n"
             f"Projenin genel hedefi (bağlam için, bu turda YALNIZ yukarıdaki görevi yap):\n{state.goal.strip()}\n\n"
-            f"{ctx}{answers}"
+            f"{ctx}{answers}{shared}"
             f"Tamamlanan görevler:\n{prev}\n\n"
             "Gerekirse önce ilgili dosyaları oku. Bu görevin kapsamı dışına çıkma; sonraki görevleri "
             "yapma. Bitirince ne yaptığını ve ölçütün nasıl sağlandığını kısaca yaz.\n"
@@ -349,6 +383,7 @@ class TaskRun:
     model: str = ""
     diff: str = ""                    # git yoksa uygulamanın değişiklik kaydından
     error: ApiError | None = None
+    reads: list[str] = field(default_factory=list)   # bu denemede read_file ile okunan dosyalar (proje göreli)
 
 
 @dataclass
@@ -503,8 +538,10 @@ class ProjectRunner:
             self._log(f"Görev {task.idx}/{len(st.tasks)} başladı (deneme {task.attempts}): {task.title}")
             self._save()
             t0 = time.monotonic()
-            run = self.hooks.run_task(task, task_prompt(st, task, feedback), fallback)
+            run = self.hooks.run_task(task, task_prompt(st, task, feedback, shared_reads(st, self.root)), fallback)
             task.seconds += time.monotonic() - t0
+            for rel in dict.fromkeys(run.reads):
+                st.reads[rel] = st.reads.get(rel, 0) + 1
             task.model = run.model or task.model
             if run.stopped == "cancelled" or self.hooks.cancelled():
                 task.attempts -= 1

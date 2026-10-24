@@ -48,6 +48,7 @@ from .tools import (
     ToolBox,
     ToolError,
     Workspace,
+    find_project_venv,
     truncate_middle,
     validate_todos,
 )
@@ -407,7 +408,8 @@ class AgentRunner:
                  final_marker: str | None = None, plan_guard: bool = False, jobs: Any = None,
                  stats_sink: Any = None, baselines: dict | None = None,
                  slow_factor: float = modelstats.FACTOR_TURN, route_role: str = "",
-                 base_body: dict[str, Any] | None = None, extra_hint: str = ""):
+                 base_body: dict[str, Any] | None = None, extra_hint: str = "",
+                 project_map: bool = False):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -440,6 +442,10 @@ class AgentRunner:
         self.base_body = dict(base_body) if base_body else None
         self._base_body_model = model
         self.extra_hint = (extra_hint or "").strip()
+        # F3/E2: sistem istemine proje haritası (dosya ağacı + semboller, ~3 bin token; agent/projectmap.py)
+        self.project_map = project_map
+        self._map_section: str | None = None
+        self.quality_events: list[str] = []       # A5 olayları (E6 ders sinyali de okur)
         self._history_ref: list[dict] | None = None
         self._work = 0                       # gerçek iş sayacı (başarılı yazma/komut/servis/iş)
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
@@ -524,14 +530,26 @@ class AgentRunner:
             from . import environment
 
             try:
+                # F3 #2: kurulu Python paketleri (projenin sanal ortamı varsa onunki — komutlar onu kullanır)
+                venv = find_project_venv(self.workspace.root)
+                py = str(venv / "python.exe") if venv is not None and (venv / "python.exe").exists() else None
                 self._env_section = environment.prompt_section(
-                    environment.quick_status(self.workspace.root), self.install_mode)
+                    environment.quick_status(self.workspace.root), self.install_mode,
+                    packages=environment.python_packages(py))
             except OSError:
                 self._env_section = ""
+        if self._map_section is None:
+            self._map_section = ""
+            if self.project_map:
+                from . import projectmap
+
+                self._map_section = projectmap.prompt_section(self.workspace.root)
         specs = self._specs()
         system = build_agent_system(self.workspace, normalize_mode(self.mode), specs,
                                     text_protocol=(self.protocol == "text"),
                                     env_section=self._env_section)
+        if self._map_section:
+            system += "\n\n" + self._map_section
         if self.mcp is not None:
             from .mcp import prompt_section
 
@@ -577,6 +595,7 @@ class AgentRunner:
 
     def _quality(self, event: str, detail: str = "") -> None:
         """A5: kalite olayı (modelstats.QUALITY_WEIGHTS) — o anki model adına kaydedilir."""
+        self.quality_events.append(event)
         self._record(model=self.model, ok=False, event=event, detail=detail[:200])
 
     def _switch_model(self, outcome: "TurnOutcome", exc: ApiError | None, loop_reason: str = "",
@@ -1005,6 +1024,8 @@ class AgentRunner:
                 res = self.extra_tools.run(call)
             elif call.name == "install_program":
                 res = self._run_install(call)
+            elif call.name == "web_fetch":
+                res = self._run_web(call)
             elif spec.kind == READ:
                 res = self._run_read(call)
             elif spec.kind == META:
@@ -1044,6 +1065,24 @@ class AgentRunner:
             if a.get("start_line") or a.get("end_line"):
                 rng = f" (satır {a.get('start_line') or 1}–{a.get('end_line') or 'son'})"
             summary = f"Okundu: {a['path']}{rng}"
+        elif call.name == "read_table":
+            from . import tables
+
+            p = self.workspace.resolve(_req(a, "path"))
+            rel = self.workspace.rel(p)
+            decision, reason = decide(self.mode, READ, self.perms, path=rel)
+            if decision == Decision.ASK:
+                ok, _fb = self._approve(call, READ, f"Gizli olabilecek dosya okunsun mu? {rel}", rel, reason=reason)
+                if not ok:
+                    return ToolResult(False, "Kullanıcı bu dosyanın okunmasına izin vermedi.", f"Reddedildi: {rel}",
+                                      {"denied": True})
+            if not p.is_file():
+                raise ToolError(f"Dosya bulunamadı: {a['path']}")
+            try:
+                out = tables.describe(p, a.get("sheet") or None, a.get("max_rows"))
+            except tables.TableError as exc:
+                raise ToolError(str(exc)) from exc
+            summary = f"Tablo incelendi: {rel}" + (f" · {a['sheet']}" if a.get("sheet") else "")
         elif call.name == "search_files":
             out = tb.search_files(_req(a, "pattern"), a.get("path") or ".", a.get("glob"),
                                   a.get("ignore_case", True))
@@ -1054,6 +1093,40 @@ class AgentRunner:
             n = 0 if out.startswith("Dosya bulunamadı") else len(out.splitlines())
             summary = f"Bulundu: {a['pattern']} — {n} dosya"
         return ToolResult(True, truncate_middle(out, self.output_limit), summary,
+                          {"output": truncate_middle(out, 4000)})
+
+    def _run_web(self, call: ToolCall) -> ToolResult:
+        """E8: web adresini oku. Komut gibi izinden geçer (adres sorgusuyla veri dışarı gidebilir); aynı alan adı
+        için "oturum boyunca izin ver" hatırlanır. Plan modunda engelli (üstte, EXEC)."""
+        from urllib.parse import urlparse
+
+        from . import webfetch
+
+        url = str(_req(call.arguments, "url")).strip()
+        try:
+            webfetch.check_url(url)
+        except webfetch.FetchError as exc:
+            return ToolResult(False, str(exc), "Geçersiz adres")
+        host = urlparse(url).netloc.lower()
+        key = f"web:{host}"
+        decision, reason = decide(self.mode, EXEC, self.perms)
+        if key in self.perms.command_prefixes:
+            decision = Decision.ALLOW
+        if decision == Decision.DENY:
+            return ToolResult(False, reason, "Engellendi")
+        if decision == Decision.ASK:
+            ok, feedback = self._approve(call, EXEC, f"Web sayfası okunsun mu? {host}", url, prefix=key,
+                                         reason="İnternetten sayfa okunur; adres dış sunucuya gider.")
+            if not ok:
+                msg = "Kullanıcı bu web adresinin okunmasına izin vermedi."
+                if feedback:
+                    msg += f" Kullanıcının notu: {feedback}"
+                return ToolResult(False, msg, f"Reddedildi: {host}", {"denied": True})
+        try:
+            out = webfetch.fetch(url, int(call.arguments.get("max_chars") or 20_000))
+        except webfetch.FetchError as exc:
+            return ToolResult(False, f"Web sayfası okunamadı: {exc}", f"Okunamadı: {host}")
+        return ToolResult(True, truncate_middle(out, self.output_limit), f"Web okundu: {host}",
                           {"output": truncate_middle(out, 4000)})
 
     def _run_mcp(self, call: ToolCall, spec) -> ToolResult:
@@ -1388,6 +1461,8 @@ def describe_call(call: ToolCall) -> str:
     return {
         "list_files": lambda: f"Klasör listeleniyor: {a.get('path') or '.'}",
         "read_file": lambda: f"Okunuyor: {a.get('path', '?')}",
+        "read_table": lambda: f"Tablo inceleniyor: {a.get('path', '?')}",
+        "web_fetch": lambda: f"Web okunuyor: {a.get('url', '?')}",
         "search_files": lambda: f"Aranıyor: “{a.get('pattern', '')}”",
         "find_files": lambda: f"Dosya aranıyor: {a.get('pattern', '')}",
         "write_file": lambda: f"Yazılıyor: {a.get('path', '?')}",

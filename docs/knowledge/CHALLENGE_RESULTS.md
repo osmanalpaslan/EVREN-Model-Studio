@@ -287,6 +287,20 @@ kendisi verdi (sınıflama hatası → "çalıştır/başlat/komut" artık kolay
 geçti; görev paket düzeneğinin 6 dk sınırında kesildi. Sınıflama düzeltmesinden sonra ikinci tam koşu: **12/12 · 473 sn** (F1 477 sn); kolay 5 görev gemma'da 4,5–7,5 sn; açılışta yoklama 3 motor; deepseek ilk yanıtı 12 sn'ye çıkınca (normali ~2 sn) yine yavaşlık geçişi → 30 dk beklemede kalan 3 görev qwen ile geçti.
 R-13: E2E_OK · ajan 6/6 · arayüz 15/15.
 
+## F3 ajan verimliliği (2026-10-24, gerçek EVREN API)
+
+- **E8 `evren_tools`** (`tests/e2e_evren_tools_real_api.py`, 2 motor × 3 soru × açık/kapalı): canlı veri yok →
+  kendi `web_fetch` aracı.
+- **Hesap kapama, deepseek-v4.1-flash, 10 dk** (aynı gün, sırayla): F3 açık → rapor üretildi, 18 adım, 3 hatalı
+  araç, `read_table` 6 çağrı (model aracı gerçekten seçti, R-25); rapor skill alt klasörüne kaydedildi (düzenek
+  kökte aradığı için önce "yok" dedi → düzeltildi); denetim 20/28 (sıkılaştırılmış denetçi; kalanların çoğu skill
+  belirsizliği: "Manuel / Kullanıcı", "sözlükte yok", `#N/A` sözleşme). F3 kapalı → 10 dk'da rapor yok, 10 adım.
+  Tek örnek ve deepseek o gün yavaş: yön F3 lehine, kesin kanıt değil.
+- **Zorluk paketi auto-pro (R-21)**: 12/12 · 671 sn.
+- **R-13**: E2E_OK · arayüz 15/15 · ajan 5/6 ve tekrarında 4/6 (metin protokolü). A/B, F3 açık/kapalı, 3'er tekrar:
+  deepseek-v4.1-flash metin 2/3 ve 2/3, qwen 3/3 ve 3/3 → bilinen deepseek metin protokolü kararsızlığı
+  (MODEL_CAPABILITIES), F3 gerilemesi değil.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca
