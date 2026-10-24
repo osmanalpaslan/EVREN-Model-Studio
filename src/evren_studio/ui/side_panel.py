@@ -229,8 +229,9 @@ class ChangesTab(QWidget):
 class FilesTab(QWidget):
     attach_requested = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, ctx=None):
         super().__init__(parent)
+        self.ctx = ctx                                   # F6 #15 güvenilmeyen klasör işareti için (ayar)
         self.root: Path | None = None
         self.current: Path | None = None
         lay = QVBoxLayout(self)
@@ -255,6 +256,8 @@ class FilesTab(QWidget):
         self.tree.setAnimated(True)
         self.tree.setIndentation(14)
         self.tree.clicked.connect(self._open)
+        self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self._context_menu)
         self.split.addWidget(self.tree)
         prev = QWidget()
         pl = QVBoxLayout(prev)
@@ -314,6 +317,7 @@ class FilesTab(QWidget):
             idx = self.model.setRootPath(str(self.root))
             self.tree.setRootIndex(idx)
             self.root_label.setText(str(self.root))
+            self._update_root_label()
         else:
             self.root_label.setText("")
         self.current = None
@@ -394,6 +398,55 @@ class FilesTab(QWidget):
         self.current = p
         self.file_label.setText(ws.rel(p))
         self.preview.setPlainText(self._meta.text)
+
+    def untrusted(self) -> list[str]:
+        return list(self.ctx.settings.untrusted_dirs or []) if self.ctx is not None else []
+
+    def set_untrusted(self, folder: str, on: bool) -> None:
+        """F6 #15: klasörü güvenilmeyen olarak işaretle/kaldır (kalıcı ayar)."""
+        if self.ctx is None:
+            return
+        from ..agent import untrusted as untr
+
+        dirs = self.untrusted()
+        if on and not untr.inside(Path(folder), dirs):
+            dirs.append(str(Path(folder).resolve()))
+        elif not on:
+            dirs = [d for d in dirs if Path(d).resolve() != Path(folder).resolve()]
+        self.ctx.settings.untrusted_dirs = dirs
+        self.ctx.save_settings()
+        self._update_root_label()
+
+    def _update_root_label(self) -> None:
+        if self.root is None:
+            return
+        from ..agent import untrusted as untr
+
+        here = [d for d in self.untrusted() if untr.inside(Path(d), [str(self.root)])]
+        text = str(self.root)
+        if here:
+            text += "\n⚠ Güvenilmeyen: " + ", ".join(Path(d).name for d in here)
+        self.root_label.setText(text)
+
+    def _context_menu(self, pos) -> None:
+        from PySide6.QtWidgets import QMenu
+
+        from ..agent import untrusted as untr
+
+        idx = self.tree.indexAt(pos)
+        if not idx.isValid() or self.ctx is None:
+            return
+        path = Path(self.model.filePath(idx))
+        folder = path if path.is_dir() else path.parent
+        menu = QMenu(self)
+        marked = untr.inside(folder, self.untrusted())
+        if marked:
+            menu.addAction(f"Güvenilmeyen işaretini kaldır ({Path(marked).name})",
+                           lambda: self.set_untrusted(marked, False))
+        else:
+            menu.addAction(f"\"{folder.name}\" klasörünü güvenilmeyen olarak işaretle",
+                           lambda: self.set_untrusted(str(folder), True))
+        menu.exec(self.tree.viewport().mapToGlobal(pos))
 
     def _attach(self) -> None:
         if self.current and self.root:
@@ -561,7 +614,7 @@ class SidePanel(QWidget):
         self.stack = QStackedWidget()
         self.todos = TodosTab()
         self.changes = ChangesTab(ctx)
-        self.files = FilesTab()
+        self.files = FilesTab(ctx=ctx)
         self.terminal = TerminalTab()
         self.work = WorkTab()
         self._titles: list[str] = []

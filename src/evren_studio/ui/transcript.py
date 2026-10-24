@@ -219,6 +219,7 @@ class Transcript(QScrollArea):
 
 class UserMessageWidget(QWidget):
     edit_requested = Signal(int, str)
+    rewind_requested = Signal(int, str)          # F6/E1: bu mesajdan öncesine geri sar
 
     def __init__(self, text: str, message_id: int | None = None, parent=None, attachments=None):
         super().__init__(parent)
@@ -255,7 +256,10 @@ class UserMessageWidget(QWidget):
         self.edit_btn = _retain(icon_button("pencil", "Düzenle ve yeniden gönder", 14))
         self.edit_btn.clicked.connect(
             lambda: self.edit_requested.emit(self.message_id or 0, self.text))
-        for b in (self.edit_btn, self.copy_btn):
+        self.rewind_btn = _retain(icon_button("undo", "Buraya geri sar: bu mesaj ve sonrası silinir, o turlardaki "
+                                                      "dosya değişiklikleri geri alınır (önce onay sorulur)", 14))
+        self.rewind_btn.clicked.connect(lambda: self.rewind_requested.emit(self.message_id or 0, self.text))
+        for b in (self.rewind_btn, self.edit_btn, self.copy_btn):
             b.setVisible(False)
             actions.addWidget(b)
         lay.addLayout(actions)
@@ -263,11 +267,13 @@ class UserMessageWidget(QWidget):
     def enterEvent(self, e) -> None:
         self.copy_btn.setVisible(True)
         self.edit_btn.setVisible(self.message_id is not None)
+        self.rewind_btn.setVisible(self.message_id is not None)
         super().enterEvent(e)
 
     def leaveEvent(self, e) -> None:
         self.copy_btn.setVisible(False)
         self.edit_btn.setVisible(False)
+        self.rewind_btn.setVisible(False)
         super().leaveEvent(e)
 
 

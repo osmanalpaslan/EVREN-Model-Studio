@@ -47,7 +47,7 @@ from ..agent.runner import (
     estimate_tokens,
     to_api_messages,
 )
-from ..agent import architect, learnings, router
+from ..agent import architect, learnings, router, userrules
 from ..agent.quota import QuotaGate
 from ..agent.tools import FileChange, ToolBox, ToolError, Workspace
 from ..api.client import CancelToken
@@ -442,6 +442,7 @@ class SessionView(QWidget):
         self.composer.usage_btn.details_requested.connect(lambda: self.page_requested.emit("usage"))
         self._quota = None
         self.profile: str | None = None         # F4/E5: oturumun ajan profili (sessions.profile)
+        self._rules_asked: set = set()          # E4: bu açılışta sorulan kural dosyaları (tekrar sorma)
         # A6: kolay işte (hızlı motor) tur başarısız olduysa veya kullanıcı "olmadı" derse güçlü motora yüksel
         self._kolay_fail = False
         self._last_route_role = ""
@@ -781,6 +782,7 @@ class SessionView(QWidget):
                                       attachments=atts)
                 w.text = text
                 w.edit_requested.connect(self.edit_message)
+                w.rewind_requested.connect(self.rewind_to)
                 self.transcript.add(w)
                 last_assistant = None
             elif role == "assistant":
@@ -1331,6 +1333,7 @@ class SessionView(QWidget):
                               attachments=atts)
         w.text = text
         w.edit_requested.connect(self.edit_message)
+        w.rewind_requested.connect(self.rewind_to)
         self.transcript.add(w)
         self.transcript.scroll_to_bottom()
         self.sessions_changed.emit()
@@ -1349,6 +1352,109 @@ class SessionView(QWidget):
         self.transcript.add(NoteWidget(
             "Mesajı düzenliyorsunuz: gönderdiğinizde bu mesaj ve sonrası yeniden oluşturulur "
             "(dosya değişiklikleri otomatik geri alınmaz).", "pencil"))
+
+    # ---- F6 / E1: konuşmayı geri sarma ---------------------------------------------------------
+
+    UNDOABLE_TOOLS = {"run_command", "start_job", "start_service", "install_program", "web_fetch"}
+
+    def rewind_plan(self, message_id: int) -> dict:
+        """Geri sarmanın etkisi (onay kartı ve testler için): silinecek mesajlar, geri alınacak değişiklikler,
+        sonradan elle değişmiş dosyalar, geri alınamayacak araç etkileri."""
+        from ..agent.tools import decode_bytes
+
+        sid = self.session_id
+        msgs = [m for m in self.ctx.db.get_session_messages(sid) if m["id"] >= message_id]
+        rows = [r for r in self.ctx.db.list_file_changes(sid)
+                if r["turn_id"] is not None and r["turn_id"] >= message_id and not r["reverted"]]
+        last: dict[str, object] = {}
+        for r in rows:
+            last[r["path"]] = r
+        conflicts = []
+        for path, r in last.items():
+            p = Path(self.workspace or ".") / path
+            try:
+                now = decode_bytes(p.read_bytes()).text if p.exists() else None
+            except OSError:
+                now = None
+            if now != r["after_text"]:
+                conflicts.append(path)
+        effects = []
+        for m in msgs:
+            for c in m.get("tool_calls") or []:
+                name = c.get("name") or ""
+                if name in self.UNDOABLE_TOOLS or name.startswith("mcp__"):
+                    try:
+                        args = json.loads(c.get("arguments") or "{}") or {}
+                    except (ValueError, TypeError):
+                        args = {}
+                    effects.append(f"{name}: {str(args.get('command') or args.get('name') or args.get('url') or '')[:90]}")
+        project = any((m.get("meta") or {}).get("project_task") for m in msgs)
+        return {"messages": len(msgs), "rows": rows, "paths": list(last), "conflicts": conflicts,
+                "effects": effects, "project": project}
+
+    def rewind_to(self, message_id: int, text: str = "") -> None:
+        """Onay kartı → dosya değişikliklerini sondan başa geri al, bu mesaj ve sonrasını sil, metni kutuya koy."""
+        if self.running or not self.session_id or not message_id:
+            if self.running:
+                self._note("Ajan çalışırken geri sarılamaz; önce durdurun (Esc).", "alert")
+            return
+        plan = self.rewind_plan(message_id)
+        lines = [f"• {plan['messages']} mesaj silinecek (bu mesaj ve sonrası); mesaj metni yazı kutusuna geri konur."]
+        if plan["paths"]:
+            lines.append(f"• {len(plan['rows'])} dosya değişikliği geri alınacak: " + ", ".join(plan["paths"][:8])
+                         + (" …" if len(plan["paths"]) > 8 else ""))
+        else:
+            lines.append("• Geri alınacak dosya değişikliği yok.")
+        if plan["conflicts"]:
+            lines.append("⚠ Sonradan elle değişmiş dosyalar (o değişiklikler de kaybolur): " + ", ".join(plan["conflicts"]))
+        if plan["effects"]:
+            lines.append("⚠ GERİ ALINAMAYACAK etkiler (komut, kurulum, servis, web): " + "; ".join(plan["effects"][:6])
+                         + (" …" if len(plan["effects"]) > 6 else ""))
+        if plan["project"]:
+            lines.append("⚠ Proje ajanının yaptığı git commit'leri geri alınmaz (git geçmişinde kalır).")
+
+        def go() -> None:
+            self._do_rewind(message_id, text, plan)
+        card = ActionCard("Buraya geri sarılsın mı?", lines,
+                          [("Geri sar", go, "danger"), ("Vazgeç", lambda: None, "ghost")], icon_name="undo",
+                          warn=True)
+        self.transcript.add(card)
+        self.transcript.scroll_to_bottom()
+
+    def _do_rewind(self, message_id: int, text: str, plan: dict) -> None:
+        from ..agent.tools import ToolError, revert_file
+
+        sid, ws = self.session_id, self.workspace
+        if self.running or sid is None:
+            return
+        errors = []
+        for r in sorted(plan["rows"], key=lambda r: r["id"], reverse=True):
+            try:
+                revert_file(Path(ws), r["path"], r["before_text"], r["after_text"], force=True)
+                self.ctx.db.mark_change_reverted(r["id"])
+            except (ToolError, OSError) as exc:
+                errors.append(f"{r['path']}: {exc}")
+        if errors:
+            self.panel.changes.refresh()
+            self.transcript.add(ErrorCard("Geri sarma yarım kaldı — konuşma silinmedi", errors
+                                          + ["Geri alınabilenler alındı; kalanları Değişiklikler panelinden deneyin."]))
+            return
+        atts = []
+        for m in self.ctx.db.get_session_messages(sid):
+            if m["id"] == message_id:
+                atts = [Attachment.from_meta(d) for d in (m.get("meta") or {}).get("attachments") or []]
+                break
+        self.ctx.db.delete_session_messages_from(sid, message_id)
+        self.edit_from = None
+        self.render_history(self.ctx.db.get_session_messages(sid))
+        self.panel.changes.refresh()
+        self.panel.set_session(sid, ws, self.ctx.db.get_session_todos(sid))
+        self._update_context()
+        self.composer.set_text(text)
+        if atts:
+            self._restore_attachments(atts)
+        self._note(f"Geri sarıldı: {plan['messages']} mesaj silindi, {len(plan['rows'])} dosya değişikliği geri "
+                   "alındı." + (" Komut etkileri geri alınmadı." if plan["effects"] else ""), "undo")
 
     def _command(self, text: str) -> bool:
         cmd, _, arg = text.partition(" ")
@@ -1580,6 +1686,8 @@ class SessionView(QWidget):
             extra_hint="\n\n".join(h for h in (router.ROLE_HINTS.get(run_role, ""), self._profile_hint()) if h),
             project_map=s.project_map,
             skills=self._run_skills(ws.root if ws is not None else None),
+            untrusted=list(s.untrusted_dirs or []),
+            user_rules=self._user_rules(ws.root) if ws is not None else None,
         )
         runner = self.runner
         self.running = True
@@ -1742,6 +1850,41 @@ class SessionView(QWidget):
 
         Task(job, on_done=done, on_error=lambda e: self.transcript.add(
             ErrorCard("Skill denetçisi çalışamadı", [str(e)]))).start()
+
+    def _user_rules(self, root: Path):
+        """E4: projenin kural dosyası onaylıysa UserRules, değilse None (+ bir kez onay kartı)."""
+        try:
+            rules, digest = userrules.load(root)
+        except userrules.RulesError as exc:
+            key = ("hata", str(root), str(exc))
+            if key not in self._rules_asked:
+                self._rules_asked.add(key)
+                self.transcript.add(ErrorCard("Kullanıcı kuralları okunamadı", [str(exc)]))
+            return None
+        if not rules:
+            return None
+        key = str(Path(root).resolve()).lower()
+        approved = self.ctx.settings.approved_rules or {}
+        if approved.get(key) == digest:
+            return userrules.UserRules(Path(root), rules)
+        if (key, digest) in self._rules_asked:
+            return None
+        self._rules_asked.add((key, digest))
+
+        def allow() -> None:
+            self.ctx.settings.approved_rules = {**(self.ctx.settings.approved_rules or {}), key: digest}
+            self.ctx.save_settings()
+            self._note("Kullanıcı kuralları onaylandı; sonraki turdan itibaren çalışır. Dosya değişirse yeniden "
+                       "sorulur.", "check")
+        title = ("Kullanıcı kuralları DEĞİŞTİ — çalıştırılsın mı?" if key in approved
+                 else "Bu projede kullanıcı kuralları var — çalıştırılsın mı?")
+        card = ActionCard(title, [f"• {r.describe()}" for r in rules]
+                          + [f"Kaynak: {userrules.RULES_FILE}. Komutlar proje klasöründe çalışır; onaylamazsanız bu "
+                             "turlar kuralsız sürer."],
+                          [("İzin ver", allow, "primary"), ("Hayır", lambda: None, "ghost")], icon_name="shield",
+                          warn=True)
+        self.transcript.add(card)
+        return None
 
     def _fetch_quota(self):
         """Kota kapısı (A11) için; koşucu iş parçacığında çağrılır (R-04)."""

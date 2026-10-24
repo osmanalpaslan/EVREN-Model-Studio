@@ -113,6 +113,9 @@
 | 109 | Sade görünüm yalnız BAŞARILI ve BİTMİŞ araç kartlarını gizler; çalışan, onay bekleyen ve hatalı kartlar her zaman görünür | Onay kaçırılmasın, hata görünsün | 2026-10-24 |
 | 110 | Zaman özeti kartı yalnız ≥ 60 sn ve ≥ 3 adımlı turda; Proje/Derin tahmini "kaba tahmin" diye etiketlenir | Kısa turda gürültü (R-22); tahmin veriyle iyileşir ama kesin değildir (R-07) | 2026-10-24 |
 | 111 | Oturum yedeği: sqlite backup API ile tutarlı kopya + config.json + skill'ler → kullanıcının seçtiği .zip; API anahtarları girmez | Açık veritabanını dosya kopyalamak bozuk yedek üretebilir; anahtarlar Credential Manager'da kalır | 2026-10-24 |
+| 112 | Güvenilmeyen klasör: okuma serbest (içerik "DIŞ İÇERİK" uyarılı), içindeki çalıştırılabilir dosyayı anan veya aç/çalıştır fiiliyle anılan her komut engellenir — izin modundan bağımsız (Otomatik dahil); şüphede engelle (ör. Get-FileHash x.exe) | Kullanıcı internetten mod paylaşacak; yanlış engel zararsız, yanlış izin zararlı. İşletim sistemi yalıtımı yok (E7 iptal) | 2026-10-24 |
+| 113 | Kullanıcı kuralları `.evren/kurallar.json`: üç olay (düzenleme sonrası not, komut öncesi engel, tur sonu dürtme — yalnız dosya yazan turda, tur başına bir kez); ilk kullanımda ve içerik her değişince onay (özet ayarda) | Proje dosyası başkasından gelebilir (git); onaysız komut çalıştırmak tehlikeli; sıradan turda gereksiz çalıştırma olmasın | 2026-10-24 |
+| 114 | Geri sarma: onay kartında geri alınamayacak etkiler (komut, kurulum, servis, web, Proje commit'leri) açıkça; dosyalar sondan başa (elle değişmiş olsa da, kartta uyarılarak) geri alınır; bir dosya geri alınamazsa konuşma SİLİNMEZ | Claude Code'da da kontrol noktaları komutları kapsamaz; yarım geri sarma tutarsız durum bırakmasın | 2026-10-24 |
 
 ## Değerlendirilip reddedilenler
 

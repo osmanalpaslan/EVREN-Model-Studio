@@ -64,6 +64,9 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-24) F6 güvenlik ve kurallar (dal `feat/f6-guvenlik-kurallar`): güvenilmeyen klasör, kullanıcı
+    kuralları (.evren/kurallar.json, onaylı), konuşmayı geri sarma. Sıradaki faz F7 (oyun).
+
   - (2026-10-24) F5 arayüz (dal `feat/f5-arayuz`): komut paleti, yazı boyutu/sıkışık, sade görünüm, çıktı
     önizleme, zaman özeti, çalışma paneli, Proje/Derin tahmini, veri klasörü/yedek, geçmiş sayfa sayfa; F4 skill
     denetçisi hatası düzeltildi (R-31). Sıradaki faz F6.

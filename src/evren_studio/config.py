@@ -98,6 +98,10 @@ class Settings:
     project_map: bool = True
     # F3/E6: ders sinyali olan turdan sonra EVREN.md "Öğrenilenler" için öneri kartı (onaysız yazmaz)
     learnings_suggest: bool = True
+    # F6 #15: güvenilmeyen klasörler (mutlak yol). Ajan okur, içindeki program/betiği çalıştıramaz.
+    untrusted_dirs: list[str] = field(default_factory=list)
+    # F6/E4: onaylanan kullanıcı kuralı dosyaları (proje klasörü → dosya özeti); içerik değişirse yeniden sorulur
+    approved_rules: dict[str, str] = field(default_factory=dict)
     # Son görülen EVREN sohbet modelleri (A9): liste değişince (ör. deepseek-v4-flash kalktı) kullanıcı uyarılır
     known_model_ids: list[str] = field(default_factory=list)
     max_retries: int = 3
