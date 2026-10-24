@@ -125,6 +125,15 @@ TOOL_SPECS: list[ToolSpec] = [
         }, ["path"]),
     ),
     ToolSpec(
+        "read_skill", READ,
+        "Kullanıcının etkinleştirdiği bir skill'in dosyasını okur (varsayılan SKILL.md). path='?' dosya listesini "
+        "verir; references/... gibi ek dosyaları path ile aç. Skill listesi sistem isteminde.",
+        _obj({
+            "name": {"type": "string", "description": "Skill adı (sistem istemindeki listeden)"},
+            "path": {"type": "string", "description": "Skill klasörüne göre dosya (varsayılan SKILL.md, '?' = liste)"},
+        }, ["name"]),
+    ),
+    ToolSpec(
         "write_file", WRITE,
         "Yeni dosya oluşturur veya bir dosyanın TÜM içeriğini yeniden yazar. "
         "Küçük değişiklikler için edit_file kullan.",

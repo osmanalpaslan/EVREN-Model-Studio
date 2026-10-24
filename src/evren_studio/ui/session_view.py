@@ -438,6 +438,7 @@ class SessionView(QWidget):
         self.composer.usage_btn.refresh_requested.connect(self.refresh_usage)
         self.composer.usage_btn.details_requested.connect(lambda: self.page_requested.emit("usage"))
         self._quota = None
+        self.profile: str | None = None         # F4/E5: oturumun ajan profili (sessions.profile)
         # A6: kolay işte (hızlı motor) tur başarısız olduysa veya kullanıcı "olmadı" derse güçlü motora yüksel
         self._kolay_fail = False
         self._last_route_role = ""
@@ -501,6 +502,17 @@ class SessionView(QWidget):
         self.branch_chip.setIconSize(QSize(15, 15))
         self.branch_chip.setToolTip("Git dalı")
         h.addWidget(self.branch_chip)
+        # F4/E5: ajan profili (model, mod, skill'ler, ek talimat) — tıklayınca seçim menüsü
+        self.profile_chip = QToolButton()
+        self.profile_chip.setProperty("variant", "chip")
+        self.profile_chip.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.profile_chip.setIcon(icons.icon("bulb", size=15))
+        self.profile_chip.setIconSize(QSize(15, 15))
+        self.profile_chip.setPopupMode(QToolButton.InstantPopup)
+        self.profile_menu = QMenu(self.profile_chip)
+        self.profile_menu.aboutToShow.connect(self._fill_profile_menu)
+        self.profile_chip.setMenu(self.profile_menu)
+        h.addWidget(self.profile_chip)
         h.addStretch(1)
         self.more_btn = icon_button("more", "Oturum işlemleri", 17)
         self.more_btn.setPopupMode(QToolButton.InstantPopup)
@@ -524,6 +536,11 @@ class SessionView(QWidget):
             if row:
                 title = row["title"]
         self.title_btn.setText(title[:60])
+        has_profiles = bool(self.profile) or bool(self.ctx.db.list_profiles())
+        self.profile_chip.setText(f"Profil: {self.profile}" if self.profile else "Profil seç")
+        self.profile_chip.setToolTip("Ajan profili: tercih edilen motor, çalışma modu, etkin skill'ler ve ek talimat. "
+                                     "Skill'ler sayfasından düzenlenir.")
+        self.profile_chip.setVisible(has_profiles)
         ws = self.workspace if self.session_id else self.welcome.workspace
         if ws:
             self.ws_chip.setIcon(icons.icon("folder", size=15))
@@ -634,6 +651,7 @@ class SessionView(QWidget):
         self.workspace = None
         self.edit_from = None
         self._kolay_fail, self._last_route_role = False, ""
+        self.profile = None
         self.mode = normalize_mode(self.ctx.settings.agent_mode)
         self.model = self.ctx.settings.default_model
         self.refresh_models()
@@ -663,6 +681,7 @@ class SessionView(QWidget):
         self.session_id = session_id
         self.workspace = row["workspace"]
         self.mode = normalize_mode(row["mode"])
+        self.profile = row["profile"] if "profile" in row.keys() else None
         self.model = router.normalize_model_id(row["model"])
         if self.model != row["model"]:
             self.ctx.db.update_session(session_id, model=self.model)
@@ -826,6 +845,8 @@ class SessionView(QWidget):
         sid = self.ctx.db.create_session(self.model, ws, self.mode, title=title,
                                          provider=self.ctx.provider_of(self.model))
         self.session_id = sid
+        if self.profile:
+            self.ctx.db.update_session(sid, profile=self.profile)
         # İlk yanıttan sonra yapay zekâyla kısa başlık üretilecek (proje oturumları hariç)
         self._auto_title = None if title.startswith("Proje:") else (sid, title, first_text.strip()[:1500])
         self.workspace = ws
@@ -1363,6 +1384,18 @@ class SessionView(QWidget):
                 self._note(f"Model: {arg.strip()}")
             else:
                 self._note("Kullanım: /model <ad>. Mevcut: " + ", ".join(ids or ["(liste yüklenmedi)"]))
+        elif cmd == "/profil":
+            name = arg.strip()
+            names = [p["name"] for p in self.ctx.db.list_profiles()]
+            if not name:
+                self._note("Profiller: " + (", ".join(names) or "(henüz yok — Skill'ler sayfasından ekleyin)")
+                           + (f". Bu oturumda: {self.profile}" if self.profile else ""), "bulb")
+            elif name.lower() in ("yok", "kaldır", "kaldir"):
+                self.apply_profile(None)
+            else:
+                self.apply_profile(name)
+        elif cmd == "/betiklestir":
+            self.scriptify(arg.strip())
         elif cmd == "/init":
             ws = self.workspace if self.session_id else self.welcome.workspace
             if not ws:
@@ -1538,8 +1571,9 @@ class SessionView(QWidget):
             route_role=run_role,
             # A10: tutarlılık (yalnız seed'i dinleyen modelde) · A7: rol talimatı (ör. veri → betikle hesapla)
             base_body=router.consistent_body(run_role, api_model),
-            extra_hint=router.ROLE_HINTS.get(run_role, ""),
+            extra_hint="\n\n".join(h for h in (router.ROLE_HINTS.get(run_role, ""), self._profile_hint()) if h),
             project_map=s.project_map,
+            skills=self._run_skills(ws.root if ws is not None else None),
         )
         runner = self.runner
         self.running = True
@@ -1582,6 +1616,126 @@ class SessionView(QWidget):
         self._note(f"Yanıt kötü olarak işaretlendi ({model})."
                    + (f" Auto Pro bu motoru bugün sıralamada geri alıyor: {pen}." if pen else
                       " Aynı motor 24 saatte bir kez daha işaretlenirse Auto Pro onu sıralamada geri alır."))
+
+    # ---- F4: profil, skill denetçisi, betikleştir ----------------------------------------------
+
+    def _fill_profile_menu(self) -> None:
+        m = self.profile_menu
+        m.clear()
+        for p in self.ctx.db.list_profiles():
+            a = m.addAction(p["name"], lambda n=p["name"]: self.apply_profile(n))
+            a.setCheckable(True)
+            a.setChecked(p["name"] == self.profile)
+        m.addSeparator()
+        m.addAction("Profil yok", lambda: self.apply_profile(None))
+        m.addAction("Profilleri düzenle…", lambda: self.page_requested.emit("skills"))
+
+    def apply_profile(self, name: str | None) -> None:
+        """Profilin motorunu ve modunu uygular, oturuma bağlar; skill'ler ve talimat sonraki turlarda kullanılır."""
+        if name is None:
+            self.profile = None
+            if self.session_id:
+                self.ctx.db.update_session(self.session_id, profile=None)
+            self._update_header()
+            if self.session_id:                  # karşılama ekranında _note modal kutu açar; çip yeterli
+                self._note("Profil kaldırıldı.", "bulb")
+            return
+        prof = self.ctx.profile(name)
+        if prof is None:
+            self._note(f"Böyle bir profil yok: {name}. /profil ile listeyi görün.", "alert")
+            return
+        if prof.get("model") and prof["model"] in [m.id for m in self.ctx.chat_models()]:
+            self.set_model(prof["model"])
+            self.composer.set_model(self.model)
+        if prof.get("mode"):
+            self.set_mode(prof["mode"])
+            self.composer.set_mode(self.mode)
+        self.profile = prof["name"]
+        if self.session_id:
+            self.ctx.db.update_session(self.session_id, profile=self.profile)
+        self._update_header()
+        sk = prof.get("skills")
+        if not self.session_id:                  # karşılama ekranı (ör. şablon): başlıktaki çip gösterir
+            return
+        self._note(f"Profil: {self.profile} — motor {prof.get('model') or '(değişmedi)'}, mod "
+                   f"{MODES.get(normalize_mode(prof.get('mode') or self.mode), self.mode)}"
+                   + (f", skill'ler: {', '.join(sk) or 'hiçbiri'}" if sk is not None else ", skill'ler: projedeki tümü"),
+                   "bulb")
+
+    def _run_skills(self, ws_root) -> list:
+        return self.ctx.skills_for(str(ws_root), self.profile) if ws_root is not None else []
+
+    def _profile_hint(self) -> str:
+        prof = self.ctx.profile(self.profile)
+        if not prof or not (prof.get("instructions") or "").strip():
+            return ""
+        return f"# Profil talimatı ({prof['name']}; kullanıcı tanımladı)\n{prof['instructions'].strip()[:4000]}"
+
+    def scriptify(self, name: str = "") -> None:
+        """F4 #14: oturumdaki işi tekrar çalıştırılabilir betiğe çevirme turu."""
+        if not self.session_id or not self.workspace:
+            self._note("Betikleştirmek için proje klasörlü ve en az bir iş yapılmış oturum gerekir.", "alert")
+            return
+        path = name if name.endswith(".py") else f"scripts/{(name or 'is_betigi').strip().replace(' ', '_')}.py"
+        used = [s for s in self._run_skills(self.workspace) if s.checker]
+        checker = (f"\n- Skill denetçisi var ({used[0].name}: {used[0].checker}); betiğin çıktısını onunla da doğrula."
+                   if used else "")
+        self.send(prompts.BETIKLESTIR_PROMPT.format(path=path, checker=checker))
+
+    def _skill_check(self, used: list[str]) -> None:
+        """F4 #13: bu turda okunan skill'lerin denetçisi varsa çalıştır (Otomatik modda sormadan, diğerlerinde kartla)."""
+        if not used or not self.workspace or not self.session_id:
+            return
+        ws = self.workspace
+        checks = [s for s in self._run_skills(ws) if s.name in used and s.checker]
+        for s in checks:
+            if normalize_mode(self.mode) == "auto":
+                self._run_checker(s, ws)
+            else:
+                card = ActionCard(f"Skill denetçisi çalıştırılsın mı? ({s.name})",
+                                  [f"Skill kendi doğrulama betiğini taşıyor: {s.checker}. Proje klasöründe çalışır, "
+                                   "sonucu burada gösterir."],
+                                  [("Çalıştır", lambda sk=s: self._run_checker(sk, ws), "primary"),
+                                   ("Geç", lambda: None, "ghost")], icon_name="shield")
+                self.transcript.add(card)
+                self.transcript.scroll_to_bottom()
+
+    def _run_checker(self, skill, ws: str) -> None:
+        import subprocess as sp
+
+        from ..agent import environment
+        from ..agent.tools import project_env
+
+        script = Path(skill.folder) / skill.checker
+        py = environment.find_exe(environment.KNOWN_TOOLS["python"]) or "python"
+        self._note(f"Skill denetçisi çalışıyor: {skill.name} ({skill.checker})…", "shield")
+
+        def job():
+            try:
+                r = sp.run([py, str(script), ws], cwd=ws, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=300, env=project_env(Path(ws)),
+                           creationflags=getattr(sp, "CREATE_NO_WINDOW", 0))
+                return r.returncode, ((r.stdout or "") + (r.stderr or "")).strip()
+            except sp.TimeoutExpired:
+                return -9, "zaman aşımı (5 dk)"
+
+        def done(res):
+            code, out = res
+            tail = "\n".join(out.splitlines()[-12:])[-1500:] or "(çıktı yok)"
+            if code == 0:
+                card = ActionCard(f"Skill denetçisi geçti: {skill.name}", [tail],
+                                  [("Betikleştir", lambda: self.scriptify(""), "ghost")], icon_name="check")
+            else:
+                msg = (f"{skill.name} skill denetçisi ({skill.checker}) şu sorunları buldu (çıkış {code}). "
+                       f"Düzelt ve denetçiyi yeniden çalıştırıp geçtiğini göster:\n```\n{tail}\n```")
+                card = ActionCard(f"Skill denetçisi sorun buldu: {skill.name} (çıkış {code})", [tail],
+                                  [("Ajana düzelttir", lambda: self.send(msg), "primary"),
+                                   ("Geç", lambda: None, "ghost")], icon_name="alert", warn=True)
+            self.transcript.add(card)
+            self.transcript.scroll_to_bottom()
+
+        Task(job, on_done=done, on_error=lambda e: self.transcript.add(
+            ErrorCard("Skill denetçisi çalışamadı", [str(e)]))).start()
 
     def _fetch_quota(self):
         """Kota kapısı (A11) için; koşucu iş parçacığında çağrılır (R-04)."""
@@ -1935,6 +2089,7 @@ class SessionView(QWidget):
                 self._turn_review(self._turn_id)
                 if outcome.stopped == "done":
                     self._suggest_learnings(self._turn_id, list(getattr(self.runner, "quality_events", []) or []))
+                    self._skill_check(list(getattr(self.runner, "used_skills", []) or []))
         self._maybe_auto_title()
 
     def _on_fail(self, exc: Exception) -> None:

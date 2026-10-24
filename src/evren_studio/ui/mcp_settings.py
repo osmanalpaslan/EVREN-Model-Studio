@@ -62,6 +62,8 @@ class ServerDialog(QDialog):
                            "bilgisayarınızda çalışan dış bir programdır: yalnız güvendiğiniz, "
                            "sürümü sabit sunucuları ekleyin.", "faint"))
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        bb.button(QDialogButtonBox.Ok).setText("Tamam")          # Qt varsayılanı İngilizce
+        bb.button(QDialogButtonBox.Cancel).setText("Vazgeç")
         bb.accepted.connect(self.accept)
         bb.rejected.connect(self.reject)
         form.addRow(bb)

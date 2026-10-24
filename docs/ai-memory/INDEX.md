@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 87 · Açık/izlenen: 6 · Oturum: 29 · Kural: 30
+Kayıt: 88 · Açık/izlenen: 6 · Oturum: 30 · Kural: 30
 
 ## Açık ve izlenen kayıtlar
 
@@ -21,6 +21,7 @@ Kayıt: 87 · Açık/izlenen: 6 · Oturum: 29 · Kural: 30
 |---|---|---|---|---|---|---|
 | 2026-10-24 | [2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot](incidents/2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Zorluk kuralı program çalıştırma işini kolay sayıp hızlı motora gönderdi |
 | 2026-10-24 | [2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast](incidents/2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | SQLite datetime ile ISO zaman damgası metin olarak karşılaştırılınca aynı gün hep "yeni" sayılır |
+| 2026-10-24 | [2026-10-24-karsilama-ekraninda-profil-uygulamak-modal-bilgi-kutusu-aciy](incidents/2026-10-24-karsilama-ekraninda-profil-uygulamak-modal-bilgi-kutusu-aciy.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Karşılama ekranında profil uygulamak modal bilgi kutusu açıyordu |
 | 2026-10-24 | [2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok](incidents/2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Hesap kapama ölçümü alt klasöre kaydedilen raporu çıktı yok sandı |
 | 2026-10-24 | [2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s](incidents/2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Gerçek API testleri her maddeden sonra koşulunca faz 1,5-2 saat test bekliyordu |
 | 2026-10-24 | [2026-10-24-evren-seed-ve-temperature-0-yalniz-gemma-4-31b-de-yaniti-sab](incidents/2026-10-24-evren-seed-ve-temperature-0-yalniz-gemma-4-31b-de-yaniti-sab.md) | yanlis-iddia | orta | cozuldu | Claude Code (masaüstü) | EVREN seed ve temperature=0 yalnız gemma-4-31b'de yanıtı sabitliyor |
@@ -111,6 +112,7 @@ Kayıt: 87 · Açık/izlenen: 6 · Oturum: 29 · Kural: 30
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-24 | [2026-10-24-claude-code-masaustu-f4-skill-menusu-ve-profiller](sessions/2026-10-24-claude-code-masaustu-f4-skill-menusu-ve-profiller.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F4 skill menüsü ve profiller |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f3-ajan-verimliligi](sessions/2026-10-24-claude-code-masaustu-f3-ajan-verimliligi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F3 ajan verimliliği |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-auto-pro-cekirdegi-f1-ve-rakip-analizi](sessions/2026-10-24-claude-code-masaustu-auto-pro-cekirdegi-f1-ve-rakip-analizi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro çekirdeği F1 ve rakip analizi |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-auto-pro-akilli-secim-f2](sessions/2026-10-24-claude-code-masaustu-auto-pro-akilli-secim-f2.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro akıllı seçim F2 |

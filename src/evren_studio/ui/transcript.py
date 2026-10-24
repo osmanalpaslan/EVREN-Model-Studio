@@ -30,7 +30,7 @@ TOOL_ICONS = {
     "list_files": "folder", "read_file": "file", "search_files": "search",
     "find_files": "search", "write_file": "pencil", "edit_file": "pencil",
     "run_command": "terminal", "update_todos": "list", "arac_cagrisi": "alert",
-    "read_table": "list", "web_fetch": "external",
+    "read_table": "list", "web_fetch": "external", "read_skill": "bulb",
 }
 
 
@@ -633,6 +633,7 @@ class ToolCallWidget(QFrame):
             "read_file": f"Oku: {a.get('path', '')}",
             "read_table": f"Tablo: {a.get('path', '')}" + (f" · {a['sheet']}" if a.get("sheet") else ""),
             "web_fetch": f"Web: {a.get('url', '')}",
+            "read_skill": f"Skill: {a.get('name', '')}" + (f" · {a['path']}" if a.get("path") else ""),
             "search_files": f"Ara: “{a.get('pattern', '')}”",
             "find_files": f"Bul: {a.get('pattern', '')}",
             "write_file": f"Yaz: {a.get('path', '')}",
