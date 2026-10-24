@@ -104,6 +104,9 @@ class Settings:
     stream_responses: bool = True
     theme: str = "koyu"
     font_size: int = 10
+    # F5 #12 sıkışık görünüm (daha az boşluk) · #11 sade görünüm (biten araç kartları ve düşünme gizli)
+    compact_view: bool = False
+    simple_view: bool = False
     error_log_retention_days: int = 90
     automation_level: str = "onayli"
     monitor_interval_minutes: int = 5

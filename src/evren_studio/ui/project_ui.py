@@ -46,7 +46,8 @@ class PlanCard(QFrame):
     edit_requested = Signal()
     cancelled = Signal()
 
-    def __init__(self, state: pj.ProjectState, warnings: list[str], parent=None, title: str = "Proje planı"):
+    def __init__(self, state: pj.ProjectState, warnings: list[str], parent=None, title: str = "Proje planı",
+                 estimate: str = ""):
         super().__init__(parent)
         self.setObjectName("PlanCard")
         p = theme.current()
@@ -76,6 +77,11 @@ class PlanCard(QFrame):
             lab.setWordWrap(True)
             lab.setStyleSheet(f"color: {p.warning};")
             lay.addWidget(lab)
+        if estimate:                            # F5 #5 kaba süre/token tahmini
+            est = QLabel("<b>Tahmin:</b> " + estimate)
+            est.setTextFormat(Qt.RichText)
+            est.setWordWrap(True)
+            lay.addWidget(est)
         info = QLabel("Onaylarsanız görevler Otomatik modda, siz başında olmadan sırayla yürütülür. "
                       "Her görev doğrulanır; takılan görev atlanır. Esc veya /proje-durdur ile durdurursunuz.")
         info.setWordWrap(True)
@@ -268,7 +274,7 @@ class ProjectController(QObject):
         elif git.dirty():
             warnings.append("Kaydedilmemiş değişiklikleriniz var: proje dalının ilk commit'ine alınacak "
                             "(kaybolmaz, ana dalınız değişmez).")
-        card = PlanCard(self.state, warnings, title=title)
+        card = PlanCard(self.state, warnings, title=title, estimate=self.ctx.plan_estimate(len(self.state.tasks)))
         card.approved.connect(self.start)
         card.edit_requested.connect(lambda: (sv.composer.set_text("/proje-duzelt "), sv.composer.focus()))
         card.cancelled.connect(self._cancel_plan)

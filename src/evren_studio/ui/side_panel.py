@@ -279,7 +279,24 @@ class FilesTab(QWidget):
         self.preview.setReadOnly(True)
         self.preview.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.preview.setFont(theme.code_font(9))
-        pl.addWidget(self.preview, 1)
+        # F5 #9 çıktı önizleme: Excel/CSV tablo (sayfa seçimli), resim; diğerleri metin
+        from PySide6.QtWidgets import QComboBox, QLabel, QScrollArea, QStackedWidget, QTableWidget
+
+        self.sheet_combo = QComboBox()
+        self.sheet_combo.setVisible(False)
+        self.sheet_combo.activated.connect(lambda _i: self._show_table(self.current, self.sheet_combo.currentText()))
+        pl.addWidget(self.sheet_combo)
+        self.table = QTableWidget()
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.image = QLabel()
+        self.image.setAlignment(Qt.AlignCenter)
+        img_scroll = QScrollArea()
+        img_scroll.setWidgetResizable(True)
+        img_scroll.setWidget(self.image)
+        self.view_stack = QStackedWidget()
+        for w in (self.preview, self.table, img_scroll):
+            self.view_stack.addWidget(w)
+        pl.addWidget(self.view_stack, 1)
         self.split.addWidget(prev)
         self.split.setSizes([260, 260])
         lay.addWidget(self.split, 1)
@@ -303,11 +320,67 @@ class FilesTab(QWidget):
         self.preview.clear()
         self.file_label.setText("Bir dosya seçin")
 
+    TABLE_SUFFIXES = {".xlsx", ".xlsm", ".csv", ".tsv"}
+    IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
+
+    def _show_table(self, p: Path | None, sheet: str | None = None) -> bool:
+        from PySide6.QtWidgets import QTableWidgetItem
+
+        from ..agent import tables
+
+        if p is None:
+            return False
+        try:
+            data = tables.preview(p, sheet or None)
+        except (tables.TableError, OSError) as exc:
+            self.file_label.setText(f"{p.name}: {exc}")
+            return False
+        rows, cols = data["rows"], min(data["cols"], 60)
+        self.table.clear()
+        self.table.setRowCount(len(rows))
+        self.table.setColumnCount(cols)
+        for r, row in enumerate(rows):
+            for c in range(min(cols, len(row))):
+                self.table.setItem(r, c, QTableWidgetItem(str(row[c])))
+        self.sheet_combo.blockSignals(True)
+        self.sheet_combo.clear()
+        self.sheet_combo.addItems(data["sheets"])
+        self.sheet_combo.setCurrentText(data["sheet"])
+        self.sheet_combo.blockSignals(False)
+        self.sheet_combo.setVisible(len(data["sheets"]) > 1)
+        more = f" · ilk {len(rows)} / {data['total']} satır" if data["total"] > len(rows) else f" · {data['total']} satır"
+        self.file_label.setText(f"{self.root and p.relative_to(self.root.resolve()).as_posix() or p.name}{more}")
+        self.view_stack.setCurrentIndex(1)
+        return True
+
+    def _show_image(self, p: Path) -> bool:
+        from PySide6.QtGui import QPixmap
+
+        pm = QPixmap(str(p))
+        if pm.isNull():
+            return False
+        w = max(200, self.view_stack.width() - 20)
+        self.image.setPixmap(pm if pm.width() <= w else pm.scaledToWidth(w, Qt.SmoothTransformation))
+        self.file_label.setText(f"{p.name} · {pm.width()}×{pm.height()}")
+        self.view_stack.setCurrentIndex(2)
+        return True
+
     def _open(self, index) -> None:
         path = Path(self.model.filePath(index))
         if not path.is_file() or self.root is None:
             return
         self.edit_btn.setChecked(False)
+        self.sheet_combo.setVisible(False)
+        suffix = path.suffix.lower()
+        if suffix in self.TABLE_SUFFIXES or suffix in self.IMAGE_SUFFIXES:
+            self.current = path.resolve()
+            self.edit_btn.setEnabled(False)          # tablo/resim önizlemesi düzenlenmez
+            self._meta = None
+            ok = self._show_table(self.current) if suffix in self.TABLE_SUFFIXES else self._show_image(self.current)
+            if ok:
+                return
+        self.edit_btn.setEnabled(True)
+        self.view_stack.setCurrentIndex(0)
         try:
             ws = Workspace(self.root)
             p = ws.resolve(str(path))
@@ -417,6 +490,55 @@ class TerminalTab(QWidget):
         task.start()
 
 
+class WorkTab(QWidget):
+    """F5 #7 canlı iş paneli: çalışan turun/akışın durumu (session_view her saniye `update_state` çağırır)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(14, 12, 14, 12)
+        lay.setSpacing(8)
+        self.head = QLabel("")
+        self.head.setProperty("role", "h2")
+        self.head.setWordWrap(True)
+        lay.addWidget(self.head)
+        self.info = QLabel("")
+        self.info.setWordWrap(True)
+        self.info.setTextFormat(Qt.RichText)
+        lay.addWidget(self.info)
+        self.steps_title = faint_label("Son adımlar")
+        lay.addWidget(self.steps_title)
+        self.steps = QLabel("")
+        self.steps.setWordWrap(True)
+        self.steps.setTextFormat(Qt.RichText)
+        lay.addWidget(self.steps)
+        lay.addStretch(1)
+        self.empty = _empty("Ajan çalışırken motor, süre, aşama ve son adımlar burada canlı görünür.")
+        lay.addWidget(self.empty)
+        self.update_state(None)
+
+    def update_state(self, st: dict | None) -> None:
+        on = bool(st)
+        for w in (self.head, self.info, self.steps_title, self.steps):
+            w.setVisible(on)
+        self.empty.setVisible(not on)
+        if not st:
+            return
+        self.head.setText(st.get("title") or "Çalışıyor")
+        rows = [f"<b>Motor:</b> {st.get('model', '-')}" + (f" ({st['role']})" if st.get("role") else ""),
+                f"<b>Süre:</b> {st.get('elapsed', '-')} · <b>adım</b> {st.get('step', 0)}",
+                f"<b>Etkinlik:</b> {st.get('activity', '')}"]
+        if st.get("flow"):
+            rows.append(f"<b>Akış:</b> {st['flow']}")
+        if st.get("progress"):
+            rows.append(f"<b>İlerleme:</b> {st['progress']}")
+        if st.get("tokens"):
+            rows.append(f"<b>Bu turda çıktı:</b> ~{st['tokens']:,} token".replace(",", "."))
+        self.info.setText("<br>".join(rows))
+        steps = st.get("steps") or []
+        self.steps.setText("<br>".join(steps[-8:]) or "—")
+
+
 class SidePanel(QWidget):
     def __init__(self, ctx, parent=None):
         super().__init__(parent)
@@ -441,6 +563,7 @@ class SidePanel(QWidget):
         self.changes = ChangesTab(ctx)
         self.files = FilesTab()
         self.terminal = TerminalTab()
+        self.work = WorkTab()
         self._titles: list[str] = []
         self._buttons: list = []
         group = QButtonGroup(self)
@@ -450,6 +573,7 @@ class SidePanel(QWidget):
             (self.changes, "undo", "Değişiklikler"),
             (self.files, "folder", "Dosyalar"),
             (self.terminal, "terminal", "Terminal"),
+            (self.work, "activity", "Çalışma"),
         )):
             self.stack.addWidget(widget)
             b = icon_button(icon_name, label, 17, checkable=True)
@@ -476,4 +600,4 @@ class SidePanel(QWidget):
         self.terminal.set_root(workspace)
 
     def show_tab(self, name: str) -> None:
-        self.set_index({"todos": 0, "changes": 1, "files": 2, "terminal": 3}.get(name, 0))
+        self.set_index({"todos": 0, "changes": 1, "files": 2, "terminal": 3, "work": 4}.get(name, 0))

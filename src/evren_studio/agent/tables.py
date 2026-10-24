@@ -231,6 +231,40 @@ def describe_csv(p: Path, max_rows: int = MAX_ROWS) -> str:
     return "\n".join(lines)
 
 
+def preview(p: Path, sheet: str | None = None, max_rows: int = 200) -> dict:
+    """F5 #9 arayüz önizlemesi: {"sheets": [...], "sheet": ad, "rows": [[...]], "total": n, "cols": n}.
+    Hata → TableError (desteklenmeyen tür, bozuk dosya)."""
+    suffix = p.suffix.lower()
+    if suffix in (".xlsx", ".xlsm"):
+        try:
+            z = zipfile.ZipFile(p)
+        except zipfile.BadZipFile as exc:
+            raise TableError(f"Excel dosyası açılamadı: {exc}") from exc
+        with z:
+            sheets = _sheets(z)
+            if not sheets:
+                raise TableError("Dosyada sayfa bulunamadı.")
+            name, path = next(((n, q) for n, q in sheets if n == sheet), sheets[0])
+            rows, total, cols = _read_sheet(z, path, _shared_strings(z), _date_styles(z), max_rows)
+        return {"sheets": [n for n, _ in sheets], "sheet": name, "rows": rows, "total": total, "cols": cols}
+    if suffix in (".csv", ".tsv", ".txt"):
+        text, _enc = _decode(p.read_bytes())
+        try:
+            delim = csv.Sniffer().sniff(text[:20_000], delimiters=";,\t|").delimiter
+        except csv.Error:
+            delim = "\t" if suffix == ".tsv" else ","
+        rows, total, cols = [], 0, 0
+        for r in csv.reader(io.StringIO(text), delimiter=delim):
+            if not any(c.strip() for c in r):
+                continue
+            total += 1
+            cols = max(cols, len(r))
+            if len(rows) < max_rows:
+                rows.append(r)
+        return {"sheets": [], "sheet": "", "rows": rows, "total": total, "cols": cols}
+    raise TableError(f"Desteklenmeyen tablo türü: {suffix}")
+
+
 def describe(p: Path, sheet: str | None = None, max_rows: int | None = None) -> str:
     """Dosya türüne göre tablo özeti. Hata → TableError."""
     n = max(2, min(int(max_rows or MAX_ROWS), MAX_ROWS_LIMIT))

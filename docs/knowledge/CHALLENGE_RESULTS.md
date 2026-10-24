@@ -314,6 +314,13 @@ Kurallar yalnız skill'de ("fatura-kurallari": numara biçimi SKILL.md'de, KDV o
 
 Aynı gün zorluk paketi auto-pro 12/12 · 518 sn; R-13 E2E_OK · ajan 6/6 · arayüz 15/15.
 
+## F5 arayüz (2026-10-24)
+
+- **#6 uzun oturum ölçümü** (gerçek pencere, QT_QPA_PLATFORM=windows): açılış (son 40 mesaj) 400 / 1600 / 4000
+  mesajda 0,37 / 0,38 / 0,58 sn; "tümünü göster" 2,5 / 17,2 / 66,9 sn → sayfa sayfa yüklemeye geçildi.
+- Faz sonu: zorluk auto-pro 12/12 · 913 sn (ekran görüntüsü süreçleriyle aynı anda; süre karşılaştırmaya uygun
+  değil) · R-13 E2E_OK · ajan 6/6 · arayüz 15/15.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

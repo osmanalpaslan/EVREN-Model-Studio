@@ -1,5 +1,23 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Arayüz (F5)
+
+### Eklendi
+- **Komut paleti (Ctrl+Shift+P):** Sayfalar, modlar, komutlar, görünüm ayarları, profiller ve şablonlar tek yerde
+  aranır (Türkçe harf duyarsız).
+- **Yazı boyutu kısayolları:** Ctrl+= büyüt, Ctrl+- küçült, Ctrl+0 varsayılan. **Sıkışık görünüm** ayarı.
+- **Sade görünüm (Ctrl+Shift+H):** Biten araç adımları ve düşünce blokları gizlenir; onay bekleyen ve hatalı adımlar
+  her zaman görünür.
+- **Çıktı önizleme:** Dosyalar sekmesinde Excel/CSV tablo olarak (sayfa seçerek), resimler görüntü olarak açılır.
+- **Zaman nereye gitti:** Uzun turların sonunda model, araç ve bekleme sürelerini gösteren küçük grafik.
+- **Çalışma paneli:** Sağ panelde ajan çalışırken motor, süre, aşama, ilerleme ve son adımlar canlı görünür.
+- **Süre ve token tahmini:** Proje/Derin planı onaylanmadan önce kaba tahmin ve günlük kotaya oranı.
+- **Veri klasörünü aç / Oturumları yedekle:** Ayarlar'da; yedek tek .zip dosyası, API anahtarları içinde yok.
+
+### Düzeltildi
+- Skill denetçisi gerçek kullanımda tur sonunda çalışmıyordu (F4 hatası); artık çalışıyor.
+- Çok uzun bir oturumda "önceki mesajları göster" uygulamayı onlarca saniye donduruyordu; artık sayfa sayfa açılır.
+
 ## Yayınlanmamış — Skill'ler ve profiller (F4)
 
 ### Eklendi

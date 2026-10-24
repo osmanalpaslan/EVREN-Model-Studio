@@ -567,6 +567,20 @@ class AppContext:
             active = [s for s in active if s.slug.lower() in allowed or s.name.lower() in allowed]
         return active
 
+    def plan_estimate(self, n_tasks: int) -> str:
+        """F5 #5: Proje/Derin planı için kaba süre + token tahmini metni (hata → "")."""
+        from ..agent import estimate as est
+        from ..agent import modelstats
+
+        try:
+            calls = [r["duration_s"] for r in self.db.recent_model_calls(modelstats.WINDOW_HOURS_FALLBACK)
+                     if r.get("ok") and not r.get("event") and r.get("duration_s") and r.get("role") != "yoklama"]
+            e = est.estimate(n_tasks, est.task_seconds(self.db.project_run_states()), calls,
+                             est.call_tokens(self.db.recent_assistant_metas()))
+        except Exception:
+            return ""
+        return e.text(getattr(self, "last_daily_remaining", None))
+
     def known_workspaces(self) -> list[str]:
         """Skill kapsamı için proje klasörleri: son kullanılanlar + oturumlardakiler."""
         seen: list[str] = []
