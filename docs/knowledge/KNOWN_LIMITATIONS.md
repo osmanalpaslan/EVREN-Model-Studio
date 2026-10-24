@@ -156,6 +156,16 @@
 - Derin Mod beklerken (proje kısmen bitti) normal mesaj gönderilebilir; Derin düğmesi açıksa yeni mesaj YENİ bir
   Derin akışı başlatır ve önceki bekleme bırakılır (bunu bir notla söyler). Bekleme uygulama kapanınca saklanmaz.
 
+## Auto Pro çekirdeği (2026-10-24)
+
+- Yavaşlık kuralı o gün için en az 6 başarılı çağrı birikmeden çalışmaz (uygulama yeni kurulduysa ilk iş
+  dakikalarında devre dışı).
+- Bekleme süresi `model_health` üzerinden: EVREN Durum İzleme ekranı motoru sağlıklı ölçerse bekleme erken
+  kalkabilir.
+- Yanıt vermeme eşiği (60 sn) küçük istek ve zorluk paketi ölçümüne dayanır; çok büyük bağlamlı (yüz binlerce
+  token) isteklerde ilk yanıt süresi ölçülmedi — sorun olursa Ayarlar'dan artırın.
+- Hız, akışsız isteklerde (Derin alt ajanları) ilk parça olmadan hesaplanır.
+
 ## Sağlayıcıya bağlı sınırlar
 
 - `free_until: 2026-11-01` — sonrası için fiyatlandırma bilinmiyor.

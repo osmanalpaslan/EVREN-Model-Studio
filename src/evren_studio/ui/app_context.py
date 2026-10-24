@@ -99,6 +99,8 @@ class AppContext:
             for c in CATALOG
         ]
         self._provider_keys: dict[str, str | None] = {}
+        self._list_change_listeners: list = []
+        self.model_list_change: tuple[list[str], list[str]] | None = None
 
     # ---- modeller -------------------------------------------------------
 
@@ -107,11 +109,39 @@ class AppContext:
             return
         self.models = [apply_measured(m) for m in models]
         self.models_live = True
+        self._check_model_list_change()
         for cb in list(self._model_listeners):
             cb()
 
     def on_models_changed(self, callback) -> None:
         self._model_listeners.append(callback)
+
+    def on_model_list_change(self, callback) -> None:
+        """callback(removed: list[str], added: list[str]) — EVREN sohbet modeli listesi değişince (A9)."""
+        self._list_change_listeners.append(callback)
+
+    def _check_model_list_change(self) -> None:
+        """Bilinen listeyle karşılaştır; ilk yüklemede yalnız kaydet. Eskiden deepseek-v4-flash sessizce
+        kalkmış, Auto Pro fark ettirmeden yedeğe düşmüştü (2026-10-21)."""
+        ids = sorted(m.id for m in self.models if m.supports_chat)
+        prev = list(self.settings.known_model_ids or [])
+        if ids == sorted(prev):
+            return
+        self.settings.known_model_ids = ids
+        try:
+            self.save_settings()
+        except Exception:
+            pass
+        if not prev:
+            return
+        removed = sorted(set(prev) - set(ids))
+        added = sorted(set(ids) - set(prev))
+        self.model_list_change = (removed, added)
+        for cb in list(self._list_change_listeners):
+            try:
+                cb(removed, added)
+            except Exception:
+                pass
 
     # ---- sağlayıcıya duyarlı model listesi (kullanıcı kararı 2026-10-19) ----
     # Yalnız anahtarı girilmiş sağlayıcıların modelleri görünür: yalnız OpenAI/Anthropic
@@ -277,7 +307,33 @@ class AppContext:
             timeout=self.settings.timeout_seconds,
             max_retries=self.settings.max_retries,
             log_sink=log_sink,
+            stream_idle_timeout=float(self.settings.stream_idle_timeout_seconds or 0) or None,
         )
+
+    def record_model_call(self, rec: dict) -> None:
+        """Auto Pro gerçek kullanım kaydı (A1). İş parçacığından çağrılabilir (veritabanı kilitli).
+        Yedeğe geçişte eski model 30 dk sıranın sonuna alınır (A4: router.choose sağlıksızı sona koyar)."""
+        try:
+            self.db.add_model_call(
+                rec.get("model") or "?", role=rec.get("role"), ok=bool(rec.get("ok", True)),
+                error_kind=rec.get("error_kind"), duration_s=rec.get("duration_s"),
+                first_chunk_s=rec.get("first_chunk_s"), out_tokens=rec.get("out_tokens"),
+                empty=bool(rec.get("empty")), event=rec.get("event"), detail=rec.get("detail"))
+            if rec.get("event") == "switch":
+                self.db.upsert_model_health(rec.get("model") or "?", False, error=(rec.get("detail") or "")[:200])
+        except Exception:
+            pass
+
+    def model_baselines(self) -> dict:
+        """Model başına o günkü normal hız (A3): son 6 saat; yetersizse son 24 saat."""
+        from ..agent import modelstats
+
+        try:
+            day = modelstats.baselines(self.db.recent_model_calls(modelstats.WINDOW_HOURS_FALLBACK))
+            recent = modelstats.baselines(self.db.recent_model_calls(modelstats.WINDOW_HOURS))
+        except Exception:
+            return {}
+        return {**day, **recent}
 
     def has_api_key(self) -> bool:
         return bool(self.api_key())

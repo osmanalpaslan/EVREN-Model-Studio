@@ -1,5 +1,24 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Auto Pro çekirdeği (F1)
+
+### Eklendi
+- **Gerçek kullanım kaydı:** Her model çağrısının süresi, ilk yanıt süresi, hızı ve hatası kaydedilir; motorun
+  "o günkü normal hızı" buradan hesaplanır.
+- **Yavaşlama kuralı (onaylı karar #88):** Motor bugünkü normal hızının yarısının altında art arda 2 adım kalırsa
+  Auto Pro iki adım arasında yedek motora geçer; görev başına en çok bir kez ve gerekçesiyle bildirir.
+  Proje/Derin görevlerinde görev içi eşik ~3 kat yavaşlık. Bugün için yeterli ölçüm yoksa kural devreye girmez.
+- **Bekleme süresi:** Hata veren veya yavaşlayan motor 30 dakika sıranın sonuna alınır (eskiden bir sonraki
+  turda yine ilk seçiliyordu).
+- **Yanıt vermeme süresi (Ayarlar, varsayılan 60 sn):** Model bu sürede yanıt vermeye başlamazsa veya akış
+  susarsa yedek motora geçilir.
+- **Model listesi uyarısı:** EVREN'in model listesi değişince (ör. bir motor kalkınca) not düşülür.
+- **Şeffaflık:** Çalışma çubuğunun ipucunda "neden bu motor" ve bugünkü ölçümü; Modeller sayfasında
+  "Auto Pro — son 24 saat" tablosu (çağrı, hata, hız, ilk yanıt, yedeğe geçiş, bekleme durumu).
+
+### Düzeltildi
+- Akış koptuğunda veya model sustuğunda tur yedek motor denenmeden hatayla bitiyordu; artık yedeğe geçilir.
+
 ## Yayınlanmamış — Auto Pro kod motoru sırası
 
 ### Değişti

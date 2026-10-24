@@ -48,7 +48,7 @@
 | 44 | Model davranış hatalarında önce araç çıktısı/kod denetimi, sonra istem | Ölçüm: istem kuralı tek başına auto'da 2/3; kod denetimi 3/3 | 2026-10-19 |
 | 45 | Kurulum: kurulum.bat (venv + kısayol), EXE sonraya | Hemen herkes kurabilsin; PyInstaller paketleme (Aşama 4) ayrı iş | 2026-10-19 |
 | 46 | Uygulama içi yönlendirici (EVREN Akıllı, 51'de Auto Pro oldu); sunucu auto listede kalır | Kullanıcı kararı; auto öngörülemez/görünmez; rol tablosu 8 motor ölçümünden | 2026-10-19 |
-| 47 | Tur ortasında model değişmez; yalnız sunucu hatası/döngü/görsel reddinde yedeğe | Tutarlılık; kota/hız sınırı hesap başına olduğu için o hatalarda geçilmez | 2026-10-19 |
+| 47 | Tur ortasında model değişmez; yalnız sunucu hatası/döngü/görsel reddinde yedeğe (2026-10-23: #88 ile güncellendi — aşırı yavaşlık da neden) | Tutarlılık; kota/hız sınırı hesap başına olduğu için o hatalarda geçilmez | 2026-10-19 |
 | 48 | Proje ajanı: plan onayı zorunlu, görev başına temiz bağlam, doğrulama + ikinci model incelemesi, ayrı git dalı | Kullanıcı kararları; uzun tek tur kalitesi düşüyordu; her adım geri alınabilir | 2026-10-19 |
 | 49 | Takılan görev silinmez: git stash; bağımlıları atlanır, bağımsızlarla devam | Gözetimsiz çalışmada sonsuz deneme/veri kaybı olmasın | 2026-10-19 |
 | 50 | Bildirim: Windows sistem tepsisi bildirimi + rapor dosyası (telefon yok) | Kullanıcı kararı; ek hizmet gerektirmez | 2026-10-19 |
@@ -89,6 +89,8 @@
 | 85 | Kullanıcı kararı gerektiren konular Derin'de planlamadan önce sorulur; görevde `SORU:` ile duraklatılır; yanıtsız sürdürme = açıkça yazılan varsayım | Gözetimsiz ajan onayı kendisi yazdı (R-28) | 2026-10-21 |
 | 86 | ASCII dışı içerikli .ps1/.psm1/.psd1 UTF-8 BOM ile yazılır | PowerShell 5.1 BOM'suz betiği ANSI okur (ölçüm: 19 → 24 karakter) | 2026-10-21 |
 | 87 | Auto Pro kod rolü: deepseek-v4.1-flash → qwen3.8-flash-next → gemma-4-31b | Yeniden ölçüm: üçü 12/12; v4.1 7,0 dk ve en az adım, qwen 8,9 dk en çok adım; gemma 3,1 dk ama uzun işte döngü geçmişi (kullanıcı kararı) | 2026-10-21 |
+| 88 | (#47'yi günceller; F1'de UYGULANDI 2026-10-24) Aşırı yavaşlık da yedeğe geçme nedenidir: (1) yalnız güvenli noktada — iki adım arası, yarım düzenleme yokken, konuşma aynen aktarılır; (2) motorun o günkü gerçek ölçümle hesaplanan normal hızının yarısının altında art arda 2 adım; (3) görev başına yavaşlıktan en çok 1 değişim; (4) her değişim gerekçesiyle bildirilir; (5) Proje/Derin'de önce görev aralarında değişir, görev içinde yalnız ~3 kat yavaşlıkta | Kullanıcı: motor ortalama hızının %50'sinin altına düşerse değişsin; #47'nin amacı (tutarlılık + görünürlük) korunur (kullanıcı onayı, öneri A3) | 2026-10-23 |
+| 89 | Auto Pro F1 parametreleri: yanıt vermeme 60 sn (ayar); normal hız = son 6 sa (yetmezse 24 sa) en az 6 başarılı çağrının ortancası; hız yalnız ≥150 token'lı yanıtta, ilk yanıt eşiği normalin 2 katı ve en az +10 sn; yedeğe geçen model 30 dk sona (model_health); akış kopması (UNKNOWN_RESULT) yedeğe geçirir | Ölçüm: sağlıklı motorda ilk parça ≤ 2,7 sn (küçük istek), zorluk paketinde ≤ 10,1 sn (büyük bağlam); az örnekle karar vermek yanlış geçiş üretir (R-22) | 2026-10-24 |
 
 ## Değerlendirilip reddedilenler
 

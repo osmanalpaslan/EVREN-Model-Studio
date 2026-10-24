@@ -89,6 +89,21 @@ CREATE TABLE IF NOT EXISTS model_health (
     last_error TEXT,
     latency_ms INTEGER
 );
+CREATE TABLE IF NOT EXISTS model_calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT NOT NULL,
+    model TEXT NOT NULL,
+    role TEXT,
+    ok INTEGER NOT NULL DEFAULT 1,
+    error_kind TEXT,
+    duration_s REAL,
+    first_chunk_s REAL,
+    out_tokens INTEGER,
+    empty INTEGER NOT NULL DEFAULT 0,
+    event TEXT,
+    detail TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_model_calls_at ON model_calls(at);
 CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL DEFAULT 'Yeni oturum',
@@ -441,6 +456,35 @@ class Database:
             (model, utcnow_iso(), int(healthy), http_status, error, latency_ms),
         )
         self._commit()
+
+    # ---- Auto Pro gerçek kullanım kaydı (A1, agent/modelstats.py) ----------
+
+    MODEL_CALLS_KEEP_DAYS = 7
+
+    def add_model_call(self, model: str, *, role: str | None = None, ok: bool = True,
+                       error_kind: str | None = None, duration_s: float | None = None,
+                       first_chunk_s: float | None = None, out_tokens: int | None = None,
+                       empty: bool = False, event: str | None = None, detail: str | None = None) -> None:
+        """Bir model çağrısı (veya `event="switch"` yedeğe geçiş) kaydı. Eski kayıtlar budanır."""
+        self._exec(
+            "INSERT INTO model_calls(at, model, role, ok, error_kind, duration_s, first_chunk_s, out_tokens,"
+            " empty, event, detail) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            (utcnow_iso(), model, role, int(ok), error_kind, duration_s, first_chunk_s, out_tokens,
+             int(empty), event, (detail or "")[:300] or None),
+        )
+        self._exec("DELETE FROM model_calls WHERE at < strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)",
+                   (f"-{self.MODEL_CALLS_KEEP_DAYS} days",))
+        self._commit()
+
+    def recent_model_calls(self, hours: float = 6.0, model: str | None = None) -> list[dict]:
+        # `at` ISO biçiminde (T ayraçlı): SQLite datetime() boşluklu döndürür, metin karşılaştırması
+        # aynı günün tüm kayıtlarını "yeni" sayardı → aynı biçimle karşılaştır.
+        sql = "SELECT * FROM model_calls WHERE at >= strftime('%Y-%m-%dT%H:%M:%S', 'now', ?)"
+        params: tuple = (f"-{float(hours)} hours",)
+        if model:
+            sql += " AND model=?"
+            params += (model,)
+        return [dict(r) for r in self._exec(sql + " ORDER BY id", params).fetchall()]
 
     def get_model_health(self, model: str) -> sqlite3.Row | None:
         return self._exec(

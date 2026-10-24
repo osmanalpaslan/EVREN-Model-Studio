@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ..api.errors import ApiError, ErrorKind
-from . import planguard, textproto
+from . import modelstats, planguard, textproto
 from .permissions import (
     Decision,
     SessionPermissions,
@@ -404,7 +404,9 @@ class AgentRunner:
                  fallback_models: list[str] | None = None,
                  mcp: Any = None, edit_check: bool = True, services: Any = None,
                  test_check: bool = False, no_writes: bool = False, extra_tools: Any = None,
-                 final_marker: str | None = None, plan_guard: bool = False, jobs: Any = None):
+                 final_marker: str | None = None, plan_guard: bool = False, jobs: Any = None,
+                 stats_sink: Any = None, baselines: dict | None = None,
+                 slow_factor: float = modelstats.FACTOR_TURN, route_role: str = ""):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -427,6 +429,11 @@ class AgentRunner:
         self.plan_guard = plan_guard
         # Uzun işler (agent/jobs.py: start_job/wait_job/job_status/stop_job); None → yok
         self.jobs = jobs
+        # Auto Pro gerçek kullanım kaydı (A1): her çağrı ve yedeğe geçiş `stats_sink(dict)` ile bildirilir.
+        # `baselines`: model → modelstats.Baseline (o günkü normal hız); yoksa yavaşlık kuralı çalışmaz (A3).
+        self.stats_sink = stats_sink
+        self.route_role = route_role
+        self._slow = modelstats.SlowDetector(baselines, slow_factor)
         self._history_ref: list[dict] | None = None
         self._work = 0                       # gerçek iş sayacı (başarılı yazma/komut/servis/iş)
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
@@ -554,18 +561,32 @@ class AgentRunner:
             return missing_hint(missing) if missing else ""
         return ""
 
-    def _switch_model(self, outcome: "TurnOutcome", exc: ApiError | None, loop_reason: str = "") -> bool:
+    def _record(self, **rec: Any) -> None:
+        if self.stats_sink is None:
+            return
+        try:
+            self.stats_sink({"role": self.route_role or None, **rec})
+        except Exception:
+            pass                                  # kayıt hatası turu bozmasın
+
+    def _switch_model(self, outcome: "TurnOutcome", exc: ApiError | None, loop_reason: str = "",
+                      slow_reason: str = "") -> bool:
         """Yedek model varsa ona geçer. Kota/hız sınırı hesap başınadır: model değiştirmek
-        çözmez, geçilmez. Döngüde tur başına yalnız bir kez geçilir."""
+        çözmez, geçilmez. Döngüde tur başına yalnız bir kez geçilir. Yavaşlıkta (A3, DECISIONS #88)
+        yalnız güvenli noktada ve görev başına bir kez (koşucu döngüsü ve SlowDetector sağlar)."""
         if not self.fallback_models:
             return False
         if exc is not None:
+            # UNKNOWN_RESULT: akış koptu / zaman aşımı — eskiden tur hatayla bitiyordu; yedek modele
+            # yeniden sormak güvenli (sohbet isteğinin yan etkisi yok, yalnız token).
             failover = {ErrorKind.SERVER_UNAVAILABLE, ErrorKind.SERVER_ERROR, ErrorKind.TIMEOUT,
-                        ErrorKind.NOT_FOUND, ErrorKind.NETWORK}
+                        ErrorKind.NOT_FOUND, ErrorKind.NETWORK, ErrorKind.UNKNOWN_RESULT}
             image_refused = exc.kind == ErrorKind.VALIDATION and "feature_not_enabled" in (exc.message or "")
             if exc.kind not in failover and not image_refused:
                 return False
             reason = f"{exc.kind.value}" + (f" (HTTP {exc.status})" if exc.status else "")
+        elif slow_reason:
+            reason = f"yavaşlık: {slow_reason}"
         else:
             if any(s[2].startswith("döngü") for s in outcome.model_switches):
                 return False
@@ -576,7 +597,9 @@ class AgentRunner:
         old, new = self.model, self.fallback_models.pop(0)
         self.model = new
         outcome.model_switches.append((old, new, reason))
-        self.events.status(f"{old} → {new}: {reason}. EVREN Akıllı yedek modele geçti; görev aynı yerden sürüyor.")
+        self._slow.reset()
+        self._record(model=old, ok=False, event="switch", detail=f"{old} → {new}: {reason}")
+        self.events.status(f"{old} → {new}: {reason}. Auto Pro yedek modele geçti; görev aynı yerden sürüyor.")
         return True
 
     def _remaining_test_edits(self) -> list[str]:
@@ -660,10 +683,16 @@ class AgentRunner:
         nudged: set[str] = set()
         loop_reason = ""
         json_retries = 0
+        pending_slow = ""
         while step < self.max_steps:
             if self._cancelled():
                 outcome.stopped = "cancelled"
                 break
+            if pending_slow:
+                # Güvenli nokta: önceki adımın araçları tamamlandı, yarım düzenleme yok (DECISIONS #88)
+                if self._switch_model(outcome, None, slow_reason=pending_slow):
+                    self._slow.used = True
+                pending_slow = ""
             step += 1
             outcome.steps = step
             if self.before_model_call is not None:
@@ -676,6 +705,8 @@ class AgentRunner:
             try:
                 result = self._call_model(history)
             except ApiError as exc:
+                self._record(model=self.model, ok=False, error_kind=exc.kind.value,
+                             duration_s=round(time.monotonic() - t0, 1), detail=(exc.message or "")[:200])
                 # EVREN, modelin ürettiği bozuk araç JSON'unu kendisi ayrıştıramayınca 400
                 # döndürüyor ("Expecting ',' delimiter"); bu tek seferlik — aynı adımı yeniden dene,
                 # yerel protokolü bırakma (2026-10-17 maraton: auto 3 denemede 1 kez).
@@ -727,6 +758,14 @@ class AgentRunner:
             token_usage = result.token_usage() if hasattr(result, "token_usage") else {}
             if any(token_usage.values()):
                 meta["usage"] = token_usage
+            if not cancelled:
+                rec = {"model": self.model, "ok": True, "duration_s": duration,
+                       "first_chunk_s": getattr(result, "first_chunk_s", None),
+                       "out_tokens": token_usage.get("output_tokens") or None,
+                       "empty": not content.strip() and not calls}
+                self._record(**rec)
+                if self.fallback_models:
+                    pending_slow = self._slow.observe(self.model, rec)
             state = getattr(result, "provider_state", None)
             if state:
                 meta["provider_state"] = state

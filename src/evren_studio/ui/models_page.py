@@ -56,6 +56,27 @@ class ModelsPage(BasePage):
         self.table.cellClicked.connect(self.show_detail)
         self.root.addWidget(c2)
 
+        # ---- A12: Auto Pro gerçek kullanım özeti ----
+        c3, l3 = card()
+        l3.addWidget(QLabel("<b>Auto Pro — son 24 saat</b> (gerçek kullanımdan; motor hızı günden güne değişir)"))
+        self.change_label = QLabel("")
+        self.change_label.setWordWrap(True)
+        self.change_label.setVisible(False)
+        l3.addWidget(self.change_label)
+        self.stats = QTableWidget(0, 7)
+        self.stats.setHorizontalHeaderLabels([
+            "Model", "Çağrı", "Hata", "Ortanca hız (token/sn)", "İlk yanıt (sn)", "Yedeğe geçiş", "Sıra durumu",
+        ])
+        self.stats.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.stats.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.stats.setMinimumHeight(140)
+        l3.addWidget(self.stats)
+        self.stats_hint = QLabel("Henüz kayıt yok: Auto Pro kullandıkça dolar.")
+        self.stats_hint.setProperty("role", "dim")
+        l3.addWidget(self.stats_hint)
+        self.root.addWidget(c3)
+        self.refresh_stats()
+
         self.refresh_btn = self._make_refresh_btn()
         self.header_extra.addWidget(self.refresh_btn)
         self.refresh_models()
@@ -93,6 +114,43 @@ class ModelsPage(BasePage):
                 if col in (3, 4, 5):
                     item.setTextAlignment(Qt.AlignCenter)
                 self.table.setItem(row, col, item)
+
+    def refresh(self) -> None:
+        """Sayfa her açıldığında yalnız kullanım özetini yeniler (ağ isteği yok)."""
+        self.refresh_stats()
+
+    def refresh_stats(self) -> None:
+        from datetime import datetime, timezone
+
+        from ..agent import modelstats, router
+
+        try:
+            rows = self.ctx.db.recent_model_calls(24)
+            health = {r["model"]: dict(r) for r in self.ctx.db.all_model_health()}
+        except Exception:
+            rows, health = [], {}
+        summ = modelstats.summary(rows)
+        now = datetime.now(timezone.utc)
+        self.stats.setRowCount(0)
+        for model, st in sorted(summ.items(), key=lambda kv: -kv[1]["calls"]):
+            r = self.stats.rowCount()
+            self.stats.insertRow(r)
+            cooling = router._unhealthy(health, model, now)
+            vals = [model, st["calls"], f"%{int(st['error_rate'] * 100)}", st["tps"] or "-",
+                    st["first_chunk_s"] or "-", st["switches"],
+                    "bekleme süresinde (sona alındı)" if cooling else "normal"]
+            for col, v in enumerate(vals):
+                item = QTableWidgetItem(str(v))
+                if col:
+                    item.setTextAlignment(Qt.AlignCenter)
+                self.stats.setItem(r, col, item)
+        self.stats_hint.setVisible(not summ)
+        ch = getattr(self.ctx, "model_list_change", None)
+        if ch and (ch[0] or ch[1]):
+            self.change_label.setText("⚠ Model listesi değişti — kalkan: " + (", ".join(ch[0]) or "-")
+                                      + " · eklenen: " + (", ".join(ch[1]) or "-")
+                                      + ". Yeni modeller ölçülmeden Auto Pro sırasına girmez.")
+            self.change_label.setVisible(True)
 
     def show_detail(self, row: int, _col: int) -> None:
         mid = self.table.item(row, 0).text()
