@@ -289,6 +289,109 @@ Açık kalanlar / ileride:
       beklenirken 20-30 sn'lik yoklama.
 - [ ] gemma-4-31b için maraton ölçümü (kısa görevlerde en hızlı; uzun işte döngü geçmişi var).
 
+## 7. Toplu yapılacaklar listesi — BEKLİYOR (kullanıcı "toplu yap" diyene kadar BAŞLAMA; 2026-10-23)
+
+Kullanıcı kararı: maddeler biriktirilir, sonra toplu uygulanır. Rakip/açık kaynak analizi ve Auto Pro analizi
+`docs/knowledge/RAKIP_VE_AUTOPRO_ANALIZI.md`'de; oradan kullanıcının ONAYLADIĞI maddeler buraya eklenir.
+
+### 7.1 Oyun geliştirme MCP'leri (EXE + PWA, Godot) — onaylı plan
+- Altyapı: Godot 4 (GDScript; Windows Desktop → .exe, Web + "Progressive Web App" → PWA). Dışa aktarma şablonları
+  resmî siteden bir kez indirilir (indirmeden önce kullanıcı onayı). Komutla: `godot --headless --export-release`.
+- Yeni MCP'ler, Serena gibi yalnız gerektiğinde açılır (`when`): **Coding-Solo/godot-mcp** (~4 bin yıldız, MIT;
+  `project.godot` olan klasörde) · **Poly Haven MCP** (RN0000/polyhaven-mcp; CC0 varlık; az yıldızlı — kurmadan
+  önce kod gözden geçirilecek). Zaten var: Playwright (PWA testi), Serena (kod anlama).
+- Blender: VARSAYILAN olarak MCP'siz, ekransız `blender --background --python` betikleri (kullanıcı onayı).
+  **ahujasid/blender-mcp** (~29 bin, MIT) isteğe bağlı; Blender'ı ajan kendisi başlatır; Hyper3D/Sketchfab
+  (ücretli olabilir) KAPALI. Ücretli hiçbir özellik yok (kullanıcı ödeme yapamaz).
+- Mod dosyaları: standart biçimler (FBX/OBJ/glTF/DAE/.blend) sorunsuz; oyuna özel (.kn5, .yft, .uasset) zor;
+  kilitli modlar açılmaz. İnternetten gelen mod GÜVENİLMEZ: içindeki program/betik çalıştırılmaz, Blender
+  `--disable-autoexec`. PWA için poligon azaltma + doku küçültme adımı. Her modda önce "mod incelemesi".
+
+### 7.2 Skill menüsü — onaylı plan
+- Yeni "Skill'ler" sayfası: klasörden skill ekle (SKILL.md + references), her skill için aç/kapa ve
+  "hangi projelerde çalışsın" (Tüm projeler / Yalnız seçtiklerim / Hiçbiri; proje listesi bağlanan klasörlerden).
+- Ajan: etkin skill'lerin yalnız adı + kısa açıklaması isteme girer; gerektiğinde `read_skill` (salt okunur)
+  ile açar. R-25: açık/kapalı gerçek API ölçümü (model gerçekten kullanıyor mu).
+
+### 7.3 Uygulamanın kendisi için 16 fikir (2026-10-23 sohbeti; kullanıcı "hoşuma gitti")
+Performans ve hız:
+1. Tablo inceleme aracı (Excel/CSV: sayfalar, başlıklar, satır sayısı, ilk satırlar) — `read_file` Excel açamıyor.
+2. Ortam bilgisini baştan ver (kurulu Python/kütüphaneler: "openpyxl var, pandas yok").
+3. Proje görevleri arasında okunan büyük dosyaların özetini paylaş (her görev SKILL.md'yi baştan okuyordu).
+4. Gerçek kullanımdan motor hız takibi, yavaşlayanı görev aralarında değiştir (madde 6'daki not; Auto Pro analizi).
+5. Derin/Proje öncesi süre ve token tahmini.
+6. Uzun oturumda sohbet ekranı sanallaştırma (önce ölç).
+Görsellik ve kullanım:
+7. Derin/Proje için yan panelde canlı iş paneli (aşamalar, alt ajanlar, süre, token).
+8. "Zaman nereye gitti" özeti (model / komut süresi, hatalı adım, motor değişimi; küçük grafik).
+9. Çıktı önizleme (Excel/CSV tablo, ekran görüntüsü resim).
+10. İş şablonları galerisi (hesap kapama, Godot oyun, web testi…).
+11. Sade görünüm (teknik adımları gizle) / ayrıntılı görünüm.
+12. Yazı boyutu ve sıkışık görünüm ayarı.
+Güvenilirlik:
+13. Skill'e bağlı otomatik denetçi (skill kendi doğrulama betiğini taşır, iş bitince çalışır).
+14. "Betikleştir" düğmesi (başarılı işi tekrar edilebilir, denetçiyle doğrulanmış betiğe çevir).
+15. İnternetten gelen dosyalar için güvenilmeyen klasör (ajan oradan program/betik çalıştıramaz).
+16. Veri klasörünü aç + oturumları yedekle düğmeleri.
+
+### 7.4 Auto Pro ve rakip analizinden ONAYLANAN maddeler (`docs/knowledge/RAKIP_VE_AUTOPRO_ANALIZI.md`)
+- **A3 — yavaşlama kuralı** (onay 2026-10-23, DECISIONS #88): normal hızın yarısının altında art arda 2 adım →
+  güvenli noktada yedeğe geç; görev başına en çok 1 kez; gerekçesiyle bildir; Proje/Derin'de önce görev
+  aralarında, görev içinde yalnız ~3 kat yavaşlıkta. **A1 (gerçek kullanım kaydı) olmadan yapılamaz.**
+- **Onay 2026-10-23: A1–A13 ve E1–E10 ONAYLI.** Kapsam dışı: A14 (aynı soruyu iki motora sorma — önerilmedi),
+  E11 (VS Code eklentisi). E3 = A13 (planlayan + yazan iki motor): tek iş.
+
+**A maddeleri — uygulama notları** (sıra: A1 → A4 → A2 → A3 → A12 + A9 → A6 + A7 → A10, A11, A5, A8, A13):
+- A1 gerçek kullanım kaydı: yeni `model_stats` tablosu (model, rol, süre, ilk-token, token/sn, hata türü, boş
+  yanıt, döngü, araç hatası); kayan pencere (son ~2 sa / 30 çağrı); `choose` bunu `model_health` ile birlikte okur.
+- A2 eşikleri (ilk token ~45 sn, akış sessizliği ~30 sn) önce gerçek API'de ölçülecek (deepseek uzun düşünebilir).
+- A6/A7 için ölçüm paketleri: zorluk paketi (kod), hesap kapama testi (veri/rapor), QA testi (web); oyun ve Türkçe
+  metin için küçük paketler yazılacak.
+- A10 `seed` + düşük sıcaklık: önce gerçek istekle tekrarlanabilirlik ölçümü (R-07), sonra rapor işlerinde açılır.
+- Her madde sonrası zorluk paketi (R-21) ve yanlış tetiklenme testleri (R-22).
+
+**E maddeleri — plan:**
+- E1 Konuşmayı geri saran kontrol noktası: mesajda "buraya geri dön" → sonraki mesajlar ve o turlardaki dosya
+  değişiklikleri (mevcut değişiklik kaydıyla) onay kartından sonra geri alınır. Geri alınamayan komut etkileri
+  (kurulum, silme) kartta açıkça yazılır (Claude Code'da da kontrol noktaları komutları kapsamaz).
+- E2 Otomatik proje haritası: proje bağlanınca/değişince arka planda dosya ağacı + kaynak dosyaların sembol özeti
+  (Python `ast`, diğer diller için basit tarayıcı; Serena kuruluysa ondan) → en çok ~3 bin tokenlık harita
+  sistem istemine. Büyük projede yalnız istekle ilgili klasörler. R-21/R-25: harita açık/kapalı adım ve süre ölçümü.
+- E3 → A13.
+- E4 Kullanıcı kuralları (hook): proje `.evren/kurallar.json` veya Ayarlar: olay (düzenlemeden sonra, tur bitince,
+  komuttan önce) → komut; çıktı modele not olarak gider; zaman aşımı; yalnız proje klasöründe; ilk kullanımda bir
+  kez onay. Yerleşik bekçilerle (test/hata) çakışmayacak.
+- E5 Özel ajan profilleri: profil = tercih edilen rol/motor + çalışma modu + etkin skill'ler + ek talimat;
+  skill menüsü (7.2) ve iş şablonları galerisiyle (7.3 #10) birlikte yapılır.
+- E6 Kendini güncelleyen proje hafızası: tur sonunda öğrenilen önemli bilgiler (komutlar, kararlar, tuzaklar)
+  EVREN.md'nin "Öğrenilenler" bölümüne kısa öneri olarak; boyut sınırı; kullanıcı kapatabilir. R-22: sıradan
+  turlarda gereksiz yazmamalı.
+- ~~E7 Yalıtılmış çalışma~~ — İPTAL (kullanıcı, 2026-10-23). 7.3 #15 (güvenilmeyen klasör) ayrı madde olarak
+  listede kalır.
+- E8 Web araması: önce EVREN'in `evren_tools` uzantısının ne sunduğu gerçek istekle doğrulanır (R-07). Yoksa
+  yalnız ücretsiz yol: verilen adresi okuyan `web_fetch` + mevcut Playwright; ücretli arama API'si YOK.
+- E9 Önerilen MCP listesi: Ayarlar > MCP'de seçilmiş katalog (lisans, yıldız, güvenlik notu, tek tıkla kurulum):
+  Serena, Playwright + 7.1'deki oyun MCP'leri.
+- E10 Komut paleti: Ctrl+Shift+P → tüm eylemler (sayfalar, modlar, /komutlar, ayarlar) aranabilir listede.
+
+### 7.5 Uygulama planı — fazlar (kullanıcı "çalışmaya başlayabiliriz", 2026-10-23)
+
+Her faz: ayrı dal → birim testleri (tetiklenmesi VE tetiklenmemesi gereken, R-22) → gerçek API (R-13; ajan
+değiştiyse zorluk paketinin TAMAMI, R-21; yeni araçta açık/kapalı, R-25) → ekran görüntüsü (R-05) → belgeler +
+ortak hafıza → PR → birleştir. Başarısız/doğrulanamayan her şey kullanıcıya açıkça söylenir. Karşılaştırma tabanı
+(2026-10-21): Auto Pro zorluk paketi 12/12 · 249 sn; hesap kapama 2 koşu 24/25 ve 23/26; pytest 507.
+Kullanıcı onayı gereken anlar: program/şablon indirme (Godot şablonları, MCP kurulumu), yönetici izni penceresi.
+
+| Faz | İçerik | Kabul ölçütü (özet) |
+|---|---|---|
+| F1 Auto Pro çekirdeği — YAPILDI 2026-10-24 (dal `feat/autopro-cekirdek`) | A1 kayıt, A4 bekleme, A2 yanıt vermeme, A3 yavaşlama (#88), A9 liste uyarısı, A12 şeffaflık | Sahte istemciyle: hata/donma/yavaşlamada doğru anda ve en çok kuralda belirtilen sayıda geçiş, normal hızda HİÇ geçiş yok; kayıt kalıcı (R-03); zorluk paketi ≥ taban |
+| F2 Auto Pro akıllı seçim | A6 zorluk, A7 iş türü rolleri + ölçüm paketleri, A10 tutarlılık (seed), A11 kota, A5 kalite puanı, A8 yoklama, A13/E3 planlayan+yazan | Her rol için ölçüm; hesap kapama iki koşu arası fark 0 (A10 doğrulanırsa); zorluk paketi ≥ taban |
+| F3 Ajan verimliliği | 7.3 #1 tablo aracı, #2 ortam bilgisi, #3 görev arası özet, E2 proje haritası, E6 proje hafızası, E8 web (önce doğrulama) | Hesap kapama: adım ve süre tabandan düşük; araç açık/kapalı ölçümü |
+| F4 Skill ve profiller | 7.2 skill menüsü + `read_skill`, E5 profiller, #10 şablonlar, #13 skill denetçisi, #14 betikleştir | Proje bazlı aç/kapa kalıcı; model skill'i gerçekten okuyor (R-25) |
+| F5 Arayüz | #7 canlı iş paneli, #8 zaman özeti, #9 çıktı önizleme, #11 sade görünüm, #12 yazı boyutu, E10 komut paleti, #16 veri klasörü/yedek, #5 tahmin, #6 sanallaştırma (önce ölç) | İki temada ekran görüntüsü; tüm ekranlar QA testi |
+| F6 Güvenlik ve kurallar | #15 güvenilmeyen klasör, E4 kullanıcı kuralları, E1 geri sarma | Güvenilmeyen klasörde çalıştırma engellenir; geri sarma dosya + konuşmayı doğru döndürür |
+| F7 Oyun | 7.1 Godot + godot-mcp + Poly Haven MCP, Blender ekransız hattı, E9 MCP kataloğu | Örnek mod → Godot sahnesi → EXE ve PWA çıktısı; PWA Playwright'ta açılır |
+
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 
 - OpenAI/Anthropic'i gerçek anahtarla doğrula (`tests/e2e_providers_real_api.py --evet`).

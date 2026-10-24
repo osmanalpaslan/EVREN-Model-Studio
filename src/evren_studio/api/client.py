@@ -58,6 +58,9 @@ class ChatResult:
     # (OpenAI şifreli reasoning öğeleri, Anthropic thinking blokları). Ajan
     # bunu mesaj meta'sında saklar; to_api_messages "_provider_state" olarak taşır.
     provider_state: dict[str, Any] = field(default_factory=dict)
+    # Akışta isteğin gönderilmesinden ilk parçaya (içerik, düşünme veya araç) kadar geçen süre (sn).
+    # Auto Pro gerçek kullanım kaydı (A1) için; akışsız istekte None.
+    first_chunk_s: float | None = None
 
     def token_usage(self) -> dict[str, int]:
         return normalize_usage(self.usage)
@@ -157,7 +160,8 @@ class EvrenClient:
 
     def __init__(self, base_url: str, api_key: str, timeout: float = 120.0,
                  max_retries: int = 3, log_sink: Callable[[str], None] | None = None,
-                 transport: httpx.BaseTransport | None = None):
+                 transport: httpx.BaseTransport | None = None,
+                 stream_idle_timeout: float | None = None):
         # Kullanıcı "/v1" ile biten adres verebilir; yollar resmî OpenAPI
         # şemasındaki gibi "/v1/models" biçimindedir. Kök adresi normalize et.
         root = base_url.rstrip("/")
@@ -170,6 +174,10 @@ class EvrenClient:
         self._log = log_sink or (lambda msg: None)
         self._client: httpx.Client | None = None
         self._transport = transport  # birim testler için MockTransport enjeksiyonu
+        # Akışlı istekte ilk parça gelmezse veya akış bu kadar saniye susarsa model "yanıt vermiyor"
+        # sayılır ve TIMEOUT yükselir → ajan yedek modele geçer (Auto Pro A2, 2026-10-24). None → yalnız
+        # genel zaman aşımı (eskiden sessiz akış 120 sn sonra UNKNOWN_RESULT ile turu bitiriyordu).
+        self.stream_idle_timeout = stream_idle_timeout
 
     # ---- yaşam döngüsü --------------------------------------------------
 
@@ -250,7 +258,7 @@ class EvrenClient:
     def _request(self, method: str, path: str, *, json_body: dict | None = None,
                  operation: str, model: str | None = None,
                  stream: bool = False, extra_headers: dict | None = None,
-                 auth: bool = True) -> httpx.Response:
+                 auth: bool = True, timeout: httpx.Timeout | None = None) -> httpx.Response:
         """Yeniden deneme politikalı HTTP isteği.
 
         Başarılıysa yanıtı döndürür; hatalıysa (tekrarlar tükendiyse)
@@ -271,6 +279,7 @@ class EvrenClient:
                     req = client.build_request(
                         method, url, headers=headers,
                         json=json_body if json_body is not None else None,
+                        **({"timeout": timeout} if timeout is not None else {}),
                     )
                     resp = client.send(req, stream=True)
                 else:
@@ -279,6 +288,12 @@ class EvrenClient:
                         json=json_body if json_body is not None else None,
                     )
             except httpx.HTTPError as exc:
+                if stream and timeout is not None and isinstance(exc, httpx.ReadTimeout):
+                    raise ApiError(
+                        kind=ErrorKind.TIMEOUT,
+                        message=f"Model {timeout.read:.0f} sn içinde yanıt vermeye başlamadı.",
+                        operation=operation, model=model, api_path=path,
+                    ) from exc
                 err = error_from_httpx(exc, operation, model, path)
                 if err.kind == ErrorKind.UNKNOWN_RESULT:
                     raise err
@@ -450,11 +465,14 @@ class EvrenClient:
             body.update(extra_body)
 
         extra = {"Accept": "text/event-stream"} if stream else None
+        idle = self.stream_idle_timeout if stream else None
+        tmo = httpx.Timeout(self.timeout, read=idle) if idle else None
+        t0 = time.monotonic()
         resp = self._request("POST", "/v1/chat/completions", json_body=body,
                              operation="chat_completions", model=model,
-                             stream=stream, extra_headers=extra)
+                             stream=stream, extra_headers=extra, timeout=tmo)
         if stream:
-            return self._consume_stream(resp, model, cancel, on_delta, on_reasoning)
+            return self._consume_stream(resp, model, cancel, on_delta, on_reasoning, t0=t0, idle=idle)
         try:
             data = resp.json()
         finally:
@@ -489,7 +507,8 @@ class EvrenClient:
     def _consume_stream(self, resp: httpx.Response, model: str,
                         cancel: CancelToken | None,
                         on_delta: Callable[[str, str], None] | None,
-                        on_reasoning: Callable[[str], None] | None) -> ChatResult:
+                        on_reasoning: Callable[[str], None] | None,
+                        t0: float | None = None, idle: float | None = None) -> ChatResult:
         """SSE akışını tüketir; kopma durumunda belirsiz sonuç (UNKNOWN_RESULT)
         olarak yükseltir — otomatik tekrar yapılmaz."""
         result = ChatResult(model=model)
@@ -535,6 +554,10 @@ class EvrenClient:
                         result.usage = chunk["usage"]
                     continue
                 delta = choices[0].get("delta") or {}
+                if result.first_chunk_s is None and t0 is not None and (
+                        delta.get("content") or delta.get("reasoning") or delta.get("reasoning_content")
+                        or delta.get("tool_calls")):
+                    result.first_chunk_s = round(time.monotonic() - t0, 2)
                 for tc in delta.get("tool_calls") or []:
                     idx = tc.get("index", len(call_parts))
                     slot = call_parts.setdefault(idx, {"id": "", "name": "", "arguments": []})
@@ -561,6 +584,14 @@ class EvrenClient:
                     result.finish_reason = choices[0]["finish_reason"]
         except httpx.HTTPError as exc:
             partial = "".join(content_parts)
+            if idle and isinstance(exc, httpx.ReadTimeout):
+                raise ApiError(
+                    kind=ErrorKind.TIMEOUT,
+                    message=f"Model {idle:.0f} sn boyunca yanıt vermedi (akış durdu; kısmi yanıt "
+                            f"{len(partial)} karakter).",
+                    operation="chat_completions_stream", model=model,
+                    api_path="/v1/chat/completions",
+                ) from exc
             raise ApiError(
                 kind=ErrorKind.UNKNOWN_RESULT,
                 message=f"Akış kesildi: {type(exc).__name__}. Kısmi yanıt "

@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..agent import environment, prompts, scope
+from ..agent import environment, modelstats, prompts, scope
 from ..agent.compaction import MAX_AUTO_RESUMES, CompactPolicy, needs_compaction, summarize
 
 PLAN_AUTO_CONTINUES = 2      # plan bekçisi: kullanıcı mesajı başına adım sınırı sonrası otomatik devam
@@ -450,6 +450,8 @@ class SessionView(QWidget):
         from .deep_ui import DeepController
 
         self.deep = DeepController(self)
+        self._pending_model_note = ""
+        ctx.on_model_list_change(self._on_model_list_change)
         self.deep.notify.connect(self.notify.emit)
         self.composer.set_deep(ctx.settings.deep_mode)
         self.composer.deep_toggled.connect(self.deep.set_enabled)
@@ -1003,6 +1005,29 @@ class SessionView(QWidget):
                             mode=("plan" if self._plan_turn else self.mode), has_images=has_images,
                             est_tokens=est, context_of=context_of, available=avail or None, health=health)
 
+    def _route_explain(self, model: str, fallbacks: list[str]) -> str:
+        """A12: çalışma çubuğu ipucu — neden bu motor ve bugünkü ölçümü."""
+        r = getattr(self, "_run_route", None)
+        lines = []
+        if r is not None:
+            lines.append(f"Auto Pro seçimi: {model} — rol: {router.ROLE_LABELS.get(r.role, r.role)}"
+                         + (f" ({r.reason})" if r.reason else ""))
+        else:
+            lines.append(f"Motor: {model}")
+        try:
+            st = modelstats.summary(self.ctx.db.recent_model_calls(modelstats.WINDOW_HOURS)).get(model)
+        except Exception:
+            st = None
+        if st and st.get("calls"):
+            lines.append(f"Son {modelstats.WINDOW_HOURS} saat: {st['calls']} çağrı, hata %{int(st['error_rate'] * 100)}"
+                         + (f", ~{st['tps']} token/sn" if st.get("tps") else "")
+                         + (f", ilk yanıt ~{st['first_chunk_s']} sn" if st.get("first_chunk_s") else ""))
+        else:
+            lines.append("Bugün için ölçüm yok (hız kuralı yeterli örnek birikince devreye girer).")
+        if fallbacks:
+            lines.append("Yedekler: " + " → ".join(fallbacks))
+        return "\n".join(lines)
+
     def _window(self, msgs: list | None = None) -> tuple[int | None, str]:
         """(bağlam penceresi, model adı). Auto Pro bir model değildir, kendi penceresi yoktur:
         sıradaki tur için seçilecek modelin ve yedeklerinin EN KÜÇÜĞÜ alınır (yedeğe geçilse de
@@ -1196,6 +1221,9 @@ class SessionView(QWidget):
                     "images": [a.path for a in images]}
         self._auto_resumes = 0
         self._plan_continues = 0
+        if self._pending_model_note:
+            self._note(self._pending_model_note, "alert")
+            self._pending_model_note = ""
         if self._offer_project(text, atts, back):
             return
         need, tokens, limit = needs_compaction(self.ctx.db.get_session_messages(sid), self._policy(),
@@ -1352,6 +1380,7 @@ class SessionView(QWidget):
         elif router.is_akilli(self.model):
             self._run_route = self._route(history)
             api_model, fallbacks = self._run_route.model, list(self._run_route.fallbacks)
+        self.composer.run_text.setToolTip(self._route_explain(api_model, fallbacks))
         row = self.ctx.db.get_session(sid)
         protocol = row["protocol"] if row and row["protocol"] else self.ctx.resolve_protocol(api_model)
         if self.ctx.settings.tool_protocol != "otomatik":
@@ -1419,6 +1448,13 @@ class SessionView(QWidget):
             final_marker=final_marker,
             # Plan bekçisi yalnız normal turlarda (Proje/QA/Derin akışları fazları zaten kodla sürer)
             plan_guard=s.plan_guard and model_override is None and not no_writes,
+            # Auto Pro çekirdeği (A1/A3/A4): gerçek kullanım kaydı, o günkü normal hız, yavaşlık kuralı.
+            # Proje/Derin/QA görevinde görev içi eşik ~3 kat (görevler arası geçişi bekleme süresi yapar).
+            stats_sink=self.ctx.record_model_call,
+            baselines=self.ctx.model_baselines() if fallbacks else None,
+            slow_factor=(modelstats.FACTOR_TASK if model_override is not None else modelstats.FACTOR_TURN),
+            route_role=(model_override[2] if model_override is not None
+                        else (self._run_route.role if self._run_route is not None else "")),
         )
         runner = self.runner
         self.running = True
@@ -2166,6 +2202,22 @@ class SessionView(QWidget):
         self.transcript.add(NoteWidget(note or "Bağlam özetlendi; ajan kaldığı yerden otomatik devam ediyor.",
                                        "refresh"))
         self.start_run()
+
+    def _on_model_list_change(self, removed: list[str], added: list[str]) -> None:
+        """A9: EVREN model listesi değişti → not (oturum yoksa ilk mesajda gösterilir)."""
+        in_route = {m for chain in router.EVREN_ROUTES.values() for m in chain}
+        parts = []
+        if removed:
+            parts.append("kalkan: " + ", ".join(m + (" (Auto Pro sırasındaydı)" if m in in_route else "")
+                                                for m in removed))
+        if added:
+            parts.append("eklenen: " + ", ".join(added))
+        text = ("EVREN model listesi değişti — " + "; ".join(parts) + ". Auto Pro kalkan modeli kendiliğinden "
+                "atlar; yeni modeller ölçülmeden Auto Pro sırasına girmez (Modeller sayfası).")
+        if self.session_id:
+            self._note(text, "alert")
+        else:
+            self._pending_model_note = text
 
     @property
     def deep_on(self) -> bool:

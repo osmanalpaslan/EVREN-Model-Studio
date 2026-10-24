@@ -245,6 +245,14 @@ Betik AJANSIZ: aynı veri 27/27 · tekrar 27/27 ve hücre hücre aynı · 96 iş
 eksik → çıkış 2, dosya yok. Çalışma süresi ~0,5 sn. Sonuç: tekrarlayan iş için "bir kez yazdır, denetle, sonra
 betiği çalıştır" yolu, her ay ajana ürettirmekten hem tutarlı hem ~1.000 kat hızlı.
 
+## Auto Pro çekirdeği F1 (2026-10-24)
+
+Akış gecikmesi (`tests/e2e_akis_gecikme_real_api.py`, ajan istemi + araç şemaları, 3 tekrar): ilk parça
+deepseek-v4.1-flash 0,5–2,7 sn · qwen3.8-flash-next 0,6–0,9 sn · gemma-4-31b 0,5–1,5 sn; parçalar arası en uzun
+sessizlik ≤ 0,7 sn (düşünme metni de akıyor). Zorluk paketi auto-pro (yeni kayıt + yavaşlık kuralı + 60 sn eşik):
+**12/12**, 477 sn (21 Ekim 249 sn — o gün deepseek ~51 token/sn ölçüldü), yavaşlık geçişi 0 (yanlış tetiklenme
+yok), 57 çağrı kaydedildi, en uzun ilk parça 10,1 sn. R-13: E2E_OK · ajan 6/6 · arayüz 15/15.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

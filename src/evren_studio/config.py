@@ -74,6 +74,12 @@ class Settings:
     task_model_preferences: dict[str, str] = field(default_factory=dict)
     auto_model_switch: bool = False
     timeout_seconds: float = 120.0
+    # Akışlı model yanıtı ilk parçayı bu sürede vermez veya bu kadar susarsa "yanıt vermiyor" sayılır ve
+    # Auto Pro yedeğe geçer (A2). Ölçüm 2026-10-24: sağlıklı motorlarda ilk parça ≤ 2,7 sn, en uzun sessizlik
+    # ≤ 0,7 sn (küçük istek); büyük bağlam için pay bırakıldı. 0 → kapalı (yalnız genel zaman aşımı).
+    stream_idle_timeout_seconds: int = 60
+    # Son görülen EVREN sohbet modelleri (A9): liste değişince (ör. deepseek-v4-flash kalktı) kullanıcı uyarılır
+    known_model_ids: list[str] = field(default_factory=list)
     max_retries: int = 3
     stream_responses: bool = True
     theme: str = "koyu"

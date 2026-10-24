@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-24) Auto Pro çekirdeği F1 (dal `feat/autopro-cekirdek`): gerçek kullanım kaydı, yavaşlama kuralı
+    (#88), bekleme süresi, yanıt vermeme süresi, akış kopmasında yedeğe geçiş, model listesi uyarısı, son 24 saat
+    tablosu. Sıradaki faz F2 (ILERIDE_YAPILACAKLAR 7.5).
+
   - (2026-10-21) Auto Pro kod sırası yeniden ölçümle değişti (dal `feat/kod-motor-sirasi`):
     deepseek-v4.1-flash → qwen3.8-flash-next → gemma-4-31b. Ölçüm: CHALLENGE_RESULTS.md "Kod motoru sırası".
 

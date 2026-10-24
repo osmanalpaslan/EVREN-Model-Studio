@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 78 · Açık/izlenen: 6 · Oturum: 26 · Kural: 28
+Kayıt: 81 · Açık/izlenen: 6 · Oturum: 27 · Kural: 28
 
 ## Açık ve izlenen kayıtlar
 
@@ -19,6 +19,9 @@ Kayıt: 78 · Açık/izlenen: 6 · Oturum: 26 · Kural: 28
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-10-24 | [2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast](incidents/2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | SQLite datetime ile ISO zaman damgası metin olarak karşılaştırılınca aynı gün hep "yeni" sayılır |
+| 2026-10-24 | [2026-10-24-auto-pro-saglik-kurali-gercek-kullanimda-hic-beslenmiyordu](incidents/2026-10-24-auto-pro-saglik-kurali-gercek-kullanimda-hic-beslenmiyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Auto Pro sağlık kuralı gerçek kullanımda hiç beslenmiyordu |
+| 2026-10-24 | [2026-10-24-akis-koptugunda-veya-model-sustugunda-yedege-gecilmiyor-tur](incidents/2026-10-24-akis-koptugunda-veya-model-sustugunda-yedege-gecilmiyor-tur.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Akış koptuğunda veya model sustuğunda yedeğe geçilmiyor, tur hatayla bitiyordu |
 | 2026-10-21 | [2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8](incidents/2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Proje ajanı bozuk doğrulama komutu yüzünden görevi düşürüp 8 görevi atladı |
 | 2026-10-21 | [2026-10-21-plan-bekcisi-yalniz-plan-yaz-kod-yazma-isteginde-ajani-plani](incidents/2026-10-21-plan-bekcisi-yalniz-plan-yaz-kod-yazma-isteginde-ajani-plani.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Plan bekçisi "yalnız plan yaz, kod yazma" isteğinde ajanı planı uygulamaya itti |
 | 2026-10-21 | [2026-10-21-kota-kapisi-bekleme-dongusu-kayan-noktada-sonsuz-donebilirdi](incidents/2026-10-21-kota-kapisi-bekleme-dongusu-kayan-noktada-sonsuz-donebilirdi.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Kota kapısı bekleme döngüsü kayan noktada sonsuz dönebilirdi |
@@ -102,6 +105,7 @@ Kayıt: 78 · Açık/izlenen: 6 · Oturum: 26 · Kural: 28
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-24 | [2026-10-24-claude-code-masaustu-auto-pro-cekirdegi-f1-ve-rakip-analizi](sessions/2026-10-24-claude-code-masaustu-auto-pro-cekirdegi-f1-ve-rakip-analizi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro çekirdeği F1 ve rakip analizi |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-hesap-kapama-raporu-gercek-is-sureci-olc](sessions/2026-10-21-claude-code-masaustu-hesap-kapama-raporu-gercek-is-sureci-olc.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Hesap kapama raporu gerçek iş süreci ölçümü |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-hesap-kapama-oturumu-analizi-ve-derin-pr](sessions/2026-10-21-claude-code-masaustu-hesap-kapama-oturumu-analizi-ve-derin-pr.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Hesap kapama oturumu analizi ve Derin/Proje düzeltmeleri |
 | 2026-10-21 | [2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k](sessions/2026-10-21-claude-code-masaustu-derin-mod-plan-bekcisi-uzun-isler-kota-k.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Derin Mod, plan bekçisi, uzun işler, kota kapısı ve kenar çubuğu |
