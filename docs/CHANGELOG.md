@@ -1,5 +1,22 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Oyun (F7)
+
+### Eklendi
+- **Godot ile oyun:** Ajan bir Godot projesi kurup tek adımda **Windows EXE** ve tarayıcıda çalışan **PWA** çıkarır
+  (`godot_export`). Godot 4.7.2 ve Blender 5.2.3 araç klasörüne kuruldu (resmî sağlama toplamlarıyla doğrulandı).
+- **Model dönüştürme:** FBX/OBJ/glTF/STL/PLY/.blend modelleri Blender ile ekransız GLB'ye çevrilir; web için poligon
+  ve doku küçültülür. İnternetten gelen .blend içindeki betikler çalışmaz.
+- **Poly Haven:** Ücretsiz CC0 model/doku/HDRI arama ve indirme (resmî API; kaynak notu bırakılır).
+- **godot-mcp** Ayarlar > MCP kataloğunda (isteğe bağlı; ölçümde kazanç görülmediği için kapalı başlar).
+- **"Godot oyun (EXE + PWA)"** iş şablonu.
+
+### Değişti
+- Güvenilmeyen klasöre artık yazılamaz ve Godot o klasörü işlemez (otomatik `.gdignore`).
+
+### Düzeltildi
+- Belgelerde EVREN ücretsizlik bitişi 2027-01-01 olarak güncellendi.
+
 ## Yayınlanmamış — Güvenlik ve kurallar (F6)
 
 ### Eklendi

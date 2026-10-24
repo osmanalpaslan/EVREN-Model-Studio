@@ -390,7 +390,7 @@ Kullanıcı onayı gereken anlar: program/şablon indirme (Godot şablonları, M
 | F4 Skill ve profiller — YAPILDI 2026-10-24 (dal `feat/f4-skill-profiller`) | 7.2 skill menüsü + `read_skill`, E5 profiller, #10 şablonlar, #13 skill denetçisi, #14 betikleştir | Proje bazlı aç/kapa kalıcı; model skill'i gerçekten okuyor (R-25) |
 | F5 Arayüz — YAPILDI 2026-10-24 (dal `feat/f5-arayuz`; #6 ölçüldü → sayfa sayfa yükleme) | #7 canlı iş paneli, #8 zaman özeti, #9 çıktı önizleme, #11 sade görünüm, #12 yazı boyutu, E10 komut paleti, #16 veri klasörü/yedek, #5 tahmin, #6 sanallaştırma (önce ölç) | İki temada ekran görüntüsü; tüm ekranlar QA testi |
 | F6 Güvenlik ve kurallar — YAPILDI 2026-10-24 (dal `feat/f6-guvenlik-kurallar`) | #15 güvenilmeyen klasör, E4 kullanıcı kuralları, E1 geri sarma | Güvenilmeyen klasörde çalıştırma engellenir; geri sarma dosya + konuşmayı doğru döndürür |
-| F7 Oyun | 7.1 Godot + godot-mcp + Poly Haven MCP, Blender ekransız hattı, E9 MCP kataloğu | Örnek mod → Godot sahnesi → EXE ve PWA çıktısı; PWA Playwright'ta açılır |
+| F7 Oyun — YAPILDI 2026-10-24 (dal `feat/f7-oyun`; Poly Haven MCP yerine resmî API, godot-mcp varsayılan kapalı) | 7.1 Godot + godot-mcp + Poly Haven MCP, Blender ekransız hattı, E9 MCP kataloğu | Örnek mod → Godot sahnesi → EXE ve PWA çıktısı; PWA Playwright'ta açılır |
 
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 

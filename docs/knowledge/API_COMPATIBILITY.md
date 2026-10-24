@@ -92,6 +92,6 @@ Uygulamayı etkileyen maddeler:
 
 ## Ücretsizlik
 
-- Tüm modellerin kayıt defterinde `free_until: 2026-11-01` ve fiyat 0.0 CR
+- Tüm modellerin kayıt defterinde `free_until: 2027-01-01 (canlı liste 2026-10-24; önceden 2026-11-01)` ve fiyat 0.0 CR
   (2026-10-15 snapshot). Ücretsiz erişimin kalıcı olduğu VARSAYILMAZ;
   `free_until` ve fiyat alanları değişebilir, Model sayfası canlı gösterir.

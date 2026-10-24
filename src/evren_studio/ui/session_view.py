@@ -1688,6 +1688,7 @@ class SessionView(QWidget):
             skills=self._run_skills(ws.root if ws is not None else None),
             untrusted=list(s.untrusted_dirs or []),
             user_rules=self._user_rules(ws.root) if ws is not None else None,
+            game_tools=self._wants_game_tools(ws.root if ws is not None else None, run_role, history),
         )
         runner = self.runner
         self.running = True
@@ -1885,6 +1886,19 @@ class SessionView(QWidget):
                           warn=True)
         self.transcript.add(card)
         return None
+
+    GAME_WORDS = re.compile(r"(?<![\w.])(?:godot|blender|3b|3d|model(?:i|ini|ler)?|fbx|obj|gltf|glb|poly ?haven|"
+                            r"mod(?:u|unu|lar|ları)?|oyun(?:u|a|da)?|sahne|sprite|doku|hdri)(?![\w.])", re.I)
+
+    def _wants_game_tools(self, root, role: str, history: list) -> bool:
+        """F7: oyun/3B araçları (convert_model, Poly Haven) + Godot/Blender bilgisi yalnız gerektiğinde (token)."""
+        if root is None:
+            return False
+        if role == "oyun" or (Path(root) / "project.godot").is_file():
+            return True
+        real = next((m for m in reversed(history or []) if m.get("role") == "user"
+                     and not (m.get("meta") or {}).get("auto_continue")), None)
+        return bool(self.GAME_WORDS.search((real or {}).get("content") or ""))
 
     def _fetch_quota(self):
         """Kota kapısı (A11) için; koşucu iş parçacığında çağrılır (R-04)."""

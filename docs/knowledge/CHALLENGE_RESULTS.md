@@ -334,6 +334,24 @@ Sonuç: gerçek modeller istemdeki güvenilmeyen klasör bölümüne uydu; koşu
 tetiklenmedi (birim testinde sınandı). Aynı gün zorluk 12/12 · 457 sn; R-13 E2E_OK · arayüz 15/15 · ajan 5/6
 (deepseek metin protokolü, bilinen kararsızlık).
 
+## F7 oyun (2026-10-24; Godot 4.7.2, Blender 5.2.3, `tests/e2e_oyun_real_api.py`)
+
+**Belirlenimli hat (modelsiz) 9/9 · 28 sn:** OBJ → `convert_model` → GLB (poligon 0,5); gömülü otomatik betikli
+.blend → GLB, betik ÇALIŞMADI (ters denetim: `--enable-autoexec` ile aynı dosya iz bıraktı); çıktı güvenilmeyen klasöre
+yazılamadı; Godot içe aktarma → EXE (ekransız 120 kare, hatasız) + PWA (manifest + service worker); PWA Playwright
+(Edge) ile 127.0.0.1'de açıldı: "Godot Engine v4.7.2", WebGL 2, konsol 0 hata; ekran görüntüsünde kılıç modeli.
+İlk koşuda Godot güvenilmeyen mods/ klasörünü de içe aktarıp yarıda kaldı (oyun modelsizdi) → `.gdignore`.
+
+**Gerçek ajan (Auto Pro, deepseek-v4.1-flash):** güvenilmeyen klasördeki mod → Godot → EXE + PWA.
+
+| Koşu | Sonuç |
+|---|---|
+| ilk (araçsız dışa aktarma) | 3/5 — 18 adım, 15 dk doldu, EXE/PWA yok |
+| `godot_export` ile | **7/7 · 297 sn · 13 adım** (EXE çalıştı, PWA açıldı, moddan hiçbir şey çalışmadı) |
+| aynı + godot-mcp AÇIK | 7/7 · 474 sn · 36 adım; **mcp__godot çağrısı 0** → varsayılan kapalı |
+
+Aynı gün zorluk auto-pro 12/12 · 370 sn; R-13 E2E_OK · ajan 6/6 · arayüz 15/15.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

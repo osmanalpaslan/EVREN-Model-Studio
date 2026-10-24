@@ -84,6 +84,19 @@ def check_command(command: str, root: Path, dirs: list[str]) -> str:
     return ""
 
 
+def ensure_gdignore(dirs: list[str]) -> None:
+    """F7: güvenilmeyen klasöre boş `.gdignore` — Godot o klasörü hiç içe aktarmaz/işlemez (mod içindeki .blend,
+    betik vb. Godot'ya da girmez). 2026-10-24: mods/ içindeki .blend, Blender yolu istediği için Godot'nun tüm
+    içe aktarmasını yarıda bıraktı; oyun modelsiz paketlendi."""
+    for d in dirs:
+        p = Path(d)
+        try:
+            if p.is_dir() and not (p / ".gdignore").exists():
+                (p / ".gdignore").write_text("", encoding="utf-8")
+        except OSError:
+            pass
+
+
 def prompt_section(dirs: list[str], root: Path | None) -> str:
     """Yalnız bu projeyle ilgili (içinde/altında) güvenilmeyen klasörler isteme girer."""
     if not dirs:

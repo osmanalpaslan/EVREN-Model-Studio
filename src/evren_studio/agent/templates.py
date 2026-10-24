@@ -42,6 +42,12 @@ BUILTIN: list[Template] = [
         "komut satırı arayüzü ve unittest testleriyle yaz, testleri çalıştırıp geçtiğini göster.",
         "Plan → onay → kod + test."),
     Template(
+        "Godot oyun (EXE + PWA)",
+        "Bu klasörde Godot 4 ile [oyunun kısa tanımı] yap. [Varsa: mods/… içindeki modeli kullan] Modelleri "
+        "convert_model ile GLB'ye çevir (web için hafiflet), sahneyi kur, Windows EXE'sini build/windows/ altına ve "
+        "PWA'yı build/web/ altına dışa aktar; içe aktarma ve dışa aktarma çıktısında hata olmadığını göster.",
+        "Godot projesi, EXE ve tarayıcıda çalışan PWA (Godot + Blender araç klasöründe)."),
+    Template(
         "Hata ayıkla",
         "[Hata mesajı veya belirti]. Nedenini bul, en küçük düzeltmeyi yap ve ilgili testleri çalıştırıp geçtiğini "
         "göster. İlgisiz dosyalara dokunma.",

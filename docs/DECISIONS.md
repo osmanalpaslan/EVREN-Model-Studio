@@ -116,6 +116,12 @@
 | 112 | Güvenilmeyen klasör: okuma serbest (içerik "DIŞ İÇERİK" uyarılı), içindeki çalıştırılabilir dosyayı anan veya aç/çalıştır fiiliyle anılan her komut engellenir — izin modundan bağımsız (Otomatik dahil); şüphede engelle (ör. Get-FileHash x.exe) | Kullanıcı internetten mod paylaşacak; yanlış engel zararsız, yanlış izin zararlı. İşletim sistemi yalıtımı yok (E7 iptal) | 2026-10-24 |
 | 113 | Kullanıcı kuralları `.evren/kurallar.json`: üç olay (düzenleme sonrası not, komut öncesi engel, tur sonu dürtme — yalnız dosya yazan turda, tur başına bir kez); ilk kullanımda ve içerik her değişince onay (özet ayarda) | Proje dosyası başkasından gelebilir (git); onaysız komut çalıştırmak tehlikeli; sıradan turda gereksiz çalıştırma olmasın | 2026-10-24 |
 | 114 | Geri sarma: onay kartında geri alınamayacak etkiler (komut, kurulum, servis, web, Proje commit'leri) açıkça; dosyalar sondan başa (elle değişmiş olsa da, kartta uyarılarak) geri alınır; bir dosya geri alınamazsa konuşma SİLİNMEZ | Claude Code'da da kontrol noktaları komutları kapsamaz; yarım geri sarma tutarsız durum bırakmasın | 2026-10-24 |
+| 115 | Oyun araçları depo dışında `EVREN-Araclar` klasöründe, kurulumsuz zip; her indirme resmî sağlama toplamıyla doğrulanır; Godot kendi kendine yeterli kipte (şablon/ayar exe yanında) | Yönetici izni gerekmez, AppData'ya yazılmaz, sürüm sabit (kullanıcı onayı: 1–4) | 2026-10-24 |
+| 116 | Blender yalnız `convert_model` aracıyla, ekransız + `--factory-startup` + `--disable-autoexec`; komut satırından Blender/.blend çalıştırma güvenilmeyen klasör kuralına takılır | İnternetten gelen .blend gömülü Python taşıyabilir; ters denetimde autoexec açıkken çalıştığı görüldü | 2026-10-24 |
+| 117 | Poly Haven: üçüncü taraf MCP (yıldızsız, lisanssız) yerine resmî API; uygulamaya özgü User-Agent ve arayüzde "Poly Haven" adı + KAYNAK.txt | API ToS 2.4/2.5; varlıklar CC0 | 2026-10-24 |
+| 118 | Dışa aktarma `godot_export` aracıyla (ön ayar yoksa yazar, varsa dokunmaz); EXE + PWA, gl_compatibility | Ajan elle kurarken 15 dk'da bitiremedi; araçla 297 sn (R-25) | 2026-10-24 |
+| 119 | godot-mcp kurulu ama VARSAYILAN KAPALI; editör açan araç ajana verilmez | Gerçek ölçümde model MCP araçlarını hiç çağırmadı, adım 13 → 36 (R-25) | 2026-10-24 |
+| 120 | Güvenilmeyen klasöre otomatik `.gdignore` ve yazma engeli | Godot mod klasörünü içe aktarınca tarama yarıda kalıp oyun modelsiz paketlendi; ajan klasöre yazıp sildi | 2026-10-24 |
 
 ## Değerlendirilip reddedilenler
 

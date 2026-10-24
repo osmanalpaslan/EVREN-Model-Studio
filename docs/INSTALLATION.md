@@ -104,3 +104,17 @@ arasında taşınmaz; anahtarı yeni bilgisayarda yeniden girin.
   çalışıyor olmalı. Yardım > Tanılama'yı çalıştırın.
 - **503 sağlıklı endpoint yok**: sağlayıcı kaynaklıdır; bekleyin veya
   başka doğrulanmış model seçin. Hata Merkezi'nde Türkçe öneriyi okuyun.
+
+## Oyun araçları (isteğe bağlı, F7)
+
+Godot ile EXE/PWA ve model dönüştürme için kurulumsuz programlar uygulama klasörünün YANINDAKİ `EVREN-Araclar`
+klasöründe aranır (veya kullanıcı klasöründe `EVREN-Araclar`):
+
+- `godot\Godot_v4.7.2-stable_win64(_console).exe` + boş `._sc_` dosyası; dışa aktarma şablonları
+  `godot\editor_data\export_templates\4.7.2.stable\` altında (resmî `.tpz` içindeki `templates/`).
+- `blender\blender-5.2.3-windows-x64\blender.exe`
+- `godot-mcp\build\index.js` (isteğe bağlı; Ayarlar > MCP'den de kurulabilir).
+
+Hepsi resmî sitelerden indirilir; sağlama toplamları (Godot SHA512-SUMS.txt, Blender .sha256) doğrulanmalıdır.
+Programlar yoksa ajan "kurulu değil" der ve kendisi indirmeye çalışmaz.
+

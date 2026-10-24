@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 90 · Açık/izlenen: 6 · Oturum: 32 · Kural: 31
+Kayıt: 92 · Açık/izlenen: 6 · Oturum: 33 · Kural: 31
 
 ## Açık ve izlenen kayıtlar
 
@@ -22,9 +22,11 @@ Kayıt: 90 · Açık/izlenen: 6 · Oturum: 32 · Kural: 31
 | 2026-10-24 | [2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot](incidents/2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Zorluk kuralı program çalıştırma işini kolay sayıp hızlı motora gönderdi |
 | 2026-10-24 | [2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de](incidents/2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Tur sonu işleri runner silindikten sonra okunuyordu, skill denetçisi hiç çalışmıyordu |
 | 2026-10-24 | [2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast](incidents/2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | SQLite datetime ile ISO zaman damgası metin olarak karşılaştırılınca aynı gün hep "yeni" sayılır |
+| 2026-10-24 | [2026-10-24-oyun-ajani-disa-aktarmayi-elle-kurarken-sure-doldu](incidents/2026-10-24-oyun-ajani-disa-aktarmayi-elle-kurarken-sure-doldu.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Oyun ajanı dışa aktarmayı elle kurarken süre doldu |
 | 2026-10-24 | [2026-10-24-karsilama-ekraninda-profil-uygulamak-modal-bilgi-kutusu-aciy](incidents/2026-10-24-karsilama-ekraninda-profil-uygulamak-modal-bilgi-kutusu-aciy.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Karşılama ekranında profil uygulamak modal bilgi kutusu açıyordu |
 | 2026-10-24 | [2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok](incidents/2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Hesap kapama ölçümü alt klasöre kaydedilen raporu çıktı yok sandı |
 | 2026-10-24 | [2026-10-24-guvenlik-olcumu-enjeksiyonu-alintilayip-uyaran-yaniti-uydu-s](incidents/2026-10-24-guvenlik-olcumu-enjeksiyonu-alintilayip-uyaran-yaniti-uydu-s.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Güvenlik ölçümü enjeksiyonu alıntılayıp uyaran yanıtı uydu saydı |
+| 2026-10-24 | [2026-10-24-godot-guvenilmeyen-mod-klasorunu-ice-aktarinca-oyun-modelsiz](incidents/2026-10-24-godot-guvenilmeyen-mod-klasorunu-ice-aktarinca-oyun-modelsiz.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Godot güvenilmeyen mod klasörünü içe aktarınca oyun modelsiz paketlendi |
 | 2026-10-24 | [2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s](incidents/2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s.md) | surec | orta | cozuldu | Claude Code (masaüstü) | Gerçek API testleri her maddeden sonra koşulunca faz 1,5-2 saat test bekliyordu |
 | 2026-10-24 | [2026-10-24-evren-seed-ve-temperature-0-yalniz-gemma-4-31b-de-yaniti-sab](incidents/2026-10-24-evren-seed-ve-temperature-0-yalniz-gemma-4-31b-de-yaniti-sab.md) | yanlis-iddia | orta | cozuldu | Claude Code (masaüstü) | EVREN seed ve temperature=0 yalnız gemma-4-31b'de yanıtı sabitliyor |
 | 2026-10-24 | [2026-10-24-evren-evren-tools-uzantisi-acikken-de-canli-veri-getirmedi](incidents/2026-10-24-evren-evren-tools-uzantisi-acikken-de-canli-veri-getirmedi.md) | yanlis-iddia | dusuk | cozuldu | Claude Code (masaüstü) | EVREN evren_tools uzantısı açıkken de canlı veri getirmedi |
@@ -114,6 +116,7 @@ Kayıt: 90 · Açık/izlenen: 6 · Oturum: 32 · Kural: 31
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-24 | [2026-10-24-claude-code-masaustu-f7-oyun](sessions/2026-10-24-claude-code-masaustu-f7-oyun.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F7 oyun |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f6-guvenlik-ve-kurallar](sessions/2026-10-24-claude-code-masaustu-f6-guvenlik-ve-kurallar.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F6 güvenlik ve kurallar |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f5-arayuz](sessions/2026-10-24-claude-code-masaustu-f5-arayuz.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F5 arayüz |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f4-skill-menusu-ve-profiller](sessions/2026-10-24-claude-code-masaustu-f4-skill-menusu-ve-profiller.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F4 skill menüsü ve profiller |

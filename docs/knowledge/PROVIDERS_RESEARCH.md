@@ -16,7 +16,7 @@
 | Araç çağrısı | OpenAI biçimi, 8 modelde doğrulandı | Yeni modellerde Chat Completions + reasoning ile **çalışmıyor**; Responses gerekli | `tool_use` / `tool_result` blokları |
 | Model listesi yetenek veriyor mu | ✅ (görev, tools, context) | ❌ (yalnızca id) → statik tablo gerekir | ✅ (`max_input_tokens`, `capabilities`) |
 | Kalan kredi uçtan okunur mu | ✅ `/v1/quota` | ❌ (yalnız Admin anahtarı; panelden) | ❌ (yalnız Admin API; panelden) |
-| Ücret | Şu an ücretsiz (free_until 2026-11-01) | Ön ödemeli kredi | Ön ödemeli kredi |
+| Ücret | Şu an ücretsiz (free_until 2027-01-01; 2026-10-24 canlı) | Ön ödemeli kredi | Ön ödemeli kredi |
 | Türkiye | ✅ | ✅ desteklenen ülke | ✅ desteklenen bölge |
 
 ## 2. OpenAI
