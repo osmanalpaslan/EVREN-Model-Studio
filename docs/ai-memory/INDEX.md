@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 92 · Açık/izlenen: 6 · Oturum: 33 · Kural: 31
+Kayıt: 94 · Açık/izlenen: 6 · Oturum: 34 · Kural: 31
 
 ## Açık ve izlenen kayıtlar
 
@@ -22,6 +22,7 @@ Kayıt: 92 · Açık/izlenen: 6 · Oturum: 33 · Kural: 31
 | 2026-10-24 | [2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot](incidents/2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Zorluk kuralı program çalıştırma işini kolay sayıp hızlı motora gönderdi |
 | 2026-10-24 | [2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de](incidents/2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Tur sonu işleri runner silindikten sonra okunuyordu, skill denetçisi hiç çalışmıyordu |
 | 2026-10-24 | [2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast](incidents/2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | SQLite datetime ile ISO zaman damgası metin olarak karşılaştırılınca aynı gün hep "yeni" sayılır |
+| 2026-10-24 | [2026-10-24-r-29-yine-ihlal-edildi-heredoc-python-yamasi-test-dosyasinda](incidents/2026-10-24-r-29-yine-ihlal-edildi-heredoc-python-yamasi-test-dosyasinda.md) | surec | dusuk | cozuldu | Claude Code (masaüstü) | R-29 yine ihlal edildi: heredoc Python yamasi test dosyasinda ters boluleri bozdu |
 | 2026-10-24 | [2026-10-24-oyun-ajani-disa-aktarmayi-elle-kurarken-sure-doldu](incidents/2026-10-24-oyun-ajani-disa-aktarmayi-elle-kurarken-sure-doldu.md) | eksik | orta | cozuldu | Claude Code (masaüstü) | Oyun ajanı dışa aktarmayı elle kurarken süre doldu |
 | 2026-10-24 | [2026-10-24-karsilama-ekraninda-profil-uygulamak-modal-bilgi-kutusu-aciy](incidents/2026-10-24-karsilama-ekraninda-profil-uygulamak-modal-bilgi-kutusu-aciy.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Karşılama ekranında profil uygulamak modal bilgi kutusu açıyordu |
 | 2026-10-24 | [2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok](incidents/2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Hesap kapama ölçümü alt klasöre kaydedilen raporu çıktı yok sandı |
@@ -32,6 +33,7 @@ Kayıt: 92 · Açık/izlenen: 6 · Oturum: 33 · Kural: 31
 | 2026-10-24 | [2026-10-24-evren-evren-tools-uzantisi-acikken-de-canli-veri-getirmedi](incidents/2026-10-24-evren-evren-tools-uzantisi-acikken-de-canli-veri-getirmedi.md) | yanlis-iddia | dusuk | cozuldu | Claude Code (masaüstü) | EVREN evren_tools uzantısı açıkken de canlı veri getirmedi |
 | 2026-10-24 | [2026-10-24-bash-heredoc-ile-yazilan-python-kodunda-ters-bolu-yine-bozul](incidents/2026-10-24-bash-heredoc-ile-yazilan-python-kodunda-ters-bolu-yine-bozul.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Bash heredoc ile yazılan Python kodunda ters bölü yine bozuldu (regex karakter sınıfı) |
 | 2026-10-24 | [2026-10-24-auto-pro-saglik-kurali-gercek-kullanimda-hic-beslenmiyordu](incidents/2026-10-24-auto-pro-saglik-kurali-gercek-kullanimda-hic-beslenmiyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Auto Pro sağlık kuralı gerçek kullanımda hiç beslenmiyordu |
+| 2026-10-24 | [2026-10-24-auto-akisinda-secilen-model-okunmuyordu-x-evren-routed-model](incidents/2026-10-24-auto-akisinda-secilen-model-okunmuyordu-x-evren-routed-model.md) | yanlis-iddia | orta | cozuldu | Claude Code (masaüstü) | Auto akisinda secilen model okunmuyordu (X-Evren-Routed-Model basligi) |
 | 2026-10-24 | [2026-10-24-akis-koptugunda-veya-model-sustugunda-yedege-gecilmiyor-tur](incidents/2026-10-24-akis-koptugunda-veya-model-sustugunda-yedege-gecilmiyor-tur.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Akış koptuğunda veya model sustuğunda yedeğe geçilmiyor, tur hatayla bitiyordu |
 | 2026-10-21 | [2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8](incidents/2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Proje ajanı bozuk doğrulama komutu yüzünden görevi düşürüp 8 görevi atladı |
 | 2026-10-21 | [2026-10-21-plan-bekcisi-yalniz-plan-yaz-kod-yazma-isteginde-ajani-plani](incidents/2026-10-21-plan-bekcisi-yalniz-plan-yaz-kod-yazma-isteginde-ajani-plani.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Plan bekçisi "yalnız plan yaz, kod yazma" isteğinde ajanı planı uygulamaya itti |
@@ -116,6 +118,7 @@ Kayıt: 92 · Açık/izlenen: 6 · Oturum: 33 · Kural: 31
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-24 | [2026-10-24-claude-code-masaustu-son-paket-ve-proje-kapanisi](sessions/2026-10-24-claude-code-masaustu-son-paket-ve-proje-kapanisi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Son paket ve proje kapanisi |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f7-oyun](sessions/2026-10-24-claude-code-masaustu-f7-oyun.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F7 oyun |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f6-guvenlik-ve-kurallar](sessions/2026-10-24-claude-code-masaustu-f6-guvenlik-ve-kurallar.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F6 güvenlik ve kurallar |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f5-arayuz](sessions/2026-10-24-claude-code-masaustu-f5-arayuz.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F5 arayüz |

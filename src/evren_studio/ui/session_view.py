@@ -438,6 +438,13 @@ class SessionView(QWidget):
         self.composer.submitted.connect(lambda t: self.send(t, self.composer.attachments.take()))
         self.composer.files_added.connect(self.add_files)
         self.composer.image_added.connect(self.add_image)
+        # Madde 2: dosya/görsel sohbet alanının HER YERİNE bırakılabilir (yalnız yazma kutusu değil)
+        self.setAcceptDrops(True)
+        self._drop_hint = QLabel("Bırakın: dosyalar ek olarak eklenir", self)
+        self._drop_hint.setObjectName("DropHint")
+        self._drop_hint.setAlignment(Qt.AlignCenter)
+        self._drop_hint.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._drop_hint.hide()
         self.composer.usage_btn.refresh_requested.connect(self.refresh_usage)
         self.composer.usage_btn.details_requested.connect(lambda: self.page_requested.emit("usage"))
         self._quota = None
@@ -1167,6 +1174,57 @@ class SessionView(QWidget):
                                     "Eklenemedi (zaten ekli, okunamıyor veya en fazla "
                                     f"{10} ek sınırı): " + ", ".join(skipped))
         self.composer.edit.setFocus()
+
+    # ---- sürükle-bırak (oturum alanının tamamı) ----
+
+    def _drop_ok(self, md) -> bool:
+        from .composer import local_files
+
+        return bool(local_files(md)) or md.hasImage()
+
+    def _show_drop_hint(self, on: bool) -> None:
+        if on:
+            p = theme.current()
+            self._drop_hint.setStyleSheet(
+                f"#DropHint {{ background: {p.bg}; color: {p.text}; border: 2px dashed {p.accent};"
+                f" border-radius: 14px; font-size: 15px; }}")
+            self._drop_hint.setGeometry(self.rect().adjusted(16, 16, -16, -16))
+            self._drop_hint.raise_()
+        self._drop_hint.setVisible(on)
+
+    def dragEnterEvent(self, e) -> None:
+        if self._drop_ok(e.mimeData()):
+            e.acceptProposedAction()
+            self._show_drop_hint(True)
+        else:
+            super().dragEnterEvent(e)
+
+    def dragMoveEvent(self, e) -> None:
+        if self._drop_ok(e.mimeData()):
+            e.acceptProposedAction()
+        else:
+            super().dragMoveEvent(e)
+
+    def dragLeaveEvent(self, e) -> None:
+        self._show_drop_hint(False)
+        super().dragLeaveEvent(e)
+
+    def dropEvent(self, e) -> None:
+        from PySide6.QtGui import QImage
+
+        from .composer import local_files
+
+        self._show_drop_hint(False)
+        md = e.mimeData()
+        files = local_files(md)
+        if files:
+            e.acceptProposedAction()
+            self.add_files(files)
+        elif md.hasImage() and isinstance(md.imageData(), QImage):
+            e.acceptProposedAction()
+            self.add_image(md.imageData())
+        else:
+            super().dropEvent(e)
 
     def add_image(self, img) -> None:
         att = clipboard_image_attachment(img, self._data_dir())

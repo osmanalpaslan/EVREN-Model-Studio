@@ -41,6 +41,7 @@ from ..budget import current_state, format_usd
 from ..secrets import delete_api_key, load_api_key, mask_api_key, save_api_key
 from .base_page import BasePage, card, kv_row
 from .mcp_settings import McpSettingsCard
+from .gametools_card import GameToolsCard
 from .workers import Task
 
 PAID_PROVIDERS = ("openai", "anthropic")
@@ -368,6 +369,13 @@ class SettingsPage(BasePage):
         l.addWidget(section("MCP Sunucuları (ek ajan araçları)"))
         self.mcp_card = McpSettingsCard(ctx)
         l.addWidget(self.mcp_card)
+        col.addWidget(c)
+
+        # ---- oyun araçları (Godot + şablonlar, Blender) ----
+        c, l = card()
+        l.addWidget(section("Oyun araçları"))
+        self.game_card = GameToolsCard(ctx)
+        l.addWidget(self.game_card)
         col.addWidget(c)
 
         # ---- veri ve görünüm ----

@@ -1,4 +1,4 @@
-"""Sağ panel: Görevler, Değişiklikler (geri alma), Dosyalar, Terminal."""
+"""Sağ panel: Görevler, Değişiklikler (geri alma), Dosyalar, Terminal, Çalışma, Git."""
 from __future__ import annotations
 
 import os
@@ -593,6 +593,205 @@ class WorkTab(QWidget):
         self.steps.setText("<br>".join(steps[-8:]) or "—")
 
 
+class GitTab(QWidget):
+    """Madde 1: proje klasörünün git durumu, dosya farkı, yapay zekâ commit mesajı önerisi, onaylı commit.
+    push/reset yok. Git işleri arka plan iş parçacığında (R-04)."""
+
+    def __init__(self, ctx, parent=None):
+        super().__init__(parent)
+        self.ctx = ctx
+        self.root: str | None = None
+        self.entries: list = []
+        self._tasks: set = set()
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(10, 10, 10, 10)
+        lay.setSpacing(8)
+        head = QHBoxLayout()
+        self.branch = faint_label("")
+        self.branch.setWordWrap(True)
+        head.addWidget(self.branch, 1)
+        self.refresh_btn = icon_button("refresh", "Yenile", 15)
+        self.refresh_btn.clicked.connect(lambda _=None: self.refresh())
+        head.addWidget(self.refresh_btn)
+        lay.addLayout(head)
+        self.body = QSplitter(Qt.Vertical)
+        self.list = QListWidget()
+        self.list.currentRowChanged.connect(self._show)
+        self.body.addWidget(self.list)
+        self.diff = DiffView("", auto_height=False)
+        self.diff.setMinimumHeight(100)
+        self.body.addWidget(self.diff)
+        box = QWidget()
+        bl = QVBoxLayout(box)
+        bl.setContentsMargins(0, 6, 0, 0)
+        bl.setSpacing(6)
+        self.message = QPlainTextEdit()
+        self.message.setPlaceholderText("Commit mesajı (Türkçe, tek satır özet)…")
+        self.message.setMaximumHeight(90)
+        bl.addWidget(self.message)
+        row = QHBoxLayout()
+        self.suggest_btn = QPushButton("Mesaj öner")
+        self.suggest_btn.setToolTip("Yapay zekâ, farka bakarak commit mesajı önerir (ücretsiz EVREN/Auto Pro)")
+        self.suggest_btn.clicked.connect(lambda _=None: self.suggest())
+        self.commit_btn = QPushButton("Commit'le")
+        self.commit_btn.setProperty("variant", "primary")
+        self.commit_btn.clicked.connect(lambda _=None: self.commit())
+        row.addWidget(self.suggest_btn)
+        row.addStretch(1)
+        row.addWidget(self.commit_btn)
+        bl.addLayout(row)
+        self.body.addWidget(box)
+        self.body.setSizes([150, 260, 130])
+        lay.addWidget(self.body, 1)
+        self.note = faint_label("")
+        self.note.setWordWrap(True)
+        lay.addWidget(self.note)
+        self.empty = _empty("Proje klasörü git deposu olduğunda değişen dosyalar, farkları ve commit burada görünür.")
+        lay.addWidget(self.empty)
+        self.init_btn = QPushButton("Bu klasörde git deposu başlat")
+        self.init_btn.clicked.connect(lambda _=None: self.init_repo())
+        lay.addWidget(self.init_btn, 0, Qt.AlignHCenter)
+        self._apply(None)
+
+    def _bg(self, fn, done, fail=None) -> None:
+        t = Task(fn, on_done=lambda r: (self._tasks.discard(t), done(r)),
+                 on_error=lambda e: (self._tasks.discard(t), (fail or self._fail)(e)))
+        self._tasks.add(t)
+        t.start()
+
+    def _fail(self, exc) -> None:
+        self.note.setText(f"Git hatası: {exc}")
+        self._busy(False)
+
+    def _busy(self, on: bool) -> None:
+        for b in (self.suggest_btn, self.commit_btn, self.refresh_btn):
+            b.setEnabled(not on)
+
+    def set_root(self, root: str | None) -> None:
+        if root != self.root:
+            self.root = root
+            self.message.clear()
+            self.note.clear()
+        self.refresh()
+
+    def refresh(self) -> None:
+        if not self.root:
+            self._apply(None)
+            return
+        from ..agent import gitview
+
+        root = self.root
+        self._bg(lambda: gitview.status(root), lambda st: self._apply(st) if root == self.root else None)
+
+    def _apply(self, st) -> None:
+        repo = bool(st and st.repo)
+        self.body.setVisible(repo)
+        self.empty.setVisible(not repo)
+        self.init_btn.setVisible(bool(self.root) and st is not None and not st.repo and not st.error)
+        self.refresh_btn.setVisible(bool(self.root))
+        if st is not None and st.error:
+            self.empty.setText(f"Git kullanılamıyor: {st.error}")
+        if not repo:
+            self.branch.setText("")
+            self.entries = []
+            return
+        sync = (f" · {st.ahead} gönderilmemiş commit" if st.ahead else "") + \
+               (f" · {st.behind} commit geride" if st.behind else "")
+        self.branch.setText(f"Dal: {st.branch or '?'} · {len(st.entries)} değişen dosya{sync}")
+        cur = self.entries[self.list.currentRow()].path if 0 <= self.list.currentRow() < len(self.entries) else ""
+        self.entries = st.entries
+        self.list.clear()
+        p = theme.current()
+        for e in st.entries:
+            self.list.addItem(QListWidgetItem(icons.icon("file", p.text_dim, 15), f"{e.path}   ({e.label})"))
+        self.commit_btn.setEnabled(bool(st.entries))
+        self.suggest_btn.setEnabled(bool(st.entries))
+        if not st.entries:
+            self.diff.set_diff("")
+            self.diff.setPlainText("Değişiklik yok — çalışma ağacı temiz.")
+            return
+        idx = next((i for i, e in enumerate(st.entries) if e.path == cur), 0)
+        self.list.setCurrentRow(idx)
+
+    def _show(self, row: int) -> None:
+        if not (0 <= row < len(self.entries)) or not self.root:
+            return
+        from ..agent import gitview
+
+        root, e = self.root, self.entries[row]
+        self._bg(lambda: gitview.file_diff(root, e), lambda d: self.diff.set_diff(d) if root == self.root else None)
+
+    def suggest(self) -> None:
+        if not self.root or not self.entries:
+            return
+        from ..agent import gitview
+        from .project_ui import COMMIT_SYSTEM, clean_commit_message
+
+        root = self.root
+        self._busy(True)
+        self.note.setText("Commit mesajı hazırlanıyor…")
+
+        def job():
+            diff = gitview.summary_diff(root)
+            text, model = self.ctx.ai_chat("commit", [{"role": "system", "content": COMMIT_SYSTEM},
+                                                      {"role": "user", "content": f"Değişiklikler:\n{diff}"}],
+                                           max_tokens=160)
+            return clean_commit_message(text), model
+
+        def done(res):
+            msg, model = res
+            self._busy(False)
+            if msg:
+                self.message.setPlainText(msg)
+                self.note.setText(f"Öneri: {model}. Düzenleyebilirsiniz.")
+            else:
+                self.note.setText("Model boş yanıt verdi; mesajı elle yazın.")
+
+        self._bg(job, done)
+
+    def commit(self) -> None:
+        if not self.root or not self.entries:
+            return
+        msg = self.message.toPlainText().strip()
+        if not msg:
+            self.note.setText("Önce commit mesajı yazın veya \"Mesaj öner\"e basın.")
+            return
+        files = "\n".join(f"• {e.path} ({e.label})" for e in self.entries[:12])
+        more = f"\n… ve {len(self.entries) - 12} dosya daha" if len(self.entries) > 12 else ""
+        if QMessageBox.question(self, "Commit'lensin mi?",
+                                f"{len(self.entries)} dosya commit'lenecek:\n{files}{more}\n\nMesaj: {msg.splitlines()[0]}"
+                                "\n\nGönderme (push) yapılmaz.") != QMessageBox.Yes:
+            return
+        from ..agent import gitview
+
+        root = self.root
+        self._busy(True)
+
+        def done(res):
+            ok, info = res
+            self._busy(False)
+            if ok:
+                self.message.clear()
+                self.note.setText(f"Commit'lendi: {info}")
+            else:
+                self.note.setText(f"Commit'lenemedi: {info}")
+            self.refresh()
+
+        self._bg(lambda: gitview.commit(root, msg), done)
+
+    def init_repo(self) -> None:
+        if not self.root:
+            return
+        if QMessageBox.question(self, "Git deposu başlatılsın mı?",
+                                f"{self.root} klasöründe boş bir git deposu oluşturulur (git init). "
+                                "Dosyalarınız değişmez.") != QMessageBox.Yes:
+            return
+        from ..agent import gitview
+
+        root = self.root
+        self._bg(lambda: gitview.init(root), lambda _r: self.refresh())
+
+
 class SidePanel(QWidget):
     def __init__(self, ctx, parent=None):
         super().__init__(parent)
@@ -618,6 +817,7 @@ class SidePanel(QWidget):
         self.files = FilesTab(ctx=ctx)
         self.terminal = TerminalTab()
         self.work = WorkTab()
+        self.git = GitTab(ctx)
         self._titles: list[str] = []
         self._buttons: list = []
         group = QButtonGroup(self)
@@ -628,6 +828,7 @@ class SidePanel(QWidget):
             (self.files, "folder", "Dosyalar"),
             (self.terminal, "terminal", "Terminal"),
             (self.work, "activity", "Çalışma"),
+            (self.git, "git", "Git"),
         )):
             self.stack.addWidget(widget)
             b = icon_button(icon_name, label, 17, checkable=True)
@@ -645,6 +846,8 @@ class SidePanel(QWidget):
             self.stack.setCurrentIndex(index)
             self.tab_title.setText(self._titles[index])
             self._buttons[index].setChecked(True)
+            if self.stack.widget(index) is self.git:
+                self.git.refresh()
 
     def set_session(self, session_id: int | None, workspace: str | None, todos: list[dict]) -> None:
         self.todos.set_todos(todos)
@@ -652,6 +855,7 @@ class SidePanel(QWidget):
         if self.files.root is None or str(self.files.root) != (workspace or ""):
             self.files.set_root(workspace)
         self.terminal.set_root(workspace)
+        self.git.set_root(workspace)
 
     def show_tab(self, name: str) -> None:
-        self.set_index({"todos": 0, "changes": 1, "files": 2, "terminal": 3, "work": 4}.get(name, 0))
+        self.set_index({"todos": 0, "changes": 1, "files": 2, "terminal": 3, "work": 4, "git": 5}.get(name, 0))

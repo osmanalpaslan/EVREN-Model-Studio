@@ -118,3 +118,8 @@ klasöründe aranır (veya kullanıcı klasöründe `EVREN-Araclar`):
 Hepsi resmî sitelerden indirilir; sağlama toplamları (Godot SHA512-SUMS.txt, Blender .sha256) doğrulanmalıdır.
 Programlar yoksa ajan "kurulu değil" der ve kendisi indirmeye çalışmaz.
 
+**Kolay yol (başka bilgisayar):** Ayarlar > **Oyun araçları** kartında "Godot + şablonları kur (~1.367 MB)" ve
+"Blender'ı kur (~406 MB)" düğmeleri. Onay penceresi dosyaları, boyutları ve kurulum yerini gösterir; her dosyanın
+sağlama toplamı uygulamaya gömülü resmî değerle karşılaştırılır (uyuşmazsa dosya silinir, kurulum durur). Yönetici
+izni gerekmez, AppData'ya yazılmaz. Yarıda kalırsa düğmeye yeniden basın: doğrulanmış indirmeler yeniden kullanılır.
+
