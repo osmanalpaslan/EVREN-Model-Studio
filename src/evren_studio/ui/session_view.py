@@ -77,6 +77,9 @@ from .transcript import (
 from .workers import Task
 
 HISTORY_WINDOW = 40          # uzun oturumda ilk çizilen son mesaj sayısı
+# F5 #6 ölçümü (2026-10-24, gerçek pencere): açılış ≤ 0,6 sn (4000 mesaj), ama "önceki mesajlar" HEPSİNİ çizince
+# 1600 mesaj 17 sn, 4000 mesaj 67 sn donuyordu → her tıklamada bu kadar daha (sayfa sayfa).
+HISTORY_PAGE = 60
 ATTACH_OPEN = "<ekli_dosyalar>"
 ATTACH_CLOSE = "</ekli_dosyalar>"
 MENTION_RE = re.compile(r"(?<!\S)@([^\s]+)")
@@ -714,7 +717,7 @@ class SessionView(QWidget):
         elif self.workspace:
             self._env_check(self.workspace)
 
-    def render_history(self, messages: list[dict], show_all: bool = False) -> None:
+    def render_history(self, messages: list[dict], show_all: bool = False, window: int | None = None) -> None:
         """Oturum geçmişini çizer.
 
         PERFORMANS (2026-10-17): 200 mesajlık oturum açılışı ~30 sn sürüyordu. Artık
@@ -722,6 +725,7 @@ class SessionView(QWidget):
         HISTORY_WINDOW mesaj (bir kullanıcı mesajı sınırından) çizilir; üstte "Önceki
         mesajları göster" düğmesi tümünü açar. Modele giden geçmiş DEĞİŞMEZ.
         """
+        self._history_window = window or HISTORY_WINDOW
         self.transcript.setUpdatesEnabled(False)
         try:
             self._render_history(messages, show_all)
@@ -732,8 +736,9 @@ class SessionView(QWidget):
         self.transcript.clear()
         self.tool_widgets.clear()
         hidden = 0
-        if not show_all and len(messages) > HISTORY_WINDOW:
-            start = len(messages) - HISTORY_WINDOW
+        win = getattr(self, "_history_window", HISTORY_WINDOW)
+        if not show_all and len(messages) > win:
+            start = len(messages) - win
             # Araç çağrısı ile sonucu ayrılmasın: bir kullanıcı mesajından başla
             while start > 0 and messages[start]["role"] not in ("user", "summary"):
                 start -= 1
@@ -821,7 +826,7 @@ class SessionView(QWidget):
         host = QWidget()
         h = QHBoxLayout(host)
         h.setContentsMargins(0, 0, 0, 0)
-        b = QPushButton(f"Önceki {count} mesajı göster")
+        b = QPushButton(f"Önceki mesajlardan {min(count, HISTORY_PAGE)} tane daha göster ({count} gizli)")
         b.setProperty("variant", "ghost")
         b.setIcon(icons.icon("chevron-down", size=14))
         b.clicked.connect(self._show_full_history)
@@ -833,7 +838,8 @@ class SessionView(QWidget):
     def _show_full_history(self) -> None:
         if not self.session_id:
             return
-        self.render_history(self.ctx.db.get_session_messages(self.session_id), show_all=True)
+        self.render_history(self.ctx.db.get_session_messages(self.session_id),
+                            window=getattr(self, "_history_window", HISTORY_WINDOW) + HISTORY_PAGE)
         self.transcript._stick = False
         QTimer.singleShot(0, self, lambda: self.transcript.verticalScrollBar().setValue(0))
 
@@ -1807,9 +1813,46 @@ class SessionView(QWidget):
 
     # -- çalışma durum çubuğu: hangi LLM, ne kadar süredir --
 
+    def _work_state(self) -> dict | None:
+        """F5 #7: canlı iş paneli için durum (çalışmıyorsa None)."""
+        if not self.running or self._run_t0 is None:
+            return None
+        model = self.runner.model if self.runner is not None else self.run_model
+        route = getattr(self, "_run_route", None)
+        flow = self.project.label or self.deep.label or self.qa.label or ""
+        progress = ""
+        st = getattr(self.project, "state", None)
+        if self.project.active and st is not None:
+            done = sum(1 for t in st.tasks if t.status == "bitti")
+            progress = f"{done}/{len(st.tasks)} görev bitti"
+        steps, tokens = [], 0
+        if self.session_id and self._turn_id is not None:
+            for m in self.ctx.db.get_session_messages(self.session_id):
+                if m["id"] < self._turn_id:
+                    continue
+                meta = m.get("meta") or {}
+                if m["role"] == "tool":
+                    mark = "✗" if meta.get("error") else "✓"
+                    dur = meta.get("duration_s")
+                    steps.append(f"{mark} {meta.get('summary') or m.get('name') or '?'}"
+                                 + (f" · {format_duration(float(dur))}" if dur else ""))
+                elif m["role"] == "assistant":
+                    tokens += int(((meta.get("usage") or {}).get("completion_tokens")) or 0)
+        return {"title": "Ajan çalışıyor", "model": model,
+                "role": router.ROLE_LABELS.get(route.role, route.role) if route is not None else "",
+                "elapsed": format_duration(time.monotonic() - self._run_t0), "step": self._run_step,
+                "activity": self._run_activity, "flow": flow, "progress": progress, "steps": steps,
+                "tokens": tokens}
+
     def _tick_run(self) -> None:
         if not self.running or self._run_t0 is None:
+            self.panel.work.update_state(None)
             return
+        now = time.monotonic()
+        if (self.panel.isVisible() and self.panel.stack.currentWidget() is self.panel.work
+                and now - getattr(self, "_work_at", 0.0) >= 2.0):   # yalnız görünürken, 2 sn'de bir (DB okur)
+            self._work_at = now
+            self.panel.work.update_state(self._work_state())
         elapsed = time.monotonic() - self._run_t0
         model = self.runner.model if self.runner is not None else self.run_model   # yedeğe geçişte güncel
         prov = self.ctx.provider_of(model)
@@ -1915,6 +1958,8 @@ class SessionView(QWidget):
 
     def _usage_snapshot(self) -> UsageSnapshot:
         s = UsageSnapshot(quota=self._quota, error=self._quota_error, updated=self._quota_time)
+        if self._quota is not None:             # F5 #5 tahmin: günlük kalan kota (son okunan)
+            self.ctx.last_daily_remaining = getattr(self._quota, "daily_remaining_tokens", None)
         if self.session_id:
             for m in self.ctx.db.get_session_messages(self.session_id):
                 u = (m.get("meta") or {}).get("usage") or {}
@@ -2001,6 +2046,7 @@ class SessionView(QWidget):
         if not self.keep_services:
             self.stop_services()        # tur bitti: ajanın başlattığı sunucular açık kalmasın
         self._run_timer.stop()
+        self.panel.work.update_state(None)
         total = time.monotonic() - self._run_t0 if self._run_t0 is not None else None
         self._run_t0 = None
         self.composer.set_running(False)
@@ -2043,6 +2089,10 @@ class SessionView(QWidget):
                            + ", ".join(outcome.test_edits), "alert")
             hook(outcome, None)
             return
+        # _finish runner'ı ve başlangıç saatini siler: tur sonu işleri (ders, denetçi, zaman özeti) için önce al.
+        # 2026-10-24: önceden getattr(self.runner, ...) _finish'ten SONRA okunuyordu → denetçi hiç çalışmıyordu.
+        done_runner = self.runner
+        turn_total = time.monotonic() - self._run_t0 if self._run_t0 is not None else 0.0
         self._finish()
         role = self._run_route.role if getattr(self, "_run_route", None) is not None else ""
         if role == "kod_kolay":
@@ -2088,8 +2138,9 @@ class SessionView(QWidget):
             else:
                 self._turn_review(self._turn_id)
                 if outcome.stopped == "done":
-                    self._suggest_learnings(self._turn_id, list(getattr(self.runner, "quality_events", []) or []))
-                    self._skill_check(list(getattr(self.runner, "used_skills", []) or []))
+                    self._suggest_learnings(self._turn_id, list(getattr(done_runner, "quality_events", []) or []))
+                    self._skill_check(list(getattr(done_runner, "used_skills", []) or []))
+                self._time_summary(self._turn_id, turn_total, len(getattr(outcome, "model_switches", None) or []))
         self._maybe_auto_title()
 
     def _on_fail(self, exc: Exception) -> None:
@@ -2363,6 +2414,19 @@ class SessionView(QWidget):
                 client.close()
 
         Task(job, on_done=lambda models: self.ctx.set_models(models), on_error=lambda _e: None).start()
+
+    def _time_summary(self, turn_id: int | None, total_s: float, switches: int) -> None:
+        """F5 #8: uzun turda (≥ 60 sn, ≥ 3 adım) zaman dağılımı kartı; kısa turda hiçbir şey (R-22)."""
+        from .timesummary import TimeSummaryCard, breakdown
+
+        if not self.session_id or turn_id is None:
+            return
+        msgs = [m for m in self.ctx.db.get_session_messages(self.session_id) if m["id"] >= turn_id]
+        data = breakdown(msgs, total_s, switches)
+        if data is None:
+            return
+        self.transcript.add(TimeSummaryCard(data))
+        self.transcript.scroll_to_bottom()
 
     def _suggest_learnings(self, turn_id: int | None, events: list[str]) -> None:
         """E6: ders sinyali varsa (learnings.signals) kısa model çağrısıyla en çok 3 ders → onay kartı. Sinyal

@@ -394,10 +394,15 @@ def test_uzun_oturum_son_mesajlarla_acilir_ve_tumu_gosterilir(qa):
     users = w.session.findChildren(UserMessageWidget)
     shown = [u for u in users if u.isVisibleTo(w.session.transcript)]
     assert 0 < len(shown) <= HISTORY_WINDOW // 4 + 1, len(shown)
-    btns = [b for b in w.session.findChildren(QPushButton) if b.text().startswith("Önceki ")]
-    assert btns, "önceki mesajlar düğmesi yok"
-    btns[0].click()
-    app.processEvents()
+    # F5 #6 (2026-10-24): düğme hepsini değil, her tıklamada HISTORY_PAGE mesaj daha açar (4000 mesajda 67 sn
+    # donma ölçüldü); birkaç tıklamayla tüm oturum açılır.
+    for _ in range(10):
+        btns = [b for b in w.session.findChildren(QPushButton)
+                if b.text().startswith("Önceki ") and b.isVisibleTo(w.session.transcript)]
+        if not btns:
+            break
+        btns[0].click()
+        app.processEvents()
     shown = [u for u in w.session.findChildren(UserMessageWidget) if u.isVisibleTo(w.session.transcript)]
     assert len(shown) == 50
     assert len(w.session.tool_widgets) == 50, "araç kartları sonuçlarıyla eşleşmeli"

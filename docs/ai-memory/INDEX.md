@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 88 · Açık/izlenen: 6 · Oturum: 30 · Kural: 30
+Kayıt: 89 · Açık/izlenen: 6 · Oturum: 31 · Kural: 31
 
 ## Açık ve izlenen kayıtlar
 
@@ -20,6 +20,7 @@ Kayıt: 88 · Açık/izlenen: 6 · Oturum: 30 · Kural: 30
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
 | 2026-10-24 | [2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot](incidents/2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Zorluk kuralı program çalıştırma işini kolay sayıp hızlı motora gönderdi |
+| 2026-10-24 | [2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de](incidents/2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Tur sonu işleri runner silindikten sonra okunuyordu, skill denetçisi hiç çalışmıyordu |
 | 2026-10-24 | [2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast](incidents/2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | SQLite datetime ile ISO zaman damgası metin olarak karşılaştırılınca aynı gün hep "yeni" sayılır |
 | 2026-10-24 | [2026-10-24-karsilama-ekraninda-profil-uygulamak-modal-bilgi-kutusu-aciy](incidents/2026-10-24-karsilama-ekraninda-profil-uygulamak-modal-bilgi-kutusu-aciy.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Karşılama ekranında profil uygulamak modal bilgi kutusu açıyordu |
 | 2026-10-24 | [2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok](incidents/2026-10-24-hesap-kapama-olcumu-alt-klasore-kaydedilen-raporu-cikti-yok.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | Hesap kapama ölçümü alt klasöre kaydedilen raporu çıktı yok sandı |
@@ -112,6 +113,7 @@ Kayıt: 88 · Açık/izlenen: 6 · Oturum: 30 · Kural: 30
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-24 | [2026-10-24-claude-code-masaustu-f5-arayuz](sessions/2026-10-24-claude-code-masaustu-f5-arayuz.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F5 arayüz |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f4-skill-menusu-ve-profiller](sessions/2026-10-24-claude-code-masaustu-f4-skill-menusu-ve-profiller.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F4 skill menüsü ve profiller |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f3-ajan-verimliligi](sessions/2026-10-24-claude-code-masaustu-f3-ajan-verimliligi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F3 ajan verimliliği |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-auto-pro-cekirdegi-f1-ve-rakip-analizi](sessions/2026-10-24-claude-code-masaustu-auto-pro-cekirdegi-f1-ve-rakip-analizi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Auto Pro çekirdeği F1 ve rakip analizi |
@@ -175,3 +177,4 @@ Kayıt: 88 · Açık/izlenen: 6 · Oturum: 30 · Kural: 30
 - **R-28** · Gözetimsiz akışta "bitti"yi istenen çıktıya bağla, kararı kullanıcıya sor
 - **R-29** · Python kodunu bash heredoc ile yazma
 - **R-30** · Testi değişikliğin türüne göre seç; gerçek API ölçümünü faz sonunda topla
+- **R-31** · Tura bağlanan özelliği gerçek tur akışından da test et

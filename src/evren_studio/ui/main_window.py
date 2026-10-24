@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
-from . import brand, icons, theme, wheel_guard, workers
+from . import brand, icons, theme, transcript, wheel_guard, workers
 from .app_context import AppContext
 from .connection_page import ConnectionPage
 from .errors_page import ErrorsPage
@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
         s = self.ctx.settings
         app = QApplication.instance()
         if app is not None:
-            theme.apply_theme(app, s.theme, s.font_size)
+            theme.apply_theme(app, s.theme, s.font_size, s.compact_view)
             wheel_guard.install(app)
         self.setWindowTitle("EVREN Studio")
         self.setWindowIcon(brand.app_icon())       # ay-yıldız, temaya göre beyaz/kırmızı
@@ -98,6 +98,7 @@ class MainWindow(QMainWindow):
         self.ctx.on_models_changed(self.session.refresh_models)
 
         self._shortcuts()
+        self._apply_view()
         wheel_guard.protect(self)              # tüm sayı/liste alanları (bkz. wheel_guard)
         self.sidebar.setVisible(s.sidebar_visible)
         self.session.set_sidebar_hidden(not s.sidebar_visible)
@@ -243,6 +244,101 @@ class MainWindow(QMainWindow):
         sc("Ctrl+L", lambda: (self.show_sessions(), self.session.composer.focus()))
         sc("Ctrl+,", lambda: self.show_page("settings"))
         sc("Esc", self._escape)
+        # F5 #12 canlı yazı boyutu · #11 sade görünüm
+        sc("Ctrl+=", lambda: self.zoom(+1))
+        sc("Ctrl++", lambda: self.zoom(+1))
+        sc("Ctrl+-", lambda: self.zoom(-1))
+        sc("Ctrl+0", lambda: self.zoom(0))
+        sc("Ctrl+Shift+H", self.toggle_simple_view)
+        sc("Ctrl+Shift+P", self.open_palette)
+
+    def zoom(self, delta: int) -> None:
+        """Yazı boyutu: +1/-1 pt (8-16), 0 → varsayılan 10. Kalıcı (ayar)."""
+        s = self.ctx.settings
+        size = 10 if delta == 0 else max(8, min(16, int(s.font_size) + delta))
+        if size == s.font_size:
+            return
+        s.font_size = size
+        self.ctx.save_settings()
+        app = QApplication.instance()
+        if app is not None:
+            theme.apply_theme(app, s.theme, s.font_size, s.compact_view)
+
+    # ---- E10 komut paleti ----
+
+    def palette_actions(self) -> list:
+        from ..agent import templates as tpl
+        from .command_palette import Action
+        from .composer import MODE_COMMANDS, SLASH_COMMANDS
+        from .settings_page import backup_sessions, open_data_dir
+        from .sidebar import TOOL_PAGES
+
+        s = self.session
+        acts = [Action("Yeni oturum", "Oturum", self.new_session, "yeni sohbet", "Ctrl+N"),
+                Action("Sohbet ekranı", "Git", self.show_sessions, "oturum mesaj")]
+        acts += [Action(title, "Git", lambda k=key: self.show_page(k), key) for key, title, _i in TOOL_PAGES]
+        labels = {"/manuel": "Manuel mod", "/kabul": "Düzenlemeleri kabul et", "/plan": "Plan modu",
+                  "/otomatik": "Otomatik mod"}
+        acts += [Action(labels[c], "Mod", lambda c=c: (self.show_sessions(), s._command(c)), c)
+                 for c in labels if c in MODE_COMMANDS]
+        for cmd, desc in SLASH_COMMANDS.items():
+            if cmd in MODE_COMMANDS:
+                continue
+            acts.append(Action(f"{cmd} — {desc[:70]}", "Komut",
+                               lambda c=cmd: (self.show_sessions(), s.composer.set_text(c + " "), s.composer.focus()),
+                               desc))
+        st = self.ctx.settings
+        acts += [
+            Action(("Sade görünümü kapat" if st.simple_view else "Sade görünüm (araç adımlarını gizle)"), "Görünüm",
+                   self.toggle_simple_view, "sade basit gizle", "Ctrl+Shift+H"),
+            Action(("Sıkışık görünümü kapat" if st.compact_view else "Sıkışık görünüm"), "Görünüm",
+                   self.toggle_compact_view, "sikisik yogun"),
+            Action("Yazıyı büyüt", "Görünüm", lambda: self.zoom(+1), "font yazi boyutu", "Ctrl+="),
+            Action("Yazıyı küçült", "Görünüm", lambda: self.zoom(-1), "font yazi boyutu", "Ctrl+-"),
+            Action("Yazı boyutunu sıfırla", "Görünüm", lambda: self.zoom(0), "font yazi boyutu", "Ctrl+0"),
+            Action("Kenar çubuğunu aç/kapat", "Görünüm", self.toggle_sidebar, "sidebar", "Ctrl+B"),
+            Action("Sağ paneli aç/kapat", "Görünüm", self.toggle_panel, "panel", "Ctrl+J"),
+            Action("Veri klasörünü aç", "Veri", lambda: open_data_dir(self, self.ctx), "dosya gezgini"),
+            Action("Oturumları yedekle…", "Veri", lambda: backup_sessions(self, self.ctx), "yedek zip backup"),
+        ]
+        acts += [Action(f"Profil uygula: {p['name']}", "Profil",
+                        lambda n=p["name"]: (self.show_sessions(), s.apply_profile(n)))
+                 for p in self.ctx.db.list_profiles()]
+        if s.profile:
+            acts.append(Action("Profili kaldır", "Profil", lambda: s.apply_profile(None)))
+        acts += [Action(f"Şablon: {t.name}", "Şablon", lambda t=t: self._use_template(t.prompt, t.profile),
+                        t.description)
+                 for t in list(tpl.BUILTIN) + [tpl.from_row(r) for r in self.ctx.db.list_templates()]]
+        return acts
+
+    def open_palette(self) -> None:
+        from .command_palette import CommandPalette
+
+        dlg = CommandPalette(self.palette_actions(), self)
+        geo = self.geometry()
+        dlg.move(geo.x() + (geo.width() - dlg.width()) // 2, geo.y() + 80)
+        if dlg.exec() and dlg.chosen is not None:
+            dlg.chosen.run()
+
+    def toggle_compact_view(self) -> None:
+        s = self.ctx.settings
+        s.compact_view = not s.compact_view
+        self.ctx.save_settings()
+        app = QApplication.instance()
+        if app is not None:
+            theme.apply_theme(app, s.theme, s.font_size, s.compact_view)
+        self._apply_view()
+
+    def toggle_simple_view(self) -> None:
+        s = self.ctx.settings
+        s.simple_view = not s.simple_view
+        self.ctx.save_settings()
+        self._apply_view()
+
+    def _apply_view(self) -> None:
+        s = self.ctx.settings
+        transcript.set_simple_view(s.simple_view, self.session)
+        self.session.transcript.set_compact(s.compact_view)
 
     def _escape(self) -> None:
         """Esc: önce açık komut/model listesini kapatır, yoksa çalışan ajanı durdurur."""
@@ -282,10 +378,11 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
         if app is not None:
             icons.clear_cache()
-            theme.apply_theme(app, s.theme, s.font_size)
+            theme.apply_theme(app, s.theme, s.font_size, s.compact_view)
             self.setWindowIcon(brand.app_icon())
             self.sidebar.refresh_logo()
             self.session.welcome.refresh_logo()
+        self._apply_view()
         self.session.composer.edit.send_with_enter = s.send_with_enter
         self.sidebar.refresh()
         self.session.refresh_models()

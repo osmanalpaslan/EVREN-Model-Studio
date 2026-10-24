@@ -163,3 +163,8 @@
 - **Kural:** Her değişiklikte pytest; arayüzde yalnız değişen ekranın iki temalı ekran görüntüsü; gerçek API (R-13, zorluk paketi R-21) faz sonunda bir kez; yeni araç/özellikte yalnız onun küçük açık/kapalı ölçümü (R-25); çok motorlu sıralama ölçümünü yalnız motor sırası değişirken veya EVREN model listesi değişince yap.
 - **Neden:** Her maddeden sonra tekrarlanan uçtan uca testler faz başına 1,5–2 saat sürüyordu; birleştirme öncesi tam kontrol korunduğu için bozuk kod master'a girmez (kullanıcı onayı 2026-10-24).
 - **Kaynak:** 2026-10-24-gercek-api-testleri-her-maddeden-sonra-kosulunca-faz-1-5-2-s
+
+### R-31 · Tura bağlanan özelliği gerçek tur akışından da test et
+- **Kural:** Tur başına veya sonuna bağlanan her özellik (denetçi, öneri kartı, özet, kayıt) için en az bir testi `send` → koşucu → `_on_done` yolundan sahte istemciyle geçir; yalnız yardımcı fonksiyonu doğrudan çağıran test yetmez.
+- **Neden:** `_on_done` runner'ı `_finish()` ile sildikten sonra okuduğu için skill denetçisi gerçek kullanımda hiç çalışmadı; doğrudan çağıran birim testleri ve R-25 ölçümü bunu yakalamadı, hata bir PR ile birleşti.
+- **Kaynak:** 2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de

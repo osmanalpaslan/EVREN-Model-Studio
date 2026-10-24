@@ -895,7 +895,9 @@ class AgentRunner:
                                      "adımda iste.", "Atlandı (çok fazla çağrı)")
                 else:
                     self._writes = []
+                    t_tool = time.monotonic()
                     res = self._execute(call)
+                    res.extra = {**(res.extra or {}), "duration_s": round(time.monotonic() - t_tool, 2)}
                     note, stop = self._guard(call, res, repeats, file_states)
                     if note:
                         res.content += note

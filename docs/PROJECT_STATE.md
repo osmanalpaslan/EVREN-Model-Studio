@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-24) F5 arayüz (dal `feat/f5-arayuz`): komut paleti, yazı boyutu/sıkışık, sade görünüm, çıktı
+    önizleme, zaman özeti, çalışma paneli, Proje/Derin tahmini, veri klasörü/yedek, geçmiş sayfa sayfa; F4 skill
+    denetçisi hatası düzeltildi (R-31). Sıradaki faz F6.
+
   - (2026-10-24) F4 skill'ler ve profiller (dal `feat/f4-skill-profiller`): Skill'ler ve Profiller sayfası,
     read_skill, proje bazlı kapsam, profiller (/profil), şablonlar, skill denetçisi, /betiklestir. R-25 ölçümü: skill
     açık 4/4, konu dışında açılmadı. Sıradaki faz F5.

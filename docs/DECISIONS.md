@@ -109,6 +109,10 @@
 | 105 | Profil = motor + mod + skill seçimi (boş = projedeki tümü) + ek talimat; oturuma bağlanır (sessions.profile) | E5; profil silinince oturumlar profilsiz sürer | 2026-10-24 |
 | 106 | Skill denetçisi (SKILL.md `denetci:` veya denetle.py/check.py) yalnız o turda okunan skill için; Otomatik modda sormadan, diğer modlarda onay kartıyla; çıkış 0 = geçti | Skill kullanıcı tarafından eklendi ama betik çalıştırmak izin moduna uymalı | 2026-10-24 |
 | 107 | Şablon mesaj kutusunu DOLDURUR, göndermez | Köşeli parantezli yerler kullanıcının işine göre düzenlenmeli | 2026-10-24 |
+| 108 | Uzun oturum: tam sanallaştırma YOK; "önceki mesajlar" her tıklamada 60 mesaj daha | Ölçüm: açılış zaten ≤ 0,6 sn (son 40 mesaj); donma yalnız "tümünü göster"de (4000 mesaj 67 sn). Sanallaştırma karmaşık ve riskli, sayfalama sorunu çözüyor | 2026-10-24 |
+| 109 | Sade görünüm yalnız BAŞARILI ve BİTMİŞ araç kartlarını gizler; çalışan, onay bekleyen ve hatalı kartlar her zaman görünür | Onay kaçırılmasın, hata görünsün | 2026-10-24 |
+| 110 | Zaman özeti kartı yalnız ≥ 60 sn ve ≥ 3 adımlı turda; Proje/Derin tahmini "kaba tahmin" diye etiketlenir | Kısa turda gürültü (R-22); tahmin veriyle iyileşir ama kesin değildir (R-07) | 2026-10-24 |
+| 111 | Oturum yedeği: sqlite backup API ile tutarlı kopya + config.json + skill'ler → kullanıcının seçtiği .zip; API anahtarları girmez | Açık veritabanını dosya kopyalamak bozuk yedek üretebilir; anahtarlar Credential Manager'da kalır | 2026-10-24 |
 
 ## Değerlendirilip reddedilenler
 

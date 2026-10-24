@@ -791,6 +791,17 @@ class Database:
                    (status, state_json, utcnow_iso(), run_id))
         self._commit()
 
+    def project_run_states(self, limit: int = 30) -> list[str]:
+        """F5 #5 tahmin: son proje çalışmalarının durum JSON'ları."""
+        return [r["state_json"] for r in self._exec(
+            "SELECT state_json FROM project_runs ORDER BY id DESC LIMIT ?", (limit,)).fetchall()]
+
+    def recent_assistant_metas(self, limit: int = 300) -> list[str]:
+        """F5 #5 tahmin: son asistan mesajlarının meta JSON'u (usage)."""
+        return [r["meta"] for r in self._exec(
+            "SELECT meta FROM session_messages WHERE role='assistant' AND meta IS NOT NULL ORDER BY id DESC LIMIT ?",
+            (limit,)).fetchall()]
+
     def latest_project_run(self, session_id: int) -> sqlite3.Row | None:
         return self._exec("SELECT * FROM project_runs WHERE session_id=? ORDER BY id DESC LIMIT 1",
                           (session_id,)).fetchone()

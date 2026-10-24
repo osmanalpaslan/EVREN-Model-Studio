@@ -133,7 +133,22 @@ def _check_icon(p: Palette) -> str:
     return path.as_posix()
 
 
-def build_qss(p: Palette, font_pt: int) -> str:
+COMPACT_QSS = """
+QPushButton {{ padding: 3px 9px; }}
+QToolButton[variant="chip"] {{ padding: 1px 6px; }}
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {{ padding: 2px 6px; }}
+QMenu::item {{ padding: 4px 20px 4px 10px; }}
+QPushButton[nav="true"] {{ padding: 4px 10px; }}
+QTabBar::tab {{ padding: 6px 10px; }}
+QFrame#card {{ padding: 0; }}
+"""
+
+
+def build_qss(p: Palette, font_pt: int, compact: bool = False) -> str:
+    return _build_qss(p, font_pt) + (COMPACT_QSS.replace("{{", "{").replace("}}", "}") if compact else "")
+
+
+def _build_qss(p: Palette, font_pt: int) -> str:
     small = max(font_pt - 1, 8)
     check = _check_icon(p)
     return f"""
@@ -259,6 +274,7 @@ QSplitter::handle:vertical {{ height: 1px; }}
 /* ---- sohbet alanı ---- */
 QListWidget#CommandPopup {{ background: {p.surface}; border: 1px solid {p.border_strong};
                             border-radius: 12px; padding: 4px; }}
+QDialog#CommandPalette {{ background: {p.surface}; border: 1px solid {p.border_strong}; border-radius: 12px; }}
 QListWidget#CommandPopup::item {{ padding: 5px 8px; border-radius: 7px; min-height: 20px; }}
 QListWidget#CommandPopup::item:hover {{ background: {p.hover}; }}
 QListWidget#CommandPopup::item:selected {{ background: {p.accent_soft}; color: {p.text}; }}
@@ -291,7 +307,7 @@ QPlainTextEdit#CodeView, QPlainTextEdit#DiffView, QPlainTextEdit#TerminalView {{
 """
 
 
-def apply_theme(app: QApplication, theme: str, font_pt: int = 10) -> Palette:
+def apply_theme(app: QApplication, theme: str, font_pt: int = 10, compact: bool = False) -> Palette:
     global _current
     p = palette_for(theme)
     _current = p
@@ -314,5 +330,5 @@ def apply_theme(app: QApplication, theme: str, font_pt: int = 10) -> Palette:
     qp.setColor(QPalette.PlaceholderText, QColor(p.muted))
     qp.setColor(QPalette.Link, QColor(p.accent))
     app.setPalette(qp)
-    app.setStyleSheet(build_qss(p, font_pt))
+    app.setStyleSheet(build_qss(p, font_pt, compact))
     return p

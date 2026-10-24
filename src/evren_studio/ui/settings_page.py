@@ -56,6 +56,37 @@ FALLBACK_MODEL_IDS = ["auto", "glm-5.3", "deepseek-v4.1-flash", "deepseek-v4-fla
                       "qwen3.8-flash-next", "gemma-4-31b"]
 
 
+def open_data_dir(parent, ctx) -> None:
+    """F5 #16: veri klasörünü Dosya Gezgini'nde aç."""
+    import os
+
+    d = ctx.data_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    try:
+        os.startfile(str(d))                 # Windows
+    except (AttributeError, OSError) as exc:
+        QMessageBox.information(parent, "Veri klasörü", f"{d}\n\nAçılamadı: {exc}")
+
+
+def backup_sessions(parent, ctx) -> None:
+    """F5 #16: oturum yedeği — kullanıcının seçtiği .zip'e (backup.backup)."""
+    from datetime import datetime
+
+    from ..backup import backup
+
+    name = f"evren-studio-yedek-{datetime.now().strftime('%Y%m%d-%H%M')}.zip"
+    path, _ = QFileDialog.getSaveFileName(parent, "Oturumları yedekle", str(Path.home() / name), "Zip (*.zip)")
+    if not path:
+        return
+    try:
+        info = backup(ctx.db.path, ctx.data_dir(), ctx.store.path, Path(path))
+    except Exception as exc:  # yedek hatası uygulamayı düşürmesin; kullanıcıya söyle
+        QMessageBox.warning(parent, "Yedek alınamadı", f"{type(exc).__name__}: {exc}")
+        return
+    QMessageBox.information(parent, "Yedek alındı", f"{info['oturum']} oturum, {info['mesaj']} mesaj · "
+                            f"{info['boyut_kb']} KB\n{info['yol']}\n\nAPI anahtarları yedekte yoktur.")
+
+
 def section(text: str) -> QLabel:
     lab = QLabel(text)
     lab.setProperty("role", "h2")
@@ -352,6 +383,11 @@ class SettingsPage(BasePage):
         self.font_size.setRange(8, 16)
         self.font_size.setSuffix(" pt")
         l.addWidget(kv_row_widget("Yazı boyutu:", self.font_size, f"{d.font_size} pt"))
+        l.addWidget(hint("Kısayol: Ctrl+= büyüt, Ctrl+- küçült, Ctrl+0 varsayılan."))
+        self.compact_view = QCheckBox("Sıkışık görünüm: daha az boşluk, ekrana daha çok içerik sığar")
+        l.addWidget(self.compact_view)
+        self.simple_view = QCheckBox("Sade görünüm: biten araç adımlarını ve düşünce bloklarını gizle (Ctrl+Shift+H)")
+        l.addWidget(self.simple_view)
         self.retention = QSpinBox()
         self.retention.setRange(7, 365)
         self.retention.setSuffix(" gün")
@@ -364,6 +400,14 @@ class SettingsPage(BasePage):
         # ---- dışa aktarma / silme ----
         c, l = card()
         l.addWidget(section("Veri Dışa Aktarma ve Silme"))
+        open_btn = QPushButton("Veri klasörünü aç")
+        open_btn.setToolTip("Oturumların, ayarların ve skill'lerin tutulduğu klasörü Dosya Gezgini'nde açar")
+        open_btn.clicked.connect(lambda _=None: open_data_dir(self, self.ctx))
+        backup_btn = QPushButton("Oturumları yedekle (.zip)…")
+        backup_btn.setToolTip("Veritabanı, ayarlar ve skill'ler tek dosyaya; API anahtarları yedeğe girmez")
+        backup_btn.clicked.connect(lambda _=None: backup_sessions(self, self.ctx))
+        for b in (open_btn, backup_btn):
+            l.addWidget(b)
         export_btn = QPushButton("Tüm verileri dışa aktar (JSON)")
         export_btn.clicked.connect(self.export_data)
         purge_btn = QPushButton("Eski hata kayıtlarını temizle")
@@ -437,6 +481,8 @@ class SettingsPage(BasePage):
         self.data_dir.setText(s.data_dir or str(default_data_dir()))
         self.theme.setCurrentText(s.theme if s.theme in ("koyu", "açık") else "koyu")
         self.font_size.setValue(s.font_size)
+        self.compact_view.setChecked(s.compact_view)
+        self.simple_view.setChecked(s.simple_view)
         self.retention.setValue(s.error_log_retention_days)
         self.budget.setValue(s.monthly_budget_usd)
         self.budget_enforce.setChecked(s.budget_enforce)
@@ -483,6 +529,8 @@ class SettingsPage(BasePage):
         s.data_dir = "" if not data_dir or Path(data_dir) == default_data_dir() else data_dir
         s.theme = self.theme.currentText()
         s.font_size = int(self.font_size.value())
+        s.compact_view = self.compact_view.isChecked()
+        s.simple_view = self.simple_view.isChecked()
         s.error_log_retention_days = int(self.retention.value())
         s.monthly_budget_usd = float(self.budget.value())
         s.budget_enforce = self.budget_enforce.isChecked()

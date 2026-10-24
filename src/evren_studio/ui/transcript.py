@@ -144,6 +144,18 @@ class DiffView(CodeView):
 # ---- akış kabı -------------------------------------------------------------------------
 
 
+# F5 #11 sade görünüm: biten (başarılı) araç kartları ve düşünme blokları gizlenir; çalışan, onay bekleyen ve
+# hatalı kartlar her zaman görünür. Uygulama genelinde tek bayrak (ayar `simple_view`).
+VIEW = {"simple": False}
+
+
+def set_simple_view(on: bool, root: QWidget | None = None) -> None:
+    VIEW["simple"] = bool(on)
+    if root is not None:
+        for w in root.findChildren(AssistantMessageWidget):
+            w.apply_view()
+
+
 class Transcript(QScrollArea):
     """Ortalanmış, en fazla COLUMN_WIDTH genişliğinde mesaj sütunu."""
 
@@ -162,6 +174,7 @@ class Transcript(QScrollArea):
         self.lay.setContentsMargins(0, 0, 0, 0)
         self.lay.setSpacing(18)
         self.lay.addStretch(1)
+        self._host_lay = hl
         hl.addStretch(1)
         hl.addWidget(self.col, 100)
         hl.addStretch(1)
@@ -170,6 +183,11 @@ class Transcript(QScrollArea):
         sb = self.verticalScrollBar()
         sb.rangeChanged.connect(self._on_range)
         sb.valueChanged.connect(self._on_value)
+
+    def set_compact(self, on: bool) -> None:
+        """F5 #12 sıkışık görünüm: mesajlar arası boşluk ve kenar payı azalır."""
+        self.lay.setSpacing(10 if on else 18)
+        self._host_lay.setContentsMargins(*((16, 10, 16, 14) if on else (24, 20, 24, 28)))
 
     def _on_range(self, _min: int, maximum: int) -> None:
         if self._stick:
@@ -360,6 +378,10 @@ class AssistantMessageWidget(QWidget):
         self.tools = QVBoxLayout()
         self.tools.setSpacing(6)
         lay.addLayout(self.tools)
+        self._has_thinking = False
+        self.tool_summary = faint_label("")          # sade görünümde gizlenen adım sayısı
+        self.tool_summary.setVisible(False)
+        lay.addWidget(self.tool_summary)
         # Kalıcı alt bilgi: "glm-5.3 · 8,4 sn"
         self.footer = faint_label("")
         self.footer.setVisible(False)
@@ -465,7 +487,8 @@ class AssistantMessageWidget(QWidget):
             self._render_timer.start()
 
     def append_reasoning(self, delta: str) -> None:
-        self.thinking.setVisible(True)
+        self._has_thinking = True
+        self.thinking.setVisible(not VIEW["simple"])
         self.thinking.append(delta)
 
     def _render(self) -> None:
@@ -492,7 +515,8 @@ class AssistantMessageWidget(QWidget):
         if duration is not None and (model or self._model):
             self.set_footer(f"{model or self._model}  ·  {format_duration(duration)}")
         if reasoning:
-            self.thinking.setVisible(True)
+            self._has_thinking = True
+            self.thinking.setVisible(not VIEW["simple"])
             self.thinking.set_text(reasoning)
         self.thinking.finish()
         if self._raw.strip():
@@ -510,12 +534,27 @@ class AssistantMessageWidget(QWidget):
             self.status.setVisible(True)
 
     def has_visible_content(self) -> bool:
-        return bool(self._raw.strip()) or self.thinking.isVisible() or self.tools.count() > 0
+        return bool(self._raw.strip()) or self._has_thinking or self.tools.count() > 0
 
     def add_tool(self, call_id: str, name: str, args: dict[str, Any]) -> "ToolCallWidget":
         w = ToolCallWidget(call_id, name, args)
+        w._owner = self
         self.tools.addWidget(w)
         return w
+
+    def apply_view(self) -> None:
+        """Sade görünüm bayrağını uygular (araç kartı bitince ve bayrak değişince çağrılır)."""
+        simple = VIEW["simple"]
+        hidden = 0
+        for i in range(self.tools.count()):
+            w = self.tools.itemAt(i).widget()
+            if isinstance(w, ToolCallWidget):
+                hide = simple and w.finished and w.property("state") == "ok"
+                w.setVisible(not hide)
+                hidden += hide
+        self.tool_summary.setText(f"{hidden} araç adımı gizli (sade görünüm — Ctrl+Shift+H ile ayrıntı)")
+        self.tool_summary.setVisible(hidden > 0)
+        self.thinking.setVisible(not simple and getattr(self, "_has_thinking", False))
 
 
 # ---- araç kartı ve onay ----------------------------------------------------------------------
@@ -588,6 +627,12 @@ class ApprovalWidget(QFrame):
 
 
 class ToolCallWidget(QFrame):
+    _owner = None
+
+    def _notify_owner(self) -> None:
+        if self._owner is not None:
+            self._owner.apply_view()
+
     def __init__(self, call_id: str, name: str, args: dict[str, Any], parent=None):
         super().__init__(parent)
         self.setObjectName("ToolCard")
@@ -700,6 +745,7 @@ class ToolCallWidget(QFrame):
 
     def set_result(self, ok: bool, summary: str, meta: dict[str, Any]) -> None:
         self.finished = True
+        QTimer.singleShot(0, self, self._notify_owner)       # durum özelliği aşağıda ayarlandıktan sonra
         if summary:
             self.title.setText(summary)
             self.title.setToolTip(summary)
