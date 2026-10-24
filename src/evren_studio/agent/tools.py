@@ -165,6 +165,45 @@ TOOL_SPECS: list[ToolSpec] = [
         }, ["url"]),
     ),
     ToolSpec(
+        "convert_model", EXEC,
+        "3B modeli Blender ile ekransız GLB'ye dönüştürür (FBX, OBJ, glTF/GLB, STL, PLY, .blend). İsteğe bağlı "
+        "poligon azaltma (oran) ve doku küçültme — PWA/web için oran 0.3-0.5, doku 1024 önerilir. .blend içindeki "
+        "betikler çalıştırılmaz (güvenilmeyen modlar için güvenli yol). Blender'ı kendin komutla çalıştırma.",
+        _obj({
+            "path": {"type": "string", "description": "Girdi model dosyası (proje köküne göre)"},
+            "output": {"type": "string", "description": "Çıktı .glb yolu (varsayılan: assets/<ad>.glb)"},
+            "ratio": {"type": "number", "description": "Poligon oranı 0.05-1 (1 = azaltma yok)"},
+            "max_texture": {"type": "integer", "description": "En büyük doku kenarı px (0 = dokunma)"},
+        }, ["path"]),
+    ),
+    ToolSpec(
+        "godot_export", EXEC,
+        "Godot projesini dışa aktarır: içe aktarır, sonra Windows EXE (build/windows/<ad>.exe) ve/veya PWA "
+        "(build/web/index.html). export_presets.cfg yoksa hazır ön ayarı (EXE + PWA, gl_compatibility) yazar. "
+        "Hata satırlarını döndürür. Godot'yu dışa aktarma için komutla çalıştırma, bunu kullan.",
+        _obj({
+            "target": {"type": "string", "description": "windows | web | ikisi (varsayılan ikisi)"},
+            "name": {"type": "string", "description": "EXE adı (varsayılan proje klasörü adı)"},
+        }, []),
+    ),
+    ToolSpec(
+        "polyhaven_search", READ,
+        "Poly Haven'da ücretsiz CC0 model, doku veya HDRI arar (İngilizce anahtar sözcük: chair, rock, sword).",
+        _obj({
+            "query": {"type": "string", "description": "Anahtar sözcükler"},
+            "asset_type": {"type": "string", "description": "models | textures | hdris (varsayılan models)"},
+        }, ["query"]),
+    ),
+    ToolSpec(
+        "polyhaven_download", WRITE,
+        "Poly Haven varlığını (CC0) projeye indirir: ana dosya + dokular, KAYNAK.txt ile.",
+        _obj({
+            "asset_id": {"type": "string", "description": "polyhaven_search sonucundaki kimlik"},
+            "dest": {"type": "string", "description": "Hedef klasör (varsayılan assets/polyhaven/<kimlik>)"},
+            "resolution": {"type": "string", "description": "1k (varsayılan, web için), 2k, 4k"},
+        }, ["asset_id"]),
+    ),
+    ToolSpec(
         "run_command", EXEC,
         "Proje kökünde bir kabuk komutu çalıştırır (Windows'ta PowerShell). "
         "Çıktı ve çıkış kodu döner. Etkileşimli veya sonsuza dek çalışan "
@@ -259,6 +298,7 @@ TOOL_SPECS: list[ToolSpec] = [
 SPEC_BY_NAME = {s.name: s for s in TOOL_SPECS}
 SERVICE_TOOLS = {"start_service", "service_logs", "stop_service"}
 JOB_TOOLS = {"start_job", "wait_job", "job_status", "stop_job"}
+GAME_TOOLS = {"convert_model", "polyhaven_search", "polyhaven_download", "godot_export"}   # F7: yalnız oyun/3B işinde sunulur
 READ_ONLY_SPECS = [s for s in TOOL_SPECS if s.kind in (READ, META)]
 
 

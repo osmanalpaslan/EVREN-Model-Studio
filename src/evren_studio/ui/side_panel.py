@@ -411,6 +411,7 @@ class FilesTab(QWidget):
         dirs = self.untrusted()
         if on and not untr.inside(Path(folder), dirs):
             dirs.append(str(Path(folder).resolve()))
+            untr.ensure_gdignore([folder])
         elif not on:
             dirs = [d for d in dirs if Path(d).resolve() != Path(folder).resolve()]
         self.ctx.settings.untrusted_dirs = dirs

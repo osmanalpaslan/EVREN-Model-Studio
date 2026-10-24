@@ -417,6 +417,71 @@ def install_playwright(data_dir: Path, log: Callable[[str], None] | None = None,
     return cli
 
 
+# ---- F7: godot-mcp (Coding-Solo/godot-mcp, MIT, ~6,3 bin yıldız; kod incelendi 2026-10-24: ağ isteği yok,
+# Godot'yu yalnız argüman dizisiyle çalıştırıyor). Sabit commit + kilit dosyası (npm ci): tedarik zinciri sabit.
+GODOT_MCP_REPO = "https://github.com/Coding-Solo/godot-mcp.git"
+GODOT_MCP_COMMIT = "1209744fad78f3998f98c7394fd0f6ef50da5281"
+# launch_editor ajana VERİLMEZ (editör penceresi açar, gözetimsiz kalır); run_project oyunu test için açar
+GODOT_TOOLS = ["run_project", "get_debug_output", "stop_project", "get_godot_version", "list_projects",
+               "get_project_info", "create_scene", "add_node", "load_sprite", "export_mesh_library", "save_scene",
+               "get_uid", "update_project_uids"]
+GODOT_READ_ONLY = ["get_godot_version", "list_projects", "get_project_info", "get_debug_output", "get_uid"]
+
+
+def godot_mcp_dir(data_dir: Path) -> Path:
+    from .gametools import tools_dirs
+
+    dirs = tools_dirs()
+    return (dirs[0] if dirs else data_dir / "araclar") / "godot-mcp"
+
+
+def godot_ready(data_dir: Path) -> bool:
+    from .gametools import find_godot, find_godot_mcp
+
+    return bool(find_godot() and (find_godot_mcp() or (godot_mcp_dir(data_dir) / "build" / "index.js").is_file()))
+
+
+def godot_config() -> "McpServerConfig":
+    return McpServerConfig(
+        name="godot",
+        command="{node}",
+        args=["{godot_mcp}"],
+        env={"GODOT_PATH": "{godot}", "DEBUG": "false"},
+        allowed_tools=list(GODOT_TOOLS),
+        read_only_tools=list(GODOT_READ_ONLY),
+        startup_timeout=60.0,
+        call_timeout=180.0,
+        description="Godot projesinde sahne/düğüm oluşturur, projeyi çalıştırıp hata çıktısını okur.",
+        when="godot",
+        idle_seconds=300.0,
+    )
+
+
+def install_godot_mcp(data_dir: Path, log: Callable[[str], None] | None = None, timeout: float = 900) -> Path:
+    """godot-mcp'yi sabit commit'ten klonlayıp kilit dosyasıyla kurar (git + Node.js gerekir). R-04: iş parçacığında."""
+    log = log or (lambda _m: None)
+    target = godot_mcp_dir(data_dir)
+    built = target / "build" / "index.js"
+    if built.is_file():
+        log(f"godot-mcp zaten kurulu: {target}")
+        return built
+    git, npm = shutil.which("git"), _find_npm()
+    if not git or not npm:
+        raise McpError("git ve Node.js gerekli (Ayarlar'daki düğmeyle kurulabilir).")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    flags = _no_window()
+    log("godot-mcp indiriliyor (git, sabit sürüm)…")
+    _run([git, "clone", "--quiet", GODOT_MCP_REPO, str(target)], timeout=timeout, flags=flags)
+    _run([git, "-C", str(target), "checkout", "--quiet", GODOT_MCP_COMMIT], timeout=120, flags=flags)
+    log("Bağımlılıklar kuruluyor (npm ci, ~30 MB)…")
+    _run([npm, "ci", "--prefix", str(target), "--no-audit", "--no-fund", "--loglevel=error"], timeout=timeout,
+         flags=flags)
+    if not built.is_file():
+        raise McpError(f"Kurulum bitti ama {built} bulunamadı.")
+    log("godot-mcp kuruldu.")
+    return built
+
+
 def _base_python() -> str:
     """venv içinden çalışıyorsak bile temel Python (venv'in venv'i olmasın)."""
     base = Path(getattr(sys, "_base_executable", "") or sys.executable)
@@ -497,6 +562,8 @@ class McpServerConfig:
                 "{playwright_cli}": str(playwright_cli(data_dir)),
                 "{playwright_dir}": str(playwright_dir(data_dir)),
                 "{node}": find_node() or "node",
+                "{godot}": _gt_find("godot") if "{godot}" in s else "",
+                "{godot_mcp}": _gt_find("godot_mcp") if "{godot_mcp}" in s else "",
                 "{PATH}": os.environ.get("PATH", "")}
         for k, v in subs.items():
             s = s.replace(k, v)
@@ -516,6 +583,14 @@ class McpServerConfig:
 
     def environment(self, project_root: Path | None, data_dir: Path) -> dict[str, str]:
         return {k: self._sub(v, project_root, data_dir) for k, v in self.env.items()}
+
+
+def _gt_find(what: str) -> str:
+    from . import gametools
+
+    if what == "godot":
+        return gametools.find_godot() or ""
+    return gametools.find_godot_mcp() or ""
 
 
 def safe_name(name: str) -> str:
@@ -936,6 +1011,7 @@ class ProjectProfile:
     code_lines: int = 0
     languages: dict[str, int] = field(default_factory=dict)   # uzantı → dosya sayısı
     web: bool = False
+    godot: bool = False              # F7: project.godot var
 
 
 def project_profile(root: Path | None, max_files: int = 4000) -> ProjectProfile:
@@ -952,6 +1028,8 @@ def project_profile(root: Path | None, max_files: int = 4000) -> ProjectProfile:
             ext = os.path.splitext(fn)[1].lower()
             if ext in (".html", ".htm"):
                 prof.web = True
+            if fn == "project.godot":
+                prof.godot = True
             if fn == "package.json":
                 try:
                     data = json.loads(Path(dirpath, fn).read_text(encoding="utf-8", errors="replace"))
@@ -987,6 +1065,10 @@ def needed(cfg: McpServerConfig, prof: ProjectProfile, message: str) -> tuple[bo
         if explicit or (prof.web and any(w in msg for w in WEB_WORDS)):
             return True, "tarayıcı işi"
         return False, "tarayıcı gerektirmiyor"
+    if cfg.when == "godot":
+        if prof.godot or "godot" in msg:
+            return True, "Godot projesi"
+        return False, "Godot projesi değil"
     return True, "her zaman"
 
 
@@ -1254,5 +1336,17 @@ PRESETS: dict[str, dict[str, Any]] = {
                    "yerel bir adresten (127.0.0.1) verilir; gizli dosyalar verilmez.",
         "config": playwright_config, "install": install_playwright, "ready": playwright_ready,
         "dir": playwright_dir, "needs_node": True,
+    },
+    "godot": {
+        "short": "godot-mcp",
+        "title": "godot-mcp (Coding-Solo, MIT, ~6,3 bin yıldız) — Godot projesinde sahne ve düğüm oluşturur, oyunu "
+                 "çalıştırıp hata çıktısını okur. Yalnız project.godot olan klasörde açılır. Godot 4.7.2 ve dışa "
+                 "aktarma şablonları ayrıca gerekir (araç klasörü).",
+        "size": "git + npm ile ~32 MB (sabit sürüm); Godot ~86 MB + şablonlar ~1,3 GB ayrıca",
+        "confirm": "godot-mcp sabit bir sürümden (git) indirilip npm ile kurulacak (~32 MB). Kod incelendi: ağ isteği "
+                   "yapmıyor, yalnız Godot'yu çalıştırıyor. Godot'nun kendisi ve dışa aktarma şablonları araç "
+                   "klasöründe olmalı.",
+        "config": godot_config, "install": install_godot_mcp, "ready": godot_ready, "dir": godot_mcp_dir,
+        "needs_node": True,
     },
 }

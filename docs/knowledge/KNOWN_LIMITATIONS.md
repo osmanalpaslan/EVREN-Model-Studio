@@ -168,7 +168,7 @@
 
 ## Sağlayıcıya bağlı sınırlar
 
-- `free_until: 2026-11-01` — sonrası için fiyatlandırma bilinmiyor.
+- `free_until: 2027-01-01 (canlı liste 2026-10-24; önceden 2026-11-01)` — sonrası için fiyatlandırma bilinmiyor.
 - Kota: 5 dk pencere + günlük 15M token; `level` alanı canlı görünür.
 - `auto` yönlendiricinin kural kümesi belgelenmemiş; davranış değişebilir.
 

@@ -121,7 +121,7 @@ gönderildi; kare rengi ve CSV toplamı doğru yanıtlandı.
 ## Fiyat (2026-10-15 snapshot)
 
 Tüm modeller: girdi 0.0 CR/token, çıktı 0.0 CR/token,
-`free_until: 2026-11-01`. Değişiklikler Model sayfasından canlı izlenir;
+`free_until: 2027-01-01 (canlı liste 2026-10-24; önceden 2026-11-01)`. Değişiklikler Model sayfasından canlı izlenir;
 kota sayfası `remaining_cr` gösterir.
 
 ## Sağlık geçmişi

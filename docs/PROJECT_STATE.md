@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-24) F7 oyun (dal `feat/f7-oyun`): Godot 4.7.2 + Blender 5.2.3 (araç klasörü), convert_model,
+    godot_export (EXE + PWA), Poly Haven (resmî API), godot-mcp ön ayarı (kapalı), Godot şablonu. Gerçek ajan görevi
+    7/7. **Onaylı faz planı F1–F7 tamamlandı.**
+
   - (2026-10-24) F6 güvenlik ve kurallar (dal `feat/f6-guvenlik-kurallar`): güvenilmeyen klasör, kullanıcı
     kuralları (.evren/kurallar.json, onaylı), konuşmayı geri sarma. Sıradaki faz F7 (oyun).
 

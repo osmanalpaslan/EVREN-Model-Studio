@@ -39,6 +39,7 @@ from .tools import (
     READ,
     READ_ONLY_SPECS,
     JOB_TOOLS,
+    GAME_TOOLS,
     SERVICE_TOOLS,
     SPEC_BY_NAME,
     TOOL_SPECS,
@@ -410,7 +411,7 @@ class AgentRunner:
                  slow_factor: float = modelstats.FACTOR_TURN, route_role: str = "",
                  base_body: dict[str, Any] | None = None, extra_hint: str = "",
                  project_map: bool = False, skills: list | None = None, untrusted: list[str] | None = None,
-                 user_rules: Any = None):
+                 user_rules: Any = None, game_tools: bool = False):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -452,7 +453,13 @@ class AgentRunner:
         self.used_skills: list[str] = []         # read_skill ile açılan skill adları (denetçi bunlar için)
         # F6 #15: güvenilmeyen klasörler (okunur, içindeki program/betik çalıştırılamaz) · E4: kullanıcı kuralları
         self.untrusted = [str(d) for d in (untrusted or [])]
+        if self.untrusted:
+            from . import untrusted as _untr
+
+            _untr.ensure_gdignore(self.untrusted)      # Godot güvenilmeyen klasörü içe aktarmasın
         self.user_rules = user_rules
+        # F7: Blender dönüştürme + Poly Haven araçları ve Godot bilgisi yalnız oyun/3B işinde (token)
+        self.game_tools = game_tools
         self._history_ref: list[dict] | None = None
         self._work = 0                       # gerçek iş sayacı (başarılı yazma/komut/servis/iş)
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
@@ -508,6 +515,7 @@ class AgentRunner:
         base = READ_ONLY_SPECS if plan else TOOL_SPECS
         base = [s for s in base
                 if (self.skills or s.name != "read_skill")
+                and (self.game_tools or s.name not in GAME_TOOLS)
                 and (self.services is not None or s.name not in SERVICE_TOOLS)
                 and (self.jobs is not None or s.name not in JOB_TOOLS)
                 and not (self.no_writes and s.kind == WRITE)]
@@ -566,6 +574,10 @@ class AgentRunner:
             from . import untrusted as untr
 
             system += "\n\n" + untr.prompt_section(self.untrusted, self.workspace.root)
+        if self.game_tools:
+            from . import gametools
+
+            system += "\n\n" + gametools.prompt_section()
         if self.mcp is not None:
             from .mcp import prompt_section
 
@@ -1054,6 +1066,8 @@ class AgentRunner:
                 res = self._run_install(call)
             elif call.name == "web_fetch":
                 res = self._run_web(call)
+            elif call.name in GAME_TOOLS:
+                res = self._run_game(call)
             elif spec.kind == READ:
                 res = self._run_read(call)
             elif spec.kind == META:
@@ -1176,6 +1190,156 @@ class AgentRunner:
             return ToolResult(False, f"Web sayfası okunamadı: {exc}", f"Okunamadı: {host}")
         return ToolResult(True, truncate_middle(out, self.output_limit), f"Web okundu: {host}",
                           {"output": truncate_middle(out, 4000)})
+
+    def _run_game(self, call: ToolCall) -> ToolResult:
+        """F7: convert_model (Blender, ekransız, --disable-autoexec), Poly Haven arama/indirme."""
+        from . import polyhaven
+
+        a = call.arguments
+        root = self.workspace.root
+        if call.name == "polyhaven_search":
+            try:
+                out = polyhaven.search(str(_req(a, "query")), str(a.get("asset_type") or "models"))
+            except polyhaven.PolyHavenError as exc:
+                return ToolResult(False, str(exc), "Poly Haven: aranamadı")
+            return ToolResult(True, out, f"Poly Haven: \"{a['query']}\" arandı", {"output": out[:4000]})
+        if call.name == "polyhaven_download":
+            aid = str(_req(a, "asset_id")).strip()
+            if not aid.replace("_", "").replace("-", "").isalnum():
+                return ToolResult(False, "Geçersiz varlık kimliği.", "Poly Haven: geçersiz kimlik")
+            dest = self.workspace.resolve(a.get("dest") or f"assets/polyhaven/{aid}", for_write=True)
+            if self.untrusted:
+                from . import untrusted as untr
+
+                if untr.inside(dest, self.untrusted):
+                    return ToolResult(False, "Güvenilmeyen klasöre indirilemez.", "Engellendi")
+            decision, reason = decide(self.mode, WRITE, self.perms, path=self.workspace.rel(dest))
+            if decision == Decision.ASK:
+                ok, _fb = self._approve(call, WRITE, f"Poly Haven varlığı indirilsin mi? {aid}",
+                                        f"{aid} → {self.workspace.rel(dest)} (CC0)", reason=reason)
+                if not ok:
+                    return ToolResult(False, "Kullanıcı indirmeye izin vermedi.", "Reddedildi", {"denied": True})
+            try:
+                files = polyhaven.download(aid, dest, str(a.get("resolution") or "1k"))
+            except polyhaven.PolyHavenError as exc:
+                return ToolResult(False, str(exc), f"Poly Haven: {aid} indirilemedi")
+            self._work += 1
+            rel = [self.workspace.rel(f) for f in files]
+            out = f"Poly Haven (CC0): {aid} indirildi → {self.workspace.rel(dest)}\n" + "\n".join(rel[:30])
+            return ToolResult(True, out, f"Poly Haven: {aid} indirildi ({len(files)} dosya)", {"output": out})
+        if call.name == "godot_export":
+            return self._run_godot_export(call)
+        # convert_model
+        from . import gametools
+
+        blender = gametools.find_blender()
+        if not blender:
+            return ToolResult(False, "Blender kurulu değil (araç klasöründe bulunamadı).", "Blender yok")
+        src = self.workspace.resolve(_req(a, "path"))
+        if not src.is_file():
+            raise ToolError(f"Dosya bulunamadı: {a['path']}")
+        out_rel = a.get("output") or f"assets/{src.stem}.glb"
+        dst = self.workspace.resolve(out_rel, for_write=True)
+        if dst.suffix.lower() not in (".glb", ".gltf"):
+            return ToolResult(False, "Çıktı .glb veya .gltf olmalı.", "Geçersiz çıktı")
+        if self.untrusted:
+            from . import untrusted as untr
+
+            if untr.inside(dst, self.untrusted):
+                return ToolResult(False, "Çıktı güvenilmeyen klasöre yazılamaz; proje içinde başka bir yer seç.",
+                                  "Engellendi (güvenilmeyen klasör)")
+        decision, reason = decide(self.mode, EXEC, self.perms)
+        key = "tool:convert_model"
+        if key in self.perms.command_prefixes:
+            decision = Decision.ALLOW
+        if decision == Decision.DENY:
+            return ToolResult(False, reason, "Engellendi")
+        if decision == Decision.ASK:
+            ok, _fb = self._approve(call, EXEC, "Model Blender ile dönüştürülsün mü?",
+                                    f"{self.workspace.rel(src)} → {self.workspace.rel(dst)}", prefix=key,
+                                    reason="Blender ekransız ve betikler kapalı (--disable-autoexec) çalışır.")
+            if not ok:
+                return ToolResult(False, "Kullanıcı dönüştürmeye izin vermedi.", "Reddedildi", {"denied": True})
+        script = Path(__file__).with_name("blender_donustur.py")
+        ratio = float(a.get("ratio") or 1.0)
+        tex = int(a.get("max_texture") or 0)
+        argv = [blender, "--background", "--factory-startup", "--disable-autoexec", "-noaudio", "--python",
+                str(script), "--", str(src), str(dst), str(ratio), str(tex)]
+        import subprocess as sp
+
+        try:
+            r = sp.run(argv, cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       timeout=900, creationflags=getattr(sp, "CREATE_NO_WINDOW", 0))
+        except sp.TimeoutExpired:
+            return ToolResult(False, "Blender 15 dk içinde bitmedi.", "Zaman aşımı")
+        line = next((ln for ln in (r.stdout or "").splitlines() if ln.startswith("SONUC ")), "")
+        try:
+            info = json.loads(line[6:]) if line else {"hata": (r.stderr or r.stdout or "çıktı yok")[-400:]}
+        except ValueError:
+            info = {"hata": line[:400]}
+        if info.get("hata") or r.returncode != 0:
+            return ToolResult(False, f"Dönüştürme başarısız: {info.get('hata') or r.returncode}",
+                              f"Dönüştürülemedi: {self.workspace.rel(src)}")
+        self._work += 1
+        out = (f"{self.workspace.rel(src)} → {self.workspace.rel(dst)}: {info['nesne']} nesne, yüz "
+               f"{info['yuz_once']} → {info['yuz_sonra']}, {info['doku']} doku ({info['kucultulen_doku']} küçültüldü), "
+               f"{info['boyut_kb']} KB" + (f"; uyarı: {', '.join(info['uyarilar'])}" if info.get("uyarilar") else ""))
+        return ToolResult(True, out, f"Model dönüştürüldü: {self.workspace.rel(dst)}", {"output": out})
+
+    def _run_godot_export(self, call: ToolCall) -> ToolResult:
+        """F7: tek adımda içe aktar + EXE/PWA (ajanın en çok adım harcadığı kısım; 2026-10-24 gerçek API ölçümü)."""
+        from . import gametools, godot_sablon as gs
+
+        a = call.arguments
+        root = self.workspace.root
+        godot = gametools.find_godot()
+        if not godot:
+            return ToolResult(False, "Godot kurulu değil (araç klasöründe bulunamadı).", "Godot yok")
+        if not gametools.templates_ready(godot):
+            return ToolResult(False, "Godot dışa aktarma şablonları kurulu değil.", "Şablon yok")
+        if not (root / "project.godot").is_file():
+            return ToolResult(False, "Bu klasörde project.godot yok; önce Godot projesini oluştur.", "Proje yok")
+        target = str(a.get("target") or "ikisi").lower()
+        target = {"exe": "windows", "pwa": "web", "both": "ikisi", "hepsi": "ikisi"}.get(target, target)
+        if target not in ("windows", "web", "ikisi"):
+            return ToolResult(False, "target: windows | web | ikisi", "Geçersiz hedef")
+        decision, reason = decide(self.mode, EXEC, self.perms)
+        key = "tool:godot_export"
+        if key in self.perms.command_prefixes:
+            decision = Decision.ALLOW
+        if decision == Decision.DENY:
+            return ToolResult(False, reason, "Engellendi")
+        if decision == Decision.ASK:
+            ok, _fb = self._approve(call, EXEC, "Godot projesi dışa aktarılsın mı?", f"hedef: {target}", prefix=key,
+                                    reason="Godot ekransız çalışır; build/ altına yazar.")
+            if not ok:
+                return ToolResult(False, "Kullanıcı dışa aktarmaya izin vermedi.", "Reddedildi", {"denied": True})
+        if self.untrusted:
+            from . import untrusted as untr
+
+            untr.ensure_gdignore(self.untrusted)
+        name = gs.safe_name(str(a.get("name") or root.name))
+        wrote = gs.presets_yaz(root, name)
+        try:
+            r = gs.disa_aktar(godot, root, name, target)
+        except Exception as exc:  # zaman aşımı vb.
+            return ToolResult(False, f"Dışa aktarma çalışmadı: {type(exc).__name__}: {exc}", "Dışa aktarılamadı")
+        self._work += 1
+        lines = [("export_presets.cfg hazır ön ayardan yazıldı (EXE + PWA). " if wrote else "")
+                 + f"İçe aktarma çıkışı {r['import']}."]
+        errs = gs.hata_satirlari(r["log"].get("import", ""))
+        if target in ("windows", "ikisi"):
+            lines.append(f"EXE: {self.workspace.rel(Path(r['exe']))}" if r["exe"] else "EXE: OLUŞMADI")
+            errs += gs.hata_satirlari(r["log"].get("exe", ""))
+        if target in ("web", "ikisi"):
+            lines.append(f"PWA: {self.workspace.rel(Path(r['web']))} (manifest + service worker)" if r["web"]
+                         else "PWA: OLUŞMADI")
+            errs += gs.hata_satirlari(r["log"].get("web", ""))
+        if errs:
+            lines.append("Godot hata satırları (düzelt ve tekrar dışa aktar):\n" + "\n".join(dict.fromkeys(errs)))
+        ok = (r["exe"] or target == "web") and (r["web"] or target == "windows") and not errs
+        return ToolResult(bool(ok), "\n".join(lines), "Godot dışa aktarıldı" if ok else "Godot dışa aktarma: sorun var",
+                          {"output": "\n".join(lines)[:4000]})
 
     def _run_mcp(self, call: ToolCall, spec) -> ToolResult:
         """MCP sunucusunun aracı. Salt okuma listesindeki araç sormadan çalışır; diğerleri
@@ -1363,6 +1527,12 @@ class AgentRunner:
         else:
             change = self.toolbox.prepare_edit(_req(a, "path"), a.get("old_string"),
                                                a.get("new_string", ""), bool(a.get("replace_all")))
+        if self.untrusted:
+            from . import untrusted as untr
+
+            if untr.inside(self.workspace.resolve(change.rel_path), self.untrusted):
+                return ToolResult(False, "Güvenilmeyen klasöre yazılamaz/değiştirilemez (yalnız okunur). Çıktıyı "
+                                  "proje içinde başka bir yere yaz.", "Engellendi (güvenilmeyen klasör)")
         decision, reason = decide(self.mode, WRITE, self.perms, path=change.rel_path)
         if decision == Decision.DENY:
             return ToolResult(False, reason, "Engellendi")
@@ -1543,6 +1713,10 @@ def describe_call(call: ToolCall) -> str:
         "read_file": lambda: f"Okunuyor: {a.get('path', '?')}",
         "read_table": lambda: f"Tablo inceleniyor: {a.get('path', '?')}",
         "read_skill": lambda: f"Skill okunuyor: {a.get('name', '?')}" + (f" · {a['path']}" if a.get("path") else ""),
+        "convert_model": lambda: f"Model dönüştürülüyor: {a.get('path', '?')}",
+        "godot_export": lambda: f"Godot dışa aktarılıyor: {a.get('target') or 'EXE + PWA'}",
+        "polyhaven_search": lambda: f"Poly Haven'da aranıyor: {a.get('query', '')}",
+        "polyhaven_download": lambda: f"Poly Haven'dan indiriliyor: {a.get('asset_id', '?')}",
         "web_fetch": lambda: f"Web okunuyor: {a.get('url', '?')}",
         "search_files": lambda: f"Aranıyor: “{a.get('pattern', '')}”",
         "find_files": lambda: f"Dosya aranıyor: {a.get('pattern', '')}",

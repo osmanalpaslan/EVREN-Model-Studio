@@ -162,7 +162,7 @@
 
 ## Risk bildirimleri (kullanıcıya)
 
-- Ücretsiz erişim `free_until: 2026-11-01` ile sınırlı görünüyor; kalıcı
+- Ücretsiz erişim `free_until: 2027-01-01 (canlı liste 2026-10-24; önceden 2026-11-01)` ile sınırlı görünüyor; kalıcı
   olduğu VARSAYILMAZ; Model sayfası canlı fiyat gösterir.
 - Kota: 5 dk pencere + günlük 15M token; Kota sayfası görünür.
 - Kullanıcı adına şart kabulü, ücretli hizmet veya abonelik BAŞLATILMAZ.

@@ -49,7 +49,7 @@ Topluluk/GitHub örnekleri KULLANILMADI; resmî belgeler yeterliydi.
 - ⬜ Araç çağrısı (tools) gerçek tur davranışı.
 - ⬜ `Retry-After` başlığının gerçek 429/503 yanıtlarında döndüğüne dair
   gözlem (503 henüz yaşanmadı; mantık testlerle doğrulandı).
-- ⬜ 2026-11-01 sonrası fiyatlandırma.
+- ⬜ 2027-01-01 sonrası fiyatlandırma (ücretsizlik 2026-10-24'te 2026-11-01'den uzatıldı).
 - ⬜ `/v1/responses` ve `/v1/messages` (Anthropic) akış protokolleri.
 - ⬜ Platform duyurularının API dışı genel erişimli bir yansıması var mı
   (sitemap'e göre YOK).

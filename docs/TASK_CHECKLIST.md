@@ -73,4 +73,4 @@
 ## Sürekli
 
 - [ ] İlk gerçek 503 gözlemi → ERROR_CATALOG kaydı
-- [ ] free_until 2026-11-01 yaklaşınca fiyatlandırma kontrolü
+- [ ] free_until 2027-01-01 yaklaşınca (2026-10-24'te uzatıldı) fiyatlandırma kontrolü
