@@ -1,7 +1,7 @@
 # Proje Durumu
 
 > Oturum kesilirse çalışmaya bu dosyadan devam edilir.
-> Son güncelleme: 2026-10-16 (OpenAI/Anthropic sağlayıcıları — `feat/saglayicilar` dalı)
+> Son güncelleme: 2026-10-24 (proje kapanışı — F1–F7 + son paket; güncel durum "Sıradaki iş" bölümünün başında)
 
 ## Konum ve sınırlar
 
@@ -63,6 +63,14 @@ görünür), bitirirken `docs/ai-memory/` altına oturum günlüğü ve gerekirs
 kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX.md.
 
 ## Sıradaki iş
+
+  - (2026-10-24) **PROJE KAPANIŞI — son paket** (dal `feat/oyun-araclari-kur`): Ayarlar > Oyun araçları (Godot +
+    şablonlar, Blender; onaylı indirme, gömülü sağlama toplamı, gerçek indirme denendi), sağ panel **Git** sekmesi
+    (durum/fark, yapay zekâ commit mesajı, onaylı commit; push/reset yok), dosyayı oturum alanının her yerine
+    bırakma, akışlı `auto` yanıtında seçilen modelin kaydı (`X-Evren-Routed-Model`). Onaylı plan F1–F7 ve plan dışı
+    bekleyen 5 maddeden 4'ü tamamlandı. **Bekleyen tek madde:** OpenAI/Anthropic gerçek anahtar doğrulaması
+    (ücretli — kullanıcı ücretli işlem yapamıyor; yapılmadı). İleride istenirse: ILERIDE_YAPILACAKLAR.md madde 1
+    (paketleme/setup) hâlâ açık.
 
   - (2026-10-24) F7 oyun (dal `feat/f7-oyun`): Godot 4.7.2 + Blender 5.2.3 (araç klasörü), convert_model,
     godot_export (EXE + PWA), Poly Haven (resmî API), godot-mcp ön ayarı (kapalı), Godot şablonu. Gerçek ajan görevi
@@ -143,8 +151,7 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
    `tests/e2e_marathon_real_api.py` (A/B/C projeleri, kabul testleri).
 2. ~~`auto` için protokol seçimi~~ — ÇÖZÜLDÜ (2026-10-16): ölçülen değerler
    (262k + yerel araç) uygulanıyor; auto artık varsayılan motor.
-3. Git entegrasyonu (durum/diff görünümü, ajan değişikliklerini commit'leme
-   önerisi) — şu an yalnızca dal adı gösteriliyor.
+3. ~~Git entegrasyonu~~ — YAPILDI (2026-10-24): sağ panel Git sekmesi.
 4. ~~Görsel girdi~~ — YAPILDI (2026-10-19): yapıştır/sürükle-bırak ekleri,
    görsel okuyan modeller ölçüldü; kullanım düğmesi eklendi.
 5. Paketleme (Aşama 4): PyInstaller ile tek klasör EXE.

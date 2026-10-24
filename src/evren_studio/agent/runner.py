@@ -814,6 +814,8 @@ class AgentRunner:
                 meta["finish_reason"] = result.finish_reason
             if routed and routed != self.model:
                 meta["routed_model"] = routed
+                if getattr(result, "routing_reason", None):
+                    meta["routing_reason"] = result.routing_reason
             token_usage = result.token_usage() if hasattr(result, "token_usage") else {}
             if any(token_usage.values()):
                 meta["usage"] = token_usage

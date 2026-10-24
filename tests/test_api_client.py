@@ -353,3 +353,36 @@ def test_saglik_uctan_kimliksiz_cagrilir():
     assert client.healthz() == {"status": "ok"}
     assert client.readyz() == {"status": "ready"}
     assert seen["auth"] is None, "healthz/readya kimlik başlığı GİTMEMELİ"
+
+
+# ---- madde 3: auto akışında seçilen model (2026-10-24 gerçek istekle ölçülen biçim) ----
+
+
+def _auto_stream(headers: dict, chunk_model: str = "auto"):
+    body = (f'data: {{"id":"c1","model":"{chunk_model}","choices":[{{"index":0,"delta":{{"content":"Mer"}}}}]}}\n\n'
+            f'data: {{"id":"c1","model":"{chunk_model}","choices":[],"usage":{{"prompt_tokens":3,'
+            '"completion_tokens":1,"total_tokens":4}}\n\n'
+            "data: [DONE]\n\n").encode()
+
+    def handler(request):
+        return httpx.Response(200, headers={"content-type": "text/event-stream", **headers}, content=body)
+
+    return make_client(handler).chat("auto", [{"role": "user", "content": "x"}], stream=True)
+
+
+def test_auto_akışında_seçilen_model_başlıktan_okunur():
+    res = _auto_stream({"X-Evren-Routed-Model": "qwen/qwen3.8-flash-next",
+                        "X-Evren-Routing-Reason": "workload:balanced|picked:qwen3.8-flash-next"},
+                       "qwen/qwen3.8-flash-next")
+    assert res.routed_model == "qwen/qwen3.8-flash-next"
+    assert res.routing_reason == "workload:balanced|picked:qwen3.8-flash-next"
+
+
+def test_auto_akışında_başlık_yoksa_parça_modeli_kullanılır():
+    res = _auto_stream({}, "google/gemma-4-31b")
+    assert res.routed_model == "google/gemma-4-31b" and res.routing_reason is None
+
+
+def test_doğrudan_model_akışında_yönlendirme_yazılmaz():
+    res = _auto_stream({}, "auto")
+    assert res.routed_model is None

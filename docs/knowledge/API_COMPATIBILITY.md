@@ -62,6 +62,10 @@ Uygulamayı etkileyen maddeler:
   `finish_reason: "length"` + boş içerik.
 - Akış: `text/event-stream`; parçalar `delta.reasoning` ve `delta.content`;
   sonlandırma `data: [DONE]`.
+- `auto` AKIŞINDA `usage.evren` GELMEZ; seçilen model `X-Evren-Routed-Model` yanıt başlığında, nedeni
+  `X-Evren-Routing-Reason` başlığında (ör. `workload:balanced|picked:qwen3.8-flash-next`) ve her parçanın
+  `model` alanında gelir (2026-10-24 gerçek istekle ölçüldü). Diğer başlıklar: `X-Evren-Daily-Remaining-Tokens`,
+  `X-Evren-Credits-Remaining`, `X-RateLimit-*`. Uygulama başlığı, yoksa parça modelini okur.
 - `auto` modeli yönlendiricidir: `qwen/qwen3.8-flash-next`'e yönlendirdiği
   gerçek istekte görüldü.
 - Geçersiz model → `404`.

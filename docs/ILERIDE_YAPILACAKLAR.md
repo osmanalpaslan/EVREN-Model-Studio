@@ -394,7 +394,11 @@ Kullanıcı onayı gereken anlar: program/şablon indirme (Godot şablonları, M
 
 ## 2. Diğer bekleyen işler (özet; ayrıntı PROJECT_STATE.md)
 
-- OpenAI/Anthropic'i gerçek anahtarla doğrula (`tests/e2e_providers_real_api.py --evet`).
-- Git entegrasyonu (durum/diff görünümü, commit önerisi).
-- Sohbet alanının tamamına dosya bırakma (şu an yazma kutusu kabul ediyor).
-- Akışlı yanıtta auto'nun yönlendirdiği modeli kaydetme (EVREN akışta vermiyor).
+- OpenAI/Anthropic'i gerçek anahtarla doğrula (`tests/e2e_providers_real_api.py --evet`) — ÜCRETLİ; kullanıcı
+  ücretli işlem yapamadığı için yapılmadı (2026-10-24). Sağlayıcılar arayüzde "doğrulanmadı" olarak kalır.
+- ~~Git entegrasyonu~~ — YAPILDI 2026-10-24: sağ panel Git sekmesi (durum, fark, yapay zekâ commit mesajı,
+  onaylı commit; push/reset yok).
+- ~~Sohbet alanının tamamına dosya bırakma~~ — YAPILDI 2026-10-24 (oturum alanının her yeri; bırakma ipucu).
+- ~~Akışlı yanıtta auto'nun yönlendirdiği modeli kaydetme~~ — YAPILDI 2026-10-24: EVREN akışta da veriyormuş
+  (`X-Evren-Routed-Model` başlığı); önceki "vermiyor" iddiası yanlıştı.
+- ~~Ayarlar'da "oyun araçlarını kur" düğmesi~~ — YAPILDI 2026-10-24 (onaylı indirme + gömülü sağlama toplamı).

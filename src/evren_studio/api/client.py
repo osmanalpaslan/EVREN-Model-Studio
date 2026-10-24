@@ -50,6 +50,7 @@ class ChatResult:
     model: str = ""
     request_id: str | None = None
     routed_model: str | None = None
+    routing_reason: str | None = None         # EVREN auto: ör. "workload:balanced|picked:qwen3-vl-30b"
     finish_reason: str | None = None
     usage: dict[str, Any] = field(default_factory=dict)
     # Yerel araç çağrıları: [{"id", "name", "arguments" (JSON metni)}]
@@ -512,6 +513,11 @@ class EvrenClient:
         """SSE akışını tüketir; kopma durumunda belirsiz sonuç (UNKNOWN_RESULT)
         olarak yükseltir — otomatik tekrar yapılmaz."""
         result = ChatResult(model=model)
+        # `auto` akışında seçilen model usage.evren'de GELMEZ; EVREN onu X-Evren-Routed-Model başlığında
+        # (nedeni X-Evren-Routing-Reason) ve her parçanın "model" alanında verir (2026-10-24 gerçek istekle ölçüldü).
+        hdrs = getattr(resp, "headers", None) or {}
+        result.routed_model = hdrs.get("X-Evren-Routed-Model") or None
+        result.routing_reason = hdrs.get("X-Evren-Routing-Reason") or None
         content_parts: list[str] = []
         reasoning_parts: list[str] = []
         # index → {"id", "name", "arguments"(parçalar)}
@@ -546,6 +552,8 @@ class EvrenClient:
                     continue
                 if chunk.get("id") and not result.request_id:
                     result.request_id = str(chunk["id"])
+                if not result.routed_model and chunk.get("model") and chunk["model"] != model:
+                    result.routed_model = str(chunk["model"])
                 if chunk.get("usage"):
                     result.usage = chunk["usage"]
                 choices = chunk.get("choices") or []

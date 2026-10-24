@@ -352,6 +352,11 @@ yazılamadı; Godot içe aktarma → EXE (ekransız 120 kare, hatasız) + PWA (m
 
 Aynı gün zorluk auto-pro 12/12 · 370 sn; R-13 E2E_OK · ajan 6/6 · arayüz 15/15.
 
+### Son paket (2026-10-24, dal `feat/oyun-araclari-kur`)
+
+İstemci akışta `X-Evren-Routed-Model` okur, koşucu meta'ya `routing_reason` yazar (ajan davranışı değişmedi).
+Zorluk auto-pro **12/12 · 502 sn**, yakalanmamış hata 0; R-13 E2E_OK · ajan 6/6 · arayüz 15/15. Gerileme yok.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

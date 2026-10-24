@@ -1,5 +1,20 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Son paket (proje kapanışı)
+
+### Eklendi
+- **Oyun araçlarını kur:** Ayarlar > Oyun araçları kartı Godot 4.7.2 + dışa aktarma şablonlarını (~1.367 MB) ve
+  Blender 5.2.3'ü (~406 MB) resmî sitelerden kurar. Önce liste, boyut ve kurulum yeri gösterilip onay istenir; her
+  dosya uygulamaya gömülü resmî sağlama toplamıyla doğrulanır, uyuşmazsa silinir. Yönetici izni gerekmez.
+- **Git sekmesi (sağ panel):** Proje klasöründe değişen dosyalar, her dosyanın farkı, yapay zekâ ile commit mesajı
+  önerisi ve onaylı commit. Gönderme (push) ve geri alma (reset) yapılmaz. Git deposu yoksa tek tıkla başlatılabilir.
+- **Her yere bırak:** Dosya ve görselleri sohbet alanının herhangi bir yerine sürükleyip bırakabilirsiniz (yalnız
+  yazma kutusu değil); sürüklerken alan vurgulanır.
+
+### Düzeltildi
+- `auto` ile akışlı yanıtlarda hangi modelin çalıştığı artık kaydedilir ve "auto → model" diye görünür (EVREN bunu
+  akışta yanıt başlığında veriyormuş; daha önce yalnız akışsız yanıttan okunuyordu).
+
 ## Yayınlanmamış — Oyun (F7)
 
 ### Eklendi
