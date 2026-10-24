@@ -1,5 +1,22 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Skill'ler ve profiller (F4)
+
+### Eklendi
+- **Skill'ler ve Profiller sayfası:** SKILL.md içeren bir klasörü skill olarak ekleyin; her skill'i açıp
+  kapatabilir, "tüm projeler / yalnız seçtiğim projeler / hiçbiri" diye kapsamını seçebilirsiniz. Ajan skill'in
+  yalnız adını görür, iş konusuna girerse kendisi açıp okur (ölçümde kuralları doğru uyguladı, konu dışı işte açmadı).
+- **Ajan profilleri:** Motor, çalışma modu, hangi skill'lerin açık olacağı ve ek talimat tek profilde; oturumda
+  başlıktaki "Profil" düğmesi veya `/profil <ad>` ile uygulanır.
+- **İş şablonları:** Hazır işler (Excel/CSV raporu, hesap kapama, web testi, yeni Python projesi, hata ayıklama) ve
+  kendi şablonlarınız; şablon yeni oturum açıp mesaj kutusunu doldurur.
+- **Skill denetçisi:** Skill kendi doğrulama betiğini taşıyorsa iş bitince çalışır; sorun bulursa "Ajana
+  düzelttir" düğmesi çıkar.
+- **Betikleştir:** `/betiklestir` (veya denetçi geçince düğme) oturumdaki işi tekrar çalıştırılabilir betiğe çevirir.
+
+### Düzeltildi
+- MCP sunucu penceresindeki düğmeler İngilizceydi (Ok/Cancel); Türkçeleştirildi.
+
 ## Yayınlanmamış — Ajan verimliliği (F3)
 
 ### Eklendi

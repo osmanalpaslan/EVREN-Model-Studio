@@ -104,6 +104,34 @@ CREATE TABLE IF NOT EXISTS model_calls (
     detail TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_model_calls_at ON model_calls(at);
+CREATE TABLE IF NOT EXISTS skills (
+    slug TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    folder TEXT NOT NULL,
+    source TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    scope TEXT NOT NULL DEFAULT 'tum',
+    projects TEXT,
+    checker TEXT,
+    added_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    model TEXT,
+    mode TEXT,
+    skills TEXT,
+    instructions TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    profile TEXT,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL DEFAULT 'Yeni oturum',
@@ -224,6 +252,9 @@ class Database:
         cols = {r["name"] for r in self._exec("PRAGMA table_info(sessions)").fetchall()}
         if "provider" not in cols:
             self._exec("ALTER TABLE sessions ADD COLUMN provider TEXT NOT NULL DEFAULT 'evren'")
+        # F4 (2026-10-24): oturuma bağlı ajan profili (E5); eski oturumlar profilsiz
+        if "profile" not in cols:
+            self._exec("ALTER TABLE sessions ADD COLUMN profile TEXT")
         self._exec(
             "INSERT INTO meta(key, value) VALUES('schema_version', ?)"
             " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -540,6 +571,58 @@ class Database:
         self._commit()
         return int(cur.lastrowid)
 
+    # ---- F4: skill'ler, profiller, şablonlar ----------------------------------------------
+
+    def list_skills(self) -> list[dict]:
+        return [dict(r) for r in self._exec("SELECT * FROM skills ORDER BY name COLLATE NOCASE").fetchall()]
+
+    def upsert_skill(self, row: dict) -> None:
+        cols = ["slug", "name", "description", "folder", "source", "enabled", "scope", "projects", "checker"]
+        vals = [row.get(c) for c in cols]
+        self._exec(
+            f"INSERT INTO skills({', '.join(cols)}, added_at) VALUES({', '.join('?' * len(cols))}, ?)"
+            " ON CONFLICT(slug) DO UPDATE SET " + ", ".join(f"{c}=excluded.{c}" for c in cols[1:]),
+            (*vals, utcnow_iso()))
+        self._commit()
+
+    def delete_skill(self, slug: str) -> None:
+        self._exec("DELETE FROM skills WHERE slug=?", (slug,))
+        self._commit()
+
+    def list_profiles(self) -> list[dict]:
+        return [dict(r) for r in self._exec("SELECT * FROM profiles ORDER BY name COLLATE NOCASE").fetchall()]
+
+    def get_profile(self, name: str) -> dict | None:
+        r = self._exec("SELECT * FROM profiles WHERE name=?", (name,)).fetchone()
+        return dict(r) if r else None
+
+    def save_profile(self, name: str, model: str | None, mode: str | None, skills: str | None,
+                     instructions: str | None) -> None:
+        self._exec(
+            "INSERT INTO profiles(name, model, mode, skills, instructions, created_at) VALUES(?,?,?,?,?,?)"
+            " ON CONFLICT(name) DO UPDATE SET model=excluded.model, mode=excluded.mode, skills=excluded.skills,"
+            " instructions=excluded.instructions",
+            (name, model, mode, skills, instructions, utcnow_iso()))
+        self._commit()
+
+    def delete_profile(self, name: str) -> None:
+        self._exec("DELETE FROM profiles WHERE name=?", (name,))
+        self._exec("UPDATE sessions SET profile=NULL WHERE profile=?", (name,))
+        self._commit()
+
+    def list_templates(self) -> list[dict]:
+        return [dict(r) for r in self._exec("SELECT * FROM templates ORDER BY id").fetchall()]
+
+    def add_template(self, name: str, prompt: str, profile: str | None = None) -> int:
+        cur = self._exec("INSERT INTO templates(name, prompt, profile, created_at) VALUES(?,?,?,?)",
+                         (name, prompt, profile, utcnow_iso()))
+        self._commit()
+        return int(cur.lastrowid)
+
+    def delete_template(self, template_id: int) -> None:
+        self._exec("DELETE FROM templates WHERE id=?", (template_id,))
+        self._commit()
+
     def get_session(self, session_id: int) -> sqlite3.Row | None:
         return self._exec("SELECT * FROM sessions WHERE id=?", (session_id,)).fetchone()
 
@@ -557,7 +640,7 @@ class Database:
         ).fetchall()
 
     def update_session(self, session_id: int, **fields: Any) -> None:
-        allowed = {"title", "workspace", "model", "mode", "protocol", "pinned", "provider"}
+        allowed = {"title", "workspace", "model", "mode", "protocol", "pinned", "provider", "profile"}
         sets = {k: v for k, v in fields.items() if k in allowed}
         if not sets:
             return

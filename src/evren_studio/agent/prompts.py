@@ -73,6 +73,18 @@ def text_protocol_section(specs: list[ToolSpec]) -> str:
     return "\n".join(lines) + "\n"
 
 
+# F4 #14 "Betikleştir": başarılı işi tekrar çalıştırılabilir, doğrulanmış betiğe çevir (hesap kapama ölçümü:
+# sabit betik aynı veride birebir aynı raporu ~0,5 sn'de verdi; ajanla her ay yeniden üretmek ~10 dk ve tutarsız).
+BETIKLESTIR_PROMPT = """Bu oturumda yaptığın işi, aynı türden girdilerle yeniden çalıştırılabilen TEK bir Python betiğine
+çevir: `{path}`.
+- Girdi dosya/klasör yollarını komut satırı argümanı yap (varsayılanı bugünkü dosyalar olsun); sabit yol gömme.
+- Elle yaptığın her kararı ve düzeltmeyi betiğe kural olarak yaz; model çağrısı yapma, yalnız standart kütüphane ve
+  KURULU paketler.
+- Beklenen girdi sütunu/dosyası eksikse anlaşılır bir hata yazıp sıfırdan farklı çıkış koduyla çık.
+- Betiği bugünkü girdilerle çalıştır ve çıktının bu oturumdaki sonuçla aynı olduğunu göster.{checker}
+- Bitince betiğin nasıl çalıştırılacağını tek satırla yaz."""
+
+
 def build_agent_system(workspace: Workspace, mode: str, specs: list[ToolSpec],
                        text_protocol: bool, today: date | None = None,
                        env_section: str = "") -> str:

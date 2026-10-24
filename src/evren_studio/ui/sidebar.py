@@ -33,6 +33,7 @@ ROLE_PINNED = Qt.UserRole + 4
 # Yalnız EVREN anahtarı varken anlamlı sayfalar (EVREN kotası, sağlık izleme, EVREN modelleri)
 EVREN_ONLY_PAGES = {"models", "usage", "monitor", "connection"}
 TOOL_PAGES = [
+    ("skills", "Skill'ler ve Profiller", "bulb"),
     ("models", "Modeller", "cpu"),
     ("usage", "Kullanım ve Kota", "gauge"),
     ("monitor", "EVREN Durum İzleme", "activity"),

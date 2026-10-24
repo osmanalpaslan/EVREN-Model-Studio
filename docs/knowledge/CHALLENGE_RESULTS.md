@@ -301,6 +301,19 @@ R-13: E2E_OK · ajan 6/6 · arayüz 15/15.
   deepseek-v4.1-flash metin 2/3 ve 2/3, qwen 3/3 ve 3/3 → bilinen deepseek metin protokolü kararsızlığı
   (MODEL_CAPABILITIES), F3 gerilemesi değil.
 
+## F4 skill ölçümü (2026-10-24, `tests/e2e_skill_real_api.py`, Auto Pro, gerçek API)
+
+Kurallar yalnız skill'de ("fatura-kurallari": numara biçimi SKILL.md'de, KDV oranı ve yukarı yuvarlama
+`references/kdv.md`'de); kontrol bilinen doğru/yanlış çözümle sınandı (R-25).
+
+| Görev | Sonuç | read_skill |
+|---|---|---|
+| skill açık | **4/4** · 109 sn · deepseek-v4.1-flash | 2 (SKILL.md + references/kdv.md) |
+| skill kapalı (taban) | 0/1 — model kuralı uydurmadı, kullanıcıya sordu (doğru davranış) | 0 |
+| konu dışı iş, skill açık (R-22) | 1/1 · 7 sn · gemma | **0** |
+
+Aynı gün zorluk paketi auto-pro 12/12 · 518 sn; R-13 E2E_OK · ajan 6/6 · arayüz 15/15.
+
 ## Bulunan sorunlar ve kalıcı düzeltmeler
 
 1. **Kısaltılmış çıktıdan uydurma sayı** — `read_file` 2000 satırda kısalınca

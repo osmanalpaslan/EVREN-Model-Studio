@@ -104,6 +104,11 @@
 | 100 | Proje haritası sistem isteminde (~3 bin token, 3 dosyadan azsa yok, büyük projede klasör özeti); Proje görevine önceki görevlerde okunan dosyaların GÜNCEL içeriği (≤16 bin karakter, gizli dosya yok) | Keşif ve yeniden okuma adımları her biri tüm bağlamla model çağrısı; güncel içerik eski özetin yanıltmasını önler | 2026-10-24 |
 | 101 | E6 ders önerisi: yalnız sinyal (başarısız→başarılı komut, kurulum, test düşmesi) varsa model çağrısı; EVREN.md'ye yalnız kullanıcı onayıyla, bölüm 30 madde | Sıradaki turda gereksiz çağrı/yazma olmasın (R-22); EVREN.md her turda isteme girer | 2026-10-24 |
 | 102 | E8: `evren_tools` kullanılmaz (ölçümde canlı veri yok); kendi `web_fetch`: yalnız verilen http(s) adresi, arama yok, JavaScript yok, komut gibi onay (alan adı başına oturum izni), sonucun başında güvenilmez içerik uyarısı | Ücretli arama API'si yok (kullanıcı kararı); adres sorgusuyla veri dışarı gidebilir; sayfadaki talimat enjeksiyonu | 2026-10-24 |
+| 103 | Skill'ler uygulama veri klasörüne KOPYALANIR; kaldırma yalnız kopyayı siler, kaynak klasöre dokunmaz; "kaynaktan yenile" ile güncellenir | Kaynak taşınsa/silinse de çalışsın; kullanıcının dosyasını uygulama asla silmesin | 2026-10-24 |
+| 104 | İsteme skill'in yalnız adı + ≤300 karakter açıklaması girer; içerik `read_skill` ile, yalnız etkin skill varken ve yalnız o projenin skill'leri | 7.2 kararı; token tasarrufu; R-25 ölçümü modelin gerçekten açtığını gösterdi (2 çağrı, kurallar uygulandı) | 2026-10-24 |
+| 105 | Profil = motor + mod + skill seçimi (boş = projedeki tümü) + ek talimat; oturuma bağlanır (sessions.profile) | E5; profil silinince oturumlar profilsiz sürer | 2026-10-24 |
+| 106 | Skill denetçisi (SKILL.md `denetci:` veya denetle.py/check.py) yalnız o turda okunan skill için; Otomatik modda sormadan, diğer modlarda onay kartıyla; çıkış 0 = geçti | Skill kullanıcı tarafından eklendi ama betik çalıştırmak izin moduna uymalı | 2026-10-24 |
+| 107 | Şablon mesaj kutusunu DOLDURUR, göndermez | Köşeli parantezli yerler kullanıcının işine göre düzenlenmeli | 2026-10-24 |
 
 ## Değerlendirilip reddedilenler
 

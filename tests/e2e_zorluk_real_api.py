@@ -449,6 +449,8 @@ def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi",
         durum = g["kur"](proj)
         n_out, n_notes, n_mcp, n_bekci = len(outcomes), len(notes), len(mcp_calls), len(bekci)
         w.new_session()
+        if g.get("hazirla"):                     # görev öncesi uygulama kurulumu (ör. skill ekle; F4 R-25)
+            g["hazirla"](w, proj, base)
         w.session.welcome._choose(None if g.get("klasorsuz") else str(proj))
         w.session.composer.set_model(model, emit=True)
         mod = g.get("mod", "auto")
@@ -481,6 +483,8 @@ def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi",
             "rol": [k["rol"] for k in kos], "son_model": [k["model"] for k in kos],
             "gecis": sum(k["gecis"] for k in kos),
             "planlayici": sum(1 for n in notes[n_notes:] if n.startswith("Plan hazır")),
+            "araclar": {n: sum(v for k, v in sigs.items() if k.split(" ", 1)[0] == n)
+                        for n in sorted({k.split(" ", 1)[0] for k in sigs})},
             "arac_cagrisi": sum(sigs.values()), "tekrar_3": {k[:100]: v for k, v in sigs.items() if v >= 3},
             "hata_karti": len(w.session.findChildren(ErrorCard)) - n_err, "notlar": notes[n_notes:][:6],
             "kontroller": [{"ad": n, "gecti": ok, "ayrinti": d} for n, ok, d in checks],
@@ -492,6 +496,8 @@ def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi",
         print(f"[{'TAMAM' if tam else 'SORUN'}] {ad:17s} {rec['skor']:>5} · {rec['sure']:6.1f} sn · adım {rec['adim']:2d} · "
               f"durma={rec['durma']} · rol={rec['rol']} · model={rec['son_model']} · hata kartı={rec['hata_karti']}"
               + (f" · plan {rec['planlayici']}" if mimar else "")
+              + (f" · read_skill {rec['araclar'].get('read_skill', 0)}" if "read_skill" in rec["araclar"]
+                 or g.get("hazirla") else "")
               + (f" · MCP {len(mcp_calls) - n_mcp}" if serena_data is not None else "")
               + f" · bekçi {len(bekci) - n_bekci}", flush=True)
         for n, ok, d in checks:

@@ -24,6 +24,7 @@ from .models_page import ModelsPage
 from .monitor_page import MonitorPage
 from .session_view import SessionView
 from .settings_page import SettingsPage
+from .skills_page import SkillsPage
 from .side_panel import SidePanel
 from .sidebar import Sidebar
 from .usage_page import UsagePage
@@ -139,6 +140,9 @@ class MainWindow(QMainWindow):
         settings.settings_saved.connect(self._settings_saved)
         add("settings", settings)
         add("help", HelpPage(self.ctx))
+        skills = SkillsPage(self.ctx)
+        skills.template_requested.connect(self._use_template)
+        add("skills", skills)
         # Uzun açıklama yazıları kaydırılsın: kaydırmasız etiket sayfanın (dolayısıyla orta alanın)
         # en küçük genişliğini 1000+ px'e çıkarıyordu (kenar çubuğu kaybolma hatasının kaynağı).
         for page in self.pages.values():
@@ -159,6 +163,15 @@ class MainWindow(QMainWindow):
         self.center.setCurrentWidget(page)
         self.sidebar.set_page(key)
         self.panel.setVisible(False)
+
+    def _use_template(self, prompt: str, profile: str) -> None:
+        """F4 #10: şablon → yeni oturum, profil, mesaj kutusu dolu (gönderilmez)."""
+        self.show_sessions()
+        self.session.new_session()
+        if profile and self.ctx.profile(profile):
+            self.session.apply_profile(profile)
+        self.session.composer.set_text(prompt)
+        self.session.composer.focus()
 
     def show_sessions(self) -> None:
         self.center.setCurrentWidget(self.session)

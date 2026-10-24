@@ -64,6 +64,8 @@ SLASH_COMMANDS = {
     "/qa-durdur": "Çalışan QA testini durdur",
     "/derin": "Derin Mod: /derin aç-kapat · /derin <istek> bu işi çok ajanlı anla→planla→uygula→doğrula ile yürüt",
     "/derin-durdur": "Çalışan Derin Mod akışını durdur",
+    "/profil": "Ajan profili seç: /profil <ad> · /profil yok (kaldır) · /profil (liste)",
+    "/betiklestir": "Bu oturumdaki işi tekrar çalıştırılabilir betiğe çevir: /betiklestir [dosya.py]",
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",

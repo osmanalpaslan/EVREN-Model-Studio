@@ -507,6 +507,75 @@ class AppContext:
     def data_dir(self) -> Path:
         return self.settings.resolved_data_dir()
 
+    # ---- F4: skill'ler ve profiller ------------------------------------------------------------
+
+    def skills_root(self) -> Path:
+        return self.data_dir() / "skills"
+
+    def skills(self) -> list:
+        from ..agent.skills import Skill
+
+        out = []
+        for r in self.db.list_skills():
+            s = Skill.from_row(r)
+            if Path(s.folder).is_dir():          # kopya elle silinmişse listede gösterilmez
+                out.append(s)
+        return out
+
+    def add_skill(self, src: Path):
+        """Klasördeki skill'i veri klasörüne kopyalayıp kaydeder (SkillError → arayüz gösterir)."""
+        from ..agent import skills as sk
+
+        s = sk.install(Path(src), self.skills_root(), {x["slug"] for x in self.db.list_skills()})
+        self.db.upsert_skill(s.to_row())
+        return s
+
+    def save_skill(self, skill) -> None:
+        self.db.upsert_skill(skill.to_row())
+
+    def remove_skill(self, slug: str) -> None:
+        """Kaydı ve UYGULAMANIN kopyasını siler; kullanıcının kaynak klasörüne dokunulmaz."""
+        import shutil
+
+        row = next((r for r in self.db.list_skills() if r["slug"] == slug), None)
+        self.db.delete_skill(slug)
+        if row:
+            folder = Path(row["folder"]).resolve()
+            root = self.skills_root().resolve()
+            if folder.parent == root:            # yalnız kendi skills klasörümüzdeki kopya
+                shutil.rmtree(folder, ignore_errors=True)
+
+    def profile(self, name: str | None) -> dict | None:
+        if not name:
+            return None
+        p = self.db.get_profile(name)
+        if p is not None:
+            import json
+
+            try:
+                p["skills"] = json.loads(p["skills"]) if p.get("skills") else None
+            except ValueError:
+                p["skills"] = None
+        return p
+
+    def skills_for(self, workspace: str | None, profile: str | None = None) -> list:
+        """Bu proje klasöründe etkin skill'ler; profil skill listesi verdiyse yalnız onlar (kapsam yine geçerli)."""
+        active = [s for s in self.skills() if s.applies_to(workspace)]
+        prof = self.profile(profile)
+        if prof and prof.get("skills") is not None:
+            allowed = {str(x).lower() for x in prof["skills"]}
+            active = [s for s in active if s.slug.lower() in allowed or s.name.lower() in allowed]
+        return active
+
+    def known_workspaces(self) -> list[str]:
+        """Skill kapsamı için proje klasörleri: son kullanılanlar + oturumlardakiler."""
+        seen: list[str] = []
+        for w in list(self.settings.recent_workspaces or []) + [r["workspace"] for r in self.db.list_sessions()
+                                                                if r["workspace"]]:
+            if w and w not in seen:
+                seen.append(w)
+        return seen
+
     def save_settings(self) -> None:
         self.store.save(self.settings)
 

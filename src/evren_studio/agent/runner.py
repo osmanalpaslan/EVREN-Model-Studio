@@ -409,7 +409,7 @@ class AgentRunner:
                  stats_sink: Any = None, baselines: dict | None = None,
                  slow_factor: float = modelstats.FACTOR_TURN, route_role: str = "",
                  base_body: dict[str, Any] | None = None, extra_hint: str = "",
-                 project_map: bool = False):
+                 project_map: bool = False, skills: list | None = None):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -446,6 +446,9 @@ class AgentRunner:
         self.project_map = project_map
         self._map_section: str | None = None
         self.quality_events: list[str] = []       # A5 olayları (E6 ders sinyali de okur)
+        # F4: bu projede etkin skill'ler (agent/skills.Skill); yalnız ad + açıklama isteme girer, read_skill açar
+        self.skills = list(skills or [])
+        self.used_skills: list[str] = []         # read_skill ile açılan skill adları (denetçi bunlar için)
         self._history_ref: list[dict] | None = None
         self._work = 0                       # gerçek iş sayacı (başarılı yazma/komut/servis/iş)
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
@@ -500,7 +503,8 @@ class AgentRunner:
         plan = normalize_mode(self.mode) == "plan"
         base = READ_ONLY_SPECS if plan else TOOL_SPECS
         base = [s for s in base
-                if (self.services is not None or s.name not in SERVICE_TOOLS)
+                if (self.skills or s.name != "read_skill")
+                and (self.services is not None or s.name not in SERVICE_TOOLS)
                 and (self.jobs is not None or s.name not in JOB_TOOLS)
                 and not (self.no_writes and s.kind == WRITE)]
         if self.extra_tools is not None:
@@ -550,6 +554,10 @@ class AgentRunner:
                                     env_section=self._env_section)
         if self._map_section:
             system += "\n\n" + self._map_section
+        if self.skills:
+            from . import skills as skillmod
+
+            system += "\n\n" + skillmod.prompt_section(self.skills)
         if self.mcp is not None:
             from .mcp import prompt_section
 
@@ -1065,6 +1073,20 @@ class AgentRunner:
             if a.get("start_line") or a.get("end_line"):
                 rng = f" (satır {a.get('start_line') or 1}–{a.get('end_line') or 'son'})"
             summary = f"Okundu: {a['path']}{rng}"
+        elif call.name == "read_skill":
+            from . import skills as skillmod
+
+            sk = skillmod.find(self.skills, str(_req(a, "name")))
+            if sk is None:
+                names = ", ".join(s.name for s in self.skills) or "(yok)"
+                raise ToolError(f"Bu projede böyle bir skill etkin değil: {a.get('name')}. Etkin skill'ler: {names}")
+            try:
+                out = skillmod.read(sk, a.get("path"))
+            except skillmod.SkillError as exc:
+                raise ToolError(str(exc)) from exc
+            if sk.name not in self.used_skills:
+                self.used_skills.append(sk.name)
+            summary = f"Skill okundu: {sk.name}" + (f" · {a['path']}" if a.get("path") else "")
         elif call.name == "read_table":
             from . import tables
 
@@ -1462,6 +1484,7 @@ def describe_call(call: ToolCall) -> str:
         "list_files": lambda: f"Klasör listeleniyor: {a.get('path') or '.'}",
         "read_file": lambda: f"Okunuyor: {a.get('path', '?')}",
         "read_table": lambda: f"Tablo inceleniyor: {a.get('path', '?')}",
+        "read_skill": lambda: f"Skill okunuyor: {a.get('name', '?')}" + (f" · {a['path']}" if a.get("path") else ""),
         "web_fetch": lambda: f"Web okunuyor: {a.get('url', '?')}",
         "search_files": lambda: f"Aranıyor: “{a.get('pattern', '')}”",
         "find_files": lambda: f"Dosya aranıyor: {a.get('pattern', '')}",

@@ -64,6 +64,10 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-10-24) F4 skill'ler ve profiller (dal `feat/f4-skill-profiller`): Skill'ler ve Profiller sayfası,
+    read_skill, proje bazlı kapsam, profiller (/profil), şablonlar, skill denetçisi, /betiklestir. R-25 ölçümü: skill
+    açık 4/4, konu dışında açılmadı. Sıradaki faz F5.
+
   - (2026-10-24) F3 ajan verimliliği (dal `feat/f3-ajan-verimliligi`): read_table, Python paket bilgisi, proje
     haritası, Proje görevleri arası okuma paylaşımı, EVREN.md ders önerisi, web_fetch (evren_tools etkisiz çıktı);
     özet/kapsam modeli varsayılanı auto-pro; test politikası R-30. Sıradaki faz F4.
