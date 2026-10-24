@@ -1,5 +1,17 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Güvenlik ve kurallar (F6)
+
+### Eklendi
+- **Güvenilmeyen klasör:** İnternetten indirdiğiniz dosyaları koyduğunuz klasörü işaretleyin (Dosyalar'da sağ tık
+  veya Ayarlar). Ajan oradaki dosyaları okuyup inceleyebilir ama hiçbir programı/betiği çalıştıramaz — Otomatik
+  modda da. Dosyalardaki "şunu çalıştır" gibi talimatlara uymaz.
+- **Kullanıcı kuralları:** Projede `.evren/kurallar.json` ile "düzenlemeden sonra", "komuttan önce" ve "tur
+  bitince" çalışacak komutlar tanımlayın (ör. her düzenlemeden sonra derleme denetimi, `git push` engeli, tur sonunda
+  testler). İlk kullanımda ve dosya her değiştiğinde onayınız istenir.
+- **Buraya geri sar:** Mesajın üstündeki düğmeyle konuşmayı o mesajdan öncesine döndürün; o turlardaki dosya
+  değişiklikleri geri alınır. Geri alınamayacak şeyler (çalıştırılan komutlar, kurulumlar) kartta açıkça yazılır.
+
 ## Yayınlanmamış — Arayüz (F5)
 
 ### Eklendi

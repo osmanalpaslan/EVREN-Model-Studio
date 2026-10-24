@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QHBoxLayout,
+    QListWidget,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -46,7 +47,7 @@ PAID_PROVIDERS = ("openai", "anthropic")
 
 DEFAULTS = Settings()
 # Varsayılana dönerken KORUNAN alanlar (kullanıcının verisi/konumu)
-PRESERVED_ON_RESET = {"data_dir", "recent_workspaces", "code_workdir", "mcp_servers"}
+PRESERVED_ON_RESET = {"data_dir", "recent_workspaces", "code_workdir", "mcp_servers", "untrusted_dirs"}  # güvenlik listesi sıfırlanmaz
 PROTOCOLS = (
     ("otomatik", "Otomatik (önerilir) — yerel araç çağrısı, reddedilirse metin"),
     ("yerel", "Yerel function calling (tools)"),
@@ -397,6 +398,26 @@ class SettingsPage(BasePage):
                          "yeniden başlatmada tamamen güncellenir."))
         col.addWidget(c)
 
+        # ---- F6 #15 güvenilmeyen klasörler ----
+        c, l = card()
+        l.addWidget(section("Güvenilmeyen klasörler"))
+        l.addWidget(hint("İnternetten indirdiğiniz dosyaları (mod, örnek proje) koyduğunuz klasörler. Ajan buradaki "
+                         "dosyaları okuyup inceleyebilir ama içlerindeki hiçbir programı, betiği veya makroyu "
+                         "çalıştıramaz — Otomatik modda da. Dosyalar sekmesinde klasöre sağ tıklayarak da işaretlenir."))
+        self.untrusted_list = QListWidget()
+        self.untrusted_list.setMaximumHeight(110)
+        l.addWidget(self.untrusted_list)
+        row = QHBoxLayout()
+        add_u = QPushButton("Klasör ekle…")
+        add_u.clicked.connect(self._add_untrusted)
+        del_u = QPushButton("Seçileni kaldır")
+        del_u.clicked.connect(self._remove_untrusted)
+        row.addWidget(add_u)
+        row.addWidget(del_u)
+        row.addStretch(1)
+        l.addLayout(row)
+        col.addWidget(c)
+
         # ---- dışa aktarma / silme ----
         c, l = card()
         l.addWidget(section("Veri Dışa Aktarma ve Silme"))
@@ -482,6 +503,7 @@ class SettingsPage(BasePage):
         self.theme.setCurrentText(s.theme if s.theme in ("koyu", "açık") else "koyu")
         self.font_size.setValue(s.font_size)
         self.compact_view.setChecked(s.compact_view)
+        self._fill_untrusted()
         self.simple_view.setChecked(s.simple_view)
         self.retention.setValue(s.error_log_retention_days)
         self.budget.setValue(s.monthly_budget_usd)
@@ -732,6 +754,26 @@ class SettingsPage(BasePage):
             w["status"].setText(f"✗ Bağlantı başarısız: {exc}")
 
         Task(job, on_done=done, on_error=fail).start()
+
+    def _fill_untrusted(self) -> None:
+        self.untrusted_list.clear()
+        for d in self.ctx.settings.untrusted_dirs or []:
+            self.untrusted_list.addItem(d)
+
+    def _add_untrusted(self) -> None:
+        d = QFileDialog.getExistingDirectory(self, "Güvenilmeyen klasör seç")
+        if d and str(Path(d).resolve()) not in (self.ctx.settings.untrusted_dirs or []):
+            self.ctx.settings.untrusted_dirs = list(self.ctx.settings.untrusted_dirs or []) + [str(Path(d).resolve())]
+            self.ctx.save_settings()
+            self._fill_untrusted()
+
+    def _remove_untrusted(self) -> None:
+        it = self.untrusted_list.currentItem()
+        if it is None:
+            return
+        self.ctx.settings.untrusted_dirs = [d for d in self.ctx.settings.untrusted_dirs or [] if d != it.text()]
+        self.ctx.save_settings()
+        self._fill_untrusted()
 
     def browse_data_dir(self) -> None:
         d = QFileDialog.getExistingDirectory(self, "Veri klasörü seç")

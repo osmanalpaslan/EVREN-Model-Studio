@@ -409,7 +409,8 @@ class AgentRunner:
                  stats_sink: Any = None, baselines: dict | None = None,
                  slow_factor: float = modelstats.FACTOR_TURN, route_role: str = "",
                  base_body: dict[str, Any] | None = None, extra_hint: str = "",
-                 project_map: bool = False, skills: list | None = None):
+                 project_map: bool = False, skills: list | None = None, untrusted: list[str] | None = None,
+                 user_rules: Any = None):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -449,6 +450,9 @@ class AgentRunner:
         # F4: bu projede etkin skill'ler (agent/skills.Skill); yalnız ad + açıklama isteme girer, read_skill açar
         self.skills = list(skills or [])
         self.used_skills: list[str] = []         # read_skill ile açılan skill adları (denetçi bunlar için)
+        # F6 #15: güvenilmeyen klasörler (okunur, içindeki program/betik çalıştırılamaz) · E4: kullanıcı kuralları
+        self.untrusted = [str(d) for d in (untrusted or [])]
+        self.user_rules = user_rules
         self._history_ref: list[dict] | None = None
         self._work = 0                       # gerçek iş sayacı (başarılı yazma/komut/servis/iş)
         # EVREN Akıllı (agent/router.py): birincil model sunucu hatası verir veya döngüye
@@ -558,6 +562,10 @@ class AgentRunner:
             from . import skills as skillmod
 
             system += "\n\n" + skillmod.prompt_section(self.skills)
+        if self.untrusted:
+            from . import untrusted as untr
+
+            system += "\n\n" + untr.prompt_section(self.untrusted, self.workspace.root)
         if self.mcp is not None:
             from .mcp import prompt_section
 
@@ -872,6 +880,16 @@ class AgentRunner:
                             self._quality("plan_stall", f"{len(items)} açık madde")
                         self.events.status(f"Plan bekçisi: planda {len(items)} açık madde kaldı ama ajan "
                                            "ilerleme göstermiyor; durdu. 'devam' yazarak sürdürebilirsiniz.")
+                if ("rules" not in nudged and self.user_rules is not None and getattr(self, "_wrote", False)
+                        and self.user_rules.has("tur_sonu") and step < self.max_steps and not self._cancelled()):
+                    nudged.add("rules")                               # E4: tur başına bir kez
+                    failed, note = self.user_rules.turn_end()
+                    if failed:
+                        self.events.status("Kullanıcının tur sonu kuralı başarısız; model düzeltmesi için uyarıldı.")
+                        self._nudge = note
+                        continue
+                    if note:
+                        self.events.status(f"Kullanıcı kuralları geçti ({note}).")
                 if "tests" not in nudged and step < self.max_steps and not self._cancelled():
                     gate = self._test_gate()
                     if gate:
@@ -1116,6 +1134,12 @@ class AgentRunner:
             out = tb.find_files(_req(a, "pattern"))
             n = 0 if out.startswith("Dosya bulunamadı") else len(out.splitlines())
             summary = f"Bulundu: {a['pattern']} — {n} dosya"
+        if self.untrusted and call.name in ("read_file", "read_table") and a.get("path"):
+            from . import untrusted as untr
+            from .webfetch import UNTRUSTED_NOTE
+
+            if untr.inside(self.workspace.resolve(a["path"]), self.untrusted):
+                out = UNTRUSTED_NOTE + "\n" + out          # F6 #15: içerik güvenilmez
         return ToolResult(True, truncate_middle(out, self.output_limit), summary,
                           {"output": truncate_middle(out, 4000)})
 
@@ -1203,6 +1227,9 @@ class AgentRunner:
             out = self.services.stop(str(a.get("name") or ""))
             return ToolResult(True, out, out)
         command = _req(a, "command").strip()
+        blocked = self._untrusted_block(command)
+        if blocked is not None:
+            return blocked
         decision, reason = decide(self.mode, EXEC, self.perms, command,
                                   root=self.workspace.root if self.workspace else None)
         if decision == Decision.DENY:
@@ -1249,6 +1276,9 @@ class AgentRunner:
                               f"İş {job.id}: {job.state()} ({job.elapsed() / 60:.1f} dk)",
                               {"output": truncate_middle(job.summary(40), 4000)})
         command = _req(a, "command").strip()
+        blocked = self._untrusted_block(command)
+        if blocked is not None:
+            return blocked
         decision, reason = decide(self.mode, EXEC, self.perms, command,
                                   root=self.workspace.root if self.workspace else None)
         if decision == Decision.DENY:
@@ -1372,6 +1402,11 @@ class AgentRunner:
             content += TEST_EDIT_WARNING.format(path=change.rel_path)
             self._test_orig.setdefault(change.rel_path, change.before)
             extra["test_edit"] = True
+        if self.user_rules is not None and self.user_rules.has("duzenleme_sonrasi"):
+            note = self.user_rules.after_edit(change.rel_path)      # E4: yerleşik bekçilerden SONRA
+            if note:
+                content += note
+                extra["user_rule"] = note.strip()[:500]
         return ToolResult(True, content, f"{verb}: {change.rel_path}  +{added} −{removed}", extra)
 
     def _post_edit_check(self, rel_path: str, text: str | None) -> str:
@@ -1441,8 +1476,23 @@ class AgentRunner:
                                     "auto_approved": not asked,
                                     "auto_reason": "Program kurulumu: Otomatik" if not asked else ""})
 
+    def _untrusted_block(self, command: str) -> ToolResult | None:
+        """F6 #15: güvenilmeyen klasörden çalıştırma — izin modundan bağımsız engel."""
+        if not self.untrusted or self.workspace is None:
+            return None
+        from . import untrusted as untr
+
+        why = untr.check_command(command, self.workspace.root, self.untrusted)
+        if not why:
+            return None
+        self.events.status(f"Güvenilmeyen klasör koruması: komut engellendi ({command[:80]}).")
+        return ToolResult(False, why, "Engellendi (güvenilmeyen klasör)", {"command": command, "denied": True})
+
     def _run_exec(self, call: ToolCall) -> ToolResult:
         command = _req(call.arguments, "command").strip()
+        blocked = self._untrusted_block(command)
+        if blocked is not None:
+            return blocked
         decision, reason = decide(self.mode, EXEC, self.perms, command,
                                   root=self.workspace.root if self.workspace else None)
         if decision == Decision.DENY:
@@ -1456,6 +1506,12 @@ class AgentRunner:
                 if feedback:
                     msg += f" Kullanıcının notu: {feedback}"
                 return ToolResult(False, msg, f"Reddedildi: {command[:80]}",
+                                  {"command": command, "denied": True})
+        if self.user_rules is not None and self.user_rules.has("komut_oncesi"):
+            stop, why = self.user_rules.before_command(command)      # E4: onaydan sonra, çalışmadan önce
+            if stop:
+                self.events.status("Kullanıcı kuralı bir komutu engelledi.")
+                return ToolResult(False, why, f"Engellendi (kullanıcı kuralı): {command[:60]}",
                                   {"command": command, "denied": True})
         result: CommandResult = self.toolbox.run_command(
             command, call.arguments.get("timeout_seconds"), cancel=self.cancel,
