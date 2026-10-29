@@ -52,6 +52,8 @@ SLASH_COMMANDS = {
     "/compact": "Konuşmayı özetleyip bağlamı küçült — /compact <odak> ile odak verin",
     "/ozet": "Konuşmayı özetle (/compact ile aynı)",
     "/yeni": "Yeni oturum başlat",
+    "/clear": "Temiz sayfa: aynı klasör, model ve modla yeni oturum (eski sohbet silinmez, kenar çubuğunda kalır)",
+    "/temizle": "Temiz sayfa (/clear ile aynı)",
     "/disa-aktar": "Oturumu Markdown olarak dışa aktar",
     "/yardim": "Komutları ve kısayolları göster",
     "/proje": "Proje ajanı: /proje <hedef> — plan çıkarır, onayınızla görev görev yürütür",
@@ -69,7 +71,7 @@ SLASH_COMMANDS = {
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
-    "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/disa-aktar": "download",
+    "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/clear": "refresh", "/temizle": "refresh", "/disa-aktar": "download",
     "/yardim": "help", "/proje": "list", "/proje-duzelt": "pencil", "/proje-devam": "refresh",
     "/proje-durdur": "stop", "/qa": "check", "/qa-duzelt": "pencil", "/qa-devam": "refresh",
     "/qa-durdur": "stop", "/derin": "spark", "/derin-durdur": "stop",

@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..agent import environment, modelstats, prompts, scope
-from ..agent.compaction import MAX_AUTO_RESUMES, CompactPolicy, needs_compaction, summarize
+from ..agent.compaction import MAX_AUTO_RESUMES, CompactPolicy, history_tokens, needs_compaction, summarize
 
 PLAN_AUTO_CONTINUES = 2      # plan bekçisi: kullanıcı mesajı başına adım sınırı sonrası otomatik devam
 from ..agent.permissions import MODES, SessionPermissions, normalize_mode
@@ -676,6 +676,30 @@ class SessionView(QWidget):
         self._update_header()
         self._update_context()
         self.session_opened.emit(None)
+        self.composer.focus()
+
+    def clear_session(self) -> None:
+        """/clear: aynı proje klasörü, model, mod ve profille temiz sayfa (Claude Code'daki gibi).
+
+        Eski oturum SİLİNMEZ (kenar çubuğunda kalır); yeni oturum ilk mesajla oluşur ve
+        modele eski geçmiş gitmez. Kullanıcı isteği 2026-10-29: 1M token'a ulaşan oturumda
+        /compact da çalışmayınca çıkış yolu yoktu.
+        """
+        if self.running:
+            QMessageBox.information(self, "Ajan çalışıyor", "Önce çalışan işlemi durdurun (Esc).")
+            return
+        ws = self.workspace if self.session_id else self.welcome.workspace
+        model, mode, profile = self.model, self.mode, self.profile
+        self.new_session()
+        if ws and Path(ws).is_dir():
+            self.welcome._choose(ws)
+        if profile and self.ctx.profile(profile) is not None:
+            self.apply_profile(profile)          # önce profil; sonra o an kullanılan model/mod korunur
+        self.set_model(model)
+        self.composer.set_model(model)
+        self.set_mode(mode)
+        self.composer.set_mode(mode)
+        self.composer.set_agentic(bool(ws and Path(ws).is_dir()))
         self.composer.focus()
 
     def open_session(self, session_id: int) -> None:
@@ -1537,6 +1561,8 @@ class SessionView(QWidget):
             return True
         if cmd == "/yeni":
             self.new_session()
+        elif cmd in ("/clear", "/temizle"):
+            self.clear_session()
         elif cmd in MODE_COMMANDS:
             mode = MODE_COMMANDS[cmd]
             self.set_mode(mode)
@@ -2489,10 +2515,10 @@ class SessionView(QWidget):
                     on_cancel()
                 return
             if result.finish_reason == "cancelled_by_user" or not (result.content or "").strip():
-                self._note("Özet oluşturulamadı" + ("; özetsiz devam ediliyor (eski araç çıktıları "
-                                                    "kısaltılarak gönderilir)." if then else "."), "alert")
                 if then and result.finish_reason != "cancelled_by_user":
-                    then()
+                    self._after_failed_summary("Özet oluşturulamadı (boş yanıt)", then, on_cancel)
+                else:
+                    self._note("Özet oluşturulamadı.", "alert")
                 return
             self._record_cost(model, result.token_usage())
             meta = {"auto": auto, "duration_s": round(time.monotonic() - t0, 1)}
@@ -2510,12 +2536,40 @@ class SessionView(QWidget):
         def fail(exc):
             finish_ui()
             if then:
-                self._note(f"Otomatik özet başarısız ({exc}); özetsiz devam ediliyor.", "alert")
-                then()
+                self._after_failed_summary(f"Otomatik özet başarısız ({exc})", then, on_cancel)
             else:
-                self.transcript.add(ErrorCard("Özetleme başarısız", [str(exc)]))
+                self.transcript.add(ErrorCard(
+                    "Özetleme başarısız", [str(exc), "", "Temiz bir sayfayla devam etmek için /clear yazın "
+                                           "(eski sohbet silinmez)."],
+                    [("Temiz sayfa aç (/clear)", self.clear_session)]))
 
         Task(job, on_done=done, on_error=fail).start()
+
+    def _after_failed_summary(self, why: str, then, on_cancel) -> None:
+        """Özet başarısız: geçmiş modele hâlâ sığıyorsa özetsiz devam et; sığmıyorsa GÖNDERME.
+
+        2026-10-29: 1M token'lık oturumda özet başarısız olunca mesaj yine de gönderildi ve
+        EVREN 4 kez "bağlam penceresini aşıyor" diye reddetti; kullanıcı cevap alamadı.
+        """
+        msgs = self.ctx.db.get_session_messages(self.session_id) if self.session_id else []
+        ctx = self._context_tokens()
+        # uygulamanın tahmini Türkçe/kodda düşük kalıyor (EVREN 1,35 kat fazla saydı) → temkinli pay
+        too_big = bool(ctx) and history_tokens(msgs) * 1.35 > ctx * 0.95
+        if not too_big:
+            self._note(f"{why}; özetsiz devam ediliyor (eski araç çıktıları kısaltılarak gönderilir).", "alert")
+            then()
+            return
+        if on_cancel:
+            on_cancel()                           # yazılan mesaj kutuya geri konur, kaybolmaz
+        self.transcript.add(ActionCard(
+            "Konuşma modelin sınırını aşıyor — mesaj gönderilmedi",
+            [f"{why}.", f"Bu sohbet ~{history_tokens(msgs) // 1000}k token; seçili modelin sınırı "
+             f"{ctx // 1000}k. Mesajınız kutuda duruyor.",
+             "Temiz sayfa aynı klasör/model/modla yeni oturum açar; eski sohbet silinmez."],
+            [("Temiz sayfa aç (/clear)", self.clear_session, "primary"),
+             ("Yeniden özetlemeyi dene (/compact)", lambda: self.compact(), "ghost")],
+            icon_name="alert", warn=True))
+        self.transcript.scroll_to_bottom()
 
     # ---- kapsam koruması (2026-10-17) ----
 
