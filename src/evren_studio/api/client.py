@@ -468,6 +468,9 @@ class EvrenClient:
         extra = {"Accept": "text/event-stream"} if stream else None
         idle = self.stream_idle_timeout if stream else None
         tmo = httpx.Timeout(self.timeout, read=idle) if idle else None
+        # İstemci (SSL bağlamı) ölçümden ÖNCE kurulur: ilk-parça süresi yalnız sunucuyu ölçsün.
+        # 2026-10-29: yüklü makinede SSL hazırlığı saniyeler sürüp first_chunk_s'i şişiriyordu.
+        self._http()
         t0 = time.monotonic()
         resp = self._request("POST", "/v1/chat/completions", json_body=body,
                              operation="chat_completions", model=model,

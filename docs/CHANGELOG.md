@@ -1,5 +1,12 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — /clear ve büyük oturum özeti
+
+- **/clear (/temizle)**: aynı klasör, model ve modla temiz sayfa; eski sohbet silinmez.
+- **Çok büyük sohbet özetlenebilir**: özet isteği modele kesin sığdırılır (1M token'lık
+  oturum gerçek API'de özetlendi). Özet başarısız olup sohbet sığmıyorsa mesaj boşuna
+  gönderilmez; "Temiz sayfa aç" önerilir, yazdığınız metin kaybolmaz.
+
 ## Yayınlanmamış — Son paket (proje kapanışı)
 
 ### Eklendi

@@ -70,10 +70,94 @@ def needs_compaction(history: list[dict], policy: CompactPolicy, context_tokens:
     return (policy.enabled and enough and tokens >= limit), tokens, limit
 
 
+# Özet isteği bütçesi. 2026-10-29: 1.357 mesajlık oturumda özet isteği 724k token tahmin
+# edildi, EVREN 1.06M saydı (Türkçe/kod metninde ~2,6 karakter/token) → model reddetti,
+# /compact hiç çalışmadı, oturum kilitlendi. Bu yüzden temkinli sayım + kesin sığdırma.
+SUMMARY_CHARS_PER_TOKEN = 2.6
+SUMMARY_BUDGET_SHARE = 0.5            # özet modelinin bağlamının en fazla yarısı
+SUMMARY_BUDGET_MAX = 300_000          # çok büyük bağlamda bile (hız + kalite)
+SUMMARY_BUDGET_DEFAULT = 100_000      # bağlam bilinmiyorsa
+_KEEP_RECENT = 6                      # son mesajlar daha az kısaltılır
+
+
+def _cut(text: str, limit: int, head: int, tail: int) -> str:
+    if len(text) <= limit:
+        return text
+    return f"{text[:head]}\n…[{len(text) - head - tail} karakter özet için kısaltıldı]…\n{text[-tail:]}"
+
+
+def _shrink_args(raw: str, limit: int = 300) -> str:
+    """Araç çağrısı parametrelerindeki uzun metinleri (ör. write_file içeriği) kısaltır; JSON geçerli kalır."""
+    import json
+
+    try:
+        args = json.loads(raw) if raw else {}
+    except (json.JSONDecodeError, TypeError):
+        return _cut(str(raw or ""), limit, limit // 2, limit // 4)
+    if not isinstance(args, dict):
+        return raw
+    out = {k: (_cut(v, limit, limit * 2 // 3, limit // 4) if isinstance(v, str) else v) for k, v in args.items()}
+    return json.dumps(out, ensure_ascii=False)
+
+
+def _conservative_tokens(msgs: list[dict]) -> int:
+    return int(sum(len(m.get("content") or "") for m in msgs) / SUMMARY_CHARS_PER_TOKEN)
+
+
+def summary_budget(context_tokens: int | None) -> int:
+    if not context_tokens:
+        return SUMMARY_BUDGET_DEFAULT
+    return max(8_000, min(SUMMARY_BUDGET_MAX, int(context_tokens * SUMMARY_BUDGET_SHARE)))
+
+
+def fit_for_summary(history: list[dict], context_tokens: int | None) -> list[dict]:
+    """Özete gidecek geçmişi (son özetten sonrası) bütçeye KESİN sığdırır.
+
+    1) uzun araç çıktısı, araç parametresi (dosya içeriği), kullanıcı ve asistan metni kısaltılır;
+    2) hâlâ büyükse ilk kullanıcı mesajı (hedef) korunarak en eski mesajlar çıkarılır ve
+       bunu belirten bir not eklenir. Kayıt DEĞİŞMEZ (kopya üzerinde çalışır).
+    """
+    budget = summary_budget(context_tokens)
+    start = 0
+    for i, m in enumerate(history):
+        if m.get("role") == "summary":
+            start = i
+    head, part = list(history[:start]), [dict(m) for m in history[start:]]
+    n = len(part)
+    for i, m in enumerate(part):
+        recent = i >= n - _KEEP_RECENT
+        role, text = m.get("role"), m.get("content") or ""
+        if role == "tool":
+            m["content"] = _cut(text, 6000 if recent else 1200, 4000 if recent else 600, 1500 if recent else 300)
+        elif role == "user":
+            m["content"] = _cut(text, 4000, 3000, 800)
+        elif role == "assistant":
+            m["content"] = _cut(text, 8000 if recent else 4000, 5000 if recent else 2500, 1500)
+            if m.get("tool_calls"):
+                m["tool_calls"] = [dict(c, arguments=_shrink_args(c.get("arguments") or "")) for c in m["tool_calls"]]
+
+    def size(items: list[dict]) -> int:
+        return _conservative_tokens(to_api_messages("", head[-1:] + items if head else items, "text", images=False))
+
+    if size(part) <= budget:
+        return head + part
+    keep_first = next((i for i, m in enumerate(part) if m.get("role") == "user"), None)
+    first = [part[keep_first]] if keep_first is not None else []
+    rest = part[keep_first + 1:] if keep_first is not None else part
+    dropped = 0
+    while rest and size(first + rest) > budget:
+        cut_n = max(1, len(rest) // 20)       # büyük geçmişte hızlı ilerle
+        rest = rest[cut_n:]
+        dropped += cut_n
+    note = {"role": "user", "content": f"[Not: bu konuşmanın {dropped} eski mesajı özet bütçesine sığmadığı "
+                                       "için özete alınmadı; yalnız hedef mesaj ve son bölüm aşağıda.]"}
+    return head + first + ([note] if dropped else []) + rest
+
+
 def build_summary_request(history: list[dict], focus: str | None = None,
                           context_tokens: int | None = None) -> list[dict]:
-    """Özet isteği: eski araç çıktıları gerekiyorsa kısaltılır ki istek sığsın."""
-    visible = trim_for_context(history, context_tokens)
+    """Özet isteği: geçmiş özet modelinin bağlamına KESİN sığacak şekilde kısaltılır."""
+    visible = fit_for_summary(trim_for_context(history, context_tokens), context_tokens)
     msgs = to_api_messages(SUMMARY_SYSTEM, visible, "text", images=False)
     prompt = COMPACT_PROMPT
     if focus:
