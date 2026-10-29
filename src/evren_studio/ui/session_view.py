@@ -688,18 +688,27 @@ class SessionView(QWidget):
         if self.running:
             QMessageBox.information(self, "Ajan çalışıyor", "Önce çalışan işlemi durdurun (Esc).")
             return
-        ws = self.workspace if self.session_id else self.welcome.workspace
+        if not self.session_id:                  # karşılama ekranında temizlenecek bir şey yok
+            self.composer.focus()
+            return
+        ws = self.workspace if self.workspace and Path(self.workspace).is_dir() else None
         model, mode, profile = self.model, self.mode, self.profile
-        self.new_session()
-        if ws and Path(ws).is_dir():
-            self.welcome._choose(ws)
+        old = self.ctx.db.get_session(self.session_id)
+        old_title = (old["title"] if old else "") or "oturum"
+        # Kullanıcı geri bildirimi 2026-10-29: önceki sürüm karşılama ekranına atıyordu. Artık yeni
+        # oturum HEMEN oluşturulup açılır; kullanıcı aynı proje sohbet ekranında kalır.
+        sid = self.ctx.db.create_session(model, ws, mode, title=f"{old_title[:50]} · temiz sayfa",
+                                         provider=self.ctx.provider_of(model))
+        self.open_session(sid)
         if profile and self.ctx.profile(profile) is not None:
             self.apply_profile(profile)          # önce profil; sonra o an kullanılan model/mod korunur
         self.set_model(model)
         self.composer.set_model(model)
         self.set_mode(mode)
         self.composer.set_mode(mode)
-        self.composer.set_agentic(bool(ws and Path(ws).is_dir()))
+        self.sessions_changed.emit()
+        self._note(f"Temiz sayfa: önceki sohbet (“{old_title[:60]}”) modele gönderilmez; kenar "
+                   "çubuğunda duruyor. Aynı klasör, model ve modla devam ediyorsunuz.", "refresh")
         self.composer.focus()
 
     def open_session(self, session_id: int) -> None:

@@ -16,6 +16,9 @@ cevapsız kaldı; /compact da çalışmadı → "/clear komutu ekle".
 
 ## Yapılanlar
 - /clear ve /temizle: aynı klasör, model, mod, profille temiz sayfa; eski oturum silinmez.
+  Kullanıcı geri bildirimiyle düzeltildi: ilk sürüm karşılama ekranına atıyordu (oturum ilk
+  mesajla oluşuyordu); artık yeni oturum HEMEN oluşturulup açılır, kullanıcı proje sohbet
+  ekranında kalır. Komut listesinden tıklama yolu da test edildi.
 - compaction.fit_for_summary: özet isteği özet modelinin bağlamının ≤%50'sine (≤300k)
   kesin sığdırılır (temkinli sayım, araç parametresi/çıktı/metin kısaltma, gerekirse en eski
   mesajları çıkarıp not; ilk hedef mesajı korunur).

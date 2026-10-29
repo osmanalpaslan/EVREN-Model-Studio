@@ -102,11 +102,29 @@ def test_clear_ayni_klasor_model_modla_temiz_sayfa(window, tmp_path):
     model = sv.model
     sv.send("/clear")
     app.processEvents()
-    assert sv.session_id is None, "yeni (henüz boş) oturum"
-    assert sv.welcome.workspace and os.path.samefile(sv.welcome.workspace, proj)
+    # Kullanıcı geri bildirimi: karşılama ekranına ATMAMALI; aynı proje sohbet ekranında kalmalı
+    assert sv.session_id is not None and sv.session_id != sid, "yeni oturum hemen açılır"
+    assert sv.stack.currentWidget() is sv.transcript, "sohbet ekranında kalınır"
+    assert sv.workspace and os.path.samefile(sv.workspace, proj)
     assert sv.mode == "auto" and sv.model == model
+    assert sv.ctx.db.get_session_messages(sv.session_id) == [], "yeni oturumun geçmişi boş"
     assert sv.ctx.db.get_session(sid) is not None, "eski oturum silinmez"
     assert [m["content"] for m in sv.ctx.db.get_session_messages(sid)] == ["eski mesaj"]
+    # temiz sayfadan gönderilen mesaj modele eski geçmişi taşımaz
+    seen = []
+
+    class Fake:
+        def chat(self, model, messages, **kw):
+            seen.append(messages)
+            return ChatResult(content="tamam", finish_reason="stop")
+
+        def close(self):
+            pass
+
+    w.ctx.make_client = lambda log_sink=None: Fake()
+    sv.send("yeni soru")
+    assert wait_until(app, lambda: not sv.running and seen)
+    assert not any("eski mesaj" in (m.get("content") or "") for m in seen[0])
 
 
 def test_ozet_basarisiz_ve_gecmis_sigmiyorsa_mesaj_gonderilmez(window, tmp_path, monkeypatch):
@@ -143,4 +161,27 @@ def test_ozet_basarisiz_ve_gecmis_sigmiyorsa_mesaj_gonderilmez(window, tmp_path,
     card = next(a for a in sv.findChildren(ActionCard) if a.title.text().startswith("Konuşma modelin"))
     card.buttons["Temiz sayfa aç (/clear)"].click()
     app.processEvents()
-    assert sv.session_id is None
+    assert sv.session_id != sid and sv.stack.currentWidget() is sv.transcript
+
+
+def test_clear_listeden_tiklaninca_proje_ekraninda_kalir(window, tmp_path):
+    """Kullanıcı /clear'ı komut listesinden TIKLAYARAK seçti (2026-10-29 geri bildirimi)."""
+    from evren_studio.ui.composer import ROLE_VALUE
+
+    app, w = window
+    proj = tmp_path / "proje"
+    proj.mkdir()
+    sv = w.session
+    sv.welcome._choose(str(proj))
+    sid = sv._ensure_session("proje sohbeti")
+    comp = sv.composer
+    comp.set_text("/cle")
+    app.processEvents()
+    assert comp.popup_visible()
+    items = [comp.popup.item(i) for i in range(comp.popup.count())]
+    item = next(i for i in items if i.data(ROLE_VALUE) == "/clear")
+    comp.popup.itemClicked.emit(item)
+    app.processEvents()
+    assert sv.session_id not in (None, sid)
+    assert sv.stack.currentWidget() is sv.transcript
+    assert os.path.samefile(sv.workspace, proj)
