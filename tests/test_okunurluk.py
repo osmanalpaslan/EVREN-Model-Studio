@@ -39,3 +39,15 @@ def test_tum_ekranlarda_okunmayan_bilesen_yok(tema, tmp_path, monkeypatch, fake_
     hatalar = [f"{b['ekran']} · {b['tur']} · {b['oran']} · {b['metin'][:50]!r} ({b['ad']}, ön {b['on']} / arka {b['arka']})"
                for b in bulgular if b["duzey"] == "HATA"]
     assert not hatalar, "Okunmayan bileşenler:\n" + "\n".join(hatalar)
+
+
+def test_arayuz_kodunda_html_icine_sabit_renk_yok():
+    """Zengin metne gömülü `color:#…` temayla değişmez (açık temada "ücretli" etiketi okunmuyordu,
+    2026-11-01). Renk rol özelliği + QSS (theme.py) ile verilir; SVG simgeleri (icons/brand) hariç."""
+    import re
+
+    ui = Path(__file__).resolve().parents[1] / "src" / "evren_studio" / "ui"
+    kotu = [f"{f.name}:{i}" for f in sorted(ui.glob("*.py")) if f.name not in ("theme.py", "icons.py", "brand.py")
+            for i, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
+            if re.search(r"color\s*:\s*#[0-9a-fA-F]{3,8}", line)]
+    assert not kotu, "Sabit renk: " + ", ".join(kotu)

@@ -78,7 +78,9 @@ durdurur. Her bilgisayarda bir kez kur:
   (R-21): `tests\e2e_zorluk_real_api.py auto-pro` (12 kısa zor görev, ~5 dk) ·
   proje ajanı: `tests\e2e_proje_real_api.py` · MCP/Serena (R-25):
   `tests\e2e_mcp_real_api.py` ve zorluk paketine `--serena build\mcp_data` ·
-  arayüz görsel kontrol: `tools/ui_screenshots.py` (bkz. R-05)
+  arayüz görsel kontrol: `tools/ui_screenshots.py` (bkz. R-05) ·
+  okunurluk: `tools/ui_denetim.py <klasör> ikisi --goruntu` (R-33) · web araması (R-25):
+  `tests\e2e_websearch_real_api.py auto-pro [--kapali]` · uzun oturum: maraton D/E
 - **Yapı**: `src/evren_studio/agent/` (Qt'siz ajan çekirdeği),
   `api/` (EVREN istemcisi), `ui/` (arayüz), `db.py` (SQLite),
   `docs/knowledge/` (uygulamanın EVREN API bilgisi), `docs/ai-memory/`

@@ -220,6 +220,42 @@ class SettingsPage(BasePage):
             "panelinde ayrıca bir harcama sınırı koymanız önerilir."))
         col.addWidget(c)
 
+        # ---- web araması ----
+        c, l = card()
+        l.addWidget(section("Web Araması (Tavily · ücretsiz kota)"))
+        l.addWidget(hint(
+            "Ajan güncel bilgi gerektiğinde (sürüm, hata çözümü, belge, haber) internette arar. Ücretsiz Tavily "
+            "anahtarıyla ayda 1000 arama kredisi kullanılır; anahtar yoksa ya da kota biterse anahtarsız Tavily, "
+            "o da olmazsa DuckDuckGo denenir. Hiçbiri yanıt vermezse iş durmaz, ajan eldeki bilgiyle devam eder. "
+            "Arama sorgusu bu servislere gider; Manuel modda her aramadan önce sorulur."))
+        l.addWidget(QLabel(link("Ücretsiz Tavily anahtarı al", "https://app.tavily.com")
+                           + " · " + link("Kullanım paneli", "https://app.tavily.com/home")))
+        l.itemAt(l.count() - 1).widget().setOpenExternalLinks(True)
+        self.tavily_row = kv_row("Kayıtlı Tavily anahtarı:", "yok")
+        l.addWidget(self.tavily_row)
+        row = QHBoxLayout()
+        self.tavily_input = QLineEdit()
+        self.tavily_input.setEchoMode(QLineEdit.Password)
+        self.tavily_input.setPlaceholderText("Tavily API anahtarı (tvly-…) yapıştırın")
+        tv_save = QPushButton("Kaydet")
+        tv_save.clicked.connect(self.save_tavily_key)
+        self.tavily_quota_btn = QPushButton("Kalan kotayı göster")
+        self.tavily_quota_btn.setToolTip("Tavily'den bu ayki kullanımı okur (arama kredisi harcamaz)")
+        self.tavily_quota_btn.clicked.connect(self.show_tavily_usage)
+        tv_del = QPushButton("Sil")
+        tv_del.setProperty("variant", "danger")
+        tv_del.clicked.connect(self.delete_tavily_key)
+        row.addWidget(self.tavily_input, 1)
+        for b in (tv_save, self.tavily_quota_btn, tv_del):
+            row.addWidget(b)
+        l.addLayout(row)
+        self.tavily_status = QLabel("")
+        self.tavily_status.setWordWrap(True)
+        self.tavily_status.setProperty("role", "dim")
+        l.addWidget(self.tavily_status)
+        self._refresh_tavily_row()
+        col.addWidget(c)
+
         # ---- bağlantı ----
         c, l = card()
         l.addWidget(section("Bağlantı"))
@@ -644,8 +680,14 @@ class SettingsPage(BasePage):
         v.setContentsMargins(0, 6, 0, 6)
         v.setSpacing(6)
         badge = "" if info.verified else "  ·  doğrulanmadı"
-        title = QLabel(f"<b>{info.name}</b>  <span style='color:#d9a441'>ücretli{badge}</span>")
-        v.addWidget(title)
+        # sabit renk yok: "ücretli" etiketi temanın uyarı rengini alır (açık temada da okunur, R-33)
+        head = QHBoxLayout()
+        head.addWidget(QLabel(f"<b>{info.name}</b>"))
+        paid = QLabel(f"ücretli{badge}")
+        paid.setProperty("role", "warning")
+        head.addWidget(paid)
+        head.addStretch(1)
+        v.addLayout(head)
         steps = "".join(f"<li>{s}</li>" for s in info.steps)
         how = QLabel(f"Anahtar nasıl alınır:<ol style='margin-top:2px'>{steps}</ol>")
         how.setWordWrap(True)
@@ -767,6 +809,68 @@ class SettingsPage(BasePage):
             w["status"].setText(f"✗ Bağlantı başarısız: {exc}")
 
         Task(job, on_done=done, on_error=fail).start()
+
+    # ---- web araması (Tavily) ------------------------------------------------
+
+    def _refresh_tavily_row(self) -> None:
+        try:
+            key = load_api_key("tavily")
+        except Exception:                 # kasa okunamazsa ekran yine açılır
+            key = None
+        self.tavily_row.findChildren(QLabel)[1].setText(
+            mask_api_key(key) if key else "yok (anahtarsız arama kullanılır)")
+
+    def save_tavily_key(self) -> None:
+        key = self.tavily_input.text().strip()
+        if not key:
+            QMessageBox.warning(self, "Boş Anahtar", "Tavily anahtar alanı boş.")
+            return
+        if not key.startswith("tvly-") and QMessageBox.question(
+                self, "Anahtar biçimi", "Tavily anahtarları genellikle “tvly-” ile başlar. Yine de kaydedilsin mi?",
+        ) != QMessageBox.Yes:
+            return
+        try:
+            save_api_key(key, "tavily")
+        except Exception as exc:
+            QMessageBox.critical(self, "Güvenli Saklama Başarısız",
+                                 f"Tavily anahtarı Windows Credential Manager'a yazılamadı:\n{exc}\n\n"
+                                 "Düz metin dosyaya geçilmez.")
+            return
+        self.tavily_input.clear()
+        self._refresh_tavily_row()
+        self.tavily_status.setText("Kaydedildi. “Kalan kotayı göster” ile anahtarı deneyebilirsiniz.")
+
+    def delete_tavily_key(self) -> None:
+        if QMessageBox.question(self, "Anahtarı Sil",
+                                "Tavily API anahtarı Windows Credential Manager'dan silinsin mi?") != QMessageBox.Yes:
+            return
+        delete_api_key("tavily")
+        self._refresh_tavily_row()
+        self.tavily_status.setText("Silindi. Web araması anahtarsız yollarla sürer.")
+
+    def show_tavily_usage(self) -> None:
+        from ..agent import websearch
+
+        self.tavily_status.setText("Tavily'ye soruluyor…")
+        self.tavily_quota_btn.setEnabled(False)
+
+        def done(u):
+            self.tavily_quota_btn.setEnabled(True)
+            if not u:
+                self.tavily_status.setText("Kota okunamadı: anahtar kayıtlı değil, geçersiz ya da Tavily'ye "
+                                           "ulaşılamadı. Arama yine anahtarsız yollarla çalışır.")
+                return
+            left = max(0, u["limit"] - u["used"]) if u["limit"] else None
+            self.tavily_status.setText(
+                f"✓ Plan: {u['plan'] or '?'} · bu ay kullanılan {u['used']}"
+                + (f" / {u['limit']} kredi · kalan {left}" if left is not None else " kredi")
+                + " (temel arama 1, derin “güncel” arama 2 kredi)")
+
+        def fail(exc):
+            self.tavily_quota_btn.setEnabled(True)
+            self.tavily_status.setText(f"✗ Kota okunamadı: {exc}")
+
+        Task(websearch.usage, on_done=done, on_error=fail).start()
 
     def _fill_untrusted(self) -> None:
         self.untrusted_list.clear()

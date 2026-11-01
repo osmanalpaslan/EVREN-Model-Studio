@@ -64,6 +64,16 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-11-01) **Profesyonel kalite turu** (dal `feat/profesyonel-kalite`, PR #30 `/clear` üstüne; birleştirilmedi):
+    açık tema okunurluğu + `tools/ui_denetim.py` (R-33), internette arama `web_search` (Tavily → anahtarsız Tavily →
+    DuckDuckGo; Ayarlar > Web Araması, kota gösterimi), maraton D (7 mesajlık uzun oturum) ve E (PWA).
+    Sıradaki maddeler (kullanıcı onaylı sıra): bağlam şişmesi (token tahmini 3,5 → ölçülen 2,2–3,5 kr/token,
+    Proje/Derin akışında otomatik özet; maraton D ile ölç) → bulunan hatalar → proje bitirme hızı (adım süresi
+    dökümü) → Derin Mod (aşamaya göre en güçlü model, canlı durum cümleleri) → tek "Sağlayıcı ekle" ekranı
+    (EVREN/OpenAI/Anthropic/Kilo/OpenRouter/OpenAI-uyumlu) → **kota bitince otomatik devam**: sohbet
+    penceresinde görünür "Kota yenilenince otomatik devam et" kutusu; normal ajan oturumu dahil, kaldığı yerden
+    doğru sürdürme (bugün yalnız Proje/QA/Derin'de, Ayarlar'daki gizli `auto_resume` ile, uygulama açıkken).
+
   - (2026-10-24) **PROJE KAPANIŞI — son paket** (dal `feat/oyun-araclari-kur`): Ayarlar > Oyun araçları (Godot +
     şablonlar, Blender; onaylı indirme, gömülü sağlama toplamı, gerçek indirme denendi), sağ panel **Git** sekmesi
     (durum/fark, yapay zekâ commit mesajı, onaylı commit; push/reset yok), dosyayı oturum alanının her yerine

@@ -592,7 +592,8 @@ class AgentRunner:
         return system + "\n\n" + hint if hint else system
 
     def _compute_turn_hint(self, history: list[dict]) -> str:
-        """Tur başı: kullanıcının andığı ama projede olmayan dosyalar için uyarı (scope.py)."""
+        """Tur başı: kullanıcının andığı ama projede olmayan dosyalar için uyarı (scope.py); istek güncel/dış
+        bilgi gerektiriyorsa web araması hatırlatması (websearch.needs_web)."""
         if not self.agentic or self.workspace is None:
             return ""
         for m in reversed(history):
@@ -604,13 +605,18 @@ class AgentRunner:
             from .scope import user_allows_test_edits
 
             self._tests_allowed = user_allows_test_edits(text)
+            web = ""
+            if any(s.name == "web_search" for s in self._specs()):
+                from . import websearch
+
+                web = websearch.HINT if websearch.needs_web(text) else ""
             try:
                 from .scope import missing_hint, missing_mentions
 
                 missing = missing_mentions(text, self.workspace.root)
             except OSError:
-                return ""
-            return missing_hint(missing) if missing else ""
+                return web
+            return "\n\n".join(h for h in (missing_hint(missing) if missing else "", web) if h)
         return ""
 
     def _record(self, **rec: Any) -> None:
@@ -1068,6 +1074,8 @@ class AgentRunner:
                 res = self._run_install(call)
             elif call.name == "web_fetch":
                 res = self._run_web(call)
+            elif call.name == "web_search":
+                res = self._run_web_search(call)
             elif call.name in GAME_TOOLS:
                 res = self._run_game(call)
             elif spec.kind == READ:
@@ -1192,6 +1200,49 @@ class AgentRunner:
             return ToolResult(False, f"Web sayfası okunamadı: {exc}", f"Okunamadı: {host}")
         return ToolResult(True, truncate_middle(out, self.output_limit), f"Web okundu: {host}",
                           {"output": truncate_middle(out, 4000)})
+
+    def _run_web_search(self, call: ToolCall) -> ToolResult:
+        """İnternette arama (agent/websearch.py: Tavily → anahtarsız Tavily → DuckDuckGo). Sorgu dış sunucuya
+        gittiği için web_fetch gibi izinden geçer ("oturum boyunca izin ver" → web:search). Hiçbir sağlayıcı
+        yanıt vermezse iş DURMAZ: ajana eldeki bilgiyle devam etmesi söylenir."""
+        from . import websearch
+
+        a = call.arguments
+        query = str(_req(a, "query")).strip()
+        if not query:
+            return ToolResult(False, "Arama sorgusu boş.", "Boş sorgu")
+        key = "web:search"
+        decision, reason = decide(self.mode, EXEC, self.perms)
+        if key in self.perms.command_prefixes:
+            decision = Decision.ALLOW
+        if decision == Decision.DENY:
+            return ToolResult(False, reason, "Engellendi")
+        if decision == Decision.ASK:
+            ok, feedback = self._approve(call, EXEC, "İnternette arama yapılsın mı?", query, prefix=key,
+                                         reason="Sorgu metni arama servisine (Tavily/DuckDuckGo) gönderilir.")
+            if not ok:
+                msg = "Kullanıcı internette arama yapılmasına izin vermedi."
+                if feedback:
+                    msg += f" Kullanıcının notu: {feedback}"
+                return ToolResult(False, msg, "Arama reddedildi", {"denied": True})
+
+        def _flag(name: str) -> bool:
+            v = a.get(name)
+            return v is True or str(v).strip().lower() in ("true", "1", "evet")
+
+        try:
+            res = websearch.search(query, guncel=_flag("guncel"), haber=_flag("haber"),
+                                   max_results=int(a.get("max_results") or 5))
+        except websearch.SearchUnavailable as exc:
+            return ToolResult(False, f"Web araması şu an yapılamıyor ({exc}). Aramayı tekrarlama; eldeki bilgiyle "
+                              "işe devam et ve güncel bilginin doğrulanamadığını kullanıcıya belirt.",
+                              "Arama yapılamadı")
+        except (ValueError, TypeError) as exc:
+            return ToolResult(False, f"Arama parametresi geçersiz: {exc}", "Geçersiz arama")
+        out = websearch.format_result(query, res)
+        return ToolResult(True, truncate_middle(out, self.output_limit),
+                          f"{len(res.results)} sonuç · {res.provider}",
+                          {"output": truncate_middle(out, 4000), "provider": res.provider})
 
     def _run_game(self, call: ToolCall) -> ToolResult:
         """F7: convert_model (Blender, ekransız, --disable-autoexec), Poly Haven arama/indirme."""
@@ -1720,6 +1771,7 @@ def describe_call(call: ToolCall) -> str:
         "polyhaven_search": lambda: f"Poly Haven'da aranıyor: {a.get('query', '')}",
         "polyhaven_download": lambda: f"Poly Haven'dan indiriliyor: {a.get('asset_id', '?')}",
         "web_fetch": lambda: f"Web okunuyor: {a.get('url', '?')}",
+        "web_search": lambda: f"İnternette aranıyor: {a.get('query', '')}",
         "search_files": lambda: f"Aranıyor: “{a.get('pattern', '')}”",
         "find_files": lambda: f"Dosya aranıyor: {a.get('pattern', '')}",
         "write_file": lambda: f"Yazılıyor: {a.get('path', '?')}",

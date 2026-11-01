@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 96 · Açık/izlenen: 6 · Oturum: 35 · Kural: 33
+Kayıt: 97 · Açık/izlenen: 6 · Oturum: 36 · Kural: 33
 
 ## Açık ve izlenen kayıtlar
 
@@ -19,6 +19,7 @@ Kayıt: 96 · Açık/izlenen: 6 · Oturum: 35 · Kural: 33
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-01 | [2026-11-01-ayarlarda-ucretli-etiketi-sabit-renkle-yazilmisti](incidents/2026-11-01-ayarlarda-ucretli-etiketi-sabit-renkle-yazilmisti.md) | hata | dusuk | cozuldu | Claude Code | Ayarlarda ücretli etiketi sabit renkle yazılmıştı |
 | 2026-11-01 | [2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu](incidents/2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Açık temada soluk yazılar ve bazı düğmeler okunmuyordu |
 | 2026-10-29 | [2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r](incidents/2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Büyük oturumda /compact çalışmıyor, mesajlar bağlam aşımıyla reddediliyordu |
 | 2026-10-24 | [2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot](incidents/2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Zorluk kuralı program çalıştırma işini kolay sayıp hızlı motora gönderdi |
@@ -120,6 +121,7 @@ Kayıt: 96 · Açık/izlenen: 6 · Oturum: 35 · Kural: 33
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-11-01 | [2026-11-01-claude-code-profesyonel-kalite-turu-acik-tema-web-ar](sessions/2026-11-01-claude-code-profesyonel-kalite-turu-acik-tema-web-ar.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Profesyonel kalite turu: açık tema, web araması, maraton D/E |
 | 2026-10-29 | [2026-10-29-claude-code-masaustu-claude-code-masaustu-clear-komutu-ve-buy](sessions/2026-10-29-claude-code-masaustu-claude-code-masaustu-clear-komutu-ve-buy.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: clear komutu ve büyük oturum özeti |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-son-paket-ve-proje-kapanisi](sessions/2026-10-24-claude-code-masaustu-son-paket-ve-proje-kapanisi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Son paket ve proje kapanisi |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f7-oyun](sessions/2026-10-24-claude-code-masaustu-f7-oyun.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F7 oyun |

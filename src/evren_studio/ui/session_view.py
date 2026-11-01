@@ -1447,7 +1447,7 @@ class SessionView(QWidget):
 
     # ---- F6 / E1: konuşmayı geri sarma ---------------------------------------------------------
 
-    UNDOABLE_TOOLS = {"run_command", "start_job", "start_service", "install_program", "web_fetch"}
+    UNDOABLE_TOOLS = {"run_command", "start_job", "start_service", "install_program", "web_fetch", "web_search"}
 
     def rewind_plan(self, message_id: int) -> dict:
         """Geri sarmanın etkisi (onay kartı ve testler için): silinecek mesajlar, geri alınacak değişiklikler,

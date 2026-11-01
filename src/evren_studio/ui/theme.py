@@ -163,6 +163,7 @@ QToolTip {{ background: {p.surface2}; color: {p.text}; border: 1px solid {p.bord
 QLabel {{ background: transparent; }}
 QLabel#dim, QLabel[role="dim"] {{ color: {p.text_dim}; }}
 QLabel[role="faint"] {{ color: {p.text_faint}; font-size: {small}pt; }}
+QLabel[role="warning"] {{ color: {p.warning}; }}
 QLabel#pageTitle, QLabel[role="title"] {{ font-size: {font_pt + 6}pt; font-weight: 600; }}
 QLabel[role="h2"] {{ font-size: {font_pt + 2}pt; font-weight: 600; }}
 QLabel[role="section"] {{ color: {p.text_faint}; font-size: {small}pt; font-weight: 600;

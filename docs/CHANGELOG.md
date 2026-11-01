@@ -1,5 +1,16 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Web araması ve açık tema düzeltmeleri
+
+- **İnternette arama (`web_search`)**: ajan güncel bilgi gerektiğinde (paket sürümü, hata çözümü, belge,
+  haber) arar ve kaynak adresini belirtir. Ücretsiz Tavily anahtarıyla (Ayarlar > Web Araması; ayda 1000
+  kredi, "Kalan kotayı göster") çalışır; anahtar yoksa ya da kota biterse anahtarsız Tavily, sonra
+  DuckDuckGo denenir. Hiçbiri yanıt vermezse iş durmaz. İstek güncel bilgi gerektiriyorsa (ör. "en son
+  sürüm", "internette ara") ajana o tur aramayı hatırlatan not eklenir. Manuel modda her aramadan önce
+  sorulur, Plan modunda kapalıdır.
+- **Açık tema**: soluk yazılar, yer tutucular, durum renkleri ve ikincil düğmeler okunur hâle getirildi;
+  Ayarlar'daki "ücretli" etiketi artık temanın rengini alıyor. Dosyalar sekmesinde uzun yol ortadan kısaltılır.
+
 ## Yayınlanmamış — /clear ve büyük oturum özeti
 
 - **/clear (/temizle)**: aynı klasör, model ve modla temiz sayfa; eski sohbet silinmez.
