@@ -206,9 +206,13 @@ def test_kosucuda_otomatik_modda_sormadan_arar(db, tmp_path, sahte_arama):
     assert "https://a.org" in tools[0]["content"] and websearch.UNTRUSTED_NOTE in tools[0]["content"]
 
 
-def test_kosucuda_plan_engelli_manuel_sorar_ret(db, tmp_path, sahte_arama):
-    _c, tools = run(db, tmp_path / "p", [call("web_search", query="x")], mode="plan")
-    assert "Plan modunda" in tools[0]["content"] and not sahte_arama
+def test_kosucuda_plan_modunda_sorulmadan_arar_manuel_sorar_ret(db, tmp_path, sahte_arama):
+    # 2026-11-01: Plan modu araştırma içindir; arama dosyaya dokunmaz → sorulmadan çalışır, araç sunulur
+    ev0 = Ev()
+    c, tools = run(db, tmp_path / "p", [call("web_search", query="x")], mode="plan", events=ev0)
+    assert "web_search" in c.tool_names[0] and "https://a.org" in tools[0]["content"] and not ev0.asked
+    assert "write_file" not in c.tool_names[0] and "run_command" not in c.tool_names[0]   # plan yine salt okunur
+    sahte_arama.clear()
     ev = Ev(allow=False)
     _c, tools = run(db, tmp_path / "p", [call("web_search", query="x")], mode="manuel", events=ev)
     assert ev.asked == ["İnternette arama yapılsın mı?"] and "izin vermedi" in tools[0]["content"]

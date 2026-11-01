@@ -38,6 +38,7 @@ from .tools import (
     META,
     READ,
     READ_ONLY_SPECS,
+    WEB_TOOLS,
     JOB_TOOLS,
     GAME_TOOLS,
     SERVICE_TOOLS,
@@ -1099,7 +1100,7 @@ class AgentRunner:
         if self.no_writes and spec.kind == WRITE:
             return ToolResult(False, "Bu çalışmada (QA) dosya değiştirilemez: yalnız test et ve bulguyu raporla.",
                               "Engellendi (QA)")
-        if normalize_mode(self.mode) == "plan" and spec.kind in (WRITE, EXEC):
+        if normalize_mode(self.mode) == "plan" and spec.kind in (WRITE, EXEC) and call.name not in WEB_TOOLS:
             _d, reason = decide(self.mode, spec.kind, self.perms)
             return ToolResult(False, reason, "Plan modunda engellendi")
         self.events.tool_started(call, describe_call(call))
@@ -1224,8 +1225,8 @@ class AgentRunner:
         host = urlparse(url).netloc.lower()
         key = f"web:{host}"
         decision, reason = decide(self.mode, EXEC, self.perms)
-        if key in self.perms.command_prefixes:
-            decision = Decision.ALLOW
+        if key in self.perms.command_prefixes or normalize_mode(self.mode) == "plan":
+            decision = Decision.ALLOW          # Plan modu: dosyaya dokunmayan araştırma serbest
         if decision == Decision.DENY:
             return ToolResult(False, reason, "Engellendi")
         if decision == Decision.ASK:
@@ -1255,8 +1256,8 @@ class AgentRunner:
             return ToolResult(False, "Arama sorgusu boş.", "Boş sorgu")
         key = "web:search"
         decision, reason = decide(self.mode, EXEC, self.perms)
-        if key in self.perms.command_prefixes:
-            decision = Decision.ALLOW
+        if key in self.perms.command_prefixes or normalize_mode(self.mode) == "plan":
+            decision = Decision.ALLOW          # Plan modu: dosyaya dokunmayan araştırma serbest
         if decision == Decision.DENY:
             return ToolResult(False, reason, "Engellendi")
         if decision == Decision.ASK:

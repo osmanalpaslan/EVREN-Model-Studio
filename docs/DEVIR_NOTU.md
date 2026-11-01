@@ -53,8 +53,8 @@ uygulama açıkken QTimer. Normal ajan turunda günlük kota azsa yalnız uyarı
 
 ### Madde 6 — bulunan hata/eksik listesi (yeni buldukça ekle)
 - [~] Model zaman zaman İngilizce ara cümle yazıyor (ölçüm: 96 metinli yanıtın 3'ü, hepsi deepseek-v4.1-flash, tur başında). Dil kuralı ara cümleleri kapsayacak şekilde netleştirildi (734fd4c). A/B gerçek ölçüm (deepseek-v4.1-flash, 5'er, reasoning none): eski 0/4, yeni 0/4 İngilizce — sorun bu ölçümde tekrarlanmadı, etkisi DOĞRULANAMADI; dal sonu zorluk paketinde yanıtlar yine sayılacak.
-- [ ] Plan modunda `web_search` kapalı (EXEC); araştırma için açılması değerlendirilecek.
-- [ ] Klasörsüz sohbet oturumlarında hiç araç yok (web araması da yok).
+- [x] Plan modunda `web_search`/`web_fetch` açıldı (dosyaya dokunmaz; sorulmadan çalışır, Manuel'de sorulur).
+- [ ] Klasörsüz sohbet oturumlarında hiç araç yok (web araması da yok) — ayrı özellik: sohbette yalnız web_search/web_fetch sunmak (runner `agentic` değilken araç protokolü + `_execute` toolbox koruması gevşetilmeli). BEKLİYOR.
 - [ ] deepseek-v4.1-flash bazı adımlarda 30-130 sn bekletiyor (Madde 7 ile birlikte).
 
 - [x] R-05/AGENTS eski `ui_screenshots.py`'yi gösteriyordu → `ui_denetim.py`.

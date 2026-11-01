@@ -44,6 +44,8 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
 
 - Madde 6: dil kuralı ara cümleleri kapsıyor (ölçüm: 96 yanıtın 3'ü İngilizce, hepsi deepseek-v4.1-flash); R-05/AGENTS `ui_denetim.py`'ye yönlendi. Madde 7 dökümü: sürenin ~%97'si model beklemesi (DEVIR_NOTU).
 
+- Plan modunda web_search/web_fetch açıldı (`tools.WEB_TOOLS`, READ_ONLY_SPECS); 2 eski test yeni karara uyarlandı, mutasyon 2 testi kırdı.
+
 ## Test sonuçları
 - Hedefli: tests/test_websearch.py 23 geçti; mutasyon: `_KEY_DEAD` boşaltılınca kota testi, hatırlatma kapatılınca
   tetiklenme testi kırıldı (geri alındı).
