@@ -58,7 +58,7 @@ uygulama açıkken QTimer. Normal ajan turunda günlük kota azsa yalnız uyarı
    yükseltilip maraton A ortasında dur → devam → kabul 10/10.
 
 ### Madde 6 — bulunan hata/eksik listesi (yeni buldukça ekle)
-- [~] Model zaman zaman İngilizce ara cümle yazıyor (ölçüm: 96 metinli yanıtın 3'ü, hepsi deepseek-v4.1-flash, tur başında). Dil kuralı ara cümleleri kapsayacak şekilde netleştirildi; A/B ölçümü sürüyor.
+- [~] Model zaman zaman İngilizce ara cümle yazıyor (ölçüm: 96 metinli yanıtın 3'ü, hepsi deepseek-v4.1-flash, tur başında). Dil kuralı ara cümleleri kapsayacak şekilde netleştirildi (734fd4c). A/B gerçek ölçüm (deepseek-v4.1-flash, 5'er, reasoning none): eski 0/4, yeni 0/4 İngilizce — sorun bu ölçümde tekrarlanmadı, etkisi DOĞRULANAMADI; dal sonu zorluk paketinde yanıtlar yine sayılacak.
 - [ ] Plan modunda `web_search` kapalı (EXEC); araştırma için açılması değerlendirilecek.
 - [ ] Klasörsüz sohbet oturumlarında hiç araç yok (web araması da yok).
 - [ ] deepseek-v4.1-flash bazı adımlarda 30-130 sn bekletiyor (Madde 7 ile birlikte).
