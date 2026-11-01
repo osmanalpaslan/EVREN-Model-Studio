@@ -3,7 +3,7 @@ id: 2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati
 tarih: 2026-11-01
 tur: hata            # hata | eksik | risk | yanlis-iddia | surec | ortam
 onem: yuksek          # kritik | yuksek | orta | dusuk
-durum: izleniyor                # acik | izleniyor | cozuldu | kabul-edildi
+durum: cozuldu                # acik | izleniyor | cozuldu | kabul-edildi
 alan: ajan
 kaynak_motor: Claude Code
 kaynak_model: claude-opus-5-5
@@ -38,8 +38,8 @@ bağlam göstergesi, özet eşiği, kırpma bütçesi ve tur içi sert sınır g
 ## Kanıt
 tests/test_token_kalibrasyonu.py (6 test; eski hesap 250k karakterlik Türkçe geçmişte eşiği aşmıyordu, yeni
 hesap aşıyor; küçük geçmişte tetiklenmiyor; gerçek tur akışında sahte usage'tan 2,2 öğreniliyor). Mutasyon:
-kalibrasyon kapatılınca 4, eski 3,5 oranında 2 test kırıldı. Gerçek uzun oturum ölçümü (maraton D) henüz
-yapılmadı → durum `izleniyor`.
+kalibrasyon kapatılınca 4, eski 3,5 oranında 2 test kırıldı. Gerçek: maraton D 25/25 (bağlam ~40k; eski hesap %13 eksik, yeni varsayılan %24 fazla, kalibrasyonla
+gerçeğe iner); özetli maraton A (`MARATON_OZET_ESIK=20000`) 10/10, otomatik özet 1 kez tetiklendi (2026-11-01).
 
 ## Önleme
 R-34: token/bağlam hesabını gerçek `usage` ile kalibre et; sabit oran/ek yük varsayma.
