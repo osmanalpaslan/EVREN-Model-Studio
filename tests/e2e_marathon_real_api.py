@@ -1,7 +1,7 @@
 """Proje maratonu: gerçek arayüz + gerçek EVREN API ile baştan sona proje (API anahtarı gerekir).
 
 pytest tarafından toplanmaz. Çalıştırma:
-    .\\.venv\\Scripts\\python.exe -u tests\\e2e_marathon_real_api.py <A|B|C> <model> <cikti_klasoru>
+    .\\.venv\\Scripts\\python.exe -u tests\\e2e_marathon_real_api.py <A|B|C|D|E> <model> <cikti_klasoru>
 
 Bir "sanal kullanıcı" uygulamaya (görünmez pencerede, Otomatik mod) birkaç mesajlık
 gerçek bir proje yaptırır: ilk istek, ardından ek özellikler. Tur adım sınırı,
@@ -12,6 +12,8 @@ Projeler:
   A  Python komut satırı harcama takibi (SQLite, unittest) — kurulum yok
   B  Flask not uygulaması (REST + HTML) — proje içinde .venv kurup flask yüklemeli
   C  Node + TypeScript metin istatistiği, pnpm ile — pnpm kurulu değilse kurmalı
+  D  Flask kişisel kütüphane — UZUN oturum (7 mesaj): bağlam büyümesi/otomatik özet ölçümü
+  E  Çevrimdışı harcama PWA (manifest, service worker, gerçek PNG ikon, node:test)
 
 MARATON_OZET_ESIK=<token> ortam değişkeni otomatik özet eşiğini düşürür (uzun oturum benzetimi).
 
@@ -89,6 +91,54 @@ PROJECTS: dict[str, dict] = {
             "`--json` seçeneği ekle: verilirse çıktı `{\"satir\":..,\"kelime\":..,\"en_sik\":[[\"kelime\",adet],...]}` biçiminde "
             "tek satır JSON olsun. Test ekle, build al ve testleri çalıştır.",
             "README.md yaz (kurulum, build, kullanım, test) ve son kez build + test çalıştırıp ne yaptığını özetle.",
+        ],
+    },
+    "D": {
+        "ad": "Flask kişisel kütüphane (uzun oturum, 7 mesaj)",
+        "mesajlar": [
+            "Bu boş klasörde Flask + SQLite ile kişisel kütüphane uygulaması yap. Proje klasöründe `.venv` sanal "
+            "ortamı oluştur, flask'ı kur, requirements.txt yaz. app.py içinde `create_app(db_path)` olsun. Kitap: "
+            "id, baslik, yazar, yil (tamsayı, isteğe bağlı), isbn (isteğe bağlı, benzersiz), eklenme. Uç noktalar:\n"
+            "- `GET /api/kitaplar` → JSON liste, baslik'e göre alfabetik\n"
+            "- `POST /api/kitaplar` (JSON) → 201 + kitap; baslik veya yazar boşsa 400 `{\"hata\": ...}`; aynı isbn ikinci "
+            "kez gelirse 409\n- `GET /api/kitaplar/<id>` → kitap ya da 404\nTestleri tests/ altında pytest ile yaz, .venv'e "
+            "pytest kur, çalıştırıp geçtiğini göster.",
+            "`PUT /api/kitaplar/<id>` (kısmi güncelleme: gönderilen alanlar değişir, yoksa 404; baslik boşsa 400) ve "
+            "`DELETE /api/kitaplar/<id>` (204, yoksa 404) ekle. Testlerini yaz ve tümünü çalıştır.",
+            "Arama ekle: `GET /api/kitaplar?ara=<metin>` başlık VEYA yazarda büyük/küçük harf duyarsız arasın (Türkçe "
+            "İ/ı dahil: 'istanbul' araması 'İstanbul'u bulmalı). `?yazar=<ad>` tam eşleşme filtresi de olsun. Test ekle.",
+            "Ödünç takibi ekle: `POST /api/kitaplar/<id>/odunc` (JSON `kime`) → kitap ödünçteyse 409; "
+            "`POST /api/kitaplar/<id>/iade` → ödünçte değilse 409. `GET /api/kitaplar` her kitapta `odunc` alanı "
+            "(null ya da {\"kime\", \"tarih\"}) dönsün. `GET /api/odunctekiler` yalnız ödünçteki kitapları versin. Test ekle.",
+            "`GET /api/istatistik` → `{\"toplam\": n, \"odunc\": n, \"yazar_sayisi\": n, \"en_cok_kitabi_olan_yazar\": "
+            "\"...\"}` ekle (eşitlikte alfabetik ilk yazar; kitap yoksa null). Test ekle.",
+            "CSV ekle: `GET /api/disa-aktar` → text/csv, başlık satırı tam olarak `id,baslik,yazar,yil,isbn`; "
+            "`POST /api/ice-aktar` (gövde CSV metni) → `{\"eklenen\": n, \"atlanan\": n}`; aynı isbn'li ya da baslik/yazar "
+            "boş satırlar atlanır. Test ekle, tüm testleri çalıştır.",
+            "`GET /` adresine bu API'yi fetch ile kullanan tek sayfalık arayüz ekle (liste, arama kutusu, ekleme formu, "
+            "ödünç/iade düğmeleri). Ana sayfa için test ekle. README.md yaz (kurulum, çalıştırma, tüm uç noktalar). "
+            "Son olarak tüm testleri çalıştırıp neyi yaptığını özetle.",
+        ],
+    },
+    "E": {
+        "ad": "Çevrimdışı harcama PWA (manifest + service worker + mantık modülü)",
+        "mesajlar": [
+            "Bu boş klasörde çevrimdışı çalışan bir harcama takip PWA'sı yap (çerçeve yok: düz HTML/CSS/JS). Dosyalar: "
+            "index.html, style.css, app.js, logic.js, manifest.webmanifest, sw.js, icons/icon-192.png ve icon-512.png "
+            "(gerçek PNG; gerekirse küçük bir betikle üret). logic.js tarayıcıda da Node'da da çalışsın: "
+            "`module.exports` ile `ekle(liste, kayit)`, `toplam(liste)`, `kategoriOzet(liste)` ({kategori: toplam}), "
+            "`ayFiltre(liste, 'YYYY-AA')` dışa aktarılsın. Tutar sayı değilse veya <=0 ise `ekle` hata fırlatsın. "
+            "Veriler localStorage'da dursun. Node ile çalışan testleri tests/logic.test.js içine `node:test` ile yaz ve "
+            "`node --test` ile çalıştırıp geçtiğini göster (Node 24: klasör adı verme, testleri kendisi bulur).",
+            "manifest.webmanifest: name, short_name, start_url, display \"standalone\", theme_color, background_color ve iki "
+            "ikon (192 ve 512, type image/png) içersin. sw.js kurulumda index.html, style.css, app.js, logic.js, manifest ve "
+            "ikonları önbelleğe alsın (cache-first), eski önbellekleri activate'te silsin. index.html manifest'e bağlansın "
+            "ve service worker'ı kaydetsin. Bir doğrulama betiği tools/dogrula.js yaz: manifest alanlarını, ikonların "
+            "gerçek PNG ve doğru boyutta olduğunu, sw.js önbellek listesindeki her dosyanın var olduğunu denetlesin.",
+            "Kategori özetini gösteren basit bir çubuk grafik (canvas ya da div) ve CSV dışa aktarma düğmesi ekle. "
+            "CSV üreten `csvUret(liste)` fonksiyonunu logic.js'e koy (başlık `tarih,kategori,tutar,aciklama`, virgül "
+            "veya tırnak içeren açıklamalar doğru kaçışlanmalı) ve test et. README.md yaz; tüm testleri ve doğrulama "
+            "betiğini son kez çalıştırıp özetle.",
         ],
     },
 }
@@ -223,7 +273,174 @@ def accept_C(proj: Path) -> list[tuple[str, bool, str]]:
     return r
 
 
-ACCEPT = {"A": accept_A, "B": accept_B, "C": accept_C}
+def accept_D(proj: Path) -> list[tuple[str, bool, str]]:
+    r: list[tuple[str, bool, str]] = []
+    py = proj / ".venv" / "Scripts" / "python.exe"
+    r.append(("proje .venv var", py.is_file(), ""))
+    if not py.is_file():
+        return r
+    script = r'''
+import json, sys, tempfile, os, logging
+logging.disable(logging.CRITICAL)
+sys.path.insert(0, os.getcwd())
+o = {}
+try:
+    from app import create_app
+    app = create_app(os.path.join(tempfile.mkdtemp(), "k.db"))
+    c = app.test_client()
+except Exception as exc:
+    print(json.dumps({"uygulama_kurulur": False}))
+    raise SystemExit(0)
+S = {}
+def post(u, j=None, data=None):
+    return c.post(u, json=j) if j is not None else c.post(u, data=data, content_type="text/csv")
+def js(resp):
+    try:
+        return resp.get_json() or {}
+    except Exception:
+        return {}
+def kur():
+    S["a"] = post("/api/kitaplar", {"baslik": "Zeytin", "yazar": "Ahmet", "yil": 1999, "isbn": "111"})
+    S["b"] = post("/api/kitaplar", {"baslik": "Ankara", "yazar": "Mehmet", "isbn": "222"})
+    S["k3"] = post("/api/kitaplar", {"baslik": "İstanbul Hatırası", "yazar": "Ahmet"})
+    S["ida"] = js(S["a"]).get("id")
+    return all(S[k].status_code == 201 for k in ("a", "b", "k3"))
+def odunc_alani():
+    od = [x for x in c.get("/api/kitaplar").get_json() if x["id"] == S["ida"]][0].get("odunc")
+    return isinstance(od, dict) and od.get("kime") == "Ayşe"
+def istatistik():
+    st = js(c.get("/api/istatistik"))
+    return (st.get("toplam") == 3 and st.get("odunc") == 1 and st.get("yazar_sayisi") == 2
+            and st.get("en_cok_kitabi_olan_yazar") == "Ahmet")
+def csv_baslik():
+    d = c.get("/api/disa-aktar")
+    return d.status_code == 200 and "csv" in d.content_type and \
+        d.get_data(as_text=True).splitlines()[0].strip() == "id,baslik,yazar,yil,isbn"
+def ice_aktar():
+    res = post("/api/ice-aktar", data="baslik,yazar,yil,isbn\nYeni Kitap,Zeynep,2020,333\nKopya,K,2000,111\n,BosBaslik,,\n")
+    j = js(res)
+    return res.status_code in (200, 201) and j.get("eklenen") == 1 and j.get("atlanan") == 2
+def put_kismi():
+    ok = c.put(f"/api/kitaplar/{S['ida']}", json={"yil": 2001}).status_code in (200, 204)
+    k = js(c.get(f"/api/kitaplar/{S['ida']}"))
+    return ok and k.get("yil") == 2001 and k.get("baslik") == "Zeytin"
+KONTROLLER = [
+    ("post_201", kur),
+    ("bos_baslik_400", lambda: post("/api/kitaplar", {"baslik": "", "yazar": "x"}).status_code == 400),
+    ("isbn_409", lambda: post("/api/kitaplar", {"baslik": "Kopya", "yazar": "y", "isbn": "111"}).status_code == 409),
+    ("liste_alfabetik", lambda: [x["baslik"] for x in c.get("/api/kitaplar").get_json()][:1] == ["Ankara"]),
+    ("tek_404", lambda: c.get("/api/kitaplar/99999").status_code == 404),
+    ("put_kismi", put_kismi),
+    ("put_bos_400", lambda: c.put(f"/api/kitaplar/{S['ida']}", json={"baslik": ""}).status_code == 400),
+    ("arama_turkce_i", lambda: len(c.get("/api/kitaplar?ara=istanbul").get_json()) == 1),
+    ("arama_yazar", lambda: len(c.get("/api/kitaplar?ara=AHMET").get_json()) == 2),
+    ("yazar_filtre", lambda: len(c.get("/api/kitaplar?yazar=Mehmet").get_json()) == 1),
+    ("odunc", lambda: post(f"/api/kitaplar/{S['ida']}/odunc", {"kime": "Ayşe"}).status_code in (200, 201)),
+    ("odunc_tekrar_409", lambda: post(f"/api/kitaplar/{S['ida']}/odunc", {"kime": "Ali"}).status_code == 409),
+    ("odunc_alani", odunc_alani),
+    ("odunctekiler", lambda: len(c.get("/api/odunctekiler").get_json()) == 1),
+    ("istatistik", istatistik),
+    ("iade", lambda: post(f"/api/kitaplar/{S['ida']}/iade", {}).status_code in (200, 204)),
+    ("iade_tekrar_409", lambda: post(f"/api/kitaplar/{S['ida']}/iade", {}).status_code == 409),
+    ("csv_baslik", csv_baslik),
+    ("ice_aktar", ice_aktar),
+    ("delete_204", lambda: c.delete(f"/api/kitaplar/{S['ida']}").status_code == 204),
+    ("delete_404", lambda: c.delete(f"/api/kitaplar/{S['ida']}").status_code == 404),
+    ("ana_sayfa", lambda: c.get("/").status_code == 200 and b"<html" in c.get("/").data.lower()),
+]
+for ad, f in KONTROLLER:
+    try:
+        o[ad] = bool(f())
+    except Exception:
+        o[ad] = False                  # bir kontrolün çökmesi diğerlerini düşürmez
+print(json.dumps(o))
+'''
+    c, o = _run([str(py), "-c", script], proj, timeout=180)
+    try:
+        res = json.loads(o.strip().splitlines()[-1])
+        for k, v in res.items():
+            r.append((k, bool(v), ""))
+    except (json.JSONDecodeError, IndexError):
+        r.append(("API kabul betiği çalıştı", False, o.strip()[-300:]))
+    c, o = _run([str(py), "-m", "pytest", "-q"], proj, timeout=300)
+    r.append(("kendi testleri geçiyor", c == 0, o.strip().splitlines()[-1][:80] if o.strip() else ""))
+    r.append(("README var", (proj / "README.md").is_file(), ""))
+    return r
+
+
+def _png_size(path: Path) -> tuple[int, int] | None:
+    try:
+        b = path.read_bytes()[:24]
+    except OSError:
+        return None
+    if b[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    import struct
+    return struct.unpack(">II", b[16:24])
+
+
+def accept_E(proj: Path) -> list[tuple[str, bool, str]]:
+    r: list[tuple[str, bool, str]] = []
+    if not (proj / "logic.js").is_file():
+        return [("logic.js var", False, "")]
+    js = r'''
+const L = require(process.cwd() + "/logic.js");
+const o = {};
+let liste = [];
+try { liste = L.ekle(liste, {tarih: "2026-10-05", kategori: "market", tutar: 120.5, aciklama: "ekmek"}); } catch (e) {}
+try { liste = L.ekle(liste, {tarih: "2026-10-07", kategori: "ulasim", tutar: 30, aciklama: "otobüs, tren"}); } catch (e) {}
+try { liste = L.ekle(liste, {tarih: "2026-11-01", kategori: "market", tutar: 79.5, aciklama: 'dedi ki "süt"'}); } catch (e) {}
+o.ekle = Array.isArray(liste) && liste.length === 3;
+let hata = 0;
+for (const t of [-5, 0, "abc"]) { try { L.ekle([], {tarih: "2026-10-01", kategori: "x", tutar: t}); } catch (e) { hata++; } }
+o.gecersiz_tutar_hata = hata === 3;
+o.toplam = Math.abs(L.toplam(liste) - 230) < 1e-9;
+const oz = L.kategoriOzet(liste);
+o.kategori_ozet = Math.abs(oz.market - 200) < 1e-9 && Math.abs(oz.ulasim - 30) < 1e-9;
+o.ay_filtre = L.ayFiltre(liste, "2026-10").length === 2;
+const csv = (L.csvUret ? L.csvUret(liste) : "").split(/\r?\n/);
+o.csv_baslik = csv[0] === "tarih,kategori,tutar,aciklama";
+o.csv_kacis = csv.some(s => s.includes('"otobüs, tren"')) && csv.some(s => s.includes('"dedi ki ""süt"""'));
+console.log(JSON.stringify(o));
+'''
+    c, o = _run(["node", "-e", js], proj, timeout=60)
+    try:
+        for k, v in json.loads(o.strip().splitlines()[-1]).items():
+            r.append((k, bool(v), ""))
+    except (json.JSONDecodeError, IndexError):
+        r.append(("mantık kabul betiği çalıştı", False, o.strip()[-300:]))
+    try:
+        m = json.loads((proj / "manifest.webmanifest").read_text(encoding="utf-8"))
+        ok = all(m.get(k) for k in ("name", "short_name", "start_url", "theme_color", "background_color")) \
+            and m.get("display") == "standalone"
+        sizes = {i.get("sizes") for i in m.get("icons", []) if i.get("type") == "image/png"}
+        r.append(("manifest alanları", ok, ""))
+        r.append(("manifest ikonları", {"192x192", "512x512"} <= sizes, str(sizes)))
+    except (OSError, json.JSONDecodeError) as exc:
+        r.append(("manifest okunur", False, str(exc)[:80]))
+    r.append(("ikon 192 gerçek PNG", _png_size(proj / "icons" / "icon-192.png") == (192, 192), ""))
+    r.append(("ikon 512 gerçek PNG", _png_size(proj / "icons" / "icon-512.png") == (512, 512), ""))
+    sw = (proj / "sw.js").read_text(encoding="utf-8", errors="ignore") if (proj / "sw.js").is_file() else ""
+    r.append(("sw önbellek + activate", all(s in sw for s in ("index.html", "logic.js", "caches")) and "activate" in sw, ""))
+    def oku(name: str) -> str:
+        f = proj / name
+        return f.read_text(encoding="utf-8", errors="ignore") if f.is_file() else ""
+
+    html, appjs = oku("index.html"), oku("app.js")
+    r.append(("index manifest bağlantısı", "manifest" in html, ""))
+    r.append(("service worker kaydı", "serviceWorker" in (html + appjs), ""))
+    c, o = _run("node --test", proj, timeout=120)        # Node 24: "node --test <klasör>" klasörü dosya sanıp kalıyor
+    r.append(("kendi testleri geçiyor", c == 0, o.strip().splitlines()[-1][:80] if o.strip() else ""))
+    if (proj / "tools" / "dogrula.js").is_file():
+        c, o = _run(["node", "tools/dogrula.js"], proj, timeout=60)
+        r.append(("doğrulama betiği geçiyor", c == 0, o.strip()[-120:]))
+    else:
+        r.append(("doğrulama betiği var", False, ""))
+    r.append(("README var", (proj / "README.md").is_file(), ""))
+    return r
+
+
+ACCEPT = {"A": accept_A, "B": accept_B, "C": accept_C, "D": accept_D, "E": accept_E}
 
 
 # ---- sürücü ---------------------------------------------------------------------------------
