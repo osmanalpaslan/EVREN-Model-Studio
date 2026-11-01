@@ -55,7 +55,47 @@ from .tools import (
 )
 
 DEFAULT_MAX_STEPS = 80
-CHARS_PER_TOKEN = 3.5
+# Token tahmini (bağlam, otomatik özet eşiği). 2026-11-01 gerçek ölçüm (EVREN `usage.prompt_tokens`): Türkçe
+# metin 2,55, kod 3,1-3,5, araç çıktısı 2,2, sistem istemi + araç tanımları 2,16 karakter/token. Eski 3,5 bağlamı
+# %40-60 küçük gösteriyor, özet geç tetikleniyordu. Başlangıç değeri temkinli; her yanıttaki gerçek token sayısıyla
+# model başına kalibre edilir (calibrate / calibration).
+CHARS_PER_TOKEN = 2.6
+# Sistem istemi + araç tanımları (ölçüm: ilk istek 5.620 token); kalibrasyon gelene kadar kullanılır
+DEFAULT_OVERHEAD_TOKENS = 6_000
+CPT_MIN, CPT_MAX = 1.8, 4.5
+_CALIB: dict[str, tuple[float, int]] = {}      # model → (karakter/token, sistem+araç token'ı)
+
+
+def calibration(model: str | None = None) -> tuple[float, int]:
+    """(karakter/token, sistem+araç ek yükü token). Model bilinmiyorsa ölçülmüş modellerin en temkinlisi."""
+    if model and model in _CALIB:
+        return _CALIB[model]
+    if _CALIB:
+        return min(c for c, _o in _CALIB.values()), max(o for _c, o in _CALIB.values())
+    return CHARS_PER_TOKEN, DEFAULT_OVERHEAD_TOKENS
+
+
+def calibrate(model: str, sent_chars: int, overhead_chars: int, input_tokens: int) -> None:
+    """Gönderilen karakter sayısı ile API'nin bildirdiği girdi token'ından oranı öğrenir (yumuşatarak)."""
+    if not model or input_tokens < 1_000 or sent_chars <= 0:
+        return
+    cpt = min(CPT_MAX, max(CPT_MIN, sent_chars / input_tokens))
+    old = _CALIB.get(model)
+    if old:
+        cpt = (old[0] + cpt) / 2
+    _CALIB[model] = (cpt, int(overhead_chars / cpt))
+
+
+def _chars(messages: list[dict]) -> int:
+    total = 0
+    for m in messages:
+        content = m.get("content") or ""
+        if isinstance(content, list):        # çok parçalı (görsel): yalnız metin parçaları; base64 sayılmaz
+            content = "".join(p.get("text") or "" for p in content if isinstance(p, dict))
+        total += len(content)
+        for c in m.get("tool_calls") or []:
+            total += len(json.dumps(c, ensure_ascii=False))
+    return total
 # "gerekirse yeniden oku" demiyoruz: modeli aynı dosyaları tekrar okumaya itiyordu (döngü).
 TRIMMED_NOTE = ("[Bu araç çıktısı bağlam sınırı nedeniyle kısaltıldı. İşlem zaten yapıldı; "
                 "yalnızca içeriğe gerçekten yeniden ihtiyacın varsa tekrar çağır.]")
@@ -360,28 +400,23 @@ def to_api_messages(system: str, history: list[dict], protocol: str,
     return msgs
 
 
-def estimate_tokens(messages: list[dict]) -> int:
-    total = 0
-    for m in messages:
-        total += len(m.get("content") or "")
-        for c in m.get("tool_calls") or []:
-            total += len(json.dumps(c, ensure_ascii=False))
-    return int(total / CHARS_PER_TOKEN)
+def estimate_tokens(messages: list[dict], model: str | None = None) -> int:
+    return int(_chars(messages) / calibration(model)[0])
 
 
 def trim_for_context(history: list[dict], context_tokens: int | None,
-                     keep_recent: int = 8) -> list[dict]:
+                     keep_recent: int = 8, model: str | None = None) -> list[dict]:
     """Bağlam sınırına yaklaşılırsa eski araç çıktılarını kısaltır (kayıt değişmez)."""
     if not context_tokens:
         return history
     budget = int(context_tokens * 0.7)
     trimmed = [dict(m) for m in history]
-    if estimate_tokens(trimmed) <= budget:
+    if estimate_tokens(trimmed, model) <= budget:
         return trimmed
     for i, m in enumerate(trimmed[:-keep_recent] if len(trimmed) > keep_recent else []):
         if m.get("role") == "tool" and len(m.get("content") or "") > 400:
             trimmed[i]["content"] = TRIMMED_NOTE
-            if estimate_tokens(trimmed) <= budget:
+            if estimate_tokens(trimmed, model) <= budget:
                 break
     return trimmed
 
@@ -689,7 +724,7 @@ class AgentRunner:
         return msg
 
     def _call_model(self, history: list[dict]):
-        visible = trim_for_context(history, self.context_tokens)
+        visible = trim_for_context(history, self.context_tokens, model=self.model)
         messages = to_api_messages(self._system(), visible, self.protocol)
         if self._nudge:
             # Geçici: kayda yazılmaz, yalnız bu çağrıda gider.
@@ -721,6 +756,13 @@ class AgentRunner:
             on_delta=on_delta, on_reasoning=self.events.reasoning_delta,
             tools=tools, **kwargs,
         )
+        try:          # gerçek token sayısından oranı öğren (bağlam/özet eşiği doğru hesaplansın)
+            used = (result.token_usage() if hasattr(result, "token_usage") else {}).get("input_tokens") or 0
+            tools_chars = len(json.dumps(tools, ensure_ascii=False)) if tools else 0
+            calibrate(self.model, _chars(messages) + tools_chars,
+                      len(messages[0].get("content") or "") + tools_chars, int(used))
+        except (TypeError, ValueError, AttributeError, IndexError):
+            pass
         if guard.repetition and not self._cancelled():
             result.finish_reason = "repetition"
         return result
@@ -1040,7 +1082,7 @@ class AgentRunner:
         return "", ""
 
     def _history_tokens(self, history: list[dict]) -> int:
-        return estimate_tokens(to_api_messages("", history, self.protocol)) + 2_500
+        return estimate_tokens(to_api_messages("", history, self.protocol), self.model) + calibration(self.model)[1]
 
     # -- araç yürütme -------------------------------------------------------------------------
 

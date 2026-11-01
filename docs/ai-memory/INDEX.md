@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 97 · Açık/izlenen: 6 · Oturum: 36 · Kural: 33
+Kayıt: 98 · Açık/izlenen: 7 · Oturum: 36 · Kural: 34
 
 ## Açık ve izlenen kayıtlar
 
@@ -11,6 +11,7 @@ Kayıt: 97 · Açık/izlenen: 6 · Oturum: 36 · Kural: 33
 | yuksek | [2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma](incidents/2026-10-16-openai-ve-anthropic-entegrasyonu-gercek-anahtarla-dogrulanma.md) | risk | api | OpenAI ve Anthropic entegrasyonu gerçek anahtarla doğrulanmadı |
 | yuksek | [2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap](incidents/2026-10-17-zayif-modeller-takilinca-test-dosyasini-degistirip-yalan-rap.md) | risk | agent | Zayıf modeller takılınca test dosyasını değiştirip yalan rapor veriyor |
 | yuksek | [2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor](incidents/2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor.md) | eksik | ajan | Ajan çok fazlı işte faz bitince sonrakine geçmeyi unutuyor |
+| yuksek | [2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati](incidents/2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati.md) | hata | ajan | Token tahmini bağlamı yüzde 40-60 küçük gösteriyordu, otomatik özet geç tetikleniyordu |
 | orta | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | api | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
 | dusuk | [2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz](incidents/2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz.md) | hata | test/izleme | İzleme döngüsü testi zamanlamaya bağlı ve kararsız |
 | dusuk | [2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi](incidents/2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi.md) | ortam | test | Alt süreçler yük altında ara sıra boş çıktıyla dönüyor (bu bilgisayar) |
@@ -19,6 +20,7 @@ Kayıt: 97 · Açık/izlenen: 6 · Oturum: 36 · Kural: 33
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-01 | [2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati](incidents/2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati.md) | hata | yuksek | izleniyor | Claude Code | Token tahmini bağlamı yüzde 40-60 küçük gösteriyordu, otomatik özet geç tetikleniyordu |
 | 2026-11-01 | [2026-11-01-ayarlarda-ucretli-etiketi-sabit-renkle-yazilmisti](incidents/2026-11-01-ayarlarda-ucretli-etiketi-sabit-renkle-yazilmisti.md) | hata | dusuk | cozuldu | Claude Code | Ayarlarda ücretli etiketi sabit renkle yazılmıştı |
 | 2026-11-01 | [2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu](incidents/2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Açık temada soluk yazılar ve bazı düğmeler okunmuyordu |
 | 2026-10-29 | [2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r](incidents/2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Büyük oturumda /compact çalışmıyor, mesajlar bağlam aşımıyla reddediliyordu |
@@ -193,3 +195,4 @@ Kayıt: 97 · Açık/izlenen: 6 · Oturum: 36 · Kural: 33
 - **R-31** · Tura bağlanan özelliği gerçek tur akışından da test et
 - **R-32** · Model isteğini bağlama KESİN sığdır; sığmayan geçmişi gönderme
 - **R-33** · Renk/stil değişikliğini okunurluk denetimiyle ölç
+- **R-34** · Token/bağlam hesabını gerçek kullanımla kalibre et; sabit oran varsayma

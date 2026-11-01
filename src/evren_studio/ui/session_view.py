@@ -2563,8 +2563,8 @@ class SessionView(QWidget):
         """
         msgs = self.ctx.db.get_session_messages(self.session_id) if self.session_id else []
         ctx = self._context_tokens()
-        # uygulamanın tahmini Türkçe/kodda düşük kalıyor (EVREN 1,35 kat fazla saydı) → temkinli pay
-        too_big = bool(ctx) and history_tokens(msgs) * 1.35 > ctx * 0.95
+        # tahmin artık ölçülmüş/kalibre oranla yapılıyor (runner.calibration); eski ×1,35 telafisi gerekmez
+        too_big = bool(ctx) and history_tokens(msgs) > ctx * 0.95
         if not too_big:
             self._note(f"{why}; özetsiz devam ediliyor (eski araç çıktıları kısaltılarak gönderilir).", "alert")
             then()

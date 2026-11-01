@@ -178,3 +178,8 @@
 - **Kural:** theme.py renklerine, QSS'e veya yeni bileşen stiline dokunduğunda `tools/ui_denetim.py <klasör> ikisi --goruntu` (QT_QPA_PLATFORM=windows) çalıştır ve görüntülere bak; tests/test_okunurluk.py HATA=0 olmalı. Yeni renk seçerken tüm zeminlerde (bg, sidebar, panel, surface, surface2, hover, selected) WCAG oranını hesapla; liste yenilerken eski bileşeni `hide()` sonra `deleteLater()` et.
 - **Neden:** Açık temada soluk yazılar 2,4–3,0 kontrasttaydı (109 bileşen), yer tutucu rengi QSS yüzünden uygulanmıyordu, yenilenen listelerde eski yazı yenisinin üstüne biniyordu; gözle kontrol bunları kaçırdı.
 - **Kaynak:** 2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu
+
+### R-34 · Token/bağlam hesabını gerçek kullanımla kalibre et; sabit oran varsayma
+- **Kural:** Bağlam göstergesi, özet eşiği, kırpma ve sert sınır `runner.estimate_tokens` / `calibration()` ile hesaplanır; yeni bir token hesabı yazma, sabit karakter/token oranı veya sabit sistem ek yükü ekleme. Modelden gelen `usage` girdi token'ı kalibrasyona akmalı (`runner.calibrate`); görselin base64'ünü sayma. Oranı değiştirince tests/test_token_kalibrasyonu.py'de hem tetiklenen hem tetiklenmeyen durumu sına.
+- **Neden:** 3,5 karakter/token varsayımı EVREN'de bağlamı %40-60 küçük gösterdi (Türkçe 2,55, araç çıktısı 2,2, sistem+araç tanımları 2,16; ek yük 2.500 değil 5.620 token); otomatik özet uzun projelerde hiç tetiklenmedi.
+- **Kaynak:** 2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati
