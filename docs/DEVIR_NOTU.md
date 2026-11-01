@@ -12,18 +12,12 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-01 19:42 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar
-- **Aktif dal:** `feat/profesyonel-kalite` (GitHub'da var; PR #30 `feat/clear-ve-buyuk-ozet` üzerine kurulu —
-  ikisi de master'a BİRLEŞTİRİLMEDİ). Başka bilgisayarda: `git fetch && git switch feat/profesyonel-kalite`.
-- **Kaldığı yer:** Madde 4 ve 5'in kodu commit'lendi (b099b7a, 7314251, 5e70bf1, c1ec1c9); iki gerçek ölçüm sürüyor
-  (aşağıda). Sonuçlar işlenince Madde 4 ve 5 YAPILDI olur. Ölçümler sürerken Madde 6'ya (bulunan hatalar) geçildi.
-- **Çalışan uzun testler (yalnız bu bilgisayarda; başka yerde devam edilirse tekrarla):**
-  - özetli maraton A — 19:18, worktree `C:\Users\Osman Alpaslan\evm_wt`; günlük `...\evm_t3\maraton_A_ozet.log`;
-    tekrar: `set MARATON_OZET_ESIK=20000` ve `tests\e2e_marathon_real_api.py A auto-pro <klasör>`
-  - kotalı maraton A — 19:40, worktree `...\evm_wt2`; günlük `...\evm_t4\maraton_A_kota.log`;
-    tekrar: `set MARATON_KOTA_TESTI=2:3` ve aynı komut. Beklenen: KOTA TESTİ durdu=1 kart=1 plan=1, devam turu=1,
-    kabul 10/10.
-  - İşi biten worktree'ler silinir: `git worktree remove <klasör>`.
+- **Güncelleme:** 2026-11-01 20:55 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar
+- **Aktif dal:** `feat/profesyonel-kalite` (GitHub'da; PR #30 `feat/clear-ve-buyuk-ozet` üzerine kurulu — ikisi de
+  master'a BİRLEŞTİRİLMEDİ). Başka bilgisayarda: `git fetch && git switch feat/profesyonel-kalite`.
+- **Kaldığı yer:** Madde 0-5 YAPILDI. Sıradaki: Madde 6 kalanları (Plan modunda web_search kararı, klasörsüz
+  sohbette araç yok), sonra Madde 7 (hız: döküm hazır), 8 (Derin Mod), 9 (sağlayıcı ekranı).
+- **Çalışan uzun test:** yok.
 
 ## Geliştirme sırası (kullanıcı onaylı, 2026-11-01)
 
@@ -37,7 +31,7 @@ kritikse mutasyon + paket; R-13/R-21 gerçek ölçümler dal sonunda.
 | 2 | Ücretsiz web araması (Tavily) + Auto Pro'ya dahil | YAPILDI | 2050af9 | Tavily → anahtarsız Tavily → DuckDuckGo → "eldeki bilgiyle devam"; Ayarlar > Web Araması; R-25 ölçümü CHALLENGE_RESULTS.md |
 | 3 | Uzun proje maratonları D (7 mesaj) ve E (PWA) | YAPILDI | 0ced757 | kabul denetimleri bilinen doğru/yanlışla sınandı |
 | 4 | Auto Pro bağlam şişmesi (/compact olmuyor, otomatik özet yok) | YAPILDI | b099b7a (+PR #30 /clear, büyük özet) | token tahmini 3,5 → gerçek kullanımla kalibre (R-34). Gerçek: maraton D 25/25 (bağlam ~40k, özet gerekmedi); özetli maraton A (`MARATON_OZET_ESIK=20000`) 10/10, otomatik özet 1 kez tetiklendi ve iş bozulmadan sürdü. Proje görevlerinde sınır aşılırsa görev denetlenir, gerekirse temiz bağlamla yeniden denenir (tasarım gereği) |
-| 5 | Kota bitince otomatik devam paneli | SÜRÜYOR | (bu commit) | Normal oturum YAPILDI: kota kapısı güvenli noktada durur, 429'da da kart; sohbette kart (yenilenme saati, geri sayım, ☑ otomatik devam = Ayarlar `auto_resume`, Şimdi dene/Vazgeç); saatinde kota yoklanır; plan DB `meta.pending_resume` (açılışta geri gelir); elle mesaj iptal eder. `tests/test_kota_devam.py` 8, mutasyon 2. (a) YAPILDI: Proje/QA/Derin aynı kart + kalıcı plan (`flow`); Derin Mod uygulama kapanınca fazdan sürdürülemez (not verilir). Kalan: (b) gerçek ölçüm: `DAILY_MIN_TOKENS` yapay yükseltilip maraton A ortasında dur → devam → kabul 10/10 |
+| 5 | Kota bitince otomatik devam paneli | YAPILDI | 7314251, 5e70bf1, c1ec1c9 | Normal oturum + Proje/QA/Derin: güvenli noktada dur (kota kapısı / 429), sohbette kart (yenilenme saati, geri sayım, ☑ otomatik devam = Ayarlar `auto_resume`, Şimdi dene/Vazgeç), saatinde kota yoklanır, plan DB'de (açılışta geri gelir), elle mesaj iptal eder; Derin Mod uygulama kapanınca fazdan sürdürülemez (not verilir). Testler: test_kota_devam 8 + test_kota_kapisi, mutasyon. GERÇEK: kotalı maraton A (`MARATON_KOTA_TESTI=2:3`) — 4 araç adımından sonra durdu, kart+plan, gerçek yoklamayla devam, kabul 10/10 (EVREN yavaştı: 77 dk) |
 | 6 | Testlerde bulunan hata/eksikler | SIRADA | — | aşağıdaki liste |
 | 7 | Proje bitirme hızı (tutarlılığı bozmadan) | SIRADA | — | Döküm YAPILDI (2026-11-01, maraton A-D + proje ajanı DB'leri): sürenin ~%97'si MODEL BEKLEMESİ; araç/komut toplam 0,3-1,4 dk. deepseek-v4.1-flash çağrı başına ort. 30-85 sn (en uzun 274), qwen3.8-flash-next 15-40 sn. Kaldıraçlar: kod rolünde model sırası (ölçümle), düşünme süresi (reasoning_effort/çıktı uzunluğu), adım sayısı (paralel araç çağrısı, gereksiz okuma), yavaş model erken geçişi (`_slow`). Tutarlılık zorluk + maraton kabulüyle korunur |
 | 8 | Derin Mod yeniden ele alınacak | SIRADA | — | aşamaya göre en doğru/güçlü EVREN modelleri (ölçümle); çalışırken kısa canlı durum cümleleri; mevcut özellikleri önce kodda doğrula; `e2e_derin_real_api` önce/sonra |
