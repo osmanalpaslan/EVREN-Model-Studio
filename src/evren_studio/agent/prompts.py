@@ -154,6 +154,11 @@ SUMMARY_SYSTEM = (
     "uydurma; emin olmadığın şeyi belirt."
 )
 
+QUOTA_CONTINUE_PROMPT = (
+    "[Otomatik devam] EVREN kotası dolduğu için iş güvenli bir noktada durdu; kota yenilendi. Görevine kaldığın "
+    "yerden devam et. Yukarıdaki araç sonuçları geçerlidir: tamamlanan adımları, okumaları ve komutları tekrarlama. "
+    "Yalnız düzenleyeceğin bir dosyanın güncel içeriği gerekiyorsa onu bir kez oku."
+)
 AUTO_CONTINUE_PROMPT = (
     "[Otomatik devam] Bağlam sınırına yaklaşıldığı için önceki konuşma özetlendi "
     "(yukarıdaki özet). Görevine kaldığın yerden devam et; tamamlanan adımları "

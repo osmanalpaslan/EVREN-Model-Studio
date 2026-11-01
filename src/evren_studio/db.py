@@ -285,6 +285,21 @@ class Database:
                 (sid, chat["id"]),
             )
 
+    # ---- küçük anahtar/değer kayıtları (meta tablosu; ör. kota sonrası otomatik devam planı) ----
+
+    def get_meta(self, key: str) -> str | None:
+        row = self._exec("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        self._exec("INSERT INTO meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                   (key, value))
+        self._commit()          # uygulama kapanıp açılınca da okunmalı (R-03)
+
+    def delete_meta(self, key: str) -> None:
+        self._exec("DELETE FROM meta WHERE key=?", (key,))
+        self._commit()
+
     def _exec(self, sql: str, params: tuple = ()) -> "_Result":
         # Satırlar kilit altında okunur: ajan iş parçacığı yazarken arayüz
         # iş parçacığı güvenle okuyabilir.

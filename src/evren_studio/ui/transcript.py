@@ -7,6 +7,7 @@ from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QTextBlockFormat, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -949,6 +950,40 @@ class ActionCard(QFrame):
     def append_line(self, text: str) -> None:
         self.body.setVisible(True)
         self.body.setText((self.body.text() + "\n" if self.body.text() else "") + text)
+
+
+class QuotaResumeCard(ActionCard):
+    """Kota doldu kartı: yenilenme saati + geri sayım, "Kota yenilenince otomatik devam et" kutusu, Şimdi dene /
+    Vazgeç. Kutu Ayarlar'daki `auto_resume` ile aynı değerdir (kalıcı). Geri sayım 30 sn'de bir yenilenir."""
+
+    def __init__(self, title: str, describe: Callable[[], str], auto: bool, on_toggle: Callable[[bool], None],
+                 on_now: Callable[[], None], on_cancel: Callable[[], None], parent=None):
+        super().__init__(title, [], [("Şimdi dene", on_now, "primary"), ("Vazgeç", on_cancel, "ghost")],
+                         icon_name="clock", warn=True, disable_on_click=False, parent=parent)
+        self._describe = describe
+        self.check = QCheckBox("Kota yenilenince otomatik devam et")
+        self.check.setChecked(auto)
+        self.check.setToolTip("İşaretliyse kota yenilendiğinde ajan bu oturumda kaldığı yerden sürer; uygulama "
+                              "kapatılıp açılsa da hatırlanır. Ayarlar'daki aynı seçenektir.")
+        self.check.toggled.connect(on_toggle)
+        self.layout().insertWidget(2, self.check)
+        self.refresh()
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self.refresh)
+        self._timer.start(30_000)
+
+    def refresh(self) -> None:
+        state = ("otomatik devam edecek" if self.check.isChecked()
+                 else "otomatik devam KAPALI — “Şimdi dene” ile ya da yeni mesajla sürdürün")
+        self.set_lines([f"Kota yenilenmesi: {self._describe()}", f"İş güvenli bir noktada durdu; {state}.",
+                        "Tamamlanan adımlar tekrarlanmaz: ajan kayıtlı araç sonuçlarından sürer."])
+
+    def finish(self, text: str) -> None:
+        """Devam edildi / vazgeçildi: kart pasifleşir, geri sayım durur."""
+        self._timer.stop()
+        self.check.setEnabled(False)
+        self.lock()
+        self.set_lines([text])
 
 
 class ChoiceCard(QFrame):

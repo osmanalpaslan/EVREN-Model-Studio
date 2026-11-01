@@ -32,6 +32,12 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
 - Token tahmini kalibrasyonu (b099b7a, R-34): 3,5 → 2,6 + gerçek usage ile model başına oran/ek yük.
 - Devir düzeni (R-35, kullanıcı isteği: farklı bilgisayar/oturumdan devam): `docs/DEVIR_NOTU.md` (şu an + geliştirme sırası + birleştirme öncesi); `baslangic` en üstte gösterir ve GitHub'da daha yeni çalışma dalı varsa uyarır (`active_work_branch`); `src/` değişen commit devir notu olmadan durur; `denetle` bölümleri denetler.
 
+- Kota bitince otomatik devam (normal oturum): `agent/resume.py`, `QuotaResumeCard`, session_view `_quota_pause` /
+  `_resume_probe` / `restore_pending_resume`, db `get/set/delete_meta`, `prompts.QUOTA_CONTINUE_PROMPT`. Testin
+  yakaladığı hata: `set_meta` commit etmiyordu → yeniden açılışta plan kayboluyordu (düzeltildi). Kapanmış pencerenin
+  gecikmeli çağrısı kapalı DB'ye erişiyordu (`_closed` koruması). `ui_denetim`: kaydırma kenarında yarısı görünen
+  bileşen ölçülmez (yanlış HATA).
+
 ## Test sonuçları
 - Hedefli: tests/test_websearch.py 23 geçti; mutasyon: `_KEY_DEAD` boşaltılınca kota testi, hatırlatma kapatılınca
   tetiklenme testi kırıldı (geri alındı).

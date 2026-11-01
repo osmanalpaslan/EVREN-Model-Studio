@@ -396,7 +396,7 @@ class SettingsPage(BasePage):
         l.addWidget(self.learnings_suggest)
         self.suggest_project = QCheckBox("Çok aşamalı uzun istemde Proje ajanını öner")
         l.addWidget(self.suggest_project)
-        self.auto_resume = QCheckBox("Kota yüzünden duraklayan Proje/QA/Derin çalışmasını kota yenilenince kendiliğinden sürdür")
+        self.auto_resume = QCheckBox("Kota dolunca duran işi (normal oturum, Proje/QA/Derin) kota yenilenince kaldığı yerden sürdür")
         l.addWidget(self.auto_resume)
         col.addWidget(c)
 

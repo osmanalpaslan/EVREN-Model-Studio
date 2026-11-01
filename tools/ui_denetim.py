@@ -186,6 +186,10 @@ def denetle(tema: str, out: Path, goruntu: bool) -> list[dict]:
                 par = par.parentWidget()
             if r.width() < 8 or r.height() < 8:
                 continue
+            # kaydırma kenarında YARISI görünen bileşen: görünen şerit yalnız çerçeve/boşluk olabilir, yazı değil
+            # (2026-11-01: sohbet uzayınca onay kutusundaki not alanı kenarda kaldı, 1,2 "kontrast" ölçüldü)
+            if r.height() < min(wd.height(), img.height()) * 0.6:
+                continue
             metin = ""
             for attr in ("text", "placeholderText", "currentText"):
                 f = getattr(wd, attr, None)
@@ -311,6 +315,11 @@ def denetle(tema: str, out: Path, goruntu: bool) -> list[dict]:
                                  icon_name="alert", warn=True))
     sv.transcript.add(ErrorCard("İstek başarısız", ["Örnek hata satırı"], [("Yeniden dene", lambda: None)]))
     sv.transcript.add(NoteWidget("Örnek bilgi notu", "spark"))
+    from evren_studio.ui.transcript import QuotaResumeCard
+
+    sv.transcript.add(QuotaResumeCard("Günlük EVREN kotası doldu — iş güvenli noktada durdu",
+                                      lambda: "02.11 00:02 (yaklaşık 4 sa 39 dk sonra)", True,
+                                      lambda _on: None, lambda: None, lambda: None))
     sv.transcript.scroll_to_bottom()
     kaydir_ve_olc("oturum", sv)
     # komut listesi açık

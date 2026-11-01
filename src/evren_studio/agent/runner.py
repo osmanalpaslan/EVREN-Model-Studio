@@ -306,7 +306,7 @@ class SessionStore(Protocol):
 
 @dataclass
 class TurnOutcome:
-    stopped: str = "done"            # done | cancelled | max_steps | loop | error | context_limit | budget
+    stopped: str = "done"            # done | cancelled | max_steps | loop | error | context_limit | budget | quota_daily
     steps: int = 0
     protocol: str = "native"
     last_text: str = ""

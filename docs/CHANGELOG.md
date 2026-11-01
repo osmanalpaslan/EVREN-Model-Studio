@@ -8,6 +8,12 @@
   DuckDuckGo denenir. Hiçbiri yanıt vermezse iş durmaz. İstek güncel bilgi gerektiriyorsa (ör. "en son
   sürüm", "internette ara") ajana o tur aramayı hatırlatan not eklenir. Manuel modda her aramadan önce
   sorulur, Plan modunda kapalıdır.
+- **Kota bitince otomatik devam**: EVREN kotası dolunca iş güvenli bir noktada durur ve sohbette bir kart
+  çıkar (yenilenme saati, geri sayım, "Kota yenilenince otomatik devam et" kutusu, Şimdi dene / Vazgeç).
+  Kutu işaretliyse kota yenilenince ajan aynı oturumda kaldığı yerden sürer; uygulama kapatılıp açılsa da
+  hatırlanır. Yeni mesaj yazarsanız bekleyen devam iptal olur.
+- **Bağlam hesabı düzeltildi**: uzun projelerde otomatik özet artık zamanında tetiklenir (token sayımı
+  gerçek kullanıma göre ayarlanıyor).
 - **Açık tema**: soluk yazılar, yer tutucular, durum renkleri ve ikincil düğmeler okunur hâle getirildi;
   Ayarlar'daki "ücretli" etiketi artık temanın rengini alıyor. Dosyalar sekmesinde uzun yol ortadan kısaltılır.
 
