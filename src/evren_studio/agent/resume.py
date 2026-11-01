@@ -31,6 +31,7 @@ class ResumePlan:
     reason: str = ""
     created: float = 0.0
     attempts: int = 0
+    flow: str = "sohbet"       # "sohbet" | "proje" | "qa" | "derin" — devamda hangi akış sürdürülür
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -40,7 +41,7 @@ class ResumePlan:
         try:
             d = json.loads(text or "")
             return cls(int(d["session_id"]), str(d["kind"]), float(d["resume_at"]), str(d.get("reason") or ""),
-                       float(d.get("created") or 0.0), int(d.get("attempts") or 0))
+                       float(d.get("created") or 0.0), int(d.get("attempts") or 0), str(d.get("flow") or "sohbet"))
         except (ValueError, KeyError, TypeError):
             return None
 
@@ -59,9 +60,20 @@ def resume_after(kind: str, quota) -> float:
     return min(max(sec, 30.0), MAX_DELAY_S)
 
 
-def make_plan(session_id: int, kind: str, quota, reason: str = "", now: float | None = None) -> ResumePlan:
+def make_plan(session_id: int, kind: str, quota, reason: str = "", now: float | None = None,
+              flow: str = "sohbet") -> ResumePlan:
     now = time.time() if now is None else now
-    return ResumePlan(session_id, kind, now + resume_after(kind, quota), reason, now)
+    return ResumePlan(session_id, kind, now + resume_after(kind, quota), reason, now, flow=flow)
+
+
+def kind_from_reason(reason: str) -> str | None:
+    """Proje/QA/Derin duraklatma nedeninden kota türü; kota dışı neden (soru, karar, hata) → None."""
+    low = (reason or "").lower()
+    if "günlük" in low:
+        return "gunluk"
+    if "kota" in low or "pencere" in low or "rate" in low or "429" in low:
+        return "pencere"
+    return None
 
 
 def kind_for(quota) -> str:
@@ -86,7 +98,8 @@ def after_probe(plan: ResumePlan, quota, now: float | None = None) -> ResumePlan
     now = time.time() if now is None else now
     kind = kind_for(quota) if quota is not None else plan.kind
     sec = resume_after(kind, quota) if quota is not None else PROBE_RETRY_S
-    return ResumePlan(plan.session_id, kind, now + max(sec, 60.0), plan.reason, plan.created, plan.attempts + 1)
+    return ResumePlan(plan.session_id, kind, now + max(sec, 60.0), plan.reason, plan.created, plan.attempts + 1,
+                      plan.flow)
 
 
 def describe(plan: ResumePlan, now: float | None = None) -> str:

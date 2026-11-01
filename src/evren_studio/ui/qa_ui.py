@@ -327,7 +327,6 @@ class QaController(QObject):
         self.start()
 
     def _auto_resume(self) -> None:
-        self._resume_timer = None
         if self.active or self.view.running:
             return
         from .project_ui import return_to_session
@@ -337,7 +336,9 @@ class QaController(QObject):
         self.resume()
 
     def stop(self) -> None:
-        if getattr(self, "_resume_timer", None) is not None and not self.active:
+        from .project_ui import has_pending_resume
+
+        if has_pending_resume(self) and not self.active:
             from .project_ui import cancel_auto_resume
 
             cancel_auto_resume(self)

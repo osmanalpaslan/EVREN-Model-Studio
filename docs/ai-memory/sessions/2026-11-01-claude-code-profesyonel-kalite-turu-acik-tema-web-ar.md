@@ -38,6 +38,8 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
   gecikmeli çağrısı kapalı DB'ye erişiyordu (`_closed` koruması). `ui_denetim`: kaydırma kenarında yarısı görünen
   bileşen ölçülmez (yanlış HATA).
 
+- Proje/QA/Derin kota duraklaması da ortak karta ve kalıcı plana taşındı (`ResumePlan.flow`, `project_ui.schedule_auto_resume` → `session_view._quota_pause`); `test_kota_kapisi` 3 testi yeni düzene uyarlandı (eski iç `_resume_timer` ayrıntısı yerine plan/zamanlayıcı/yoklama → devam); mutasyon 2 testi kırdı.
+
 ## Test sonuçları
 - Hedefli: tests/test_websearch.py 23 geçti; mutasyon: `_KEY_DEAD` boşaltılınca kota testi, hatırlatma kapatılınca
   tetiklenme testi kırıldı (geri alındı).

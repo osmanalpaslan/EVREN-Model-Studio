@@ -2909,12 +2909,13 @@ class SessionView(QWidget):
 
     # ---- kota bitince otomatik devam (agent/resume.py; kullanıcı isteği 2026-11-01) ----
 
-    def _quota_pause(self, kind: str, reason: str) -> None:
-        """Kota yüzünden güvenli noktada duran iş: devam planını KALICI yaz, kartı göster, açıksa zamanlayıcı kur."""
+    def _quota_pause(self, kind: str, reason: str, flow: str = "sohbet", quota=None) -> None:
+        """Kota yüzünden güvenli noktada duran iş: devam planını KALICI yaz, kartı göster, açıksa zamanlayıcı kur.
+        flow: sürdürülecek akış (sohbet turu ya da Proje/QA/Derin denetleyicisi)."""
         if not self.session_id:
             return
-        q = getattr(self._run_gate, "_q", None) or self._quota
-        plan = resume.make_plan(self.session_id, kind, q, reason)
+        q = quota or getattr(self._run_gate, "_q", None) or self._quota
+        plan = resume.make_plan(self.session_id, kind, q, reason, flow=flow)
         self.ctx.db.set_meta(resume.META_KEY, plan.to_json())
         self._show_resume_card(plan)
 
@@ -2994,10 +2995,24 @@ class SessionView(QWidget):
         if self.session_id != plan.session_id:
             self.open_session(plan.session_id)      # bekleme sırasında başka oturuma geçilmişse işin oturumuna dön
         if self._resume_card is not None:
-            self._resume_card.finish("Kota yenilendi; ajan kaldığı yerden devam etti.")
+            self._resume_card.finish("Kota yenilendi; iş kaldığı yerden devam etti.")
             self._resume_card = None
-        self._auto_continue(note="Kota yenilendi; ajan kaldığı yerden otomatik devam ediyor.",
-                            prompt=prompts.QUOTA_CONTINUE_PROMPT)
+        ctrl = {"proje": self.project, "qa": self.qa, "derin": self.deep}.get(plan.flow)
+        if ctrl is None:
+            self._auto_continue(note="Kota yenilendi; ajan kaldığı yerden otomatik devam ediyor.",
+                                prompt=prompts.QUOTA_CONTINUE_PROMPT)
+            return
+        if plan.flow == "derin" and getattr(ctrl, "state", None) is None:
+            # Derin Mod durumu yalnız bellekte: uygulama kapanmışsa kaldığı fazdan sürdürülemez
+            self._note("Kota yenilendi ama Derin Mod uygulama kapatıldığı için kaldığı fazdan sürdürülemiyor; "
+                       "/derin ile yeniden başlatın (projedeki dosyalar korunur).", "alert")
+            return
+        ctrl._auto_resume()
+
+    def pending_flow(self) -> str | None:
+        """Bu oturumda kota yüzünden bekleyen otomatik devamın akışı (yoksa None)."""
+        plan = self._pending_plan()
+        return plan.flow if plan is not None and plan.session_id == self.session_id else None
 
     def cancel_auto_resume(self) -> None:
         """Vazgeç ya da kullanıcı kendisi yeni mesaj yazdı: bekleyen devam silinir."""
