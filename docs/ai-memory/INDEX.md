@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 98 · Açık/izlenen: 7 · Oturum: 36 · Kural: 34
+Kayıt: 98 · Açık/izlenen: 7 · Oturum: 36 · Kural: 35
 
 ## Açık ve izlenen kayıtlar
 
@@ -196,3 +196,4 @@ Kayıt: 98 · Açık/izlenen: 7 · Oturum: 36 · Kural: 34
 - **R-32** · Model isteğini bağlama KESİN sığdır; sığmayan geçmişi gönderme
 - **R-33** · Renk/stil değişikliğini okunurluk denetimiyle ölç
 - **R-34** · Token/bağlam hesabını gerçek kullanımla kalibre et; sabit oran varsayma
+- **R-35** · Devir notunu her adımda güncelle ve gönder; iş tek bilgisayarda kalmasın

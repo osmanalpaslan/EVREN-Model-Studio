@@ -29,6 +29,9 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
 - Maraton D (Flask kütüphane, 7 mesaj — uzun oturum) ve E (PWA) `tests/e2e_marathon_real_api.py`'ye eklendi.
 - `tests/e2e_websearch_real_api.py` (açık/kapalı ölçüm; kapalı koşu artık `<cikti>/kapali` altına yazar).
 
+- Token tahmini kalibrasyonu (b099b7a, R-34): 3,5 → 2,6 + gerçek usage ile model başına oran/ek yük.
+- Devir düzeni (R-35, kullanıcı isteği: farklı bilgisayar/oturumdan devam): `docs/DEVIR_NOTU.md` (şu an + geliştirme sırası + birleştirme öncesi); `baslangic` en üstte gösterir ve GitHub'da daha yeni çalışma dalı varsa uyarır (`active_work_branch`); `src/` değişen commit devir notu olmadan durur; `denetle` bölümleri denetler.
+
 ## Test sonuçları
 - Hedefli: tests/test_websearch.py 23 geçti; mutasyon: `_KEY_DEAD` boşaltılınca kota testi, hatırlatma kapatılınca
   tetiklenme testi kırıldı (geri alındı).
@@ -40,7 +43,8 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
   özet olmadı (özet=0).
 - Web araması R-25: CHALLENGE_RESULTS.md "Web araması web_search açık/kapalı" — açık 3/3, kapalı 3/3; model
   adresini bilmediği soruda web_search'ü kendiliğinden seçti, gereksiz görevde çağırmadı.
-- Tam takım, R-13 e2e üçlüsü ve son kodla zorluk paketi bu dal birleşmeden önce koşulacak (henüz koşulmadı).
+- Tam takım 712/712 (kalibrasyon sonrası, 3 dk 57 sn). Devir: test_ai_memory_sync 13/13 ×6 (aynı saniye commit kararsızlığı bulunup düzeltildi), mutasyon 2 testi kırdı.
+- R-13 e2e üçlüsü ve son kodla zorluk paketi bu dal birleşmeden önce koşulacak (henüz koşulmadı).
 
 ## Sorunlar ve kayıtlar
 - 2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu (çözüldü)
