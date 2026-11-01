@@ -12,16 +12,18 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-01 19:35 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar · Madde 5 normal oturum
-  kısmı commit'lendi; sıradaki: özetli maraton A sonucu (Madde 4'ü kapatır), sonra Madde 5 kalanları (a, b).
+- **Güncelleme:** 2026-11-01 19:42 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar
 - **Aktif dal:** `feat/profesyonel-kalite` (GitHub'da var; PR #30 `feat/clear-ve-buyuk-ozet` üzerine kurulu —
   ikisi de master'a BİRLEŞTİRİLMEDİ). Başka bilgisayarda: `git fetch && git switch feat/profesyonel-kalite`.
-- **Kaldığı yer:** Madde 4'ün son ölçümü sürüyor: maraton A düşük özet eşiğiyle (`MARATON_OZET_ESIK=20000`) —
-  otomatik özet gerçekten tetikleniyor ve proje bozulmadan bitiyor mu. Aynı anda Madde 5 (kota bitince otomatik
-  devam) kodlanmaya başlandı (henüz commit yok).
-- **Çalışan uzun test:** özetli maraton A, bu bilgisayarda 19:18'de `C:\Users\Osman Alpaslan\evm_wt` (git worktree,
-  4ae7f5a) kopyasından başladı; günlük `C:\Users\Osman Alpaslan\evm_t3\maraton_A_ozet.log`. Başka yerde devam
-  edilirse tekrarla: `set MARATON_OZET_ESIK=20000` ve `tests\e2e_marathon_real_api.py A auto-pro <klasör>`.
+- **Kaldığı yer:** Madde 4 ve 5'in kodu commit'lendi (b099b7a, 7314251, 5e70bf1, c1ec1c9); iki gerçek ölçüm sürüyor
+  (aşağıda). Sonuçlar işlenince Madde 4 ve 5 YAPILDI olur. Ölçümler sürerken Madde 6'ya (bulunan hatalar) geçildi.
+- **Çalışan uzun testler (yalnız bu bilgisayarda; başka yerde devam edilirse tekrarla):**
+  - özetli maraton A — 19:18, worktree `C:\Users\Osman Alpaslan\evm_wt`; günlük `...\evm_t3\maraton_A_ozet.log`;
+    tekrar: `set MARATON_OZET_ESIK=20000` ve `tests\e2e_marathon_real_api.py A auto-pro <klasör>`
+  - kotalı maraton A — 19:40, worktree `...\evm_wt2`; günlük `...\evm_t4\maraton_A_kota.log`;
+    tekrar: `set MARATON_KOTA_TESTI=2:3` ve aynı komut. Beklenen: KOTA TESTİ durdu=1 kart=1 plan=1, devam turu=1,
+    kabul 10/10.
+  - İşi biten worktree'ler silinir: `git worktree remove <klasör>`.
 
 ## Geliştirme sırası (kullanıcı onaylı, 2026-11-01)
 
