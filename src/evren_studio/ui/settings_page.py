@@ -382,7 +382,12 @@ class SettingsPage(BasePage):
         c, l = card()
         l.addWidget(section("Veri ve Görünüm"))
         self.data_dir = QLineEdit()
-        browse = QPushButton("…")
+        # "…" yazılı düğme neredeyse görünmüyordu (2026-11-01 okunurluk denetimi): simge + metin
+        from . import icons
+
+        browse = QPushButton("Seç…")
+        browse.setIcon(icons.icon("folder", size=15))
+        browse.setToolTip("Veri klasörünü seçin")
         browse.clicked.connect(self.browse_data_dir)
         l.addWidget(kv_row_with("Yerel verilerin konumu:", self.data_dir, browse))
         self.theme = QComboBox()

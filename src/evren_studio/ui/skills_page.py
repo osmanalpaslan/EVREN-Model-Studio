@@ -233,6 +233,7 @@ class SkillsPage(BasePage):
         while box.count():
             it = box.takeAt(0)
             if it.widget() is not None:
+                it.widget().hide()            # silinmeyi beklerken yeni satırların üstüne binmesin
                 it.widget().deleteLater()
 
     def refresh(self) -> None:

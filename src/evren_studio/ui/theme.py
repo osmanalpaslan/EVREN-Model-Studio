@@ -64,12 +64,15 @@ LIGHT = Palette(
     bg="#fbfbfa", sidebar="#f2f2ef", panel="#f6f6f4",
     surface="#ffffff", surface2="#f0f0ec", hover="#e9e9e5", selected="#e2e3ea",
     border="#e3e3de", border_strong="#cfcfc8",
-    text="#1d1f23", text_dim="#5b606a", text_faint="#9095a0",
+    # Okunurluk (2026-11-01, tools/ui_denetim.py ölçümü): eski text_faint #9095a0 açık zeminlerde
+    # 2,4–3,0 kontrasttaydı (WCAG metin alt sınırı 4,5) — ipuçları, "varsayılan: …", boş liste
+    # yazıları, alt bilgi neredeyse görünmüyordu. Yeni değerler tüm açık zeminlerde ölçüldü.
+    text="#1d1f23", text_dim="#5b606a", text_faint="#646974",
     accent="#3d63dd", accent_hover="#2f53c7", accent_soft="#e6ecfd", on_accent="#ffffff",
     code_bg="#f5f5f2", code_border="#e3e3de",
-    success="#1f9d55", danger="#d64545", warning="#b7791f",
+    success="#13773d", danger="#b93030", warning="#8f5b0a",
     add_bg="#e3f6e9", del_bg="#fbe5e5", hunk="#3d63dd",
-    scrollbar="#c9c9c2", muted="#9095a0",
+    scrollbar="#c9c9c2", muted="#6f747e",
 )
 
 _current: Palette = DARK
@@ -197,6 +200,7 @@ QLineEdit, QPlainTextEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
     background: {p.surface}; color: {p.text}; border: 1px solid {p.border};
     border-radius: 8px; padding: 5px 8px; selection-background-color: {p.accent_soft};
     selection-color: {p.text};
+    placeholder-text-color: {p.muted};
 }}
 QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
     border-color: {p.accent};

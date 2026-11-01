@@ -307,6 +307,7 @@ class WelcomeView(QWidget):
         while self.grid.count():
             item = self.grid.takeAt(0)
             if item.widget():
+                item.widget().hide()          # silinmeyi beklerken yeni kartların üstüne binmesin
                 item.widget().deleteLater()
         items = self.AGENT_SUGGESTIONS if self.workspace else self.CHAT_SUGGESTIONS
         p = theme.current()

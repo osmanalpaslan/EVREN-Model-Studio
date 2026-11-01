@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 95 · Açık/izlenen: 6 · Oturum: 35 · Kural: 32
+Kayıt: 96 · Açık/izlenen: 6 · Oturum: 35 · Kural: 33
 
 ## Açık ve izlenen kayıtlar
 
@@ -19,6 +19,7 @@ Kayıt: 95 · Açık/izlenen: 6 · Oturum: 35 · Kural: 32
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-01 | [2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu](incidents/2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Açık temada soluk yazılar ve bazı düğmeler okunmuyordu |
 | 2026-10-29 | [2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r](incidents/2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Büyük oturumda /compact çalışmıyor, mesajlar bağlam aşımıyla reddediliyordu |
 | 2026-10-24 | [2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot](incidents/2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Zorluk kuralı program çalıştırma işini kolay sayıp hızlı motora gönderdi |
 | 2026-10-24 | [2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de](incidents/2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Tur sonu işleri runner silindikten sonra okunuyordu, skill denetçisi hiç çalışmıyordu |
@@ -189,3 +190,4 @@ Kayıt: 95 · Açık/izlenen: 6 · Oturum: 35 · Kural: 32
 - **R-30** · Testi değişikliğin türüne göre seç; gerçek API ölçümünü faz sonunda topla
 - **R-31** · Tura bağlanan özelliği gerçek tur akışından da test et
 - **R-32** · Model isteğini bağlama KESİN sığdır; sığmayan geçmişi gönderme
+- **R-33** · Renk/stil değişikliğini okunurluk denetimiyle ölç

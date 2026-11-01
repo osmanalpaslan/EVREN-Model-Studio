@@ -173,3 +173,8 @@
 - **Kural:** Özet veya iç yapay zekâ isteği oluştururken içeriği hedef modelin bağlamına temkinli sayımla (~2,6 karakter/token) sığdır (`compaction.fit_for_summary` düzeni); özet başarısız olunca geçmiş modele sığmıyorsa mesajı gönderme, kullanıcıya /clear öner; ölçülen süreye kurulum (istemci/SSL) maliyetini katma.
 - **Neden:** 1M token'lık oturumda özet isteği de sığmadı, mesaj yine gönderildi, EVREN 4 kez reddetti; kullanıcı ne /compact ne cevap alabildi. Uygulamanın 3,5 karakter/token tahmini Türkçe/kodda ~1,35 kat düşük kalıyor.
 - **Kaynak:** 2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r
+
+### R-33 · Renk/stil değişikliğini okunurluk denetimiyle ölç
+- **Kural:** theme.py renklerine, QSS'e veya yeni bileşen stiline dokunduğunda `tools/ui_denetim.py <klasör> ikisi --goruntu` (QT_QPA_PLATFORM=windows) çalıştır ve görüntülere bak; tests/test_okunurluk.py HATA=0 olmalı. Yeni renk seçerken tüm zeminlerde (bg, sidebar, panel, surface, surface2, hover, selected) WCAG oranını hesapla; liste yenilerken eski bileşeni `hide()` sonra `deleteLater()` et.
+- **Neden:** Açık temada soluk yazılar 2,4–3,0 kontrasttaydı (109 bileşen), yer tutucu rengi QSS yüzünden uygulanmıyordu, yenilenen listelerde eski yazı yenisinin üstüne biniyordu; gözle kontrol bunları kaçırdı.
+- **Kaynak:** 2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu
