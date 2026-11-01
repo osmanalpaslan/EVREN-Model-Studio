@@ -85,8 +85,7 @@ durdurur. Her bilgisayarda bir kez kur:
   (R-21): `tests\e2e_zorluk_real_api.py auto-pro` (12 kısa zor görev, ~5 dk) ·
   proje ajanı: `tests\e2e_proje_real_api.py` · MCP/Serena (R-25):
   `tests\e2e_mcp_real_api.py` ve zorluk paketine `--serena build\mcp_data` ·
-  arayüz görsel kontrol: `tools/ui_screenshots.py` (bkz. R-05) ·
-  okunurluk: `tools/ui_denetim.py <klasör> ikisi --goruntu` (R-33) · web araması (R-25):
+  arayüz görsel kontrol + okunurluk: `tools/ui_denetim.py <klasör> ikisi --goruntu` (R-05, R-33) · web araması (R-25):
   `tests\e2e_websearch_real_api.py auto-pro [--kapali]` · uzun oturum: maraton D/E
 - **Yapı**: `src/evren_studio/agent/` (Qt'siz ajan çekirdeği),
   `api/` (EVREN istemcisi), `ui/` (arayüz), `db.py` (SQLite),
@@ -103,7 +102,7 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-02** · .gitignore kalıbını kaynak dosyalara karşı doğrula — Yeni ignore kalıbından sonra `git check-ignore -v` ve `git ls-files -o -i --exclude-standard src` ile kaynak kodun dışlanmadığını kontrol et; mümkünse temiz klonda test et.
 - **R-03** · "Kaydediliyor" yetmez, okuma yolunu da test et — Bir ayar/veri kaydediliyorsa uygulamanın açılışta onu gerçekten okuduğunu uçtan uca test et.
 - **R-04** · Arayüz iş parçacığında ağ isteği yapma — Ağ/disk ağırlıklı işleri Task (arka plan iş parçacığı) ile çalıştır; Qt sinyalleriyle sonuç döndür.
-- **R-05** · Arayüz işini görmeden "tamamlandı" deme — Arayüz değişikliğinden sonra tools/ui_screenshots.py ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) ekran görüntüsü alıp bak; duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
+- **R-05** · Arayüz işini görmeden "tamamlandı" deme — Arayüz değişikliğinden sonra `tools/ui_denetim.py <klasör> ikisi --goruntu` ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) iki temada ekran görüntüsü alıp bak (eski tools/ui_screenshots.py yalnız EVREN_STUDIO_DATA_DIR verilirse çalışır, ölçüm yapmaz); duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
 - **R-06** · Gecikmeli Qt çağrısına bağlam nesnesi ver — QTimer.singleShot(ms, self, fn) biçimini kullan; widget silinince çağrı iptal olur.
 - **R-07** · Gerçek API ile doğrulanmamış yeteneği doğrulanmış gibi sunma — tools, görsel, OCR vb. yetenekleri gerçek istekle test etmeden "çalışıyor" yazma; sonucu docs/knowledge/MODEL_CAPABILITIES.md'ye işle.
 - **R-08** · Kararsız testte rastgele kod değiştirme — Zamanlamaya bağlı bir test yük altında düşerse önce tek başına tekrar çalıştır; kararsızlığı kayda bağla, ilgisiz kodu değiştirme.

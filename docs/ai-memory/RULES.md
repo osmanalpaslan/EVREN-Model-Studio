@@ -34,7 +34,7 @@
 - **Kaynak:** 2026-10-15-acilista-senkron-model-yukleme-arayuzu-donduruyordu
 
 ### R-05 · Arayüz işini görmeden "tamamlandı" deme
-- **Kural:** Arayüz değişikliğinden sonra tools/ui_screenshots.py ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) ekran görüntüsü alıp bak; duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
+- **Kural:** Arayüz değişikliğinden sonra `tools/ui_denetim.py <klasör> ikisi --goruntu` ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) iki temada ekran görüntüsü alıp bak (eski tools/ui_screenshots.py yalnız EVREN_STUDIO_DATA_DIR verilirse çalışır, ölçüm yapmaz); duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
 - **Neden:** Duman testi SMOKE_OK verirken arayüzde bozuk metinler ve eksik Code Studio vardı; belgeler "tamamlandı" diyordu.
 - **Kaynak:** 2026-10-15-duman-testi-bozuk-arayuzu-yakalamadi, 2026-10-15-code-studio-ajan-ozellikleri-eksikti, 2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk
 

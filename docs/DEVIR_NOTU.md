@@ -39,7 +39,7 @@ kritikse mutasyon + paket; R-13/R-21 gerçek ölçümler dal sonunda.
 | 4 | Auto Pro bağlam şişmesi (/compact olmuyor, otomatik özet yok) | SÜRÜYOR | b099b7a | token tahmini 3,5 → gerçek kullanımla kalibre (R-34). Maraton D 25/25 (52 dk, 7 mesaj; gerçek bağlam ~40k → özet gerekmedi; eski hesap %13 eksik, yeni varsayılan %24 fazla, kalibrasyonla gerçeğe iner). Kalan: özetli maraton A sonucu; Proje/Derin akışında özet tetiklenmesi |
 | 5 | Kota bitince otomatik devam paneli | SÜRÜYOR | (bu commit) | Normal oturum YAPILDI: kota kapısı güvenli noktada durur, 429'da da kart; sohbette kart (yenilenme saati, geri sayım, ☑ otomatik devam = Ayarlar `auto_resume`, Şimdi dene/Vazgeç); saatinde kota yoklanır; plan DB `meta.pending_resume` (açılışta geri gelir); elle mesaj iptal eder. `tests/test_kota_devam.py` 8, mutasyon 2. (a) YAPILDI: Proje/QA/Derin aynı kart + kalıcı plan (`flow`); Derin Mod uygulama kapanınca fazdan sürdürülemez (not verilir). Kalan: (b) gerçek ölçüm: `DAILY_MIN_TOKENS` yapay yükseltilip maraton A ortasında dur → devam → kabul 10/10 |
 | 6 | Testlerde bulunan hata/eksikler | SIRADA | — | aşağıdaki liste |
-| 7 | Proje bitirme hızı (tutarlılığı bozmadan) | SIRADA | — | önce adım süresi dökümü (model bekleme / araç / komut); maraton C 1. mesaj 21 dk |
+| 7 | Proje bitirme hızı (tutarlılığı bozmadan) | SIRADA | — | Döküm YAPILDI (2026-11-01, maraton A-D + proje ajanı DB'leri): sürenin ~%97'si MODEL BEKLEMESİ; araç/komut toplam 0,3-1,4 dk. deepseek-v4.1-flash çağrı başına ort. 30-85 sn (en uzun 274), qwen3.8-flash-next 15-40 sn. Kaldıraçlar: kod rolünde model sırası (ölçümle), düşünme süresi (reasoning_effort/çıktı uzunluğu), adım sayısı (paralel araç çağrısı, gereksiz okuma), yavaş model erken geçişi (`_slow`). Tutarlılık zorluk + maraton kabulüyle korunur |
 | 8 | Derin Mod yeniden ele alınacak | SIRADA | — | aşamaya göre en doğru/güçlü EVREN modelleri (ölçümle); çalışırken kısa canlı durum cümleleri; mevcut özellikleri önce kodda doğrula; `e2e_derin_real_api` önce/sonra |
 | 9 | Sade sağlayıcı/API anahtarı ekranı | SIRADA | — | tek "Sağlayıcı ekle": EVREN, OpenAI, Anthropic, Kilo, OpenRouter, OpenAI-uyumlu; çok modelli ağ geçitleri tek anahtarla |
 
@@ -58,10 +58,12 @@ uygulama açıkken QTimer. Normal ajan turunda günlük kota azsa yalnız uyarı
    yükseltilip maraton A ortasında dur → devam → kabul 10/10.
 
 ### Madde 6 — bulunan hata/eksik listesi (yeni buldukça ekle)
-- [ ] Model zaman zaman İngilizce ara cümle yazıyor ("I'll check the current stable Python release.").
+- [~] Model zaman zaman İngilizce ara cümle yazıyor (ölçüm: 96 metinli yanıtın 3'ü, hepsi deepseek-v4.1-flash, tur başında). Dil kuralı ara cümleleri kapsayacak şekilde netleştirildi; A/B ölçümü sürüyor.
 - [ ] Plan modunda `web_search` kapalı (EXEC); araştırma için açılması değerlendirilecek.
 - [ ] Klasörsüz sohbet oturumlarında hiç araç yok (web araması da yok).
 - [ ] deepseek-v4.1-flash bazı adımlarda 30-130 sn bekletiyor (Madde 7 ile birlikte).
+
+- [x] R-05/AGENTS eski `ui_screenshots.py`'yi gösteriyordu → `ui_denetim.py`.
 
 ## Birleştirmeden önce (zorunlu)
 - Tam takım (`pytest -q`, ~4 dk) · R-13 gerçek e2e üçlüsü · R-21 zorluk paketi `auto-pro` (CHALLENGE_RESULTS

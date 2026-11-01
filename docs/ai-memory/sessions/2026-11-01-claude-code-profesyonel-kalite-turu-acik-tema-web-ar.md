@@ -42,6 +42,8 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
 
 - Maraton betiğine `MARATON_KOTA_TESTI=<mesaj>:<adım>`: o mesajda <adım> araç sonucundan sonra günlük kota "bitmiş" gösterilir; güvenli durma + kart + plan ve gerçek yoklamayla devam ölçülür, kabul yine tam olmalı.
 
+- Madde 6: dil kuralı ara cümleleri kapsıyor (ölçüm: 96 yanıtın 3'ü İngilizce, hepsi deepseek-v4.1-flash); R-05/AGENTS `ui_denetim.py`'ye yönlendi. Madde 7 dökümü: sürenin ~%97'si model beklemesi (DEVIR_NOTU).
+
 ## Test sonuçları
 - Hedefli: tests/test_websearch.py 23 geçti; mutasyon: `_KEY_DEAD` boşaltılınca kota testi, hatırlatma kapatılınca
   tetiklenme testi kırıldı (geri alındı).
