@@ -179,7 +179,10 @@ QPushButton:disabled, QToolButton:disabled {{ color: {p.muted}; background: {p.s
 QPushButton[variant="primary"] {{ background: {p.accent}; color: {p.on_accent}; border: none; font-weight: 600; }}
 QPushButton[variant="primary"]:hover {{ background: {p.accent_hover}; }}
 QPushButton[variant="primary"]:disabled {{ background: {p.selected}; color: {p.muted}; }}
-QPushButton[variant="ghost"], QToolButton[variant="ghost"] {{ background: transparent; border: 1px solid transparent; }}
+QToolButton[variant="ghost"] {{ background: transparent; border: 1px solid transparent; }}
+/* Yazılı ikincil düğme: çerçevesiz hâli düz yazı gibi görünüyordu, tıklanabilir olduğu anlaşılmıyordu
+   (kullanıcı bildirimi 2026-11-01). Simgeli araç düğmeleri (QToolButton) çerçevesiz kalır. */
+QPushButton[variant="ghost"] {{ background: transparent; border: 1px solid {p.border_strong}; }}
 QPushButton[variant="ghost"]:hover, QToolButton[variant="ghost"]:hover {{ background: {p.hover}; }}
 QPushButton[variant="danger"] {{ background: transparent; color: {p.danger}; border: 1px solid {p.border}; }}
 QPushButton[variant="danger"]:hover {{ background: {p.del_bg}; }}

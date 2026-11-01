@@ -37,6 +37,8 @@ Koyu tema zaten 2026-10-19 kararıyla düzeltilmişti (yalnız ortak hatalar).
   (her biri tüm açık zeminlerde hesaplandı).
 - QSS: `placeholder-text-color: {p.muted}` (QLineEdit/QTextEdit/QSpinBox/QComboBox).
 - "…" → "Seç…" + klasör simgesi + ipucu.
+- Yazılı ikincil (ghost) düğmeler çerçevesizdi, düz yazı gibi görünüyordu ("Turu geri al", "Sorun yok",
+  "…bu oturumda izin ver"): QPushButton[variant=ghost] ince border_strong çerçeve; simgeli QToolButton aynı kaldı.
 - skills_page._clear ve öneri ızgarası: `hide()` sonra `deleteLater()`.
 - tools/ui_denetim.py: kalıcı denetim aracı (ClearType'a dayanıklı "en az N pikselin ulaştığı
   kontrast" ölçümü; kaydırmalı sayfalar, panel sekmeleri, örnek kartlar).
