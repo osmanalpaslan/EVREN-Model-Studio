@@ -63,6 +63,9 @@ ROLE_LABELS = {
 #   gemma-4-31b 3,1 dk · deepseek-v4.1-flash 7,0 dk (19 Ekim'de 10 dk) · qwen3.8-flash-next 8,9 dk (en çok
 #   adım). Kullanıcı kararı: kod = deepseek-v4.1-flash → qwen3.8-flash-next → gemma-4-31b (gemma uzun işte
 #   döngüye girmişti; maratonla ölçülmeden öne alınmaz). v4-flash listeye dönerse yeniden ölçülmeli.
+#   2026-11-01 kullanıcı kararı: UYARLANABİLİR sıra — bu tablo varsayılandır; öndeki model son 3 saatte
+#   zincirdeki sağlıklı yedeğinden 2 kattan fazla yavaşsa o gün yedek öne alınır (choose(speeds=...),
+#   modelstats.effective_speeds). O gün deepseek-v4.1-flash 14,4, qwen3.8-flash-next 3,7 sn/100 token ölçüldü.
 EVREN_ROUTES: dict[str, list[str]] = {
     "sohbet": ["deepseek-v4-flash", "qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
     "kod": ["deepseek-v4.1-flash", "qwen3.8-flash-next", "gemma-4-31b"],
@@ -211,7 +214,8 @@ def _unhealthy(health: dict[str, dict] | None, model: str, now: datetime) -> boo
 
 
 def choose(role: str, *, available: set[str] | None = None, health: dict[str, dict] | None = None,
-           reason: str = "", now: datetime | None = None, penalties: dict[str, str] | None = None) -> Route:
+           reason: str = "", now: datetime | None = None, penalties: dict[str, str] | None = None,
+           speeds: dict[str, float] | None = None, speed_factor: float = 2.0) -> Route:
     """Rol için birincil model + yedekler. Son 30 dk'da sağlıksız ölçülenler en sona, kalite puanı düşenler
     (A5, `penalties`: model → gerekçe) sağlamların arkasına alınır; hiçbiri zincirden ÇIKARILMAZ."""
     now = now or datetime.now(timezone.utc)
@@ -226,6 +230,18 @@ def choose(role: str, *, available: set[str] | None = None, health: dict[str, di
         note += f" · {first} geri alındı: {pen[first]}"
     if chain and _unhealthy(health, chain[0], now):
         note += " · tüm adaylar yakın zamanda sorunlu ölçüldü"
+    # Uyarlanabilir sıra (kullanıcı kararı 2026-11-01): öndeki model, zincirdeki sağlıklı ve cezasız bir
+    # yedekten son saatlerde `speed_factor` kattan fazla yavaşsa o yedek öne alınır (sıra varsayılan kalır).
+    sp = speeds or {}
+    if len(chain) > 1 and sp.get(chain[0]):
+        fast = [m for m in chain[1:] if sp.get(m) and sp[m] >= sp[chain[0]] * speed_factor
+                and not _unhealthy(health, m, now) and m not in pen]
+        if fast:
+            best = max(fast, key=lambda m: sp[m])
+            note += (f" · {chain[0]} bugün yavaş ({sp[chain[0]]:.0f} token/sn) → {best} öne alındı "
+                     f"({sp[best]:.0f} token/sn)")
+            chain.remove(best)
+            chain.insert(0, best)
     if not chain:
         return Route(model="", role=role, reason="kullanılabilir model yok (API anahtarı girin)")
     return Route(model=chain[0], role=role, reason=note, fallbacks=chain[1:])
@@ -234,11 +250,12 @@ def choose(role: str, *, available: set[str] | None = None, health: dict[str, di
 def route(*, agentic: bool, mode: str = "", has_images: bool = False, est_tokens: int = 0,
           context_of: dict[str, int] | None = None, available: set[str] | None = None,
           health: dict[str, dict] | None = None, level: str = "", level_reason: str = "",
-          kind: str = "", kind_reason: str = "", penalties: dict[str, str] | None = None) -> Route:
+          kind: str = "", kind_reason: str = "", penalties: dict[str, str] | None = None,
+          speeds: dict[str, float] | None = None) -> Route:
     role, reason = classify(agentic=agentic, mode=mode, has_images=has_images,
                             est_tokens=est_tokens, context_of=context_of, available=available,
                             level=level, level_reason=level_reason, kind=kind, kind_reason=kind_reason)
-    r = choose(role, available=available, health=health, reason=reason, penalties=penalties)
+    r = choose(role, available=available, health=health, reason=reason, penalties=penalties, speeds=speeds)
     r.level = level
     return r
 

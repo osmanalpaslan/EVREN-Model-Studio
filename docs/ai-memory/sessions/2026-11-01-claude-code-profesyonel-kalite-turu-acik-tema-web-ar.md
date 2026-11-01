@@ -46,6 +46,8 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
 
 - Plan modunda web_search/web_fetch açıldı (`tools.WEB_TOOLS`, READ_ONLY_SPECS); 2 eski test yeni karara uyarlandı, mutasyon 2 testi kırdı.
 
+- Madde 7: kullanıcı kararı uyarlanabilir sıra (AskUserQuestion, 2026-11-01): `router.choose(speeds=)`, `modelstats.effective_speeds`, `AppContext.model_speeds`; test_uyarlanabilir_sira 8 (gerçek tur akışı dahil), mutasyon 2.
+
 ## Test sonuçları
 - Hedefli: tests/test_websearch.py 23 geçti; mutasyon: `_KEY_DEAD` boşaltılınca kota testi, hatırlatma kapatılınca
   tetiklenme testi kırıldı (geri alındı).

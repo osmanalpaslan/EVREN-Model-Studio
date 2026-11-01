@@ -1105,7 +1105,7 @@ class SessionView(QWidget):
                             mode=("plan" if self._plan_turn else self.mode), has_images=has_images,
                             est_tokens=est, context_of=context_of, available=avail or None, health=health,
                             level=level, level_reason=lreason, kind=kind, kind_reason=kreason,
-                            penalties=self.ctx.model_penalties())
+                            penalties=self.ctx.model_penalties(), speeds=self.ctx.model_speeds())
 
     def _ws_names(self) -> list[str]:
         """İş türü (A7) için proje dosya adları: kök + bir alt düzey, en çok ~600 ad; 60 sn önbellek."""

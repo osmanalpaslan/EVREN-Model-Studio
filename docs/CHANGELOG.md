@@ -12,6 +12,9 @@
   çıkar (yenilenme saati, geri sayım, "Kota yenilenince otomatik devam et" kutusu, Şimdi dene / Vazgeç).
   Kutu işaretliyse kota yenilenince ajan aynı oturumda kaldığı yerden sürer; uygulama kapatılıp açılsa da
   hatırlanır. Yeni mesaj yazarsanız bekleyen devam iptal olur.
+- **Auto Pro uyarlanabilir model sırası**: kod işlerinde önce gelen model o gün belirgin yavaşsa (son 3 saatin
+  gerçek ölçümünde yedeğinden 2 kat yavaş) daha hızlı olan yedek öne alınır; sıra varsayılan olarak aynı kalır.
+- **Plan modunda web araması**: planlarken güncel bilgi aranabilir (dosyalara dokunulmaz).
 - **Bağlam hesabı düzeltildi**: uzun projelerde otomatik özet artık zamanında tetiklenir (token sayımı
   gerçek kullanıma göre ayarlanıyor).
 - **Açık tema**: soluk yazılar, yer tutucular, durum renkleri ve ikincil düğmeler okunur hâle getirildi;
