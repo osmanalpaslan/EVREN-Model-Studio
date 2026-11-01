@@ -16,6 +16,9 @@ Projeler:
   E  Çevrimdışı harcama PWA (manifest, service worker, gerçek PNG ikon, node:test)
 
 MARATON_OZET_ESIK=<token> ortam değişkeni otomatik özet eşiğini düşürür (uzun oturum benzetimi).
+MARATON_KOTA_TESTI=<mesaj>:<adım> kota bitince otomatik devamı ölçer: o mesajda ajan <adım> araç sonucu ürettikten
+sonra günlük kota "bitmiş" gösterilir (QuotaGate.daily_low) → tur güvenli noktada durmalı, kota kartı ve kalıcı plan
+çıkmalı; ardından kota "yenilenir" ve gerçek yoklamayla (_resume_probe) kaldığı yerden sürmeli; kabul yine tam olmalı.
 
 Ölçülenler (rapor JSON): mesaj başına adım, süre, durma nedeni (done/loop/max_steps/
 context_limit/…), otomatik özet sayısı, onay istendi mi (Otomatik modda 0 olmalı),
@@ -538,6 +541,22 @@ def main() -> int:
     esik = os.environ.get("MARATON_OZET_ESIK")
     if esik:
         w.ctx.settings.auto_compact_max_tokens = int(esik)
+    kota_testi = os.environ.get("MARATON_KOTA_TESTI")
+    kota = {"aktif": False, "durdu": 0, "kart": 0, "plan": 0, "surdu": 0, "mesaj": 0, "adim": 0}
+    if kota_testi:
+        from evren_studio.agent.quota import QuotaGate
+
+        _orig_low = QuotaGate.daily_low
+
+        def _low(self):
+            return (True, None) if kota["aktif"] else _orig_low(self)
+        QuotaGate.daily_low = _low
+        w.ctx.settings.auto_resume = True
+        kota["mesaj"], kota["adim"] = (int(x) for x in kota_testi.split(":"))
+
+    def tool_count() -> int:
+        sid_ = w.session.session_id
+        return sum(1 for m in w.ctx.db.get_session_messages(sid_) if m["role"] == "tool") if sid_ else 0
     w.new_session()
     w.session.welcome._choose(str(proj))
     w.session.set_model(model)
@@ -550,8 +569,35 @@ def main() -> int:
         n_out, n_notes = len(outcomes), len(notes)
         n_err = len(w.session.findChildren(ErrorCard))
         t0 = time.monotonic()
+        n_tool0 = tool_count()
         w.session.send(msg)
+        if kota_testi and i == kota["mesaj"]:
+            end = time.monotonic() + TURN_TIMEOUT
+            while w.session.running and tool_count() < n_tool0 + kota["adim"] and time.monotonic() < end:
+                pump(0.3)
+            kota["aktif"] = True                    # bir sonraki model çağrısından önce kota "bitti"
         finished = wait_turn(TURN_TIMEOUT)
+        if kota_testi and i == kota["mesaj"] and finished:
+            from evren_studio.agent import resume as _resume
+            from evren_studio.ui.transcript import QuotaResumeCard
+
+            last = outcomes[-1] if len(outcomes) > n_out else None
+            kota["durdu"] = int(bool(last and last["stopped"] == "quota_daily"))
+            kota["kart"] = len(w.session.findChildren(QuotaResumeCard))
+            kota["plan"] = int(w.ctx.db.get_meta(_resume.META_KEY) is not None)
+            kota["araç_durunca"] = tool_count() - n_tool0
+            print(f"[{tag}] KOTA TESTİ: durdu={kota['durdu']} kart={kota['kart']} plan={kota['plan']} "
+                  f"(durmadan önce {kota['araç_durunca']} araç sonucu)", flush=True)
+            kota["aktif"] = False                   # kota "yenilendi": gerçek yoklama ile devam
+            n_before = len(outcomes)
+            w.session._resume_probe()
+            end = time.monotonic() + 60
+            while len(outcomes) == n_before and not w.session.running and time.monotonic() < end:
+                pump(0.3)
+            finished = wait_turn(TURN_TIMEOUT)
+            kota["surdu"] = int(len(outcomes) > n_before)
+            print(f"[{tag}] KOTA TESTİ: devam turu={kota['surdu']} · plan silindi="
+                  f"{int(w.ctx.db.get_meta(_resume.META_KEY) is None)}", flush=True)
         continues = 0
         while finished and continues < MAX_CONTINUES:
             last = outcomes[-1] if len(outcomes) > n_out else None
@@ -597,6 +643,7 @@ def main() -> int:
         "proje": key, "ad": spec["ad"], "model": model, "toplam_sure_sn": round(time.monotonic() - t_all, 1),
         "zaman_icinde_bitti": deadline_ok, "mesajlar": turns, "onay_istendi": approvals,
         "arac_cagrisi": tool_calls, "uc_ve_ustu_tekrar": repeated, "otomatik_ozet": summaries,
+        "kota_testi": kota if kota_testi else None,
         "kabul": [{"test": n, "gecti": ok, "ayrinti": d} for n, ok, d in accept],
         "kabul_skor": f"{passed}/{len(accept)}",
         "qt_uyari": [m for m in warnings if "thread" in m.lower()][:5], "yakalanmamis_hata": errors[:5],

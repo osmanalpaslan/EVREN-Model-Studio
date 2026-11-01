@@ -40,6 +40,8 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
 
 - Proje/QA/Derin kota duraklaması da ortak karta ve kalıcı plana taşındı (`ResumePlan.flow`, `project_ui.schedule_auto_resume` → `session_view._quota_pause`); `test_kota_kapisi` 3 testi yeni düzene uyarlandı (eski iç `_resume_timer` ayrıntısı yerine plan/zamanlayıcı/yoklama → devam); mutasyon 2 testi kırdı.
 
+- Maraton betiğine `MARATON_KOTA_TESTI=<mesaj>:<adım>`: o mesajda <adım> araç sonucundan sonra günlük kota "bitmiş" gösterilir; güvenli durma + kart + plan ve gerçek yoklamayla devam ölçülür, kabul yine tam olmalı.
+
 ## Test sonuçları
 - Hedefli: tests/test_websearch.py 23 geçti; mutasyon: `_KEY_DEAD` boşaltılınca kota testi, hatırlatma kapatılınca
   tetiklenme testi kırıldı (geri alındı).
