@@ -12,15 +12,15 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-01 19:10 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar
+- **Güncelleme:** 2026-11-01 19:20 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar
 - **Aktif dal:** `feat/profesyonel-kalite` (GitHub'da var; PR #30 `feat/clear-ve-buyuk-ozet` üzerine kurulu —
   ikisi de master'a BİRLEŞTİRİLMEDİ). Başka bilgisayarda: `git fetch && git switch feat/profesyonel-kalite`.
-- **Kaldığı yer:** Madde 4 (bağlam şişmesi) — kalibrasyon commit'lendi (`b099b7a`); maraton D gerçek koşusu
-  sonucu işlenecek, ardından özet eşiği düşürülmüş gerçek özet ölçümü. Sonra Madde 5 (kota bitince otomatik
-  devam) kodlanacak — plan aşağıda.
-- **Çalışan uzun test:** maraton D (auto-pro, 7 mesaj) bu bilgisayarda 18:25'te başladı; sonuç
-  `C:\Users\Osman Alpaslan\evm_t2\maraton_D.log` (yalnız bu bilgisayarda; başka yerde devam edilirse koşu
-  tekrarlanır: `tests\e2e_marathon_real_api.py D auto-pro <klasör>`).
+- **Kaldığı yer:** Madde 4'ün son ölçümü sürüyor: maraton A düşük özet eşiğiyle (`MARATON_OZET_ESIK=20000`) —
+  otomatik özet gerçekten tetikleniyor ve proje bozulmadan bitiyor mu. Aynı anda Madde 5 (kota bitince otomatik
+  devam) kodlanmaya başlandı (henüz commit yok).
+- **Çalışan uzun test:** özetli maraton A, bu bilgisayarda 19:18'de `C:\Users\Osman Alpaslan\evm_wt` (git worktree,
+  4ae7f5a) kopyasından başladı; günlük `C:\Users\Osman Alpaslan\evm_t3\maraton_A_ozet.log`. Başka yerde devam
+  edilirse tekrarla: `set MARATON_OZET_ESIK=20000` ve `tests\e2e_marathon_real_api.py A auto-pro <klasör>`.
 
 ## Geliştirme sırası (kullanıcı onaylı, 2026-11-01)
 
@@ -33,7 +33,7 @@ kritikse mutasyon + paket; R-13/R-21 gerçek ölçümler dal sonunda.
 | 1 | Açık tema okunurluğu, görünmeyen düğmeler, Ayarlar'daki sabit renkler | YAPILDI | e940402, 5225fc1, 316d69d, 2050af9 | `tools/ui_denetim.py` + `tests/test_okunurluk.py` (R-33); açık/koyu HATA 0 |
 | 2 | Ücretsiz web araması (Tavily) + Auto Pro'ya dahil | YAPILDI | 2050af9 | Tavily → anahtarsız Tavily → DuckDuckGo → "eldeki bilgiyle devam"; Ayarlar > Web Araması; R-25 ölçümü CHALLENGE_RESULTS.md |
 | 3 | Uzun proje maratonları D (7 mesaj) ve E (PWA) | YAPILDI | 0ced757 | kabul denetimleri bilinen doğru/yanlışla sınandı |
-| 4 | Auto Pro bağlam şişmesi (/compact olmuyor, otomatik özet yok) | SÜRÜYOR | b099b7a | token tahmini 3,5 → gerçek kullanımla kalibre (R-34). Kalan: maraton D sonucu; `MARATON_OZET_ESIK` ile gerçek otomatik özet ölçümü; Proje/Derin akışında özet tetiklenmesi |
+| 4 | Auto Pro bağlam şişmesi (/compact olmuyor, otomatik özet yok) | SÜRÜYOR | b099b7a | token tahmini 3,5 → gerçek kullanımla kalibre (R-34). Maraton D 25/25 (52 dk, 7 mesaj; gerçek bağlam ~40k → özet gerekmedi; eski hesap %13 eksik, yeni varsayılan %24 fazla, kalibrasyonla gerçeğe iner). Kalan: özetli maraton A sonucu; Proje/Derin akışında özet tetiklenmesi |
 | 5 | Kota bitince otomatik devam paneli | SIRADA | — | aşağıdaki plan |
 | 6 | Testlerde bulunan hata/eksikler | SIRADA | — | aşağıdaki liste |
 | 7 | Proje bitirme hızı (tutarlılığı bozmadan) | SIRADA | — | önce adım süresi dökümü (model bekleme / araç / komut); maraton C 1. mesaj 21 dk |
