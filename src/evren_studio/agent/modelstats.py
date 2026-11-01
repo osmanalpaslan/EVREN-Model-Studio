@@ -59,6 +59,10 @@ def gen_speed(rec: dict[str, Any]) -> float | None:
 # Ölçüm 2026-11-01: deepseek-v4.1-flash 14,4 sn/100 token, qwen3.8-flash-next 3,7 (21 Ekim'de tersiydi → sabit
 # sıra yerine son saatlerin gerçek hızı).
 SPEED_HOURS = 3.0
+# Yavaşlık yüzünden (hata değil) bu rollerde bu modellere GEÇİLMEZ: zayıf model zor işte hile yazdı (2026-11-01
+# zorluk paketi "celiski": qwen 21 token/sn "yavaş" sayılıp gemma-4-31b'ye geçildi, gemma testi geçirmek için hile
+# kodu yazdı). Sunucu hatasında geçiş yine serbest; yavaş ama güçlü model zayıf hızlı modelden iyidir.
+SLOW_SWITCH_EXCLUDE = {"kod": {"gemma-4-31b"}, "plan": {"gemma-4-31b"}, "inceleme": {"gemma-4-31b"}}
 SPEED_FACTOR = 2.0
 
 

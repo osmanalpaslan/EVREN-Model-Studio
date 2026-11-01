@@ -693,7 +693,13 @@ class AgentRunner:
             self._turn_hint = (getattr(self, "_turn_hint", "") + "\n\n# Model değişti (bu tur)\n"
                                f"Önceki model döngüye girdi ({loop_reason}). Aynı çağrıları tekrarlama; "
                                "farklı bir yol dene veya neyin engel olduğunu kullanıcıya açıkla.").strip()
-        old, new = self.model, self.fallback_models.pop(0)
+        idx = 0
+        if slow_reason and exc is None:
+            banned = modelstats.SLOW_SWITCH_EXCLUDE.get(self.route_role, set())
+            idx = next((i for i, m in enumerate(self.fallback_models) if m not in banned), -1)
+            if idx < 0:
+                return False                 # yalnız zayıf yedek kaldı: yavaş ama güçlü modelde kal
+        old, new = self.model, self.fallback_models.pop(idx)
         self.model = new
         outcome.model_switches.append((old, new, reason))
         self._slow.reset()

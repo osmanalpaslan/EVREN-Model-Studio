@@ -461,7 +461,12 @@ def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi",
         bitti, onay = wait_turn(TURN_TIMEOUT)
         if not bitti:
             w.session.stop()
-            pump(5)
+            # durdurulan tur gerçekten bitsin: yoksa uzun model çağrısı sonraki görevin turunu kesiyordu
+            # (2026-11-01: "celiski" zaman aşımı → "kapsam" 4 sn'de 'cancelled')
+            end = time.monotonic() + 180
+            pump(2)
+            while w.session.running and time.monotonic() < end:
+                pump(1)
         sid = w.session.session_id
         msgs = w.ctx.db.get_session_messages(sid) if sid else []
         asist = [m for m in msgs if m["role"] == "assistant" and (m["content"] or "").strip()]

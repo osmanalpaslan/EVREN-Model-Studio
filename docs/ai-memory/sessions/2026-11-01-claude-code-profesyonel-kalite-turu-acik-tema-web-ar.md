@@ -63,6 +63,8 @@ sade sağlayıcı ekranı, kota bitince otomatik devam paneli.
 - R-13 e2e üçlüsü ve son kodla zorluk paketi bu dal birleşmeden önce koşulacak (henüz koşulmadı).
 
 ## Sorunlar ve kayıtlar
+- 2026-11-01-yavaslik-gecisi-zayif-modele-gitti-gemma-celiskili-testte-hi (izleniyor)
+- 2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati (çözüldü)
 - 2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu (çözüldü)
 - 2026-11-01-ayarlarda-ucretli-etiketi-sabit-renkle-yazilmisti (çözüldü)
 - Kendi hatam: regex/`\n` içeren yamayı bash heredoc ile yazdım, dosyaya gerçek satır sonu girdi (R-29 zaten
