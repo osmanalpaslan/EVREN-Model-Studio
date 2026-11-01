@@ -12,12 +12,14 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-01 20:55 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar
+- **Güncelleme:** 2026-11-01 21:22 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar
 - **Aktif dal:** `feat/profesyonel-kalite` (GitHub'da; PR #30 `feat/clear-ve-buyuk-ozet` üzerine kurulu — ikisi de
   master'a BİRLEŞTİRİLMEDİ). Başka bilgisayarda: `git fetch && git switch feat/profesyonel-kalite`.
-- **Kaldığı yer:** Madde 0-5 YAPILDI. Sıradaki: Madde 6 kalanları (Plan modunda web_search kararı, klasörsüz
-  sohbette araç yok), sonra Madde 7 (hız: döküm hazır), 8 (Derin Mod), 9 (sağlayıcı ekranı).
-- **Çalışan uzun test:** yok.
+- **Kaldığı yer:** Madde 0-5 YAPILDI; 6 büyük ölçüde (klasörsüz sohbette araç BEKLİYOR); 7 SÜRÜYOR: uyarlanabilir
+  sıra commit'lendi (d9070b6), zorluk paketi auto-pro koşuyor (tutarlılık + süre). Sonra: adım sayısı azaltma,
+  Madde 8 (Derin Mod), 9 (sağlayıcı ekranı).
+- **Çalışan uzun test:** zorluk paketi auto-pro, bu bilgisayarda 21:20, ana kopyadan; günlük
+  `C:\Users\Osman Alpaslan\evm_t5\zorluk.log`. Başka yerde: `tests\e2e_zorluk_real_api.py auto-pro` tekrarlanır.
 
 ## Geliştirme sırası (kullanıcı onaylı, 2026-11-01)
 
