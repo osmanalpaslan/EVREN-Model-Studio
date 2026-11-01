@@ -1,5 +1,25 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Web araması ve açık tema düzeltmeleri
+
+- **İnternette arama (`web_search`)**: ajan güncel bilgi gerektiğinde (paket sürümü, hata çözümü, belge,
+  haber) arar ve kaynak adresini belirtir. Ücretsiz Tavily anahtarıyla (Ayarlar > Web Araması; ayda 1000
+  kredi, "Kalan kotayı göster") çalışır; anahtar yoksa ya da kota biterse anahtarsız Tavily, sonra
+  DuckDuckGo denenir. Hiçbiri yanıt vermezse iş durmaz. İstek güncel bilgi gerektiriyorsa (ör. "en son
+  sürüm", "internette ara") ajana o tur aramayı hatırlatan not eklenir. Manuel modda her aramadan önce
+  sorulur, Plan modunda kapalıdır.
+- **Kota bitince otomatik devam**: EVREN kotası dolunca iş güvenli bir noktada durur ve sohbette bir kart
+  çıkar (yenilenme saati, geri sayım, "Kota yenilenince otomatik devam et" kutusu, Şimdi dene / Vazgeç).
+  Kutu işaretliyse kota yenilenince ajan aynı oturumda kaldığı yerden sürer; uygulama kapatılıp açılsa da
+  hatırlanır. Yeni mesaj yazarsanız bekleyen devam iptal olur.
+- **Auto Pro uyarlanabilir model sırası**: kod işlerinde önce gelen model o gün belirgin yavaşsa (son 3 saatin
+  gerçek ölçümünde yedeğinden 2 kat yavaş) daha hızlı olan yedek öne alınır; sıra varsayılan olarak aynı kalır.
+- **Plan modunda web araması**: planlarken güncel bilgi aranabilir (dosyalara dokunulmaz).
+- **Bağlam hesabı düzeltildi**: uzun projelerde otomatik özet artık zamanında tetiklenir (token sayımı
+  gerçek kullanıma göre ayarlanıyor).
+- **Açık tema**: soluk yazılar, yer tutucular, durum renkleri ve ikincil düğmeler okunur hâle getirildi;
+  Ayarlar'daki "ücretli" etiketi artık temanın rengini alıyor. Dosyalar sekmesinde uzun yol ortadan kısaltılır.
+
 ## Yayınlanmamış — /clear ve büyük oturum özeti
 
 - **/clear (/temizle)**: aynı klasör, model ve modla temiz sayfa; eski sohbet silinmez.

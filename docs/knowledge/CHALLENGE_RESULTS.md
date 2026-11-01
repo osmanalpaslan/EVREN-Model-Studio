@@ -84,6 +84,22 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Web araması web_search açık/kapalı (2026-11-01, `tests/e2e_websearch_real_api.py`, Auto Pro, R-25)
+
+Doğru cevap koşu anında kaynağından okunur (PyPI JSON, endoflife.date); kabul denetimi bilinen doğru ve
+bilinen yanlış requirements.txt ile sınandı.
+
+| Görev | Açık | Kapalı | Not |
+|---|---|---|---|
+| surum (flask+requests son sürüm) | 3/3 · 335 sn · web_search 0 | 3/3 · 279 sn | iki koşuda da model PyPI JSON adresini web_fetch + Invoke-RestMethod ile okudu |
+| python (son sürüm + tarih + kaynak) | 3/3 · 366 sn · **web_search 1** + web_fetch | 3/3 · 38 sn · web_fetch 2 | açıkta adım başına 30-130 sn (deepseek-v4.1-flash yavaştı), 6 dk sınırında kesildi ama dosya doğru; kapalıda qwen3.8 seçildi |
+| gereksiz (topla.py + unittest) | 2/2 · 99 sn · web_search 0 | 2/2 · 33 sn | gereksiz tetiklenme yok (R-22) |
+
+Çıkarım: model aracı adresini bilmediği soruda kendiliğinden seçti; bilinen adres varsa doğrudan okumayı
+tercih etti (daha az adım — doğru). Süre farkı aramadan değil, seçilen modelin adım gecikmesinden
+(aynı görevde deepseek-v4.1-flash 30-130 sn/adım). Not: ilk açık koşuda "gereksiz" araç sayısı kapalı
+koşunun raporu aynı klasöre yazıldığı için kayboldu; görev ayrı klasörde tekrarlandı ve betik düzeltildi.
+
 ## MCP / Serena (2026-10-19, `tests/e2e_mcp_real_api.py`, Auto Pro, gerçek API)
 
 Her görev Serena AÇIK ve KAPALI koşuldu. Proje tuzaklı: `vergi_hesapla_eski` adlı başka

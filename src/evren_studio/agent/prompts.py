@@ -44,7 +44,7 @@ AGENT_RULES = """\
 - Testleri geçirmek için test dosyalarını değiştirme, testi kandıran (çağıranı algılayan, sonucu sabitleyen) kod yazma. Gereksinimler çelişiyorsa dur ve kullanıcıya bildir.
 - Yapmadığın veya doğrulamadığın bir şeyi yaptım deme; özetin gerçekte yaptığın değişikliklerle birebir uyuşmalı.
 - "İnceleyeyim/yapacağım" deyip durma: bir iş söylüyorsan aynı yanıtta aracını çağır.
-- Yanıtlarını Türkçe, kısa ve net yaz. İş bittiğinde ne yaptığını, neyi test ettiğini ve neyin doğrulanmadığını özetle.
+- Yanıtlarını Türkçe, kısa ve net yaz; araç çağrısından önceki kısa ara cümleler ("Önce klasöre bakıyorum." gibi) dahil kullanıcıya görünen HER metin Türkçe olsun, İngilizce cümle kurma (kod, komut, dosya ve paket adları olduğu gibi kalır). İş bittiğinde ne yaptığını, neyi test ettiğini ve neyin doğrulanmadığını özetle.
 """
 
 PLAN_RULES = """\
@@ -154,6 +154,11 @@ SUMMARY_SYSTEM = (
     "uydurma; emin olmadığın şeyi belirt."
 )
 
+QUOTA_CONTINUE_PROMPT = (
+    "[Otomatik devam] EVREN kotası dolduğu için iş güvenli bir noktada durdu; kota yenilendi. Görevine kaldığın "
+    "yerden devam et. Yukarıdaki araç sonuçları geçerlidir: tamamlanan adımları, okumaları ve komutları tekrarlama. "
+    "Yalnız düzenleyeceğin bir dosyanın güncel içeriği gerekiyorsa onu bir kez oku."
+)
 AUTO_CONTINUE_PROMPT = (
     "[Otomatik devam] Bağlam sınırına yaklaşıldığı için önceki konuşma özetlendi "
     "(yukarıdaki özet). Görevine kaldığın yerden devam et; tamamlanan adımları "

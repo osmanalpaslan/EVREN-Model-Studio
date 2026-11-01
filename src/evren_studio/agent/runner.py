@@ -38,6 +38,7 @@ from .tools import (
     META,
     READ,
     READ_ONLY_SPECS,
+    WEB_TOOLS,
     JOB_TOOLS,
     GAME_TOOLS,
     SERVICE_TOOLS,
@@ -55,7 +56,47 @@ from .tools import (
 )
 
 DEFAULT_MAX_STEPS = 80
-CHARS_PER_TOKEN = 3.5
+# Token tahmini (bağlam, otomatik özet eşiği). 2026-11-01 gerçek ölçüm (EVREN `usage.prompt_tokens`): Türkçe
+# metin 2,55, kod 3,1-3,5, araç çıktısı 2,2, sistem istemi + araç tanımları 2,16 karakter/token. Eski 3,5 bağlamı
+# %40-60 küçük gösteriyor, özet geç tetikleniyordu. Başlangıç değeri temkinli; her yanıttaki gerçek token sayısıyla
+# model başına kalibre edilir (calibrate / calibration).
+CHARS_PER_TOKEN = 2.6
+# Sistem istemi + araç tanımları (ölçüm: ilk istek 5.620 token); kalibrasyon gelene kadar kullanılır
+DEFAULT_OVERHEAD_TOKENS = 6_000
+CPT_MIN, CPT_MAX = 1.8, 4.5
+_CALIB: dict[str, tuple[float, int]] = {}      # model → (karakter/token, sistem+araç token'ı)
+
+
+def calibration(model: str | None = None) -> tuple[float, int]:
+    """(karakter/token, sistem+araç ek yükü token). Model bilinmiyorsa ölçülmüş modellerin en temkinlisi."""
+    if model and model in _CALIB:
+        return _CALIB[model]
+    if _CALIB:
+        return min(c for c, _o in _CALIB.values()), max(o for _c, o in _CALIB.values())
+    return CHARS_PER_TOKEN, DEFAULT_OVERHEAD_TOKENS
+
+
+def calibrate(model: str, sent_chars: int, overhead_chars: int, input_tokens: int) -> None:
+    """Gönderilen karakter sayısı ile API'nin bildirdiği girdi token'ından oranı öğrenir (yumuşatarak)."""
+    if not model or input_tokens < 1_000 or sent_chars <= 0:
+        return
+    cpt = min(CPT_MAX, max(CPT_MIN, sent_chars / input_tokens))
+    old = _CALIB.get(model)
+    if old:
+        cpt = (old[0] + cpt) / 2
+    _CALIB[model] = (cpt, int(overhead_chars / cpt))
+
+
+def _chars(messages: list[dict]) -> int:
+    total = 0
+    for m in messages:
+        content = m.get("content") or ""
+        if isinstance(content, list):        # çok parçalı (görsel): yalnız metin parçaları; base64 sayılmaz
+            content = "".join(p.get("text") or "" for p in content if isinstance(p, dict))
+        total += len(content)
+        for c in m.get("tool_calls") or []:
+            total += len(json.dumps(c, ensure_ascii=False))
+    return total
 # "gerekirse yeniden oku" demiyoruz: modeli aynı dosyaları tekrar okumaya itiyordu (döngü).
 TRIMMED_NOTE = ("[Bu araç çıktısı bağlam sınırı nedeniyle kısaltıldı. İşlem zaten yapıldı; "
                 "yalnızca içeriğe gerçekten yeniden ihtiyacın varsa tekrar çağır.]")
@@ -266,7 +307,7 @@ class SessionStore(Protocol):
 
 @dataclass
 class TurnOutcome:
-    stopped: str = "done"            # done | cancelled | max_steps | loop | error | context_limit | budget
+    stopped: str = "done"            # done | cancelled | max_steps | loop | error | context_limit | budget | quota_daily
     steps: int = 0
     protocol: str = "native"
     last_text: str = ""
@@ -360,28 +401,23 @@ def to_api_messages(system: str, history: list[dict], protocol: str,
     return msgs
 
 
-def estimate_tokens(messages: list[dict]) -> int:
-    total = 0
-    for m in messages:
-        total += len(m.get("content") or "")
-        for c in m.get("tool_calls") or []:
-            total += len(json.dumps(c, ensure_ascii=False))
-    return int(total / CHARS_PER_TOKEN)
+def estimate_tokens(messages: list[dict], model: str | None = None) -> int:
+    return int(_chars(messages) / calibration(model)[0])
 
 
 def trim_for_context(history: list[dict], context_tokens: int | None,
-                     keep_recent: int = 8) -> list[dict]:
+                     keep_recent: int = 8, model: str | None = None) -> list[dict]:
     """Bağlam sınırına yaklaşılırsa eski araç çıktılarını kısaltır (kayıt değişmez)."""
     if not context_tokens:
         return history
     budget = int(context_tokens * 0.7)
     trimmed = [dict(m) for m in history]
-    if estimate_tokens(trimmed) <= budget:
+    if estimate_tokens(trimmed, model) <= budget:
         return trimmed
     for i, m in enumerate(trimmed[:-keep_recent] if len(trimmed) > keep_recent else []):
         if m.get("role") == "tool" and len(m.get("content") or "") > 400:
             trimmed[i]["content"] = TRIMMED_NOTE
-            if estimate_tokens(trimmed) <= budget:
+            if estimate_tokens(trimmed, model) <= budget:
                 break
     return trimmed
 
@@ -592,7 +628,8 @@ class AgentRunner:
         return system + "\n\n" + hint if hint else system
 
     def _compute_turn_hint(self, history: list[dict]) -> str:
-        """Tur başı: kullanıcının andığı ama projede olmayan dosyalar için uyarı (scope.py)."""
+        """Tur başı: kullanıcının andığı ama projede olmayan dosyalar için uyarı (scope.py); istek güncel/dış
+        bilgi gerektiriyorsa web araması hatırlatması (websearch.needs_web)."""
         if not self.agentic or self.workspace is None:
             return ""
         for m in reversed(history):
@@ -604,13 +641,18 @@ class AgentRunner:
             from .scope import user_allows_test_edits
 
             self._tests_allowed = user_allows_test_edits(text)
+            web = ""
+            if any(s.name == "web_search" for s in self._specs()):
+                from . import websearch
+
+                web = websearch.HINT if websearch.needs_web(text) else ""
             try:
                 from .scope import missing_hint, missing_mentions
 
                 missing = missing_mentions(text, self.workspace.root)
             except OSError:
-                return ""
-            return missing_hint(missing) if missing else ""
+                return web
+            return "\n\n".join(h for h in (missing_hint(missing) if missing else "", web) if h)
         return ""
 
     def _record(self, **rec: Any) -> None:
@@ -683,7 +725,7 @@ class AgentRunner:
         return msg
 
     def _call_model(self, history: list[dict]):
-        visible = trim_for_context(history, self.context_tokens)
+        visible = trim_for_context(history, self.context_tokens, model=self.model)
         messages = to_api_messages(self._system(), visible, self.protocol)
         if self._nudge:
             # Geçici: kayda yazılmaz, yalnız bu çağrıda gider.
@@ -715,6 +757,13 @@ class AgentRunner:
             on_delta=on_delta, on_reasoning=self.events.reasoning_delta,
             tools=tools, **kwargs,
         )
+        try:          # gerçek token sayısından oranı öğren (bağlam/özet eşiği doğru hesaplansın)
+            used = (result.token_usage() if hasattr(result, "token_usage") else {}).get("input_tokens") or 0
+            tools_chars = len(json.dumps(tools, ensure_ascii=False)) if tools else 0
+            calibrate(self.model, _chars(messages) + tools_chars,
+                      len(messages[0].get("content") or "") + tools_chars, int(used))
+        except (TypeError, ValueError, AttributeError, IndexError):
+            pass
         if guard.repetition and not self._cancelled():
             result.finish_reason = "repetition"
         return result
@@ -1034,7 +1083,7 @@ class AgentRunner:
         return "", ""
 
     def _history_tokens(self, history: list[dict]) -> int:
-        return estimate_tokens(to_api_messages("", history, self.protocol)) + 2_500
+        return estimate_tokens(to_api_messages("", history, self.protocol), self.model) + calibration(self.model)[1]
 
     # -- araç yürütme -------------------------------------------------------------------------
 
@@ -1051,7 +1100,7 @@ class AgentRunner:
         if self.no_writes and spec.kind == WRITE:
             return ToolResult(False, "Bu çalışmada (QA) dosya değiştirilemez: yalnız test et ve bulguyu raporla.",
                               "Engellendi (QA)")
-        if normalize_mode(self.mode) == "plan" and spec.kind in (WRITE, EXEC):
+        if normalize_mode(self.mode) == "plan" and spec.kind in (WRITE, EXEC) and call.name not in WEB_TOOLS:
             _d, reason = decide(self.mode, spec.kind, self.perms)
             return ToolResult(False, reason, "Plan modunda engellendi")
         self.events.tool_started(call, describe_call(call))
@@ -1068,6 +1117,8 @@ class AgentRunner:
                 res = self._run_install(call)
             elif call.name == "web_fetch":
                 res = self._run_web(call)
+            elif call.name == "web_search":
+                res = self._run_web_search(call)
             elif call.name in GAME_TOOLS:
                 res = self._run_game(call)
             elif spec.kind == READ:
@@ -1174,8 +1225,8 @@ class AgentRunner:
         host = urlparse(url).netloc.lower()
         key = f"web:{host}"
         decision, reason = decide(self.mode, EXEC, self.perms)
-        if key in self.perms.command_prefixes:
-            decision = Decision.ALLOW
+        if key in self.perms.command_prefixes or normalize_mode(self.mode) == "plan":
+            decision = Decision.ALLOW          # Plan modu: dosyaya dokunmayan araştırma serbest
         if decision == Decision.DENY:
             return ToolResult(False, reason, "Engellendi")
         if decision == Decision.ASK:
@@ -1192,6 +1243,49 @@ class AgentRunner:
             return ToolResult(False, f"Web sayfası okunamadı: {exc}", f"Okunamadı: {host}")
         return ToolResult(True, truncate_middle(out, self.output_limit), f"Web okundu: {host}",
                           {"output": truncate_middle(out, 4000)})
+
+    def _run_web_search(self, call: ToolCall) -> ToolResult:
+        """İnternette arama (agent/websearch.py: Tavily → anahtarsız Tavily → DuckDuckGo). Sorgu dış sunucuya
+        gittiği için web_fetch gibi izinden geçer ("oturum boyunca izin ver" → web:search). Hiçbir sağlayıcı
+        yanıt vermezse iş DURMAZ: ajana eldeki bilgiyle devam etmesi söylenir."""
+        from . import websearch
+
+        a = call.arguments
+        query = str(_req(a, "query")).strip()
+        if not query:
+            return ToolResult(False, "Arama sorgusu boş.", "Boş sorgu")
+        key = "web:search"
+        decision, reason = decide(self.mode, EXEC, self.perms)
+        if key in self.perms.command_prefixes or normalize_mode(self.mode) == "plan":
+            decision = Decision.ALLOW          # Plan modu: dosyaya dokunmayan araştırma serbest
+        if decision == Decision.DENY:
+            return ToolResult(False, reason, "Engellendi")
+        if decision == Decision.ASK:
+            ok, feedback = self._approve(call, EXEC, "İnternette arama yapılsın mı?", query, prefix=key,
+                                         reason="Sorgu metni arama servisine (Tavily/DuckDuckGo) gönderilir.")
+            if not ok:
+                msg = "Kullanıcı internette arama yapılmasına izin vermedi."
+                if feedback:
+                    msg += f" Kullanıcının notu: {feedback}"
+                return ToolResult(False, msg, "Arama reddedildi", {"denied": True})
+
+        def _flag(name: str) -> bool:
+            v = a.get(name)
+            return v is True or str(v).strip().lower() in ("true", "1", "evet")
+
+        try:
+            res = websearch.search(query, guncel=_flag("guncel"), haber=_flag("haber"),
+                                   max_results=int(a.get("max_results") or 5))
+        except websearch.SearchUnavailable as exc:
+            return ToolResult(False, f"Web araması şu an yapılamıyor ({exc}). Aramayı tekrarlama; eldeki bilgiyle "
+                              "işe devam et ve güncel bilginin doğrulanamadığını kullanıcıya belirt.",
+                              "Arama yapılamadı")
+        except (ValueError, TypeError) as exc:
+            return ToolResult(False, f"Arama parametresi geçersiz: {exc}", "Geçersiz arama")
+        out = websearch.format_result(query, res)
+        return ToolResult(True, truncate_middle(out, self.output_limit),
+                          f"{len(res.results)} sonuç · {res.provider}",
+                          {"output": truncate_middle(out, 4000), "provider": res.provider})
 
     def _run_game(self, call: ToolCall) -> ToolResult:
         """F7: convert_model (Blender, ekransız, --disable-autoexec), Poly Haven arama/indirme."""
@@ -1720,6 +1814,7 @@ def describe_call(call: ToolCall) -> str:
         "polyhaven_search": lambda: f"Poly Haven'da aranıyor: {a.get('query', '')}",
         "polyhaven_download": lambda: f"Poly Haven'dan indiriliyor: {a.get('asset_id', '?')}",
         "web_fetch": lambda: f"Web okunuyor: {a.get('url', '?')}",
+        "web_search": lambda: f"İnternette aranıyor: {a.get('query', '')}",
         "search_files": lambda: f"Aranıyor: “{a.get('pattern', '')}”",
         "find_files": lambda: f"Dosya aranıyor: {a.get('pattern', '')}",
         "write_file": lambda: f"Yazılıyor: {a.get('path', '?')}",

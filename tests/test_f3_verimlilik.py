@@ -151,12 +151,12 @@ def test_read_table_araci_kosucuda(db, tmp_path):
     assert "bulunamadı" in tools[0]["content"]
 
 
-def test_web_fetch_plan_modunda_engelli_manuelde_sorulur(db, tmp_path, monkeypatch):
+def test_web_fetch_plan_modunda_okunur_manuelde_sorulur(db, tmp_path, monkeypatch):
     proj = tmp_path / "p"
     proj.mkdir()
     monkeypatch.setattr(webfetch, "fetch", lambda url, max_chars=20000, client=None: "[DIŞ İÇERİK]\nmerhaba")
     _o, _c, tools = run(db, proj, [call("web_fetch", url="https://ornek.com/a")], mode="plan")
-    assert "Plan modunda" in tools[0]["content"]
+    assert "merhaba" in tools[0]["content"]                                  # Plan: araştırma serbest (2026-11-01)
     ev = Ev(allow=False)
     _o, _c, tools = run(db, proj, [call("web_fetch", url="https://ornek.com/a")], mode="manuel", events=ev)
     assert ev.asked and "ornek.com" in ev.asked[0] and "izin vermedi" in tools[0]["content"]

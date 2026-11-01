@@ -55,6 +55,26 @@ def gen_speed(rec: dict[str, Any]) -> float | None:
     return out / max(gen, 0.5)
 
 
+# Uyarlanabilir sıra (kullanıcı kararı 2026-11-01): öndeki model yedeğinden bu kat yavaşsa o gün yedek öne alınır.
+# Ölçüm 2026-11-01: deepseek-v4.1-flash 14,4 sn/100 token, qwen3.8-flash-next 3,7 (21 Ekim'de tersiydi → sabit
+# sıra yerine son saatlerin gerçek hızı).
+SPEED_HOURS = 3.0
+SPEED_FACTOR = 2.0
+
+
+def effective_speeds(rows: Iterable[dict[str, Any]], min_samples: int = MIN_SAMPLES) -> dict[str, float]:
+    """Model → etkili hız (token/sn; ilk parça DAHİL: kullanıcının beklediği gerçek süre). Ortanca; yetersiz
+    örnekli (az veya kısa yanıtlı) model dönmez. Yoklama kayıtları sayılmaz."""
+    by: dict[str, list[float]] = {}
+    for r in rows:
+        if not r.get("ok") or r.get("event") or r.get("role") == PROBE_ROLE:
+            continue
+        out, dur = r.get("out_tokens") or 0, r.get("duration_s") or 0
+        if out >= MIN_TOKENS_FOR_SPEED and dur > 0:
+            by.setdefault(r["model"], []).append(out / dur)
+    return {m: statistics.median(v) for m, v in by.items() if len(v) >= min_samples}
+
+
 @dataclass
 class Baseline:
     model: str

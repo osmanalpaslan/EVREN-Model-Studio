@@ -39,6 +39,9 @@ INDEX = MEM / "INDEX.md"
 ENGINES = MEM / "ENGINES.md"
 AGENTS = ROOT / "AGENTS.md"
 PROJECT_STATE = ROOT / "docs" / "PROJECT_STATE.md"
+DEVIR = ROOT / "docs" / "DEVIR_NOTU.md"
+DEVIR_REL = "docs/DEVIR_NOTU.md"
+DEVIR_SECTIONS = ("Şu an", "Geliştirme sırası", "Birleştirmeden önce")
 
 TUR = ("hata", "eksik", "risk", "yanlis-iddia", "surec", "ortam")
 ONEM = ("kritik", "yuksek", "orta", "dusuk")
@@ -301,6 +304,45 @@ def sync_with_remote(root: Path | None = None, auto: bool = True) -> list[str]:
     return out
 
 
+def active_work_branch(root: Path | None = None) -> tuple[str, str, str] | None:
+    """GitHub'da master'a birleştirilmemiş, bulunulan daldan DAHA YENİ bir çalışma dalı var mı?
+
+    Kullanıcı başka bilgisayarda bir özellik dalında çalışıp göndermiş olabilir; bu bilgisayar master'da (ya da
+    eski bir dalda) kalmışsa motor devir notunun eski hâlini okur ve işi baştan yapar. Dönüş:
+    (dal adı, son commit özeti, o dalın DEVIR_NOTU "Şu an" bölümü) ya da None. Yalnız okur (fetch
+    `sync_with_remote`'ta yapılır); hiçbir dalı değiştirmez.
+    """
+    root = root or ROOT
+    c, default = _git_run(root, "symbolic-ref", "--short", "refs/remotes/origin/HEAD")
+    default = default if c == 0 and default else "origin/master"
+    c, refs = _git_run(root, "for-each-ref", "--sort=-committerdate", "--format=%(refname:short)|%(committerdate:unix)",
+                       "refs/remotes/origin")
+    if c != 0:
+        return None
+    _, head_time = _git_run(root, "log", "-1", "--format=%ct", "HEAD")
+    _, branch = _git_run(root, "rev-parse", "--abbrev-ref", "HEAD")
+    for line in refs.splitlines():
+        name, _, ts = line.partition("|")
+        if name in (default, "origin/HEAD", "origin") or name == f"origin/{branch}":
+            if name == f"origin/{branch}":
+                return None                  # en yeni çalışma zaten bulunulan dal
+            continue
+        c, n = _git_run(root, "rev-list", "--count", f"{default}..{name}")
+        if c != 0 or not n.isdigit() or int(n) == 0:
+            continue                         # birleştirilmiş dal
+        c, extra = _git_run(root, "rev-list", "--count", f"HEAD..{name}")
+        if c != 0 or not extra.isdigit() or int(extra) == 0:
+            continue                         # bu kopyada zaten var
+        # aynı saniyedeki commit'ler "eski" sayılmaz (yalnız kesin daha eskiyse dur; test kararsızlığı 2026-11-01)
+        if head_time.isdigit() and ts.isdigit() and int(ts) < int(head_time):
+            return None
+        _, subject = _git_run(root, "log", "-1", "--format=%cd · %s", "--date=format:%Y-%m-%d %H:%M", name)
+        c, note = _git_run(root, "show", f"{name}:{DEVIR_REL}")
+        now = (_section(sections(note), "Şu an") or "") if c == 0 else ""
+        return name.split("/", 1)[1], subject, now.strip()
+    return None
+
+
 # ---- üretilen içerik ----------------------------------------------------------
 
 
@@ -442,6 +484,15 @@ def check() -> list[str]:
     elif new_agents != read_text(AGENTS):
         errors.append("AGENTS.md kural özeti güncel değil → `python tools/ai_memory.py indeks`")
 
+    if not DEVIR.exists():
+        errors.append(f"{DEVIR_REL} yok (devir notu: işin şu anki yeri, R-35)")
+    else:
+        dsecs = sections(read_text(DEVIR))
+        for sec in DEVIR_SECTIONS:
+            body = _section(dsecs, sec)
+            if body is None or not _meaningful(body):
+                errors.append(f"{DEVIR_REL}: '## {sec}' bölümü yok veya boş")
+
     for rel in ENTRY_FILES:
         p = ROOT / rel
         if not p.exists():
@@ -479,6 +530,24 @@ def cmd_baslangic(args) -> int:
         _out("## GitHub eşitleme (başka bilgisayarda yapılan işler)")
         for line in sync_lines:
             _out(f"  {line}")
+    if sync_lines:
+        work = active_work_branch()
+        if work:
+            name, subject, now = work
+            _out("")
+            _out(f"! DEVAM EDEN İŞ BAŞKA DALDA: '{name}' ({subject}). Bu bilgisayardaki kopya geride kalmış.")
+            _out(f"    Devam için: git switch {name}   (commit'lenmemiş değişiklik varsa önce onları ele al)")
+            for line in now.splitlines()[:14]:
+                _out(f"    {line}")
+    if DEVIR.exists():
+        secs = sections(read_text(DEVIR))
+        _out("")
+        _out("## DEVİR NOTU (docs/DEVIR_NOTU.md) — işin şu anki yeri; buradan devam et, bitirirken güncelle")
+        for name in ("Şu an", "Geliştirme sırası"):
+            body = _section(secs, name) or ""
+            _out(f"### {name}")
+            for line in body.strip().splitlines()[:30]:
+                _out(f"  {line}")
     hooks = git("config", "--get", "core.hooksPath")
     if hooks.replace("\\", "/") != "tools/hooks":
         _out("! Git ön-commit kancası bu makinede kurulu değil:")
@@ -670,6 +739,11 @@ def cmd_kanca(_args) -> int:
         _out("  src/ veya tests/ değişti ama docs/ai-memory/ altında değişiklik yok.")
         _out("  Oturum günlüğü yazın/güncelleyin:  python tools/ai_memory.py oturum --baslik ... --motor ... --model ...")
         _out("  Sonra: python tools/ai_memory.py indeks  ve dosyaları commit'e ekleyin.")
+        return 1
+    if any(s.startswith("src/") for s in staged) and DEVIR_REL not in staged:
+        _out("COMMIT DURDURULDU (R-35, devir notu):")
+        _out(f"  src/ değişti ama {DEVIR_REL} güncellenmedi. 'Şu an' bölümünü ve ilgili maddenin durumunu")
+        _out("  (YAPILDI/SÜRÜYOR + commit) güncelleyip commit'e ekleyin; başka bilgisayardaki motor buradan devam eder.")
         return 1
     errors = check()
     if errors:

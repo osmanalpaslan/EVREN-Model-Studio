@@ -64,6 +64,9 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-11-01) **Güncel iş ve geliştirme sırası artık `docs/DEVIR_NOTU.md`'de** (tek kaynak, durumlarıyla;
+    `baslangic` en üstte gösterir). Aktif dal `feat/profesyonel-kalite` (PR #30 üzerine; birleştirilmedi).
+
   - (2026-10-24) **PROJE KAPANIŞI — son paket** (dal `feat/oyun-araclari-kur`): Ayarlar > Oyun araçları (Godot +
     şablonlar, Blender; onaylı indirme, gömülü sağlama toplamı, gerçek indirme denendi), sağ panel **Git** sekmesi
     (durum/fark, yapay zekâ commit mesajı, onaylı commit; push/reset yok), dosyayı oturum alanının her yerine

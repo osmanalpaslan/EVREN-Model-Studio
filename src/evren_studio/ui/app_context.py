@@ -189,7 +189,7 @@ class AppContext:
         except Exception:
             pass
         return router.choose(role, available=self.available_model_ids() or None, health=health, reason=reason,
-                             penalties=self.model_penalties())
+                             penalties=self.model_penalties(), speeds=self.model_speeds())
 
     def ai_chat(self, role: str, messages: list[dict], max_tokens: int = 800,
                 session_id: int | None = None, evren_only: bool = False) -> tuple[str, str]:
@@ -335,6 +335,15 @@ class AppContext:
 
         try:
             return modelstats.penalized(self.db.recent_model_calls(modelstats.QUALITY_HOURS))
+        except Exception:
+            return {}
+
+    def model_speeds(self) -> dict[str, float]:
+        """Uyarlanabilir sıra: son saatlerin gerçek etkili hızı (token/sn). Okunamazsa boş → sıra değişmez."""
+        from ..agent import modelstats
+
+        try:
+            return modelstats.effective_speeds(self.db.recent_model_calls(modelstats.SPEED_HOURS))
         except Exception:
             return {}
 
