@@ -40,6 +40,8 @@ Koyu tema zaten 2026-10-19 kararıyla düzeltilmişti (yalnız ortak hatalar).
 - Yazılı ikincil (ghost) düğmeler çerçevesizdi, düz yazı gibi görünüyordu ("Turu geri al", "Sorun yok",
   "…bu oturumda izin ver"): QPushButton[variant=ghost] ince border_strong çerçeve; simgeli QToolButton aynı kaldı.
 - skills_page._clear ve öneri ızgarası: `hide()` sonra `deleteLater()`.
+- Dosyalar sekmesindeki klasör yolu panele sığmayıp kesiliyordu → _YolEtiketi (ortadan kısaltma, tam yol ipucunda).
+- tools/ui_denetim.py: KESIK denetimi de var (yalnız QT_QPA_PLATFORM=windows; offscreen yazı genişliği gerçek değil).
 - tools/ui_denetim.py: kalıcı denetim aracı (ClearType'a dayanıklı "en az N pikselin ulaştığı
   kontrast" ölçümü; kaydırmalı sayfalar, panel sekmeleri, örnek kartlar).
 

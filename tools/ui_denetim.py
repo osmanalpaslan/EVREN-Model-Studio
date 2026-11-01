@@ -101,11 +101,12 @@ def main() -> int:
     toplam_hata = 0
     for tema in temalar:
         bulgular = denetle(tema, out, goruntu)
-        hatalar = [b for b in bulgular if b["duzey"] == "HATA"]
+        hatalar = [b for b in bulgular if b["duzey"] in ("HATA", "KESIK")]
         toplam_hata += len(hatalar)
         (out / f"denetim_{tema}.json").write_text(json.dumps(bulgular, ensure_ascii=False, indent=1),
                                                  encoding="utf-8")
-        print(f"[{tema}] HATA {len(hatalar)} · UYARI {sum(b['duzey'] == 'UYARI' for b in bulgular)}")
+        print(f"[{tema}] HATA {sum(b['duzey'] == 'HATA' for b in bulgular)} · KESIK "
+              f"{sum(b['duzey'] == 'KESIK' for b in bulgular)} · UYARI {sum(b['duzey'] == 'UYARI' for b in bulgular)}")
         for b in hatalar[:60]:
             print(f"   {b['ekran']:<22} {b['tur']:<12} {b['oran']:>5}  {b['metin'][:50]!r}  ({b['ad']})")
     return 1 if toplam_hata else 0
@@ -142,6 +143,7 @@ def denetle(tema: str, out: Path, goruntu: bool) -> list[dict]:
 
     bulgular: list[dict] = []
     gorulen: set[tuple] = set()
+    gercek_cizim = os.environ.get("QT_QPA_PLATFORM", "") == "windows"
 
     def tur_adi(wd) -> str | None:
         if isinstance(wd, QCheckBox):
@@ -198,6 +200,27 @@ def denetle(tema: str, out: Path, goruntu: bool) -> list[dict]:
                 metin = wd.toolTip() or ""
             if isinstance(wd, QAbstractSpinBox):
                 continue                       # içindeki giriş alanı (qt_spinbox_lineedit) ölçülür
+            # KESİK: yazı bileşene sığmıyor (yarıda kalıyor). Düğme/onay kutusu: en küçük boyut
+            # ipucundan dar; tek satırlık etiket: en uzun satır içerik genişliğinden uzun.
+            kesik = False
+            # offscreen'de yazı kutucuklarla çizilir, genişlikler gerçek değildir → yalnız gerçek çizimde
+            if gercek_cizim and wd.isEnabled() and metin.strip() and not metin.endswith("…"):
+                if isinstance(wd, QAbstractButton) and not isinstance(wd, QTabBar):
+                    kesik = wd.width() + 2 < wd.minimumSizeHint().width()
+                elif isinstance(wd, QLabel) and not wd.wordWrap() and wd.textFormat() != Qt.RichText \
+                        and "<" not in metin:
+                    satir = max(metin.splitlines() or [""], key=len)
+                    kesik = wd.fontMetrics().horizontalAdvance(satir) > wd.contentsRect().width() + 2
+            if kesik:
+                kanahtar = ("KESIK", ekran.split("/")[0], type(wd).__name__, metin[:40])
+                if kanahtar not in gorulen:
+                    gorulen.add(kanahtar)
+                    bulgular.append({
+                        "tema": tema, "ekran": ekran, "tur": tur, "duzey": "KESIK", "oran": 0,
+                        "metin": metin.replace("\n", " ")[:120], "ad": wd.objectName() or type(wd).__name__,
+                        "rol": "", "arka": "", "on": "", "konum": [r.x(), r.y(), r.width(), r.height()],
+                    })
+                    hata_kutulari.append(r)
             sonuc = measure(img, r.x(), r.y(), r.width(), r.height(), short=len(metin.strip()) <= 2)
             if sonuc is None:
                 continue
