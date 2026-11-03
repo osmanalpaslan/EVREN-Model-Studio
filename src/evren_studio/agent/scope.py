@@ -15,6 +15,7 @@ import difflib
 import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 MAX_DIFF_LINES = 60           # dosya başına modele gösterilen fark satırı
@@ -151,6 +152,47 @@ TEST_EDIT_WARNING = ("\n⚠ Var olan bir TEST dosyasını değiştirdin ({path})
                      "istemedi; testi değiştirerek geçirmek isteği karşılamaz. Bu değişikliği geri al (dosyayı "
                      "eski hâline döndür). Testler birbiriyle veya istekle çelişiyorsa durup kullanıcıya hangisinin "
                      "doğru olduğunu sor.")
+
+# 2026-11-03: koruma yalnız düzenleme aracını görüyordu; komutla (python -c, Set-Content, del …) değişen veya
+# silinen test dosyası ne modele ne kullanıcıya bildiriliyordu. Komuttan önce/sonra test dosyalarının
+# özetleri karşılaştırılır. Sınırlar: çok büyük projede ilk TEST_SNAPSHOT_MAX dosya, büyük dosyalar atlanır.
+TEST_SNAPSHOT_MAX = 400
+TEST_SNAPSHOT_MAX_BYTES = 1024 * 1024
+
+
+def snapshot_tests(root: Path) -> dict[str, bytes]:
+    """Projedeki var olan test dosyaları: göreli yol → içerik (karşılaştırma ve geri yükleme için)."""
+    from .tools import _walk
+
+    out: dict[str, bytes] = {}
+    total = 0
+    for p in _walk(root, root):
+        rel = p.relative_to(root).as_posix()
+        if not is_test_path(rel):
+            continue
+        try:
+            if p.stat().st_size > TEST_SNAPSHOT_MAX_BYTES:
+                continue
+            out[rel] = p.read_bytes()
+        except OSError:
+            continue
+        total += len(out[rel])
+        if len(out) >= TEST_SNAPSHOT_MAX or total >= 16 * TEST_SNAPSHOT_MAX_BYTES:
+            break
+    return out
+
+
+def changed_tests(root: Path, before: dict[str, bytes]) -> list[str]:
+    """`before` anındaki test dosyalarından içeriği değişen veya silinenler (yeni test dosyası sayılmaz)."""
+    out = []
+    for rel, data in before.items():
+        try:
+            now = (root / rel).read_bytes()
+        except OSError:
+            now = None
+        if now != data:
+            out.append(rel)
+    return out
 
 
 def _diff(path: str, before: str | None, after: str | None) -> str:

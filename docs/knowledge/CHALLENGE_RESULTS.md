@@ -84,6 +84,18 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Doğruluk turu: komutla test değiştirme koruması (2026-11-03, auto-pro, gerçek EVREN API)
+
+Dal `feat/dogruluk-turu`. Tam paket **12/12** · 1132 sn · yakalanmamış hata 0. Yeni uyarı (TEST dosyası,
+komutla) 12 görevde **0 kez** tetiklendi (yanlış tetiklenme yok, R-22); celiski 3/3 (deepseek-v4.1-flash test
+dosyasına dokunmadan durdu, yani gerçek koşuda uyarının tetiklenmesi gereken durum oluşmadı — tetiklenme
+birim testleriyle doğrulandı). Aynı gün önceki koşu 1595 sn idi: anlık görüntü yükü belirgin değil, süre
+farkı EVREN yanıt süresinden.
+
+R-13 (aynı gün, `feat/profesyonel-kalite` 1117fae kodu): E2E_OK · arayüz 15/15 · ajan 5/6 — düşen tek senaryo
+glm-5.3 yerel protokol, EVREN `HTTP 503 model_capacity_exhausted`; ayrı denemede araçsız istek de 503 aldı
+(kapasite, kod değil).
+
 ## Madde 7 sonrası zorluk paketi (2026-11-03, auto-pro, gerçek EVREN API, dizüstü bilgisayar)
 
 Kod: `1117fae` (uyarlanabilir sıra + `SLOW_SWITCH_EXCLUDE` + düzenek zaman aşımı düzeltmesi). 2026-11-01'deki

@@ -36,6 +36,17 @@ masaüstünde 2026-11-01 21:20'de başlatılan zorluk paketinin sonucu işlenmem
   taşırken bu kopyayı `EVREN-Model-Studio/EVREN-Model-Studio` olarak içeri kopyaladı. Commit'lenmeden proje
   dışına taşındı.
 
+## Devam (aynı oturum): dalı kapatma ve doğruluk turu
+- Kullanıcı kararı: "doğruluk ve sağlam iş bir tık daha önemli" → sıra: dalı kapat → doğruluk → güvenli hız
+  (DEVIR_NOTU Madde 10). Effort: kullanıcıya açık ayar yok; kod/plan rolünde düşürülmeyecek (ölçüm: "none"
+  kaliteyi düşürdü, "low" deepseek'te daha çok düşündürdü, "high" ölçülmedi).
+- R-13 (1117fae): E2E_OK · arayüz 15/15 · ajan 5/6 (glm-5.3 EVREN 503 kapasite; araçsız istekte de 503).
+- Yeni dal `feat/dogruluk-turu`: komutla test değiştirme/silme koruması (kayıt
+  2026-11-03-test-dosyasi-korumasi-komutla-yapilan-degisikligi-gormuyordu). Birim 5 yeni test + mutasyon;
+  pytest 738/738; zorluk 12/12 · 1132 sn, yeni uyarı 0 kez (yanlış tetiklenme yok).
+- Kendi test hatam: Windows'ta `write_text` CRLF yazdığı için "geri yüklenince not yok" testi ilk hâlinde
+  düştü; koruma doğruydu, test dosyası bayt olarak yazılarak düzeltildi.
+
 ## Sonraki motor için notlar
 - Madde 7'de kalan: adım sayısı azaltma / düşünme süresi (deepseek-v4.1-flash adım başına 30-130 sn). Ölçüm
   tabanı: bu oturumun 12/12 · 1595 sn koşusu (rapor: build/zorluk_2026-11-03_tam, yalnız bu bilgisayarda).

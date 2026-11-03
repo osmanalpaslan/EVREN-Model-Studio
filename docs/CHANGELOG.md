@@ -1,5 +1,13 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Doğruluk turu
+
+- **Test dosyası koruması komutları da kapsıyor**: siz testlerin değiştirilmesini istemediğiniz hâlde ajan
+  var olan bir test dosyasını bir komutla değiştirir ya da silerse (yalnız düzenleme aracıyla değil) artık
+  bunu fark eder: ajan uyarılır, tur sonunda "test dosyaları değiştirildi" notu çıkar ve değişiklik sağ
+  paneldeki Değişiklikler sekmesinde görünür, oradan geri alınabilir. Testleri çalıştırmak, kodu düzeltmek
+  veya yeni test dosyası oluşturmak uyarı vermez.
+
 ## Yayınlanmamış — Web araması ve açık tema düzeltmeleri
 
 - **İnternette arama (`web_search`)**: ajan güncel bilgi gerektiğinde (paket sürümü, hata çözümü, belge,
