@@ -178,6 +178,25 @@ def collapse_repetition(text: str, min_dup: int = 3) -> tuple[str, bool]:
     return text, False
 
 
+_INVESTIGATE_RE = None
+
+
+def looks_like_investigation_intent(text: str) -> bool:
+    """'bakıyorum / okuyayım / inceleyeyim / kontrol ediyorum' gibi ŞİMDİ inceleme yapacağını söyleyen niyet.
+    Plan modunda da yarım iştir (2026-11-04: deepseek "Önce app.py dosyasına bakıyorum." deyip araçsız durdu;
+    Derin alt ajanları Plan modunda koştuğu için denetçi dosyaya bakmadan bitebiliyordu). "…değiştireceğim"
+    gibi plan cümleleri buraya girmez."""
+    global _INVESTIGATE_RE
+    import re
+
+    if _INVESTIGATE_RE is None:
+        _INVESTIGATE_RE = re.compile(
+            r"\b(bak(ıyorum|ayım|acağım)|oku(yorum|yayım|yacağım)|incele(yeyim|yeceğim|iyorum)|"
+            r"kontrol ed(iyorum|eyim|eceğim)|göz at(ıyorum|ayım|acağım)|araştır(ıyorum|ayım|acağım)|"
+            r"listele(yeyim|yeceğim|iyorum)|let me (check|look|read|inspect|see))", re.I)
+    return looks_like_unfinished_intent(text) and bool(_INVESTIGATE_RE.search(text or ""))
+
+
 def looks_like_unfinished_intent(text: str) -> bool:
     """Kısa ve 'yapacağım/inceleyeyim' gibi niyet bildiren bir son yanıt mı?"""
     global _INTENT_RE
@@ -939,8 +958,10 @@ class AgentRunner:
                 break
             if not calls and not parse_errors:
                 stall = ("repeat" if repetitive else self._stall_kind(content, result)) if self.agentic else None
-                if stall == "intent" and normalize_mode(self.mode) == "plan":
-                    # Plan modunda "…değiştireceğim" ile biten yanıt beklenen sonuçtur (plan), dürtme.
+                if stall == "intent" and normalize_mode(self.mode) == "plan" and not (
+                        step == 1 and looks_like_investigation_intent(content)):
+                    # Plan modunda "…değiştireceğim" ile biten yanıt beklenen sonuçtur (plan), dürtme. İstisna:
+                    # turun İLK yanıtı araçsız "bakıyorum/okuyayım" ise inceleme yapılmamıştır → dürt.
                     stall = None
                 if stall and stall not in nudged and step < self.max_steps:
                     # Boş yanıt / "inceleyeyim" deyip durma / metin tekrarı: bir kez otomatik dürt.

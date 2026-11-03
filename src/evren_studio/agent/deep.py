@@ -110,10 +110,19 @@ class MemoryStore:
 class HeadlessEvents(AgentEvents):
     """Onay isteğini ANINDA reddeder (arayüzsüz ajan sonsuza dek beklemesin); durumları toplar."""
 
-    def __init__(self, status: Callable[[str], None] | None = None):
+    def __init__(self, status: Callable[[str], None] | None = None,
+                 progress: Callable[[str], None] | None = None):
         self.notes: list[str] = []
         self._status = status
+        self._progress = progress         # Madde 8: canlı durum cümlesi (ör. "Okunuyor: calc.py")
         self.tools = 0
+
+    def tool_started(self, call, title: str) -> None:
+        if self._progress is not None:
+            try:
+                self._progress(title)
+            except Exception:
+                pass                        # durum gösterimi alt ajanı bozmasın
 
     def tool_finished(self, call, result) -> None:
         self.tools += 1
@@ -158,14 +167,15 @@ def transcript_of(messages: list[dict], limit: int = 3000) -> str:
 
 def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, prompt: str,
                  marker: str, gate=None, cancel=None, mcp=None, max_steps: int = SUB_MAX_STEPS,
-                 context_tokens: int | None = None) -> SubResult:
+                 context_tokens: int | None = None, base_body: dict | None = None,
+                 progress: Callable[[str], None] | None = None) -> SubResult:
     """Salt okunur (Plan modu) arayüzsüz alt ajan. Son yanıt metnini döndürür.
     R-26: blok ilk turda yoksa koşucu bir kez dürter (final_marker); tur yine bloksuz biterse aynı
     bağlamla kısa "yalnız sonucu ver" turu açılır (2026-10-21: ikinci planlayıcı plan vermemişti)."""
     store = MemoryStore()
     history = [{"id": 0, "role": "user", "content": prompt}]
     store.messages.append(history[0])
-    events = HeadlessEvents()
+    events = HeadlessEvents(progress=progress)
     t0 = time.monotonic()
 
     def before(_step):
@@ -177,7 +187,8 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
         return AgentRunner(client, model, session_id=0, store=store, events=events,
                            workspace=Workspace(root), mode="plan", stream=False, cancel=cancel,
                            max_steps=steps, before_model_call=before, fallback_models=list(fallbacks),
-                           final_marker=marker, mcp=mcp, context_tokens=context_tokens)
+                           final_marker=marker, mcp=mcp, context_tokens=context_tokens,
+                           base_body=base_body)        # ör. {"reasoning_effort": "high"}; yalnız birincil modelde
 
     def last_text():
         texts = [m.get("content") or "" for m in history if m.get("role") == "assistant" and (m.get("content") or "").strip()]

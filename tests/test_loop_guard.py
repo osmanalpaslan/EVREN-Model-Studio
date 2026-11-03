@@ -258,6 +258,55 @@ def test_gercek_400_metin_protokolune_gecer(env):
     assert r.run(db.get_session_messages(sid)).protocol == "text"
 
 
+def _plan_run(tmp_path, replies):
+    root = tmp_path / "p"
+    root.mkdir()
+    (root / "app.py").write_text("GIZLI = 4217\n", encoding="utf-8")
+    db = Database(tmp_path / "t.db")
+    sid = db.create_session("m", str(root), "plan")
+    db.add_session_message(sid, "user", "app.py'deki GIZLI değerini yaz")
+    client = Fake(replies)
+    r = AgentRunner(client, "m", session_id=sid, store=db, events=Ev(), workspace=Workspace(root),
+                    mode="plan", stream=False)
+    out = r.run(db.get_session_messages(sid))
+    msgs = db.get_session_messages(sid)
+    db.close()
+    return out, client, msgs
+
+
+def test_plan_modunda_ilk_yanit_araçsiz_inceleme_niyeti_durtulur(tmp_path):
+    """2026-11-04: deepseek metin protokolünde "Önce … app.py dosyasına bakıyorum." deyip araçsız durdu."""
+    out, client, msgs = _plan_run(tmp_path, [
+        ChatResult(content="Önce proje klasörüne ve app.py dosyasına bakıyorum.", finish_reason="stop"),
+        tc("read_file", "c1", path="app.py"),
+        ChatResult(content="GIZLI değeri 4217.", finish_reason="stop")])
+    assert out.stopped == "done"
+    assert client.requests[1]["messages"][-1]["content"] == NUDGE_INTENT
+    assert any(m["role"] == "tool" for m in msgs)
+
+
+def test_plan_modunda_aractan_sonra_niyet_ve_plan_cumlesi_durtulmez(tmp_path):
+    # araç kullandıktan sonra "inceleyeceğim" planın parçası sayılır (eski davranış)
+    out, client, _ = _plan_run(tmp_path, [
+        tc("read_file", "c1", path="app.py"),
+        ChatResult(content="Sonraki adımda testleri inceleyeceğim.", finish_reason="stop")])
+    assert out.stopped == "done" and len(client.requests) == 2
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("Önce proje klasörüne ve app.py dosyasına bakıyorum.", True),
+    ("Dosyayı okuyayım.", True),
+    ("Let me check the tests.", True),
+    ("Plan: a.py'yi değiştireceğim.", False),
+    ("Önce testleri yazacağım.", False),
+    ("Tüm testler geçti.", False),
+])
+def test_inceleme_niyeti_algilama(text, expected):
+    from evren_studio.agent.runner import looks_like_investigation_intent
+
+    assert looks_like_investigation_intent(text) is expected
+
+
 def test_plan_modunda_niyet_cumlesi_durtulmez(tmp_path):
     root = tmp_path / "p"
     root.mkdir()

@@ -34,6 +34,11 @@ kurtarır. Bu modeli metin protokolüyle kullanma.
 
 ## Kanıt
 2026-10-17 doğrudan istekler (stream=True, 5'er deneme), LOOP_ANALYSIS.md.
+2026-11-03/04: `tests/e2e_agent_real_api.py` metin protokolünde deepseek-v4.1-flash 4 koşunun 3'ünde düştü
+("Önce … app.py dosyasına bakıyorum." deyip araçsız durdu). Plan modu istisnası bu ilk araçsız inceleme
+niyetini dürtmüyordu → düzeltildi (`looks_like_investigation_intent`); düzeltmeden sonra model dürtüldü
+(3 adım) ama araç bloğu yine gelmedi → sorun hâlâ sunucu/model tarafında, durum "acik" kalır. Yerel protokol
+aynı koşularda geçti.
 
 ## Önleme
 MODEL_CAPABILITIES.md'ye not. EVREN güncellenirse yeniden ölç.

@@ -19,16 +19,26 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import QPlainTextEdit
 
 from ..agent import deep as dp
 from ..agent import project as pj
 from ..agent.quota import QuotaGate
 from ..api.client import CancelToken
+from .transcript import format_duration
 from .workers import Task
 
 MAX_PARALLEL = 3
+PHASE_LABELS = {"anla": "anla", "planla": "planla", "uygula": "uygula", "dogrula": "doğrula", "duzelt": "düzelt",
+                "yanit": "yanıt", "soru": "soru"}
+# Madde 8 (2026-11-03, CHALLENGE_RESULTS "Derin Mod denetçi karşılaştırması"): glm-5.3 varsayılanda denetim
+# bloğunu yazamadı (hatalı 0/3, 12 eksik blok), "high" ile 3/3 ve 0 eksik; qwen/deepseek'te "high" kazanç
+# getirmedi (yalnız yavaşlattı). Effort model başınadır; listede olmayan model varsayılanla koşar.
+DEEP_MODEL_EFFORT: dict[str, str] = {"glm-5.3": "high"}
+# İkinci denetçi: ölçümde deepseek-v4.1-flash 636 sn / 2 eksik blok, glm-5.3+high 473 sn / 0 eksik (ikisi de 6/6).
+# glm kapasite (503) verirse zincir kod rolüne (deepseek…) geçer.
+DEEP_VERIFIER2 = "glm-5.3"
 
 
 class DeepController(QObject):
@@ -56,6 +66,11 @@ class DeepController(QObject):
         self._qedit: QPlainTextEdit | None = None
         self._tasks_text = ""
         self._subs_done = 0
+        self._t0: float | None = None
+        self._bar_shown = False
+        self._bar_timer = QTimer(self)           # geçen süre saniyede bir (yalnız Derin etkinken çalışır)
+        self._bar_timer.setInterval(1000)
+        self._bar_timer.timeout.connect(self._render_bar)
         self.sig_note.connect(lambda t, i: view._note(t, i), Qt.QueuedConnection)
         self.sig_label.connect(self._set_label, Qt.QueuedConnection)
         view.project.finished_hooks.append(self._project_finished)
@@ -83,6 +98,21 @@ class DeepController(QObject):
     def _set_label(self, text: str) -> None:
         self.label = text
         self.view._tick_run()
+        self._render_bar()
+
+    def _render_bar(self) -> None:
+        """Arka plan fazında (anla/planla/doğrula) oturumda tur çalışmaz ve SessionView._tick_run çubuğu
+        çizmez: 2026-11-03 ekran görüntüsünde Derin etiketi hiç görünmüyordu (R-05). Çubuğu burada göster."""
+        sv = self.view
+        if sv.running:                       # ajan turu (uygula/düzelt): tur çubuğu Derin etiketini gösterir
+            return
+        if self.active and self.busy and self.label:
+            el = format_duration(time.monotonic() - (self._t0 or time.monotonic()))
+            sv.composer.set_run_status(f"{self.label}  ·  {el}")
+            self._bar_shown = True
+        elif self._bar_shown:
+            sv.composer.set_run_status(None)
+            self._bar_shown = False
 
     def _ws(self) -> str | None:
         return self.view.project._ws()
@@ -119,15 +149,22 @@ class DeepController(QObject):
                 return dp.SubResult("", "error", "EVREN modeli yok")
             client = self.ctx.make_client()
             info = self.ctx.model_info(chain[0])
+            name = label or role
+            phase = self.state.phase if self.state else ""
+
+            def progress(title: str) -> None:
+                # Madde 8: alt ajan çalışırken durum satırında kısa canlı cümle (sinyal: iş parçacığı güvenli, R-11)
+                self.sig_label.emit(f"Derin · {PHASE_LABELS.get(phase, phase)} · {name}: {title[:70]}")
+            self.sig_label.emit(f"Derin · {PHASE_LABELS.get(phase, phase)} · {name}: {chain[0]} düşünüyor")
             try:
                 res = dp.run_subagent(client=client, model=chain[0], fallbacks=chain[1:], root=root,
                                       prompt=prompt, marker=marker, gate=self._gate, cancel=self._cancel,
-                                      context_tokens=getattr(info, "context_length", None))
+                                      context_tokens=getattr(info, "context_length", None),
+                                      base_body=self._effort_body(role, chain[0]), progress=progress)
             finally:
                 client.close()
             if res.stopped == "quota_daily":
                 self._quota_hit = True
-            name = label or role
             if log_dir is not None:
                 try:
                     log_dir.mkdir(parents=True, exist_ok=True)
@@ -140,10 +177,17 @@ class DeepController(QObject):
             ok = bool(marker) and marker in (res.text or "")
             self._log(f"{name} bitti — {res.summary}" + ("" if ok else " · sonuç bloğu YOK")
                       + (f" · hata: {res.error[:120]}" if res.error else ""))
-            phase = self.state.phase if self.state else ""
-            self.sig_label.emit(f"Derin · {phase} ({self._subs_done} alt ajan bitti)")
+            self.sig_label.emit(f"Derin · {PHASE_LABELS.get(phase, phase)} ({self._subs_done} alt ajan bitti)")
             return res
         return run
+
+    def _effort_body(self, role: str, model: str) -> dict | None:
+        """Modele göre düşünme seviyesi (DEEP_MODEL_EFFORT; ölçümle seçilir). Model desteklemiyorsa gönderilmez."""
+        effort = DEEP_MODEL_EFFORT.get(model)
+        info = self.ctx.model_info(model)
+        if not effort or not info or not (info.capabilities or {}).get("reasoning_effort"):
+            return None
+        return {"reasoning_effort": effort}
 
     def _log(self, text: str) -> None:
         if self.state is not None:
@@ -201,6 +245,8 @@ class DeepController(QObject):
         self._gate = QuotaGate(self._quota, max_parallel=par)
         self.ctx.probe_models("Derin")              # A8: bozuk/yavaş motor işe başlamadan sona alınsın
         self.active = True
+        self._t0 = time.monotonic()
+        self._bar_timer.start()
         self._log("başladı — 1/5 ANLA: bağımsız alt ajanlar projeyi farklı açılardan inceliyor (salt okunur). "
                   "Her biri bitince burada not düşer.")
         self.sig_label.emit("Derin · anla")
@@ -368,6 +414,10 @@ class DeepController(QObject):
         aynı modele düşüyordu)."""
         a, b = self._evren_chain("inceleme"), self._evren_chain("kod")
         m1 = a[0] if a else (b[0] if b else None)
+        info = self.ctx.model_info(DEEP_VERIFIER2)
+        if (info is not None and self.ctx.provider_of(DEEP_VERIFIER2) == "evren" and DEEP_VERIFIER2 != m1
+                and (info.capabilities or {}).get("tools")):
+            return m1, DEEP_VERIFIER2              # Madde 8 ölçümü; yoksa eski davranış
         m2 = next((m for m in b + a if m != m1), m1)
         return m1, m2
 
@@ -477,6 +527,8 @@ class DeepController(QObject):
         self._cancel = CancelToken()
         self._quota_hit = False
         self.active = True
+        self._t0 = time.monotonic()
+        self._bar_timer.start()
         self.view.project.evren_only = st.phase != "anla"
         st.status = "calisiyor"
         {"anla": self._run_understand, "planla": self._run_plan,
@@ -520,6 +572,8 @@ class DeepController(QObject):
         self.active = False
         self.awaiting_answers = False
         self.label = ""
+        self._bar_timer.stop()
+        self._render_bar()                   # kendi gösterdiği çubuğu kapat
         self.view.project.evren_only = False
         st.status = status
         st.pause_reason = reason
