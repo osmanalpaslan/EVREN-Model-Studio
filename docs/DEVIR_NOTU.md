@@ -13,7 +13,7 @@
 ## Şu an
 
 - **Güncelleme:** 2026-11-03 akşam · Claude Code (claude-opus-5-5) · dizüstü bilgisayar
-- **Aktif dal:** `master` (10b dalı `feat/faz-unutma-olcumu` ölçüm sonrası birleştirilir). Yeni iş için master'dan dal aç.
+- **Aktif dal:** `feat/derin-mod-v2` (Madde 8 SÜRÜYOR): denetçi/yargıç ölçümü yapıldı, ikinci denetçi glm-5.3+high, Derin durum çubuğu düzeltildi, Plan modunda araçsız inceleme niyeti dürtülür. Kalan: tam pytest + R-13 + zorluk paketi + e2e_derin (koşuyor), sonra belge ve birleştirme.
 - **Kaldığı yer:** Madde 11 (gözlem ajanı) ve 10a YAPILDI. **10b YAPILDI:** maraton F (tek mesaj, 10 faz) gerçek
   API'de 4 koşu — 3 otomatik özetli koşular dahil hepsi 17/17, "devam et" gerekmedi; sorun üretilemedi →
   gerçek kullanım için gözleme `devam_zorunlu` eklendi (CHALLENGE_RESULTS "Faz unutma ölçümü"). Ayrıca hijyen
