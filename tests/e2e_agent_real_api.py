@@ -117,6 +117,15 @@ def main() -> int:
                     print(f"      protokol değişimi: {r['protokol_degisimi']}")
                 if r["hata"]:
                     print(f"      hata: {r['hata']}")
+                elif not ok:
+                    # Gözlem ajanı: API hatası olmadan düşen senaryo (yanlış değer, okumadan yanıt) de kayda geçsin
+                    from evren_studio import gozlem
+
+                    gozlem.kaydet("e2e_basarisiz", f"Ajan uçtan uca senaryosu düştü: {model} {protocol}",
+                                  onem="orta", alan="test",
+                                  mesaj=f"read_file={r['read_file_ok']} doğru_değer={r['dogru_deger']}",
+                                  ayrinti={"model": model, "protokol": protocol, "durma": r["durum"],
+                                           "adim": r["adim"], "kaynak_betik": "e2e_agent_real_api"})
                 print(f"      yanıt: {r['son_yanit']}")
     finally:
         client.close()
