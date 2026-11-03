@@ -328,6 +328,9 @@ class AppContext:
                 self.db.upsert_model_health(rec.get("model") or "?", False, error=(rec.get("detail") or "")[:200])
         except Exception:
             pass
+        from .. import gozlem
+
+        gozlem.ajan_olayi(rec)
 
     def model_penalties(self) -> dict[str, str]:
         """A5: kalite puanı düşen modeller → gerekçe (son 24 saat). Okunamazsa ceza yok."""
@@ -601,6 +604,9 @@ class AppContext:
 
     def save_settings(self) -> None:
         self.store.save(self.settings)
+        from .. import gozlem
+
+        gozlem.AYAR_ACIK = bool(self.settings.gozlem_enabled)
 
     # ---- uzun işler (agent/jobs.py) ----------------------------------------------------
 

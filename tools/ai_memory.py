@@ -15,6 +15,8 @@ Komutlar:
   denetle                   Biçim, bağlantı ve güncellik denetimi (hata → çıkış 1)
   kanca-kur                 Git ön-commit kancasını bu depo için etkinleştirir
   kanca                     (ön-commit kancası tarafından çağrılır)
+  gozlem listele|goster|kayda-donustur|kapat|ekle|gonder
+                            Uygulamanın gözlem ajanından gelen kayıtlar (gozlem-kayitlari dalı)
 
 Örnek:
   .\\.venv\\Scripts\\python.exe tools\\ai_memory.py baslangic
@@ -548,6 +550,12 @@ def cmd_baslangic(args) -> int:
             _out(f"### {name}")
             for line in body.strip().splitlines()[:30]:
                 _out(f"  {line}")
+    gz_lines = baslangic_gozlem(fetch=bool(sync_lines))
+    if gz_lines:
+        _out("")
+        _out(f"## Uygulamadan gelen gözlemler ({GOZLEM_BRANCH} dalı, gözlem ajanı)")
+        for line in gz_lines:
+            _out(f"  {line}" if not line.startswith("!") else line)
     hooks = git("config", "--get", "core.hooksPath")
     if hooks.replace("\\", "/") != "tools/hooks":
         _out("! Git ön-commit kancası bu makinede kurulu değil:")
@@ -585,6 +593,285 @@ def cmd_baslangic(args) -> int:
     _out("Bitirirken: oturum günlüğü yaz → kayıt/kural ekle → `indeks` → `denetle` → pytest.")
     _out("Ayrıntı: AGENTS.md · Tüm liste: docs/ai-memory/INDEX.md")
     return 0
+
+
+# ---- gözlem ajanından gelen kayıtlar (gozlem-kayitlari dalı; src/evren_studio/gozlem.py) ----------
+
+GOZLEM_BRANCH = "gozlem-kayitlari"
+GOZLEM_REF = f"refs/remotes/origin/{GOZLEM_BRANCH}"
+_ONEM_SIRA = {o: i for i, o in enumerate(ONEM)}
+
+
+def gozlem_fetch(root: Path | None = None) -> bool:
+    code, _ = _git_run(root or ROOT, "fetch", "-q", "origin", f"+{GOZLEM_BRANCH}:{GOZLEM_REF}", timeout=45)
+    return code == 0
+
+
+def _front(text: str) -> tuple[dict[str, str], str]:
+    meta: dict[str, str] = {}
+    m = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n?(.*)$", text, re.S)
+    if not m:
+        return meta, text
+    for line in m.group(1).splitlines():
+        if ":" in line:
+            k, v = line.split(":", 1)
+            meta[k.strip()] = v.split("  #", 1)[0].strip()
+    return meta, m.group(2)
+
+
+def _cat_files(root: Path, ref: str, paths: list[str]) -> dict[str, str]:
+    """Birçok dosyayı tek `git cat-file --batch` ile okur (dalı çalışma kopyasına almadan)."""
+    if not paths:
+        return {}
+    try:
+        r = subprocess.run(["git", "cat-file", "--batch"], cwd=root, capture_output=True, timeout=60,
+                           input="".join(f"{ref}:{p}\n" for p in paths).encode("utf-8"))
+    except (OSError, subprocess.TimeoutExpired):
+        return {}
+    data, out, i = r.stdout, {}, 0
+    for p in paths:
+        nl = data.find(b"\n", i)
+        if nl < 0:
+            break
+        head = data[i:nl].decode("utf-8", "replace").split()
+        if len(head) < 3 or head[1] == "missing":
+            i = nl + 1
+            continue
+        size = int(head[2])
+        out[p] = data[nl + 1: nl + 1 + size].decode("utf-8", "replace")
+        i = nl + 1 + size + 1
+    return out
+
+
+def gozlem_oku(root: Path | None = None, ref: str = GOZLEM_REF) -> list[dict]:
+    """Daldaki gözlemleri makine dosyalarıyla birleştirir. Dal yoksa boş liste."""
+    import json
+
+    root = root or ROOT
+    code, out = _git_run(root, "ls-tree", "-r", "--name-only", ref, "gozlemler")
+    if code != 0:
+        return []
+    files = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    texts = _cat_files(root, ref, files)
+    by: dict[str, dict] = {}
+    for path, text in texts.items():
+        parts = path.split("/")
+        if len(parts) != 3:
+            continue
+        g = by.setdefault(parts[1], {"imza": parts[1], "meta": {}, "govde": "", "olaylar": []})
+        if parts[2] == "kayit.md":
+            g["meta"], g["govde"] = _front(text)
+        elif parts[2].startswith("olay-") and parts[2].endswith(".json"):
+            try:
+                g["olaylar"].append(json.loads(text))
+            except ValueError:
+                pass
+    out_list = []
+    for g in by.values():
+        m, ol = g["meta"], g["olaylar"]
+        g["baslik"] = m.get("baslik") or g["imza"]
+        g["onem"] = m.get("onem") if m.get("onem") in ONEM else "orta"
+        g["durum"] = m.get("durum") or "acik"
+        g["toplam"] = sum(int(o.get("sayac") or 0) for o in ol)
+        g["makine"] = len(ol)
+        g["son"] = max((o.get("son") or "" for o in ol), default="")
+        g["ilk"] = min((o.get("ilk") or "" for o in ol if o.get("ilk")), default=m.get("ilk_gorulme", ""))
+        g["surumler"] = sorted({v for o in ol for v in (o.get("surumler") or [])})
+        kapali = m.get("cozuldu_tarih") or ""
+        g["yeniden"] = g["durum"] == "cozuldu" and bool(kapali) and g["son"] > kapali
+        out_list.append(g)
+    return sorted(out_list, key=lambda g: (not g["yeniden"], g["durum"] != "acik", _ONEM_SIRA.get(g["onem"], 9),
+                                           -g["toplam"]))
+
+
+def gozlem_acik(items: list[dict]) -> list[dict]:
+    return [g for g in items if g["durum"] == "acik" or g["yeniden"]]
+
+
+def _gozlem_satir(g: dict) -> str:
+    etiket = "YENİDEN GÖRÜLDÜ · " if g["yeniden"] else ""
+    return (f"- [{g['onem']}] {etiket}{g['imza']} · {g['baslik']} · {g['toplam']} kez · {g['makine']} makine · "
+            f"son {g['son'][:10]} · sürüm {', '.join(g['surumler'][-2:]) or '?'}")
+
+
+def baslangic_gozlem(root: Path | None = None, fetch: bool = True) -> list[str]:
+    """`baslangic` bölümü: açık gözlem varsa motora "kullanıcıya bildir" talimatı."""
+    if fetch:
+        gozlem_fetch(root)
+    acik = gozlem_acik(gozlem_oku(root))
+    if not acik:
+        return []
+    yeniden = sum(1 for g in acik if g["yeniden"])
+    lines = [f"! KULLANICIYA BİLDİR: uygulamadan {len(acik)} açık gözlem geldi"
+             + (f" ({yeniden} tanesi düzeltildikten sonra YENİDEN görüldü)" if yeniden else "")
+             + ". İşe başlamadan listeyi kullanıcıya söyle ve düzeltmeyi öner (R-36).",
+             "  Ayrıntı: python tools/ai_memory.py gozlem goster <imza> · kayda dönüştür: gozlem kayda-donustur <imza>"]
+    lines += [_gozlem_satir(g) for g in acik[:10]]
+    if len(acik) > 10:
+        lines.append(f"- … ve {len(acik) - 10} tane daha: python tools/ai_memory.py gozlem listele")
+    return lines
+
+
+def _gozlem_bul(imza: str, root: Path | None = None) -> dict | None:
+    for g in gozlem_oku(root):
+        if g["imza"].startswith(imza):
+            return g
+    return None
+
+
+def _src_gozlem():
+    """Uygulamanın gozlem modülü (ekle/gönder için; okuma standart kütüphaneyle yapılır)."""
+    src = str(ROOT / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
+    from evren_studio import gozlem  # noqa: PLC0415
+
+    return gozlem
+
+
+def cmd_gozlem(args) -> int:
+    ne = args.islem
+    if ne in ("listele", "goster", "kayda-donustur", "kapat"):
+        if not gozlem_fetch():
+            _out("! gozlem-kayitlari dalı çekilemedi (dal henüz yok ya da ağ yok); son bilinen hâl gösteriliyor.")
+    if ne == "listele":
+        items = gozlem_oku()
+        items = items if args.hepsi else gozlem_acik(items)
+        _out(f"## Gözlemler ({'tümü' if args.hepsi else 'açık'}: {len(items)})")
+        for g in items:
+            _out(_gozlem_satir(g) + (f" · durum {g['durum']}" if args.hepsi else ""))
+        if not items:
+            _out("- yok")
+        return 0
+    if ne == "goster":
+        g = _gozlem_bul(args.imza)
+        if g is None:
+            _out(f"Gözlem bulunamadı: {args.imza}")
+            return 1
+        _out(_gozlem_satir(g))
+        _out(f"  durum: {g['durum']} · ilk: {g['ilk']} · son: {g['son']}")
+        _out(g["govde"].strip())
+        return 0
+    if ne == "kayda-donustur":
+        return _gozlem_kayda(args)
+    if ne == "kapat":
+        return _gozlem_kapat(args)
+    if ne == "ekle":
+        gz = _src_gozlem()
+        imza = gz.kaydet(args.tur, args.baslik, onem=args.onem, alan=args.alan, mesaj=args.mesaj,
+                         kaynak="motor", ayrinti={"kaynak_betik": args.betik} if args.betik else None)
+        _out(f"Gözlem kuyruğa eklendi: {imza}" if imza else "Gözlem eklenmedi (EVREN_GOZLEM=0?).")
+        if imza and args.gonder:
+            _out(gz.gonder())
+        return 0 if imza else 1
+    if ne == "gonder":
+        _out(_src_gozlem().gonder())
+        return 0
+    return 1
+
+
+def _gozlem_kayda(args) -> int:
+    g = _gozlem_bul(args.imza)
+    if g is None:
+        _out(f"Gözlem bulunamadı: {args.imza}")
+        return 1
+    secs = sections(g["govde"])
+    tur = {"cokme": "hata", "gorev_hatasi": "hata", "api_hatasi": "hata", "qt_uyari": "hata"}.get(
+        g["meta"].get("tur", ""), "risk")
+    today = date.today().isoformat()
+    path = _unique_path(INCIDENTS, f"{today}-{slugify(g['baslik'])}")
+    belirti = "\n".join(x for x in (_section(secs, "Belirti") or "", "Konum:", _section(secs, "Konum") or "",
+                                     "Ayrıntı:", _section(secs, "Ayrıntı") or "") if x).strip()
+    text = f"""---
+id: {path.stem}
+tarih: {today}
+tur: {tur}            # {' | '.join(TUR)}
+onem: {g['onem']}          # {' | '.join(ONEM)}
+durum: acik                # {' | '.join(DURUM)}
+alan: {g['meta'].get('alan') or 'genel'}
+kaynak_motor: EVREN Studio gözlem ajanı
+kaynak_model: bilinmiyor
+cozen_motor: {args.motor}
+cozen_model: {args.model}
+ortam: {environment_string()}
+etiketler: [gozlem]
+kurallar: []
+---
+
+# {g['baslik']}
+
+## Belirti
+Gözlem ajanından (uygulama çalışırken, otomatik ve temizlenmiş):
+{belirti}
+
+## Kök neden
+<!-- Neden oldu? Doğrulandıysa "doğrulandı", tahminse "tahmin" yaz. -->
+
+## Çözüm
+<!-- Ne yapıldı? İşe YARAMAYAN denemeleri de yaz. Çözülmediyse "Henüz yok". -->
+
+## Kanıt
+Gözlem `{g['imza']}` (dal {GOZLEM_BRANCH}): {g['toplam']} kez, {g['makine']} makine, ilk {g['ilk']}, son {g['son']},
+sürümler {', '.join(g['surumler']) or '?'}.
+
+## Önleme
+<!-- Tekrarını önleyen test/kural. Düzeltince: python tools/ai_memory.py gozlem kapat {g['imza']} --kayit {path.stem} -->
+
+## İlgili dosyalar
+"""
+    write_text(path, text)
+    _out(f"Oluşturuldu: {path.relative_to(ROOT).as_posix()}")
+    _out(f"Kök nedeni bul ve düzelt; sonra: python tools/ai_memory.py gozlem kapat {g['imza']} --kayit {path.stem}")
+    return 0
+
+
+def _gozlem_kapat(args) -> int:
+    """Daldaki kayit.md'nin durumunu günceller. Çalışma kopyasına dokunmaz: geçici worktree kullanılır."""
+    import shutil
+    import tempfile
+    from datetime import datetime, timezone
+
+    if _gozlem_bul(args.imza) is None:
+        _out(f"Gözlem bulunamadı: {args.imza}")
+        return 1
+    imza = _gozlem_bul(args.imza)["imza"]
+    tmp = Path(tempfile.mkdtemp(prefix="gozlem-"))
+    hooks = tmp / "bos-kancalar"
+    wt = tmp / "agac"
+    try:
+        for _ in range(3):
+            gozlem_fetch()
+            code, out = _git_run(ROOT, "worktree", "add", "-q", "--detach", str(wt), GOZLEM_REF)
+            if code != 0:
+                _out(f"Geçici çalışma ağacı açılamadı: {out}")
+                return 1
+            p = wt / "gozlemler" / imza / "kayit.md"
+            meta_text = p.read_text(encoding="utf-8")
+            now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            repl = {"durum": f"{args.durum}                # acik | cozuldu | kabul-edildi",
+                    "cozuldu_tarih": now, "cozum_kaydi": args.kayit}
+            for key, val in repl.items():
+                meta_text = re.sub(rf"(?m)^{key}:.*$", f"{key}: {val}", meta_text, count=1)
+            if args.not_:
+                meta_text = meta_text.rstrip() + f"\n\n## Kapanış notu ({now[:10]})\n{args.not_}\n"
+            p.write_text(meta_text, encoding="utf-8", newline="\n")
+            hooks.mkdir(exist_ok=True)
+            base = ["-C", str(wt), "-c", f"core.hooksPath={hooks}"]
+            _git_run(ROOT, *base, "add", "-A")
+            code, out = _git_run(ROOT, *base, "commit", "-q", "-m", f"gözlem {imza}: {args.durum} ({args.kayit})")
+            if code != 0:
+                _out(f"Commit edilemedi: {out}")
+                return 1
+            code, out = _git_run(ROOT, *base, "push", "-q", "origin", f"HEAD:{GOZLEM_BRANCH}", timeout=90)
+            _git_run(ROOT, "worktree", "remove", "--force", str(wt))
+            if code == 0:
+                _out(f"Gözlem {imza} → {args.durum} (kayıt {args.kayit}). Yeniden görülürse baslangic bildirir.")
+                return 0
+        _out(f"Gönderilemedi: {out}")
+        return 1
+    finally:
+        _git_run(ROOT, "worktree", "prune")
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def _norm(s: str) -> str:
@@ -787,6 +1074,30 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--ortam", default="")
     o.add_argument("--tarih", default="")
     o.set_defaults(fn=cmd_oturum)
+    g = sub.add_parser("gozlem", help="uygulamanın gözlem ajanından gelen kayıtlar")
+    gs = g.add_subparsers(dest="islem", required=True)
+    gl = gs.add_parser("listele", help="açık gözlemler")
+    gl.add_argument("--hepsi", action="store_true", help="kapalıları da göster")
+    gs.add_parser("goster", help="bir gözlemin ayrıntısı").add_argument("imza")
+    gk = gs.add_parser("kayda-donustur", help="gözlemden docs/ai-memory/incidents kaydı aç")
+    gk.add_argument("imza")
+    gk.add_argument("--motor", default="bilinmiyor")
+    gk.add_argument("--model", default="bilinmiyor")
+    gc = gs.add_parser("kapat", help="düzeltilen gözlemi dalda kapat")
+    gc.add_argument("imza")
+    gc.add_argument("--kayit", required=True, help="ilgili docs/ai-memory/incidents kimliği")
+    gc.add_argument("--durum", choices=("cozuldu", "kabul-edildi"), default="cozuldu")
+    gc.add_argument("--not", dest="not_", default="")
+    ge = gs.add_parser("ekle", help="geliştirme sırasında gözlem ekle (motorlar, gerçek API betikleri)")
+    ge.add_argument("--baslik", required=True)
+    ge.add_argument("--tur", default="gelistirici")
+    ge.add_argument("--onem", choices=ONEM, default="orta")
+    ge.add_argument("--alan", default="genel")
+    ge.add_argument("--mesaj", default="")
+    ge.add_argument("--betik", default="", help="gözlemi üreten betik/komut adı")
+    ge.add_argument("--gonder", action="store_true", help="ekledikten sonra depoya gönder")
+    gs.add_parser("gonder", help="bu bilgisayardaki kuyruğu depoya gönder")
+    g.set_defaults(fn=cmd_gozlem)
     sub.add_parser("indeks", help="INDEX.md ve AGENTS.md kural özetini üret").set_defaults(fn=cmd_indeks)
     sub.add_parser("denetle", help="biçim ve güncellik denetimi").set_defaults(fn=cmd_denetle)
     sub.add_parser("kanca-kur", help="git ön-commit kancasını etkinleştir").set_defaults(fn=cmd_kanca_kur)

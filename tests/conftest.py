@@ -6,6 +6,12 @@ from pathlib import Path
 
 import pytest
 
+import os
+
+# Gözlem ajanı testlerde kapalı: testlerin bilerek ürettiği hatalar kullanıcının gerçek kuyruğuna/deposuna
+# gitmesin. Gözlem testleri kendi geçici klasörleriyle EVREN_GOZLEM=1 açar.
+os.environ["EVREN_GOZLEM"] = "0"
+
 SRC = Path(__file__).resolve().parents[1] / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))

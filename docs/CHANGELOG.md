@@ -1,5 +1,18 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Gözlem ajanı
+
+- **Gözlem ajanı**: uygulama çalışırken görülen çökme, Qt uyarısı, arka plan görev hatası, beklenmeyen API
+  hatası ve ajan anormallikleri (döngü, test bozma, adım/bağlam sınırı, yedek modele geçiş) kendiliğinden
+  kaydedilir. Aynı sorun tek kayıtta toplanıp sayılır. Uygulama kaynaktan çalışıyorsa kayıtlar projenin
+  deposundaki `gozlem-kayitlari` dalına gönderilir (açılıştan 2 dk sonra ve 30 dakikada bir). Depo herkese
+  açık olduğu için gönderilmeden önce temizlenir: API anahtarı, kullanıcı adı, dosya yolları, e-posta ve
+  sohbet içeriği gitmez. Ayarlar > Geliştirici gözlemi: aç/kapat, durum, "Şimdi gönder".
+- **Geliştirme oturumu bildirimi**: `tools/ai_memory.py baslangic` açık gözlemleri gösterir ve geliştirici
+  motoruna "kullanıcıya bildir" der; düzeltildikten sonra yeniden görülen sorun "YENİDEN GÖRÜLDÜ" diye
+  öne çıkar. Yeni komutlar: `gozlem listele | goster | kayda-donustur | kapat | ekle | gonder`.
+- Gerçek API betiklerinde (zorluk paketi, ajan testi) düşen görevler de gözlem olarak kaydedilir.
+
 ## Yayınlanmamış — Doğruluk turu
 
 - **Test dosyası koruması komutları da kapsıyor**: siz testlerin değiştirilmesini istemediğiniz hâlde ajan

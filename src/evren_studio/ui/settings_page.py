@@ -414,6 +414,15 @@ class SettingsPage(BasePage):
         l.addWidget(self.game_card)
         col.addWidget(c)
 
+        # ---- gözlem ajanı (gozlem.py) ----
+        from .gozlem_card import GozlemCard
+
+        c, l = card()
+        l.addWidget(section("Geliştirici gözlemi"))
+        self.gozlem_card = GozlemCard(ctx)
+        l.addWidget(self.gozlem_card)
+        col.addWidget(c)
+
         # ---- veri ve görünüm ----
         c, l = card()
         l.addWidget(section("Veri ve Görünüm"))
@@ -542,6 +551,8 @@ class SettingsPage(BasePage):
         self.learnings_suggest.setChecked(s.learnings_suggest)
         self.suggest_project.setChecked(s.suggest_project)
         self.auto_resume.setChecked(s.auto_resume)
+        self.gozlem_card.enabled.setChecked(s.gozlem_enabled)
+        self.gozlem_card.refresh()
         self.auto_compact.setChecked(s.auto_compact)
         self.compact_percent.setValue(s.auto_compact_percent)
         self.compact_max.setValue(s.auto_compact_max_tokens)
@@ -592,6 +603,7 @@ class SettingsPage(BasePage):
         s.learnings_suggest = self.learnings_suggest.isChecked()
         s.suggest_project = self.suggest_project.isChecked()
         s.auto_resume = self.auto_resume.isChecked()
+        s.gozlem_enabled = self.gozlem_card.enabled.isChecked()
         s.auto_compact = self.auto_compact.isChecked()
         s.auto_compact_percent = int(self.compact_percent.value())
         s.auto_compact_max_tokens = int(self.compact_max.value())

@@ -106,6 +106,30 @@ class MainWindow(QMainWindow):
         self.show_sessions()
         # Kota yüzünden duran iş varsa (önceki açılıştan) oturumunu aç ve otomatik devamı yeniden kur
         QTimer.singleShot(0, self, self.session.restore_pending_resume)
+        # Gözlem ajanı: kuyruktaki gözlemleri arka planda depoya gönder (açılıştan 2 dk sonra, sonra 30 dk'da bir)
+        from .. import gozlem
+
+        gozlem.AYAR_ACIK = bool(s.gozlem_enabled)
+        self._gozlem_timer = QTimer(self)
+        self._gozlem_timer.setInterval(30 * 60 * 1000)
+        self._gozlem_timer.timeout.connect(self._send_gozlem)
+        self._gozlem_timer.start()
+        QTimer.singleShot(2 * 60 * 1000, self, self._send_gozlem)
+
+    def _send_gozlem(self) -> None:
+        from .. import gozlem
+
+        gozlem.AYAR_ACIK = bool(self.ctx.settings.gozlem_enabled)
+        if not gozlem.etkin() or self._gozlem_busy:
+            return
+        self._gozlem_busy = True
+
+        def finished(_res=None):
+            self._gozlem_busy = False
+
+        workers.Task(gozlem.gonder, on_done=finished, on_error=finished).start()
+
+    _gozlem_busy = False
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

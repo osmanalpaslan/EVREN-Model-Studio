@@ -84,6 +84,18 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Gözlem ajanı (2026-11-03, dal `feat/gozlem-ajani`, gerçek EVREN API + gerçek GitHub)
+
+- Zorluk paketi auto-pro: **12/12** · 1030 sn · yakalanmamış hata 0. R-13: E2E_OK · arayüz 15/15 · ajan 5/6
+  (glm-5.3 yerel protokol: EVREN 503 kapasite, aynı gün 3. kez). İlk R-13 koşusundaki 5/6'nın hangi senaryo
+  olduğu çıktı kısaltıldığı için **görülmedi**; API hatası olmadığı (kuyruğa düşmediği) için yanlış değer/okumadan
+  yanıt olmalı → ajan betiği artık bu düşüşü de gözleme yazıyor.
+- Gürültü ölçümü (R-22): R-13 üçlüsü + 12 görevlik paket boyunca kuyruğa yalnız **1** gözlem düştü ("Auto Pro
+  yedek modele geçti", düşük/ortam, eşik 3'ün altında → gönderilmez); ayrı glm-5.3 koşusu 503'ü düşük/ortam
+  olarak kaydetti. Çökme, Qt uyarısı, görev hatası 0.
+- Gerçek GitHub: deneme gözlemi gönderildi, `baslangic` bildirdi, `gozlem kapat` kapattı; dalda kullanıcı adı / yol
+  yok (elle bakıldı + testteki gizlilik kapısı).
+
 ## Doğruluk turu: komutla test değiştirme koruması (2026-11-03, auto-pro, gerçek EVREN API)
 
 Dal `feat/dogruluk-turu`. Tam paket **12/12** · 1132 sn · yakalanmamış hata 0. Yeni uyarı (TEST dosyası,

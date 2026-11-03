@@ -95,6 +95,12 @@ arasında taşınmaz; anahtarı yeni bilgisayarda yeniden girin.
 - Veritabanı: `%LOCALAPPDATA%\EVREN-Model-Studio\evren.db`
 - API anahtarı: Windows Credential Manager ("EVREN-Model-Studio" kaydı)
 - Ayarlar sayfasından JSON dışa aktarma ve tam silme yapılabilir.
+- Gözlem kuyruğu: `%LOCALAPPDATA%\EVREN-Model-Studio\gozlem\` (`kuyruk.json` + gönderim için ayrı bir
+  depo klonu `depo\`). Uygulama kaynaktan (git klonundan) çalışıyorsa temizlenmiş gözlemler projenin
+  deposundaki `gozlem-kayitlari` dalına, sizin git oturumunuzla gönderilir; git oturumu yoksa veya Ayarlar >
+  Geliştirici gözlemi kapalıysa yalnız bu bilgisayarda kalır. Gönderilen alanlar: tür, önem, temizlenmiş
+  başlık/ileti, uygulamanın kendi kod konumu (dosya:satır), model adı, HTTP kodu, sayaç, sürüm, geri
+  çözülemeyen kısa makine kimliği.
 
 ## Sorun giderme
 

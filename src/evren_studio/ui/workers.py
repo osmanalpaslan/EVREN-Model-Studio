@@ -70,6 +70,14 @@ class Task:
             result = self._fn(*self._args)
             self.signals.finished.emit(result)
         except Exception as exc:  # ApiError dahil tüm hatalar
+            from ..api.errors import ApiError
+
+            if not isinstance(exc, ApiError):     # ApiError sınıflandırılarak RecoveryEngine'de kaydedilir
+                from .. import gozlem
+
+                gozlem.kaydet("gorev_hatasi", f"Arka plan görevi hata verdi: {type(exc).__name__}",
+                              onem="yuksek", alan="genel", exc=exc,
+                              ayrinti={"gorev": getattr(self._fn, "__qualname__", "")})
             self.signals.failed.emit(exc)
 
     def start(self) -> None:
