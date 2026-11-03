@@ -144,6 +144,35 @@ PROJECTS: dict[str, dict] = {
             "betiğini son kez çalıştırıp özetle.",
         ],
     },
+    # 2026-11-03 (DEVIR Madde 10b, kayıt 2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor):
+    # kullanıcının gerçek kullanımı — TEK uzun mesaj, ajan süreci dosyaya yazıp fazlara böler. Belirti: bir faz
+    # bitince durup "devam" beklemek. MARATON_OZET_ESIK ile ortada otomatik özet zorlanır (asıl şikâyet uzun
+    # oturumdaydı). Ölçü: betiğin "devam et" yazmak zorunda kalması, iş sonunda açık plan maddesi, kabul.
+    "F": {
+        "ad": "Tek mesajda 10 fazlı metin kütüphanesi (faz unutma ölçümü)",
+        "mesajlar": [
+            "Bu boş klasörde büyük bir iş var. Önce işi fazlara böl ve SURECI.md dosyasına her fazı `- [ ] Faz N: ...` "
+            "biçiminde yaz. Sonra fazları sırayla yürüt; her fazı bitirince SURECI.md'de o satırı `- [x]` yap ve bana "
+            "SORMADAN sıradaki faza geç. Tüm fazlar bitmeden durma. Yalnız Python standart kütüphanesi kullan.\n"
+            "1. `metinlib/kelime.py`: `kelime_say(metin) -> int` (boşluklara göre ayrılmış kelime sayısı).\n"
+            "2. `metinlib/kelime.py`: `en_sik(metin, n) -> list[tuple[str, int]]` — küçük harfe çevrilmiş, noktalama "
+            "(.,;:!?\"'()) atılmış kelimelerin en sık n tanesi; sayıya göre azalan, eşitlikte alfabetik.\n"
+            "3. `metinlib/temizle.py`: `bosluk_duzelt(metin)` — art arda boşluk/sekme/satır sonlarını tek boşluk yapar, "
+            "baştaki ve sondaki boşlukları siler.\n"
+            "4. `metinlib/turkce.py`: `ascii_yap(metin)` — ç→c ğ→g ı→i ö→o ş→s ü→u ve büyükleri Ç→C Ğ→G İ→I Ö→O Ş→S Ü→U.\n"
+            "5. `metinlib/slug.py`: `slug(metin)` — ascii_yap + küçük harf, harf/rakam dışındaki her şey tek `-`, "
+            "baştaki/sondaki `-` silinir (ör. 'Çok Güzel  Bir Gün!' → 'cok-guzel-bir-gun').\n"
+            "6. `metinlib/__init__.py`: hepsini dışa aktar ve `__version__ = \"1.0.0\"` tanımla.\n"
+            "7. `metin.py` komut satırı: `python metin.py say <dosya>` → yalnız sayı; `python metin.py sik <dosya> <n>` "
+            "→ her satır `kelime: sayı`; `python metin.py slug \"<metin>\"` → slug. Olmayan dosyada hata mesajı ve çıkış "
+            "kodu 1.\n"
+            "8. `tests/` altında hepsi için unittest testleri yaz ve `python -m unittest discover -s tests -v` ile "
+            "çalıştırıp geçtiğini göster.\n"
+            "9. README.md: kurulum yok notu, üç komutun örnekli kullanımı, kütüphane işlevlerinin listesi.\n"
+            "10. CHANGELOG.md: `## 1.0.0` başlığı altında eklenen her işlev. Son olarak testleri bir kez daha çalıştır "
+            "ve SURECI.md'nin tamamen işaretli olduğunu göster.",
+        ],
+    },
 }
 
 
@@ -443,7 +472,80 @@ console.log(JSON.stringify(o));
     return r
 
 
-ACCEPT = {"A": accept_A, "B": accept_B, "C": accept_C, "D": accept_D, "E": accept_E}
+def open_plan_items(proj: Path) -> list[str]:
+    """Projedeki plan dosyalarında (SURECI.md, PLAN.md, TODO.md…) işaretlenmemiş `- [ ]` satırları."""
+    out = []
+    for p in proj.rglob("*.md"):
+        if any(part in (".venv", "node_modules", "tests") for part in p.parts):
+            continue
+        for ln in p.read_text(encoding="utf-8", errors="replace").splitlines():
+            if ln.strip().startswith("- [ ]"):
+                out.append(f"{p.name}: {ln.strip()[:80]}")
+    return out
+
+
+_F_PROBE = r"""
+import json, sys
+sys.path.insert(0, '.')
+import metinlib as m
+from metinlib.kelime import kelime_say, en_sik
+from metinlib.temizle import bosluk_duzelt
+from metinlib.turkce import ascii_yap
+from metinlib.slug import slug
+r = {
+ "kelime_say": kelime_say("bir  iki\tüç\ndört"),
+ "en_sik": en_sik("Elma armut, elma! Kiraz armut elma. muz", 2),
+ "en_sik_esit": en_sik("b a c", 2),
+ "bosluk": bosluk_duzelt("  a \t b\n\n c  "),
+ "ascii": ascii_yap("Çığ İşte Öğün Şüphe ğü"),
+ "slug": slug("Çok Güzel  Bir Gün!"),
+ "slug2": slug("--Merhaba, Dünya 2026--"),
+ "surum": getattr(m, "__version__", None),
+ "disa": all(hasattr(m, f) for f in ("kelime_say", "en_sik", "bosluk_duzelt", "ascii_yap", "slug")),
+}
+print(json.dumps(r, ensure_ascii=False))
+"""
+
+
+def accept_F(proj: Path) -> list[tuple[str, bool, str]]:
+    res: list[tuple[str, bool, str]] = []
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    code, out = _run([sys.executable, "-c", _F_PROBE], proj, env=env)
+    try:
+        r = json.loads(out.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        r = {}
+    exp = {"kelime_say": 4, "en_sik": [["elma", 3], ["armut", 2]], "en_sik_esit": [["a", 1], ["b", 1]],
+           "bosluk": "a b c", "ascii": "Cig Iste Ogun Suphe gu", "slug": "cok-guzel-bir-gun",
+           "slug2": "merhaba-dunya-2026", "surum": "1.0.0", "disa": True}
+    for k, v in exp.items():
+        got = r.get(k)
+        got = [list(x) for x in got] if isinstance(got, list) else got
+        res.append((f"işlev {k}", got == v, f"{got!r} ≠ {v!r}" if got != v else ""))
+    if not r:
+        res.append(("kütüphane içe aktarılır", False, out[-200:]))
+    (proj / "_kabul.txt").write_text("elma armut elma\nkiraz elma", encoding="utf-8")
+    c, o = _run([sys.executable, "metin.py", "say", "_kabul.txt"], proj, env=env)
+    res.append(("cli say", c == 0 and o.strip() == "5", o.strip()[:80]))
+    c, o = _run([sys.executable, "metin.py", "sik", "_kabul.txt", "2"], proj, env=env)
+    res.append(("cli sik", c == 0 and o.strip().splitlines()[:2] == ["elma: 3", "armut: 1"], o.strip()[:80]))
+    c, o = _run([sys.executable, "metin.py", "slug", "Şeker Bayramı"], proj, env=env)
+    res.append(("cli slug", c == 0 and o.strip() == "seker-bayrami", o.strip()[:80]))
+    c, o = _run([sys.executable, "metin.py", "say", "olmayan_dosya.txt"], proj, env=env)
+    res.append(("cli olmayan dosya → 1", c == 1, f"çıkış {c}"))
+    c, o = _run([sys.executable, "-m", "unittest", "discover", "-s", "tests"], proj, env=env)
+    res.append(("unittest geçer", c == 0 and "OK" in o, o.strip()[-120:]))
+    readme = (proj / "README.md").read_text(encoding="utf-8", errors="replace") if (proj / "README.md").exists() else ""
+    res.append(("README üç komut", all(x in readme for x in ("say", "sik", "slug")), ""))
+    ch = (proj / "CHANGELOG.md").read_text(encoding="utf-8", errors="replace") if (proj / "CHANGELOG.md").exists() else ""
+    res.append(("CHANGELOG 1.0.0", "1.0.0" in ch, ""))
+    acik = open_plan_items(proj)
+    surec = (proj / "SURECI.md").exists()
+    res.append(("SURECI.md var ve açık madde yok", surec and not acik, "; ".join(acik[:3])))
+    return res
+
+
+ACCEPT = {"A": accept_A, "B": accept_B, "C": accept_C, "D": accept_D, "E": accept_E, "F": accept_F}
 
 
 # ---- sürücü ---------------------------------------------------------------------------------
@@ -489,10 +591,18 @@ def main() -> int:
 
     outcomes: list[dict] = []
     notes: list[str] = []
+    bekci: list[str] = []          # plan bekçisinin durum satırları (dürtme / durma)
 
     class RecordingRunner(AgentRunner):
         def run(self, history):
             t0 = time.monotonic()
+            orig_status = self.events.status
+
+            def status(text, *a, **k):
+                if "Plan bekçisi" in str(text):
+                    bekci.append(str(text))
+                return orig_status(text, *a, **k)
+            self.events.status = status
             o = super().run(history)
             outcomes.append({"stopped": o.stopped, "steps": o.steps, "protocol": o.protocol,
                              "sure": round(time.monotonic() - t0, 1)})
@@ -541,6 +651,9 @@ def main() -> int:
     esik = os.environ.get("MARATON_OZET_ESIK")
     if esik:
         w.ctx.settings.auto_compact_max_tokens = int(esik)
+    # MARATON_PLAN_BEKCISI=0 → plan bekçisi KAPALI (açık/kapalı karşılaştırması, R-25)
+    bekci_acik = os.environ.get("MARATON_PLAN_BEKCISI", "1") != "0"
+    w.ctx.settings.plan_guard = bekci_acik
     kota_testi = os.environ.get("MARATON_KOTA_TESTI")
     kota = {"aktif": False, "durdu": 0, "kart": 0, "plan": 0, "surdu": 0, "mesaj": 0, "adim": 0}
     if kota_testi:
@@ -644,13 +757,18 @@ def main() -> int:
         "zaman_icinde_bitti": deadline_ok, "mesajlar": turns, "onay_istendi": approvals,
         "arac_cagrisi": tool_calls, "uc_ve_ustu_tekrar": repeated, "otomatik_ozet": summaries,
         "kota_testi": kota if kota_testi else None,
+        "plan_bekcisi": bekci_acik, "devam_et_toplam": sum(t["devam_et"] for t in turns),
+        "bekci_notu": len(bekci), "bekci_ornek": bekci[:4],
+        "acik_plan_maddesi": open_plan_items(proj),
         "kabul": [{"test": n, "gecti": ok, "ayrinti": d} for n, ok, d in accept],
         "kabul_skor": f"{passed}/{len(accept)}",
         "qt_uyari": [m for m in warnings if "thread" in m.lower()][:5], "yakalanmamis_hata": errors[:5],
     }
     (base / "rapor.json").write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"[{tag}] SONUÇ kabul {passed}/{len(accept)} · {report['toplam_sure_sn']} sn · onay={approvals} · "
-          f"özet={summaries} · çağrı={tool_calls} · 3+tekrar={len(repeated)} · hata={len(errors)}", flush=True)
+          f"özet={summaries} · çağrı={tool_calls} · 3+tekrar={len(repeated)} · hata={len(errors)} · "
+          f"bekçi={'açık' if bekci_acik else 'KAPALI'} · devam_et={report['devam_et_toplam']} · "
+          f"bekçi_notu={report['bekci_notu']} · açık_plan={len(report['acik_plan_maddesi'])}", flush=True)
     for n, ok, d in accept:
         print(f"   {'GEÇTİ' if ok else 'KALDI'} | {n}" + (f" | {d}" if d and not ok else ""), flush=True)
     return 0

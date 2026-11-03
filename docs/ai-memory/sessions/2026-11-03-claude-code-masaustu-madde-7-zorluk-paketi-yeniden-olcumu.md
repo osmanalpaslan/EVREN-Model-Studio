@@ -63,6 +63,9 @@ masaüstünde 2026-11-01 21:20'de başlatılan zorluk paketinin sonucu işlenmem
   "uzun token" sanılıyordu — commit'ten önce düzeltildi ve teste bağlandı. (2) testteki sahte `sk-` anahtarı ön-commit
   kancasına takıldı (kanca doğru çalıştı); parçalı yazıldı.
 
+## Devam: faz unutma ölçümü (10b)
+- tests/e2e_marathon_real_api.py projesi F (tek mesaj, 10 faz, SURECI.md) + MARATON_PLAN_BEKCISI; rapor: devam_et_toplam, bekci_notu, acik_plan_maddesi. Kabul: doğru 17/17, yanlış 14/17 (3 kasıtlı hata yakalandı).
+
 ## Sonraki motor için notlar
 - Gözlem ajanı: yeni bir gözlem kaynağı eklerken R-36 (temizle + izinli ayrıntı anahtarları). Bilerek kapsam dışı:
   arayüz donması (olay döngüsü takılması) bekçisi, `start_job` arka plan işleri, paketlenmiş (kaynaksız) kurulumda
