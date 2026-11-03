@@ -13,7 +13,7 @@
 ## Şu an
 
 - **Güncelleme:** 2026-11-03 akşam · Claude Code (claude-opus-5-5) · dizüstü bilgisayar
-- **Aktif dal:** `feat/faz-unutma-olcumu` (master üzerine). 10b SÜRÜYOR: maraton F (tek mesaj, 10 faz, MARATON_OZET_ESIK=15000) bekçi açık/kapalı gerçek API'de koşuyor; kabul denetimi bilinen doğru 17/17, bilinen yanlış 14/17 ile sınandı. Yarıda kalırsa: `MARATON_OZET_ESIK=15000 tests\e2e_marathon_real_api.py F auto-pro buildazcik` (ve `MARATON_PLAN_BEKCISI=0` ile kapalı).
+- **Aktif dal:** `feat/faz-unutma-olcumu` (master üzerine). 10b SÜRÜYOR: maraton F (tek mesaj, 10 faz, MARATON_OZET_ESIK=15000) bekçi açık/kapalı gerçek API'de koşuyor; kabul denetimi bilinen doğru 17/17, bilinen yanlış 14/17 ile sınandı. Yarıda kalırsa: `MARATON_OZET_ESIK=15000 tests/e2e_marathon_real_api.py F auto-pro build/faz/acik` (ve `MARATON_PLAN_BEKCISI=0` ile kapalı).
 - **Kaldığı yer:** Madde 11 (gözlem ajanı) YAPILDI ve birleştirildi; Madde 10a YAPILDI. Sıradaki (kullanıcı
   2026-11-03: "doğruluk bir tık daha önemli", sırayı motor belirler):
   1. **10b** faz unutma kaydını (2026-10-21) uzun gerçek oturumla ölç (özet sonrası, `e2e_plan_bekcisi_real_api`

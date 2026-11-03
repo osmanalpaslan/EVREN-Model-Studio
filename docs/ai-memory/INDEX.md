@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 100 · Açık/izlenen: 7 · Oturum: 37 · Kural: 36
+Kayıt: 101 · Açık/izlenen: 7 · Oturum: 37 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -21,6 +21,7 @@ Kayıt: 100 · Açık/izlenen: 7 · Oturum: 37 · Kural: 36
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
 | 2026-11-03 | [2026-11-03-test-dosyasi-korumasi-komutla-yapilan-degisikligi-gormuyordu](incidents/2026-11-03-test-dosyasi-korumasi-komutla-yapilan-degisikligi-gormuyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Test dosyasi korumasi komutla yapilan degisikligi gormuyordu |
+| 2026-11-03 | [2026-11-03-r-29-ucuncu-kez-ihlal-edildi-heredoc-kacisi-agents-ve-devir](incidents/2026-11-03-r-29-ucuncu-kez-ihlal-edildi-heredoc-kacisi-agents-ve-devir.md) | surec | orta | cozuldu | Claude Code (masaüstü) | R-29 üçüncü kez ihlal edildi: heredoc kaçışı AGENTS ve DEVIR notuna kontrol karakteri yazdı |
 | 2026-11-01 | [2026-11-01-yavaslik-gecisi-zayif-modele-gitti-gemma-celiskili-testte-hi](incidents/2026-11-01-yavaslik-gecisi-zayif-modele-gitti-gemma-celiskili-testte-hi.md) | hata | yuksek | izleniyor | Claude Code | Yavaşlık geçişi zayıf modele gitti, gemma çelişkili testte hile yazdı |
 | 2026-11-01 | [2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati](incidents/2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati.md) | hata | yuksek | cozuldu | Claude Code | Token tahmini bağlamı yüzde 40-60 küçük gösteriyordu, otomatik özet geç tetikleniyordu |
 | 2026-11-01 | [2026-11-01-ayarlarda-ucretli-etiketi-sabit-renkle-yazilmisti](incidents/2026-11-01-ayarlarda-ucretli-etiketi-sabit-renkle-yazilmisti.md) | hata | dusuk | cozuldu | Claude Code | Ayarlarda ücretli etiketi sabit renkle yazılmıştı |
@@ -193,7 +194,7 @@ Kayıt: 100 · Açık/izlenen: 7 · Oturum: 37 · Kural: 36
 - **R-26** · Gözetimsiz akışta yapılandırılmış sonucu üç katmanla güvenceye al
 - **R-27** · Splitter ve düzen değişikliğini gerçek sürüklemeyle doğrula
 - **R-28** · Gözetimsiz akışta "bitti"yi istenen çıktıya bağla, kararı kullanıcıya sor
-- **R-29** · Python kodunu bash heredoc ile yazma
+- **R-29** · Python kodunu bash heredoc ile yazma (Markdown yaması dahil)
 - **R-30** · Testi değişikliğin türüne göre seç; gerçek API ölçümünü faz sonunda topla
 - **R-31** · Tura bağlanan özelliği gerçek tur akışından da test et
 - **R-32** · Model isteğini bağlama KESİN sığdır; sığmayan geçmişi gönderme

@@ -62,6 +62,21 @@ def test_python_dosyalarinda_bom_yok_ve_utf8():
     assert not problems, "\n".join(problems)
 
 
+def test_metin_dosyalarinda_kontrol_karakteri_yok():
+    """R-29 üçüncü ihlali (2026-11-03): bash heredoc içindeki Python'da `build\\faz\\acik` yolu \\f ve \\a
+    kontrol karakterine dönüştü ve DEVIR_NOTU'na sessizce yazıldı. Sekme/satır sonu dışındaki C0 karakteri
+    neredeyse her zaman böyle bir kaçış hatasıdır."""
+    bad = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+    problems = []
+    for p in _files():
+        text = p.read_bytes().decode("utf-8", errors="replace")
+        for no, line in enumerate(text.splitlines(), 1):
+            m = bad.search(line)
+            if m:
+                problems.append(f"{p.relative_to(ROOT)}:{no}: {m.group(0)!r} — {line.strip()[:60]!r}")
+    assert not problems, "Kontrol karakteri bulundu (heredoc/kaçış hatası, R-29):\n" + "\n".join(problems[:30])
+
+
 @pytest.mark.skipif(shutil.which("git") is None or not (ROOT / ".git").exists(),
                     reason="git deposu gerekir")
 def test_git_kaynak_dosyasini_yok_saymiyor():
