@@ -1,7 +1,7 @@
 # Proje Durumu
 
 > Oturum kesilirse çalışmaya bu dosyadan devam edilir.
-> Son güncelleme: 2026-10-24 (proje kapanışı — F1–F7 + son paket; güncel durum "Sıradaki iş" bölümünün başında)
+> Son güncelleme: 2026-11-04 (PR #30-#35 birleşti; güncel iş ve plan: docs/DEVIR_NOTU.md "Şu an")
 
 ## Konum ve sınırlar
 
@@ -64,8 +64,13 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
-  - (2026-11-01) **Güncel iş ve geliştirme sırası artık `docs/DEVIR_NOTU.md`'de** (tek kaynak, durumlarıyla;
-    `baslangic` en üstte gösterir). Aktif dal `feat/profesyonel-kalite` (PR #30 üzerine; birleştirilmedi).
+  - (2026-11-04) **Güncel iş ve plan: `docs/DEVIR_NOTU.md` "Şu an"** (tek kaynak). Master'da yarım iş yok.
+    2026-11-03/04 birleşenler: #30 /clear + büyük özet · #31 profesyonel kalite (açık tema, web araması, bağlam
+    kalibrasyonu, kota sonrası devam) · #32 doğruluk turu (komutla test değiştirme koruması) · #33 gözlem ajanı
+    (hata/anormallikleri `gozlem-kayitlari` dalına gönderir, baslangic bildirir) · #34 faz unutma ölçümü (maraton F)
+    · #35 Derin Mod v2 (ölçümle denetçi, canlı durum çubuğu). Sıradaki: Madde 6 → 9 → 7.
+
+  - (2026-11-01) Güncel iş ve geliştirme sırası `docs/DEVIR_NOTU.md`'ye taşındı.
 
   - (2026-10-24) **PROJE KAPANIŞI — son paket** (dal `feat/oyun-araclari-kur`): Ayarlar > Oyun araçları (Godot +
     şablonlar, Blender; onaylı indirme, gömülü sağlama toplamı, gerçek indirme denendi), sağ panel **Git** sekmesi

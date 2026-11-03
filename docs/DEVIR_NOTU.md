@@ -12,22 +12,53 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-03 akşam · Claude Code (claude-opus-5-5) · dizüstü bilgisayar
-- **Aktif dal:** `master` (Madde 8 PR'ı birleştirildi). Yeni iş için master'dan dal aç. Madde 8 ölçümleri: pytest 778 · R-13 E2E_OK/ajan 5/6 (deepseek metin protokolü, bilinen kayıt)/arayüz 15/15 · e2e_derin GEÇTİ · zorluk 12/12 · 719 sn.
-- **Kaldığı yer:** Madde 11 (gözlem ajanı) ve 10a YAPILDI. **10b YAPILDI:** maraton F (tek mesaj, 10 faz) gerçek
-  API'de 4 koşu — 3 otomatik özetli koşular dahil hepsi 17/17, "devam et" gerekmedi; sorun üretilemedi →
-  gerçek kullanım için gözleme `devam_zorunlu` eklendi (CHALLENGE_RESULTS "Faz unutma ölçümü"). Ayrıca hijyen
-  testi kontrol karakterini yakalıyor (AGENTS.md'deki heredoc bozulması düzeltildi). Sıradaki (kullanıcı
-  2026-11-03: "doğruluk bir tık daha önemli", sırayı motor belirler):
-  1. **Madde 8** Derin Mod: aşama başına en doğru EVREN modeli (ölçümle), plan/doğrulama aşamasında `"high"`
-     effort ölçümü, kısa canlı durum cümleleri; `e2e_derin_real_api` önce/sonra.
-  2. **Madde 6** klasörsüz sohbette yalnız web_search/web_fetch.
-  3. **Madde 9** sade sağlayıcı ekranı.
-  4. **Madde 7** hız (en son): önce EVREN yükünü ayır; yalnız doğruluğa dokunmayan kaldıraçlar; kod/plan rolünde
-     effort düşürülmez.
-- **Gözlem ajanı notu:** her oturum başında `baslangic` "Uygulamadan gelen gözlemler" bölümünü gösterir; `!
-  KULLANICIYA BİLDİR` varsa kullanıcıya söyle (R-36). Deneme gözlemi b12eb83f411c kabul-edildi olarak kapalı.
-- **Çalışan uzun test:** yok.
+- **Güncelleme:** 2026-11-04 gece · Claude Code (claude-opus-5-5) · dizüstü bilgisayar. Kullanıcı ertesi gün
+  BAŞKA bir bilgisayar ve oturumdan devam edecek.
+- **Aktif dal:** `master` — yarım iş YOK. Bu oturumda birleşenler: PR #30-#35 (profesyonel kalite, doğruluk
+  turu, gözlem ajanı, faz unutma ölçümü, Derin Mod v2). Yeni maddeye master'dan yeni dalla başla.
+- **Çalışan uzun test:** yok. Son durum: pytest 778/778 · zorluk auto-pro 12/12 (719 sn) · R-13 E2E_OK, ajan 5/6
+  (deepseek metin protokolü — açık kayıt 2026-10-17-deepseek-…), arayüz 15/15 · e2e_derin GEÇTİ.
+- **Kullanıcının çalışma ilkesi (2026-11-03):** "Amacım sağlam, doğru iş ve olabildiği kadar hızlı; doğruluk bir
+  tık daha önemli. Sırayı sen belirle." → Her maddede: hedefli test + tetiklenen/tetiklenmeyen (R-22) + kritikse
+  mutasyon; ajan/arayüz değiştiyse dal sonunda R-13 üçlüsü + zorluk paketi; her şey geçerse PR'ı motor açar ve
+  birleştirir (kullanıcı izni 2026-11-03). Effort: kod/plan rolünde DÜŞÜRÜLMEZ.
+
+### Yeni bilgisayarda başlarken (sırayla)
+1. `git pull` (ya da ilk kez: `git clone https://github.com/osmanalpaslan/EVREN-Model-Studio.git`); `kurulum.bat`
+   veya INSTALLATION.md ile `.venv`; `.\.venv\Scripts\python.exe tools\ai_memory.py kanca-kur`.
+2. `.\.venv\Scripts\python.exe tools\ai_memory.py baslangic` — "Uygulamadan gelen gözlemler" bölümünde
+   `! KULLANICIYA BİLDİR` varsa İŞE BAŞLAMADAN kullanıcıya söyle (R-36).
+3. EVREN anahtarı o bilgisayarın Credential Manager'ında yoksa gerçek API testleri koşmaz: kullanıcıdan Ayarlar'a
+   girmesini iste (anahtarı asla dosyaya yazma).
+4. `.\.venv\Scripts\python.exe -m pytest -q` (≈6 dk) geçmeli; sonra aşağıdaki sıradaki maddeye başla.
+
+### Sıradaki maddeler ve planı (motorun belirlediği sıra)
+**1) Madde 6 — klasörsüz sohbette yalnız web_search / web_fetch** (tahmin 1,5–3 saat). Bugün klasörsüz oturumda
+hiç araç yok: `AgentRunner.agentic` = `workspace is not None`; `_specs()` agentic değilse `[]`; `_execute`
+`toolbox is None` ise "proje klasörü yok" döner; `_system()` agentic değilse `build_chat_system()`.
+- Plan: runner'a `chat_tools` (yalnız WEB_TOOLS: web_search, web_fetch) ekle; klasörsüz oturumda `_specs()` yalnız
+  bunları versin, `_execute` toolbox'suz da WEB_TOOLS'u çalıştırsın (webfetch/websearch dosya sistemine dokunmaz);
+  sohbet sistem istemine kısa araç notu; `websearch.needs_web` ipucu sohbet turunda da. Manuel modda sorma ve
+  izin düzeni aynı kalsın. session_view'da klasörsüz turda bu aracı aç (ayar: mevcut web araması ayarı).
+- Test: klasörsüz turda araç sunuluyor/çalışıyor; dosya araçları SUNULMUYOR; gereksiz tetiklenme yok (R-22);
+  R-31 gerçek tur akışı. Gerçek: `tests/e2e_websearch_real_api.py`'ye klasörsüz senaryo (açık/kapalı, R-25) +
+  zorluk paketi + R-13.
+**2) Madde 9 — sade "Sağlayıcı ekle" ekranı** (tahmin 3–5 saat). Tek liste: EVREN, OpenAI, Anthropic, OpenRouter,
+Kilo, OpenAI-uyumlu (taban URL + anahtar). Çok modelli ağ geçitleri tek anahtarla. Mevcut: `api/providers.py`,
+`api/openai_client.py` (Responses), `api/anthropic_client.py`, Ayarlar > Ücretli Sağlayıcılar. OpenRouter/Kilo/
+OpenAI-uyumlu için Chat Completions istemcisi gerekebilir (EvrenClient zaten OpenAI-uyumlu — genelleştirmeyi
+değerlendir). Gerçek anahtar yoksa `verified=False` ve arayüzde "doğrulanmadı" (R-17); ücretli istek YAPMA.
+Arayüz değişince `tools/ui_denetim.py <klasör> ikisi --goruntu` (R-05/R-33) ve görüntülere BAK.
+**3) Madde 7 — hız (en son)** (tahmin 3–6 saat). Aynı zorluk paketi 2026-11-03/04'te 502–1595 sn arasında oynadı;
+kod aynıyken. Önce farklı saatlerde 3 koşu ile EVREN yükünü ayır (adım başına model süresi: model_calls tablosu).
+Yalnız doğruluğa dokunmayan kaldıraçlar: gereksiz yeniden okumayı azaltma, salt okunur araçları paralel çağırma,
+yanıt vermeyen modelden erken yedeğe geçiş. Her değişiklik zorluk 12/12 + maraton kabulünü korumalı; korumazsa geri al.
+**Plan dışı, kullanıcı kararı bekleyen:** Setup.exe paketleme (ILERIDE madde 1; kullanıcı "şimdi değil" demişti);
+OpenAI/Anthropic gerçek anahtar doğrulaması (ücretli — yapılmaz).
+
+- **Gözlem ajanı notu:** uygulama kaynaktan çalışırken gözlemleri `gozlem-kayitlari` dalına gönderir; deneme gözlemi
+  b12eb83f411c kapalı (kabul-edildi). Bu bilgisayarın yerel kuyruğunda yalnız eşik altı 2 düşük önemli kayıt var
+  (503 kapasite, yedeğe geçiş) — gönderilmez, normal.
 
 ## Geliştirme sırası (kullanıcı onaylı, 2026-11-01)
 
