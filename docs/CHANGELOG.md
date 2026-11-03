@@ -1,5 +1,15 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Derin Mod iyileştirmeleri (Madde 8)
+
+- **Canlı durum çubuğu**: Derin Mod incelerken, planlarken ve doğrularken yazma kutusunun üstünde ne yaptığını
+  gösterir (ör. "Derin · anla · anla-kod: Okunuyor: app.py · 1:05"). Önceden bu aşamalarda çubuk hiç
+  görünmüyordu.
+- **Daha hızlı doğrulama**: ikinci denetçi ölçümle seçildi (glm-5.3, yüksek düşünme seviyesiyle); doğruluk aynı,
+  ölçümde doğrulama ~%28 daha kısa sürdü. glm dolu olursa önceki modele geçilir.
+- **Alt ajanlar yarım bırakmaz**: inceleme yapan bir ajan araç kullanmadan "dosyaya bakıyorum" deyip durursa
+  bir kez hatırlatılır (Plan modu ve Derin Mod alt ajanları dahil).
+
 ## Yayınlanmamış — Gözlem ajanı
 
 - **Gözlem ajanı**: uygulama çalışırken görülen çökme, Qt uyarısı, arka plan görev hatası, beklenmeyen API

@@ -84,6 +84,39 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Derin Mod denetçi ve yargıç karşılaştırması (2026-11-03/04, Madde 8, gerçek EVREN)
+
+**Effort yoklaması** (kolay sayı sorusu, `build/derin/effort_yoklama.py`): deepseek-v4.1-flash, qwen3.8-flash-next,
+glm-5.3, mimo-v2.6-pro varsayılan ve `high` ile aynı doğru cevabı verdi; düşünme miktarı belirgin değişmedi →
+etkisi ancak gerçek görevde ölçülebilir.
+
+**Denetçi** (`tests/e2e_derin_denetci_real_api.py`): gerçek `dp.verify` + `confirmed_issues`; 3 bilinen hatalı
+(sıfır bölme kontrolü yok, n=0'da `lst[-0:]` tüm listeyi döndürür, çapasız `re.match`) + 3 bilinen doğru değişiklik.
+Vakalar önce davranışla sınandı (`build/derin/vaka_sinama.py`: hatalılar istenen davranışı sağlamıyor, doğrular
+sağlıyor). Tek model → iki bakış açısı da o model.
+
+| Yapılandırma | Hatalı yakalandı | Doğruda temiz | Süre | Eksik blok |
+|---|---|---|---|---|
+| mevcut (qwen3.8-flash-next + deepseek-v4.1-flash) | 3/3 | 3/3 | 764 sn | 2 |
+| qwen3.8-flash-next | 3/3 | 3/3 | 377 sn | 0 |
+| qwen3.8-flash-next:high | 3/3 | 3/3 | 414 sn | 0 |
+| deepseek-v4.1-flash | 3/3 | 3/3 | 636 sn | 2 |
+| deepseek-v4.1-flash:high | 3/3 | 3/3 | 861 sn | 3 |
+| glm-5.3 | **0/3** | 3/3 | 1102 sn | **12** |
+| glm-5.3:high | 3/3 | 3/3 | 473 sn | 0 |
+| mimo-v2.6-pro | 2/3 | 3/3 | 864 sn | 6 |
+| mimo-v2.6-pro:high | 2/3 | 3/3 | 1055 sn | 10 |
+| **yeni: qwen3.8-flash-next + glm-5.3:high** | 3/3 | 3/3 | 550 sn | 3 |
+
+**Yargıç** (`tests/e2e_derin_yargic_real_api.py`; 4 iyi/kusurlu plan çifti × A/B yer değişimi): qwen (none =
+bugünkü ai_chat, default, high), deepseek (none, default, high), glm (default, high), mimo (default), gemma →
+**hepsi 8/8**, sıra yanlılığı yok (A seçimi 4/8); mimo:high 6/8 (2 geçersiz yanıt). Bugünkü yargıç (qwen, düşünme
+kapalı) 41 sn ile yeterli → değiştirilmedi. Vakalar modelleri ayıracak kadar zor değil (dürüst not).
+
+Uygulanan: ikinci denetçi glm-5.3 (+`reasoning_effort: high`, yalnız glm'e), kapasite (503) verirse kod zinciri;
+`high` qwen/deepseek'e verilmedi (kazanç yok, yavaş). Her yapılandırma BİR kez ölçüldü; doğruluk eşit, kazanç hız
+(550 vs 764 sn) — küçük örnek.
+
 ## Faz unutma ölçümü — maraton F (2026-11-03, `tests/e2e_marathon_real_api.py F auto-pro`, gerçek EVREN)
 
 Tek uzun mesaj: işi SURECI.md'ye fazlara böl, sormadan sırayla yürüt (10 parça: metinlib + CLI + test + README +

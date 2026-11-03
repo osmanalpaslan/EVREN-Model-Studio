@@ -72,7 +72,20 @@ masaüstünde 2026-11-01 21:20'de başlatılan zorluk paketinin sonucu işlenmem
 - R-29 üçüncü ihlal (kendi hatam): heredoc'lu Markdown yaması AGENTS.md'ye (master'da) ve DEVIR'e kontrol karakteri
   yazdı; hijyen testine kontrol karakteri denetimi eklendi, ilk koşuda master'daki bozulmayı yakaladı.
 
+## Devam (2026-11-04): Derin Mod Madde 8 (`feat/derin-mod-v2`)
+- Effort yoklaması (kolay soru) etkisiz. Denetçi paketi 10 yapılandırma, yargıç paketi 11 yapılandırma
+  (CHALLENGE_RESULTS "Derin Mod denetçi ve yargıç karşılaştırması"). glm-5.3 varsayılanda denetim bloğunu yazamadı
+  (0/3), high ile 3/3. Yargıç vakaları ayırt edici değildi (hepsi 8/8) → yargıç değişmedi.
+- Uygulanan: run_subagent `base_body` + `progress`; ikinci denetçi glm-5.3+high (yoksa eski eşleşme);
+  DEEP_MODEL_EFFORT; canlı durum.
+- R-05 ekran görüntüsü çubuğun arka plan fazında HİÇ görünmediğini gösterdi (kayıt
+  2026-11-04-derin-mod-arka-plan-fazlarinda-durum-cubugu-hic-gorunmuyordu) → `_render_bar`.
+- R-13 ajan testinde deepseek metin protokolü "bakıyorum" deyip araçsız durdu; Plan modu istisnası ilk araçsız
+  inceleme niyetini de muaf tutuyordu (Derin alt ajanları da Plan modunda) → `looks_like_investigation_intent`.
+
 ## Sonraki motor için notlar
+- Derin Mod: planlayıcı kalitesi ve Anla modeli ölçülmedi (değişmedi). Yargıç için daha zor (ayırt edici) çiftler
+  gerekir. Denetçi ölçümleri tek koşu — EVREN model listesi değişince `tests/e2e_derin_denetci_real_api.py` tekrarla.
 - Gözlem ajanı: yeni bir gözlem kaynağı eklerken R-36 (temizle + izinli ayrıntı anahtarları). Bilerek kapsam dışı:
   arayüz donması (olay döngüsü takılması) bekçisi, `start_job` arka plan işleri, paketlenmiş (kaynaksız) kurulumda
   gönderim (depo yok → yalnız yerel kuyruk). Gönderim kullanıcının git kimlik bilgisiyle yapılır; makinede git oturumu
