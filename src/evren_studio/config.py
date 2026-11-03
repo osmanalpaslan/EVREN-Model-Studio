@@ -166,6 +166,9 @@ class Settings:
     suggest_project: bool = True
     # Kota yüzünden duraklayan Proje/QA/Derin çalışması, kota yenilenince kendiliğinden sürdürülsün
     auto_resume: bool = True
+    # Gözlem ajanı (gozlem.py; kullanıcı kararı 2026-11-03): hata ve anormallikleri temizleyip kaydet ve
+    # uygulama kaynaktan çalışıyorsa projenin deposundaki `gozlem-kayitlari` dalına gönder
+    gozlem_enabled: bool = True
     # Derin Mod (composer "Derin" düğmesi): açıkken her iş anla→planla→uygula→doğrula→düzelt akışıyla
     deep_mode: bool = False
     # Derin Mod'da aynı anda çalışan alt ajan sayısı (1-3; kota penceresi doluysa kendiliğinden 1'e iner)

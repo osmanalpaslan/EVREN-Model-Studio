@@ -32,6 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")   # gözlem ajanı: bu koşunun kayıtları "e2e" kaynaklı
 
 TURN_TIMEOUT = 6 * 60           # görev başına üst sınır (sn)
 PY = sys.executable
@@ -508,6 +509,14 @@ def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi",
         for n, ok, d in checks:
             if not ok:
                 print(f"         KALDI: {n}" + (f" | {d}" if d else ""), flush=True)
+        if not tam:
+            # Gözlem ajanı: geliştirme sırasındaki düşüş de kayda geçsin (kontrol adları bizim; içerik yok)
+            from evren_studio import gozlem
+
+            gozlem.kaydet("e2e_basarisiz", f"Zorluk paketi görevi düştü: {ad}", onem="orta", alan="test",
+                          mesaj="kalan kontroller: " + ", ".join(n for n, ok, _d in checks if not ok),
+                          ayrinti={"gorev": ad, "model": model, "sonuc": rec["skor"], "kaynak_betik": alt,
+                                   "durma": ",".join(map(str, rec["durma"]))})
     w.close()
     pump(1)
     gecen = sum(1 for r in results if all(c["gecti"] for c in r["kontroller"]))

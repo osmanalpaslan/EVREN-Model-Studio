@@ -18,6 +18,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+import os  # noqa: E402
+
+os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")   # gözlem ajanı: bu koşunun kayıtları "e2e" kaynaklı
 
 from evren_studio.agent.runner import AgentEvents, AgentRunner  # noqa: E402
 from evren_studio.agent.tools import Workspace  # noqa: E402
@@ -62,6 +65,9 @@ def run_model(client: EvrenClient, model: str, protocol: str) -> dict:
             error = None
         except ApiError as exc:
             outcome, error = None, f"{exc.kind.value} HTTP {exc.status}: {exc.message[:160]}"
+            from evren_studio import gozlem
+
+            gozlem.api_hatasi(exc, islem=f"e2e_agent {protocol}")
         dur = time.monotonic() - t0
         msgs = db.get_session_messages(sid)
         db.close()

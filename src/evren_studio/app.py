@@ -17,6 +17,10 @@ def _install_excepthook() -> None:
 
     def hook(exc_type, exc, tb) -> None:
         text = mask_secret("".join(traceback.format_exception(exc_type, exc, tb)))
+        from . import gozlem
+
+        gozlem.kaydet("cokme", f"Yakalanmamış hata: {exc_type.__name__}", onem="yuksek", alan="ui",
+                      exc=exc, tb=tb)
         try:
             log_dir = default_data_dir() / "logs"
             log_dir.mkdir(parents=True, exist_ok=True)
@@ -39,11 +43,48 @@ def _install_excepthook() -> None:
 
     sys.excepthook = hook
 
+    import threading
+
+    def thread_hook(args) -> None:
+        # Arka plan iş parçacığında yakalanmamış hata (Task dışında açılan iş parçacıkları)
+        from . import gozlem
+
+        if args.exc_type is SystemExit:
+            return
+        gozlem.kaydet("cokme", f"İş parçacığında yakalanmamış hata: {args.exc_type.__name__}", onem="yuksek",
+                      alan="genel", exc=args.exc_value, tb=args.exc_traceback)
+        threading.__excepthook__(args)
+
+    threading.excepthook = thread_hook
+
+
+def _install_qt_message_handler() -> None:
+    """Qt uyarılarını (ör. başka iş parçacığından arayüz güncelleme, R-11) gözlem ajanına iletir."""
+    from PySide6.QtCore import QtMsgType, qInstallMessageHandler
+
+    from . import gozlem
+
+    levels = {QtMsgType.QtWarningMsg: "warning", QtMsgType.QtCriticalMsg: "critical",
+              QtMsgType.QtFatalMsg: "fatal"}
+
+    def handler(mode, _ctx, message) -> None:
+        level = levels.get(mode)
+        if level:
+            gozlem.qt_mesaji(level, message)
+        if sys.__stderr__:
+            try:
+                sys.__stderr__.write(f"{message}\n")
+            except (OSError, ValueError):
+                pass
+
+    qInstallMessageHandler(handler)
+
 
 def main() -> int:
     from PySide6.QtWidgets import QApplication
 
     _install_excepthook()
+    _install_qt_message_handler()
     from .ui.main_window import MainWindow
 
     if sys.platform == "win32":

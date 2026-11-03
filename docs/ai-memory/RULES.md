@@ -189,3 +189,7 @@
 - **Neden:** Kullanıcı farklı bilgisayar ve oturumlardan çalışıyor; durum yalnız sohbette/yerel hafızada kalınca başka ortamdaki motor işi bilmiyor, proje askıda kalıyor (2026-11-01 kullanıcı isteği).
 - **Kaynak:** AGENTS.md
 
+### R-36 · Gözlem ajanının kayıtlarını kullanıcıya bildir; gözlem verisini her zaman temizle
+- **Kural:** `baslangic` çıktısında "Uygulamadan gelen gözlemler" bölümünde `! KULLANICIYA BİLDİR` satırı varsa işe başlamadan açık ve YENİDEN görülen gözlemleri kullanıcıya listele ve düzeltmeyi öner; onaylanınca `gozlem kayda-donustur <imza>` → kök neden ve düzeltme → `gozlem kapat <imza> --kayit <id>`. Gözleme yeni bir kaynak veya alan eklerken metni `gozlem.temizle`'den, ayrıntıyı izinli anahtar listesinden geçir; kullanıcının sohbet içeriğini, dosya yolunu, anahtarını asla ekleme ve tests/test_gozlem.py gizlilik kapısını kapatma.
+- **Neden:** Sorunlar yalnız testte değil, uygulama kullanılırken de gözlemlensin ve sonraki geliştirme oturumu bunları kaçırmasın (kullanıcı kararı 2026-11-03); `gozlem-kayitlari` dalı herkese açık depodadır.
+- **Kaynak:** AGENTS.md, 2026-11-03-test-dosyasi-korumasi-komutla-yapilan-degisikligi-gormuyordu

@@ -2364,6 +2364,10 @@ class SessionView(QWidget):
         elif role:
             self._kolay_fail = False
         self._last_route_role = role
+        from .. import gozlem
+
+        gozlem.tur_sonu(outcome.stopped, model=getattr(done_runner, "model", "") or "", rol=role,
+                        adim=getattr(outcome, "steps", None), mod=getattr(done_runner, "mode", "") or "")
         if getattr(outcome, "test_edits", None):
             self._note("Dikkat: bu turda var olan test dosyaları değiştirildi ve öyle kaldı: "
                        + ", ".join(outcome.test_edits) + ". Testleri değiştirmek istemediyseniz sağ "

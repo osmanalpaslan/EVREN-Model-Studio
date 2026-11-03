@@ -22,6 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")   # gözlem ajanı: bu koşunun kayıtları "e2e" kaynaklı
 
 
 def main() -> int:

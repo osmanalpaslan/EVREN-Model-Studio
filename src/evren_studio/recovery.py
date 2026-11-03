@@ -135,6 +135,9 @@ class RecoveryEngine:
             context=context,
             signature=err.signature,
         )
+        from . import gozlem
+
+        gozlem.api_hatasi(err)
         return self.db.add_error(rec)
 
     def advise(self, err: ApiError, auto_retry_happened: bool = False) -> RecoveryAdvice:

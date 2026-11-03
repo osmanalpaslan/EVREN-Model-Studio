@@ -24,9 +24,15 @@
 2. **Devir notunu oku: `docs/DEVIR_NOTU.md`** (`baslangic` en üstte gösterir). "Şu an" bölümündeki
    dala geç ve "Kaldığı yer"den devam et; geliştirme sırasındaki SIRADA maddeleri sırayla yap. Çıktıda
    "DEVAM EDEN İŞ BAŞKA DALDA" uyarısı varsa o dala geç (`git switch <dal>`) — iş başka bilgisayarda sürüyordur.
-3. Aşağıdaki **Kritik kurallar** bölümündeki her kurala uy. Bir kuralla
+3. **Gözlem ajanının kayıtları:** `baslangic` çıktısında "Uygulamadan gelen gözlemler" bölümü ve
+   `! KULLANICIYA BİLDİR` satırı varsa (uygulama çalışırken görülen hata/anormallikler; `gozlem-kayitlari`
+   dalı) işe başlamadan listeyi kullanıcıya söyle ve düzeltmeyi öner. Onaylanınca:
+   `toolsi_memory.py gozlem kayda-donustur <imza>` → kök neden + düzeltme + test →
+   `toolsi_memory.py gozlem kapat <imza> --kayit <kayit-id>`. Geliştirme sırasında sen de gözlem
+   ekleyebilirsin: `gozlem ekle --baslik "..." --onem orta --alan ... [--gonder]` (R-36).
+4. Aşağıdaki **Kritik kurallar** bölümündeki her kurala uy. Bir kuralla
    çelişen bir istek gelirse kullanıcıya söyle.
-4. Yapacağın işle ilgili kayıtları ara:
+5. Yapacağın işle ilgili kayıtları ara:
    `.\.venv\Scripts\python.exe tools\ai_memory.py ara <kelime>`
    Daha önce BAŞARISIZ olmuş bir çözümü yeni bilgi olmadan tekrarlama.
 
@@ -133,4 +139,5 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-33** · Renk/stil değişikliğini okunurluk denetimiyle ölç — theme.py renklerine, QSS'e veya yeni bileşen stiline dokunduğunda `tools/ui_denetim.py <klasör> ikisi --goruntu` (QT_QPA_PLATFORM=windows) çalıştır ve görüntülere bak; tests/test_okunurluk.py HATA=0 olmalı. Yeni renk seçerken tüm zeminlerde (bg, sidebar, panel, surface, surface2, hover, selected) WCAG oranını hesapla; liste yenilerken eski bileşeni `hide()` sonra `deleteLater()` et.
 - **R-34** · Token/bağlam hesabını gerçek kullanımla kalibre et; sabit oran varsayma — Bağlam göstergesi, özet eşiği, kırpma ve sert sınır `runner.estimate_tokens` / `calibration()` ile hesaplanır; yeni bir token hesabı yazma, sabit karakter/token oranı veya sabit sistem ek yükü ekleme. Modelden gelen `usage` girdi token'ı kalibrasyona akmalı (`runner.calibrate`); görselin base64'ünü sayma. Oranı değiştirince tests/test_token_kalibrasyonu.py'de hem tetiklenen hem tetiklenmeyen durumu sına.
 - **R-35** · Devir notunu her adımda güncelle ve gönder; iş tek bilgisayarda kalmasın — `docs/DEVIR_NOTU.md` işin tek "şu an" kaynağıdır: başlarken oku (baslangic gösterir; "DEVAM EDEN İŞ BAŞKA DALDA" uyarısında o dala geç), her madde/alt adım bitince durumunu (YAPILDI/SÜRÜYOR + commit) ve "Şu an" bölümünü (dal, yarım kalan, sıradaki adım, yarıda kalan uzun test) güncelle, commit'le ve push et; ayrılırken yarım işi `wip:` commit'iyle gönder. Kullanıcının verdiği yeni geliştirme maddesini hemen tabloya ekle.
+- **R-36** · Gözlem ajanının kayıtlarını kullanıcıya bildir; gözlem verisini her zaman temizle — `baslangic` çıktısında "Uygulamadan gelen gözlemler" bölümünde `! KULLANICIYA BİLDİR` satırı varsa işe başlamadan açık ve YENİDEN görülen gözlemleri kullanıcıya listele ve düzeltmeyi öner; onaylanınca `gozlem kayda-donustur <imza>` → kök neden ve düzeltme → `gozlem kapat <imza> --kayit <id>`. Gözleme yeni bir kaynak veya alan eklerken metni `gozlem.temizle`'den, ayrıntıyı izinli anahtar listesinden geçir; kullanıcının sohbet içeriğini, dosya yolunu, anahtarını asla ekleme ve tests/test_gozlem.py gizlilik kapısını kapatma.
 <!-- KURALLAR:BITIR -->
