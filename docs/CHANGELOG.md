@@ -12,6 +12,9 @@
   motoruna "kullanıcıya bildir" der; düzeltildikten sonra yeniden görülen sorun "YENİDEN GÖRÜLDÜ" diye
   öne çıkar. Yeni komutlar: `gozlem listele | goster | kayda-donustur | kapat | ekle | gonder`.
 - Gerçek API betiklerinde (zorluk paketi, ajan testi) düşen görevler de gözlem olarak kaydedilir.
+- Ajan bir işi kendi isteğiyle bitirdikten sonra sizin yalnız "devam" yazmak zorunda kaldığınız durumlar da
+  gözlem olarak kaydedilir (ajan size soru sorduysa kaydedilmez); "faz bitince durma" sorunu gerçek kullanımda
+  böylece izlenir.
 
 ## Yayınlanmamış — Doğruluk turu
 

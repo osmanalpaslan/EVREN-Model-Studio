@@ -150,6 +150,9 @@ PROJECTS: dict[str, dict] = {
     # oturumdaydı). Ölçü: betiğin "devam et" yazmak zorunda kalması, iş sonunda açık plan maddesi, kabul.
     "F": {
         "ad": "Tek mesajda 10 fazlı metin kütüphanesi (faz unutma ölçümü)",
+        # Çok aşamalı uzun istemde uygulama "Proje ajanıyla yürütülsün mü?" kartı gösterip mesajı bekletir; burada
+        # ölçülen NORMAL oturumdaki faz unutma olduğu için öneri kapalı (ilk koşu bu yüzden boş geçti, 2026-11-03).
+        "oneri_kapali": True,
         "mesajlar": [
             "Bu boş klasörde büyük bir iş var. Önce işi fazlara böl ve SURECI.md dosyasına her fazı `- [ ] Faz N: ...` "
             "biçiminde yaz. Sonra fazları sırayla yürüt; her fazı bitirince SURECI.md'de o satırı `- [x]` yap ve bana "
@@ -654,6 +657,8 @@ def main() -> int:
     # MARATON_PLAN_BEKCISI=0 → plan bekçisi KAPALI (açık/kapalı karşılaştırması, R-25)
     bekci_acik = os.environ.get("MARATON_PLAN_BEKCISI", "1") != "0"
     w.ctx.settings.plan_guard = bekci_acik
+    if spec.get("oneri_kapali"):
+        w.ctx.settings.suggest_project = False
     kota_testi = os.environ.get("MARATON_KOTA_TESTI")
     kota = {"aktif": False, "durdu": 0, "kart": 0, "plan": 0, "surdu": 0, "mesaj": 0, "adim": 0}
     if kota_testi:
@@ -690,6 +695,13 @@ def main() -> int:
                 pump(0.3)
             kota["aktif"] = True                    # bir sonraki model çağrısından önce kota "bitti"
         finished = wait_turn(TURN_TIMEOUT)
+        sid_now = w.session.session_id
+        if not any(m["role"] == "user" and m["content"].startswith(msg[:40])
+                   for m in (w.ctx.db.get_session_messages(sid_now) if sid_now else [])):
+            # Mesaj oturuma hiç ulaşmadıysa (öneri kartı, onay penceresi…) ölçüm geçersizdir: sessizce sürme
+            print(f"[{tag}] GEÇERSİZ: mesaj {i} oturuma gönderilmedi (kart/pencere bekliyor olabilir)", flush=True)
+            w.close()
+            return 3
         if kota_testi and i == kota["mesaj"] and finished:
             from evren_studio.agent import resume as _resume
             from evren_studio.ui.transcript import QuotaResumeCard

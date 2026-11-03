@@ -121,7 +121,8 @@ def temizle(text: Any, limit: int = MAX_METIN) -> str:
 
 
 _AYRINTI_IZINLI = {"model", "rol", "olay", "http", "hata_kodu", "hata_turu", "durma", "protokol", "istisna",
-                   "islem", "gorev", "sonuc", "adim", "sure_sn", "mod", "saglayici", "kaynak_betik"}
+                   "islem", "gorev", "sonuc", "adim", "sure_sn", "mod", "saglayici", "kaynak_betik",
+                   "acik_plan"}
 
 
 def _ayrinti_temizle(d: dict | None) -> dict[str, Any]:
@@ -360,6 +361,27 @@ def tur_sonu(stopped: str, *, model: str = "", rol: str = "", adim: int | None =
     baslik, onem = _TUR_SONU[stopped]
     return kaydet("tur_sonu", baslik, onem=onem, alan="ajan",
                   ayrinti={"durma": stopped, "model": model, "rol": rol, "adim": adim, "mod": mod})
+
+
+# Kullanıcının asıl şikâyeti (kayıt 2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor):
+# ajan "bitti" deyip durur, kullanıcı "devam" yazmak zorunda kalır. Gerçek API'de üretilemedi (2026-11-03,
+# maraton F, 3 özetle 17/17) → gerçek kullanımda olursa burada yakalanır.
+_DEVAM = re.compile(r"^(?:devam(?: et| edin| ediniz| edelim)?|sürdür|kaldığın yerden devam(?: et)?|devam lütfen|"
+                    r"lütfen devam(?: et)?|devam ?\.+|go on|continue)[.!\s]*$", re.IGNORECASE)
+
+
+def devam_zorunlu(metin: str, onceki_durma: str, son_yanit: str, *, model: str = "", rol: str = "",
+                  acik_plan: int = 0) -> str | None:
+    """Kullanıcı, ajanın kendi isteğiyle ("done") bitirdiği turdan sonra yalnız "devam" yazdıysa gözlem.
+    Ajan soru sorduysa / SORU: / ENGEL: dediyse kullanıcının yanıtıdır, kaydedilmez (R-22)."""
+    if onceki_durma != "done" or not _DEVAM.match((metin or "").strip()):
+        return None
+    son = (son_yanit or "").strip()
+    if not son or "SORU:" in son or "ENGEL:" in son or son.rstrip("*_` \n").endswith("?"):
+        return None
+    return kaydet("ajan_anomali", "Ajan turu bitirdi, kullanıcı 'devam' yazmak zorunda kaldı",
+                  onem="orta", alan="ajan",
+                  ayrinti={"model": model, "rol": rol, "olay": "devam_zorunlu", "acik_plan": acik_plan or None})
 
 
 # Windows/Qt'nin zararsız, sık uyarıları (gözlem değeri yok)

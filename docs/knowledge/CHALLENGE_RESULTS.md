@@ -84,6 +84,24 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Faz unutma ölçümü — maraton F (2026-11-03, `tests/e2e_marathon_real_api.py F auto-pro`, gerçek EVREN)
+
+Tek uzun mesaj: işi SURECI.md'ye fazlara böl, sormadan sırayla yürüt (10 parça: metinlib + CLI + test + README +
+CHANGELOG). Kabul denetimi önce bilinen doğru (17/17) ve bilinen yanlış (14/17, 3 kasıtlı hata) ile sınandı.
+"Proje ajanı önerisi" kapalı (açıkken kart mesajı bekletir; ilk koşu bu yüzden GEÇERSİZDİ, betik artık bunu
+"GEÇERSİZ" diye bildirir).
+
+| Özet eşiği | Bekçi | Kabul | Süre | Adım | Otomatik özet | Betiğin "devam et"i | Açık plan |
+|---|---|---|---|---|---|---|---|
+| 15000 | açık | 17/17 | 732 sn | 20 | 0 | 0 | 0 |
+| 15000 | kapalı | 17/17 | 903 sn | 28 | 0 | 0 | 0 |
+| 8000 | açık | 17/17 | 1228 sn | 18+4+4+6 | 3 | 0 | 0 |
+| 8000 | kapalı | 17/17 | 1513 sn | 13+3+5+8 | 3 | 0 | 0 |
+
+Çıkarım: kullanıcının şikâyeti bugünkü kodla üretilemedi (özetten sonra da fazlar sürdü). Özetten sonra tur
+yalnız 3-5 adımda yeniden sınıra dayandı (eşik bilerek çok düşük); gerçek eşikte (100k) bu ölçülmedi.
+Gerçek kullanım için gözlem ajanına `devam_zorunlu` eklendi.
+
 ## Gözlem ajanı (2026-11-03, dal `feat/gozlem-ajani`, gerçek EVREN API + gerçek GitHub)
 
 - Zorluk paketi auto-pro: **12/12** · 1030 sn · yakalanmamış hata 0. R-13: E2E_OK · arayüz 15/15 · ajan 5/6

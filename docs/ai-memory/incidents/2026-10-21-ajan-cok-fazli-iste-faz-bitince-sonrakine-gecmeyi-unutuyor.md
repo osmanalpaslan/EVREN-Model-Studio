@@ -43,6 +43,17 @@ Kod incelemesiyle doğrulandı (gerçek API'de kısa denemelerde YENİDEN ÜRET�
   tüm fazları bitirdi, testler geçti, dürtme 0; B (eski TODO + soru) yanlış tetiklenme 0. Yani bekçinin
   YARARI gerçek API'de henüz gösterilemedi; zararı yok (zorluk paketi sonrası sonuç CHALLENGE_RESULTS.md).
 
+- 2026-11-03 uzun ölçüm (`tests/e2e_marathon_real_api.py F`, gerçek arayüz + EVREN, Auto Pro): tek mesajda
+  10 faz, SURECI.md. Özet eşiği 15000 (özet tetiklenmedi): bekçi açık 17/17 · 20 adım · 732 sn, kapalı 17/17 ·
+  28 adım · 903 sn. Eşik 8000 (tur ortasında **3 otomatik özet**, context_limit → özet → otomatik devam
+  zinciri): açık 17/17 · 1228 sn, kapalı 17/17 · 1513 sn. Dört koşunun hiçbirinde betik "devam et" yazmak
+  zorunda kalmadı, açık plan maddesi 0, bekçi dürtmesi 0. Sorun bugünkü kodla YENİDEN ÜRETİLEMEDİ; bekçinin
+  yararı yine gösterilemedi (kapalıyken de bitti), zararı yok.
+- Gerçek kullanımda izleme: gözlem ajanı artık tam bu belirtiyi kaydediyor — ajan turu kendi bitirdikten
+  ("done") sonra kullanıcı yalnız "devam" yazarsa `ajan_anomali / devam_zorunlu` gözlemi (ajan soru sorduysa,
+  SORU:/ENGEL: dediyse kaydedilmez). Ayrıca `plan_stall` ve adım/bağlam sınırı tur sonları da kaydediliyor.
+  Bu kayıt gözlem gelene kadar "izleniyor" kalır.
+
 ## Önleme
 Durum "izleniyor": kullanıcının gerçek uzun oturumlarında (özet sonrası) tekrar ederse, oturum kaydından
 özet anını ve bekçi notlarını ("Plan bekçisi: ...") incele. Ölçüm betiği: tests/e2e_plan_bekcisi_real_api.py.
