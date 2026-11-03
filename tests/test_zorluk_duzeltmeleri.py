@@ -172,6 +172,89 @@ def test_geri_alinirsa_tur_notu_yok(tmp_path):
     assert out.test_edits == []
 
 
+def _cmd_run(tmp_path, user_text, commands, extra_files=None):
+    """Test dosyasını düzenleme aracı yerine KOMUTLA değiştiren sahte model (2026-11-03 açığı)."""
+    import json as _json
+
+    from evren_studio.agent.runner import AgentRunner
+    from evren_studio.agent.tools import Workspace
+    from evren_studio.api.client import ChatResult
+    from evren_studio.db import Database
+
+    (tmp_path / "tests").mkdir(exist_ok=True)
+    (tmp_path / "tests" / "test_h.py").write_bytes(b"assert f() == 90\nassert f() == 80\n")   # LF, bayt bayt
+    for rel, text in (extra_files or {}).items():
+        (tmp_path / rel).write_text(text, encoding="utf-8")
+    calls = list(commands)
+
+    class C:
+        def chat(self, model, messages, **kw):
+            if not calls:
+                return ChatResult(content="bitti", finish_reason="stop")
+            return ChatResult(content="", finish_reason="tool_calls", tool_calls=[{
+                "id": f"k{len(calls)}", "name": "run_command",
+                "arguments": _json.dumps({"command": calls.pop(0)})}])
+
+    db = Database(tmp_path / "t.db")
+    try:
+        sid = db.create_session("auto", str(tmp_path))
+        db.add_session_message(sid, "user", user_text)
+        out = AgentRunner(C(), "auto", session_id=sid, store=db, workspace=Workspace(tmp_path), mode="auto",
+                          stream=False).run(db.get_session_messages(sid))
+        tools_out = [m["content"] for m in db.get_session_messages(sid) if m["role"] == "tool"]
+        changes = [dict(r) for r in db.list_file_changes(sid)]
+        return out, tools_out, changes
+    finally:
+        db.close()
+
+
+def test_komutla_degisen_test_uyari_tur_notu_ve_geri_alinabilir(tmp_path):
+    from evren_studio.agent.tools import revert_file
+
+    out, tools_out, changes = _cmd_run(tmp_path, "testler geçecek şekilde kodu düzelt",
+                                       ["Set-Content -Path tests/test_h.py -Value 'assert f() == 90'"])
+    assert "⚠ Var olan bir TEST dosyasını değiştirdin (tests/test_h.py, komutla)" in tools_out[0]
+    assert out.test_edits == ["tests/test_h.py"]
+    assert [c["path"] for c in changes] == ["tests/test_h.py"]          # Değişiklikler sekmesinde görünür
+    c = changes[0]
+    revert_file(tmp_path, c["path"], c["before_text"], c["after_text"])
+    assert (tmp_path / "tests" / "test_h.py").read_text(encoding="utf-8") == "assert f() == 90\nassert f() == 80\n"
+
+
+def test_komutla_silinen_test_bildirilir(tmp_path):
+    out, tools_out, changes = _cmd_run(tmp_path, "testler geçecek şekilde kodu düzelt",
+                                       ["Remove-Item tests/test_h.py"])
+    assert out.test_edits == ["tests/test_h.py"]
+    assert "komutla silindi" in tools_out[0] and changes[0]["after_text"] is None
+
+
+def test_komutla_geri_alinirsa_tur_notu_yok(tmp_path):
+    out, tools_out, _ = _cmd_run(tmp_path, "testler geçecek şekilde kodu düzelt", [
+        "Set-Content -Path tests/test_h.py -Value 'assert f() == 90'",
+        "[IO.File]::WriteAllText(\"$PWD/tests/test_h.py\", \"assert f() == 90`nassert f() == 80`n\")",
+    ])
+    assert (tmp_path / "tests" / "test_h.py").read_bytes() == b"assert f() == 90\nassert f() == 80\n"
+    assert out.test_edits == []
+    assert "TEST dosyasını" in tools_out[0] and "TEST dosyasını" not in tools_out[1]
+
+
+def test_komut_test_dosyasina_dokunmazsa_uyari_yok(tmp_path):
+    # Testleri çalıştırmak, kodu komutla düzeltmek ve YENİ test dosyası oluşturmak uyarı vermez (R-22)
+    out, tools_out, changes = _cmd_run(tmp_path, "testler geçecek şekilde kodu düzelt", [
+        "Get-Content tests/test_h.py",
+        "Set-Content -Path hesap.py -Value 'def f(): return 90'",
+        "Set-Content -Path tests/test_yeni.py -Value 'assert True'",
+    ], extra_files={"hesap.py": "def f(): return 0\n"})
+    assert out.test_edits == [] and changes == []
+    assert all("TEST dosyasını" not in t for t in tools_out)
+
+
+def test_kullanici_testi_isterse_komutta_da_uyari_yok(tmp_path):
+    out, tools_out, changes = _cmd_run(tmp_path, "yanlış olan testi düzelt: 80 olmalı değil",
+                                       ["Set-Content -Path tests/test_h.py -Value 'assert f() == 90'"])
+    assert out.test_edits == [] and changes == [] and "TEST dosyasını" not in tools_out[0]
+
+
 def test_kullanici_isterse_uyari_yok(tmp_path):
     out, tools_out = _guard_run(tmp_path, "yanlış olan testi düzelt: 80 olmalı değil", [("== 80", "== 90")])
     assert "TEST dosyasını" not in tools_out[0] and out.test_edits == []

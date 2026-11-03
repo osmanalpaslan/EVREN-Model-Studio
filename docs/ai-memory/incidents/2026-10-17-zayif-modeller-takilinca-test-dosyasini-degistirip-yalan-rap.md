@@ -40,6 +40,12 @@ Açık iş: tur sonunda test dosyası değiştiyse özette uyarı. Kod işleri i
 deepseek-v4-flash / qwen3.8-flash-next / mimo önerilir (ENGINES.md değil,
 MODEL_CAPABILITIES.md).
 
+Düzeltme notu (2026-11-03): tur sonu uyarısı 2026-10-19'da eklenmişti (scope.TEST_EDIT_WARNING,
+outcome.test_edits) ama yalnız düzenleme aracını görüyordu; komutla değiştirme/silme de artık yakalanıyor
+(2026-11-03-test-dosyasi-korumasi-komutla-yapilan-degisikligi-gormuyordu). Hâlâ açık: testi değiştirmeden
+kandıran kod (gemma'nın `sys._getframe` hilesi) otomatik yakalanmıyor; istem kuralı + kod rolünde gemma
+kullanılmaması (SLOW_SWITCH_EXCLUDE) ile azaltılıyor.
+
 ## İlgili dosyalar
 - src/evren_studio/agent/prompts.py
 - docs/knowledge/LOOP_ANALYSIS.md

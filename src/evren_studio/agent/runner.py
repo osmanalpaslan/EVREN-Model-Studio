@@ -717,7 +717,42 @@ class AgentRunner:
                 now = None
             if now != before:
                 out.append(rel)
+        cmd_orig = getattr(self, "_test_cmd_orig", {})
+        if cmd_orig and self.workspace is not None:
+            from .scope import changed_tests
+
+            out += [r for r in changed_tests(self.workspace.root, cmd_orig) if r not in out]
         return out
+
+    def _test_snapshot(self) -> dict[str, bytes] | None:
+        """Komuttan önce: kullanıcı testleri değiştirmeyi istemediyse var olan test dosyalarının içeriği."""
+        if not self.agentic or self.workspace is None or getattr(self, "_tests_allowed", True):
+            return None
+        from .scope import snapshot_tests
+
+        try:
+            return snapshot_tests(self.workspace.root)
+        except OSError:
+            return None
+
+    def _test_cmd_check(self, snap: dict[str, bytes] | None) -> str:
+        """Komuttan sonra: komutun değiştirdiği/sildiği test dosyaları → modele uyarı, kayda değişiklik."""
+        if not snap:
+            return ""
+        from .scope import TEST_EDIT_WARNING, changed_tests
+        from .tools import decode_bytes
+
+        warn = ""
+        for rel in changed_tests(self.workspace.root, snap):
+            if rel in self._test_orig or rel in self._test_cmd_orig:
+                continue                     # aynı dosya bu turda zaten bildirildi
+            self._test_cmd_orig[rel] = snap[rel]
+            p = self.workspace.root / rel
+            after = decode_bytes(p.read_bytes()).text if p.exists() else None
+            # Değişiklikler sekmesinden geri alınabilsin (kullanıcı notu bunu söyler)
+            self.store.add_file_change(self.session_id, self.turn_id, rel, decode_bytes(snap[rel]).text, after)
+            warn += TEST_EDIT_WARNING.format(path=rel + (", komutla silindi" if after is None else ", komutla"))
+        return warn
 
     def _cancelled(self) -> bool:
         return bool(self.cancel is not None and getattr(self.cancel, "cancelled", False))
@@ -781,6 +816,7 @@ class AgentRunner:
         outcome = TurnOutcome(protocol=self.protocol)
         self._tests_allowed = True
         self._test_orig: dict[str, str | None] = {}     # yol → turdaki ilk hâli
+        self._test_cmd_orig: dict[str, bytes] = {}      # komutla değişen test dosyası → komuttan önceki içerik
         self._wrote = False
         self._test_baseline = None
         self._history_ref = history
@@ -1785,6 +1821,7 @@ class AgentRunner:
                 self.events.status("Kullanıcı kuralı bir komutu engelledi.")
                 return ToolResult(False, why, f"Engellendi (kullanıcı kuralı): {command[:60]}",
                                   {"command": command, "denied": True})
+        snap = self._test_snapshot()
         result: CommandResult = self.toolbox.run_command(
             command, call.arguments.get("timeout_seconds"), cancel=self.cancel,
             on_output=lambda chunk: self.events.tool_output(call, chunk),
@@ -1793,12 +1830,16 @@ class AgentRunner:
         self._work += 1                      # komut çalıştı (sonucu ne olursa olsun bir iş adımı)
         state = "zaman aşımı" if result.timed_out else (
             "durduruldu" if result.cancelled else f"çıkış {result.exit_code}")
-        return ToolResult(ok, result.to_text(self.output_limit), f"Çalıştırıldı: {command[:80]} ({state})",
-                          {"command": command, "exit_code": result.exit_code,
-                           "output": truncate_middle(result.output, 8000),
-                           "duration": round(result.duration, 1),
-                           "auto_approved": decision == Decision.ALLOW,
-                           "auto_reason": reason if decision == Decision.ALLOW else ""})
+        extra = {"command": command, "exit_code": result.exit_code,
+                 "output": truncate_middle(result.output, 8000),
+                 "duration": round(result.duration, 1),
+                 "auto_approved": decision == Decision.ALLOW,
+                 "auto_reason": reason if decision == Decision.ALLOW else ""}
+        warn = self._test_cmd_check(snap)
+        if warn:
+            extra["test_edit"] = True
+        return ToolResult(ok, result.to_text(self.output_limit) + warn,
+                          f"Çalıştırıldı: {command[:80]} ({state})", extra)
 
 
 def _req(args: dict, key: str) -> Any:
