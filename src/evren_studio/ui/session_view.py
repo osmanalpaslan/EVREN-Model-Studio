@@ -1325,6 +1325,13 @@ class SessionView(QWidget):
         if text.startswith("/") and not atts:
             if self._command(text):
                 return
+        son_tur, self._gozlem_son_tur = getattr(self, "_gozlem_son_tur", None), None
+        if son_tur is not None and self.session_id and son_tur[4] == self.session_id and not atts:
+            from .. import gozlem
+
+            son = next((m["content"] for m in reversed(self.ctx.db.get_session_messages(self.session_id))
+                        if m["role"] == "assistant" and m.get("content")), "")
+            gozlem.devam_zorunlu(text, son_tur[0], son, model=son_tur[1], rol=son_tur[2], acik_plan=son_tur[3])
         pending = self._pending_plan()
         if pending is not None and pending.session_id == self.session_id:
             self.cancel_auto_resume()       # kullanıcı kendisi sürdürüyor: bekleyen otomatik devam iptal
@@ -2368,6 +2375,9 @@ class SessionView(QWidget):
 
         gozlem.tur_sonu(outcome.stopped, model=getattr(done_runner, "model", "") or "", rol=role,
                         adim=getattr(outcome, "steps", None), mod=getattr(done_runner, "mode", "") or "")
+        # Bir sonraki mesaj yalnız "devam" ise ajan erken durmuş demektir (gozlem.devam_zorunlu)
+        self._gozlem_son_tur = (outcome.stopped, getattr(done_runner, "model", "") or "", role,
+                                len(getattr(outcome, "open_plan_items", None) or []), self.session_id)
         if getattr(outcome, "test_edits", None):
             self._note("Dikkat: bu turda var olan test dosyaları değiştirildi ve öyle kaldı: "
                        + ", ".join(outcome.test_edits) + ". Testleri değiştirmek istemediyseniz sağ "

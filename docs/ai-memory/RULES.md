@@ -154,10 +154,10 @@
 - **Neden:** Hesap kapama oturumunda Derin Mod 3/12 görevle "bitti, sorun yok" dedi; bozuk doğrulama komutu (`$` dış kabukta yutuldu) bir görevi düşürüp 8 görevi atlattı; Anla'nın bulduğu sorular hiç sorulmadı ve ajan onayı kendisi yazdı.
 - **Kaynak:** 2026-10-21-derin-mod-kismi-projede-bitti-dedi-ve-kullaniciya-sorulari-s, 2026-10-21-proje-ajani-bozuk-dogrulama-komutu-yuzunden-gorevi-dusurup-8, 2026-10-21-ic-ice-powershell-komutunda-dis-kabuk-degiskenlerini-yuttu
 
-### R-29 · Python kodunu bash heredoc ile yazma
-- **Kural:** Ters bölü, regex veya iç içe tırnak içeren Python kodunu/yamasını bash heredoc ile dosyaya yazma; Write/Edit aracıyla `.py` dosyasına yaz, sonra çalıştır ve içe aktarma denetimi yap.
-- **Neden:** Heredoc gövdesinde çift ters bölü teke indi, `\b` geri silme karakterine döndü; bozuk regex modülü içe aktarılamaz hâle getirdi (bu kuralın ilk yazımı da heredoc'ta bozuldu).
-- **Kaynak:** 2026-10-21-bash-heredoc-icindeki-python-yamasi-regex-teki-b-yi-geri-sil, 2026-10-24-bash-heredoc-ile-yazilan-python-kodunda-ters-bolu-yine-bozul
+### R-29 · Python kodunu bash heredoc ile yazma (Markdown yaması dahil)
+- **Kural:** Ters bölü, regex veya iç içe tırnak içeren Python kodunu/yamasını — Markdown veya başka metin dosyasını yamalayan Python dahil — bash heredoc ile çalıştırma veya dosyaya yazma; Edit aracını ya da Write aracıyla yazılmış `.py` betiğini kullan, sonra çalıştır ve içe aktarma denetimi yap. tests/test_source_hygiene.py kontrol karakteri denetimini kapatma.
+- **Neden:** Heredoc gövdesinde çift ters bölü teke indi, `\b` geri silme karakterine döndü; bozuk regex modülü içe aktarılamaz hâle getirdi (bu kuralın ilk yazımı da heredoc'ta bozuldu). 2026-11-03: Markdown yaması `\a`/`\f` ile AGENTS.md ve DEVIR_NOTU'nu bozdu, master'a girdi.
+- **Kaynak:** 2026-10-21-bash-heredoc-icindeki-python-yamasi-regex-teki-b-yi-geri-sil, 2026-10-24-bash-heredoc-ile-yazilan-python-kodunda-ters-bolu-yine-bozul, 2026-11-03-r-29-ucuncu-kez-ihlal-edildi-heredoc-kacisi-agents-ve-devir
 
 ### R-30 · Testi değişikliğin türüne göre seç; gerçek API ölçümünü faz sonunda topla
 - **Kural:** Her değişiklikte pytest; arayüzde yalnız değişen ekranın iki temalı ekran görüntüsü; gerçek API (R-13, zorluk paketi R-21) faz sonunda bir kez; yeni araç/özellikte yalnız onun küçük açık/kapalı ölçümü (R-25); çok motorlu sıralama ölçümünü yalnız motor sırası değişirken veya EVREN model listesi değişince yap.

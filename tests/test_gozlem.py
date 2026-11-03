@@ -178,6 +178,74 @@ def test_tur_sonu_ve_qt_uyarisi(gz):
     assert _items(gz)[i].onem == "dusuk"
 
 
+def test_devam_zorunlu_tetiklenen_ve_tetiklenmeyen(gz):
+    son = "Faz 3 tamamlandı. Testler geçti."
+    assert gozlem.devam_zorunlu("devam et", "done", son, model="m") is not None
+    assert gozlem.devam_zorunlu("Devam.", "done", son) is not None
+    assert gozlem.devam_zorunlu("kaldığın yerden devam et", "done", son) is not None
+    # tetiklenmemeli (R-22): ajan soru sordu / SORU: / ENGEL:, tur kendisi durmadı, mesaj gerçek bir istek
+    assert gozlem.devam_zorunlu("devam", "done", "Faz 3 bitti. Faz 4'e geçeyim mi?") is None
+    assert gozlem.devam_zorunlu("devam", "done", "SORU: hangi veritabanı?") is None
+    assert gozlem.devam_zorunlu("devam", "done", "ENGEL: paket kurulamadı") is None
+    assert gozlem.devam_zorunlu("devam", "max_steps", son) is None
+    assert gozlem.devam_zorunlu("devam", "cancelled", son) is None
+    assert gozlem.devam_zorunlu("devam et ve testleri de yaz", "done", son) is None
+    assert gozlem.devam_zorunlu("devam", "done", "") is None
+    items = [g for g in _items(gz).values() if g.ayrinti.get("olay") == "devam_zorunlu"]
+    assert len(items) == 1 and items[0].sayac == 3
+
+
+def test_devam_zorunlu_gercek_tur_akisindan(gz, tmp_path, monkeypatch, fake_keyring):
+    """R-31: tur biter (done) → kullanıcı 'devam et' yazar → gözlem; ajan soru sorduysa gözlem yok."""
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from evren_studio.api.client import ChatResult
+
+    monkeypatch.setenv("EVREN_STUDIO_DATA_DIR", str(tmp_path / "data"))
+    app = QApplication.instance() or QApplication([])
+    from evren_studio.ui.main_window import MainWindow
+
+    w = MainWindow()
+    w.show()
+    yanit = ["Faz 1 tamamlandı.", "Faz 2 tamamlandı. Sıradaki faza geçeyim mi?", "Tamam."]
+
+    class C:
+        def chat(self, model, messages, **kw):
+            return ChatResult(content=yanit.pop(0) if yanit else "Tamam.", finish_reason="stop")
+
+        def close(self):
+            pass
+
+    def turn(text):
+        s.send(text)
+        end = time.monotonic() + 10
+        app.processEvents()
+        while s.running and time.monotonic() < end:
+            app.processEvents()
+            time.sleep(0.02)
+        assert not s.running
+
+    try:
+        w.ctx._cached_key = "evren_llm_SAHTE_ANAHTAR_123456"
+        w.ctx.make_client = lambda log_sink=None: C()
+        w.ctx.make_client_for = lambda provider, log_sink=None: C()
+        s = w.session
+        proj = tmp_path / "proje"
+        proj.mkdir()
+        s.new_session()
+        s.welcome._choose(str(proj))
+        s.composer.set_model("deepseek-v4.1-flash", emit=True)
+        s.set_mode("auto")
+        turn("fazları yürüt")
+        turn("devam et")                    # "Faz 1 tamamlandı." sonrası → gözlem
+        turn("devam")                       # "geçeyim mi?" sorusunun yanıtı → gözlem YOK
+        items = [g for g in _items(gz).values() if g.ayrinti.get("olay") == "devam_zorunlu"]
+        assert len(items) == 1 and items[0].sayac == 1
+    finally:
+        w.close()
+
+
 # ---- depoya gönderim ----------------------------------------------------------------------------------
 
 def test_gonder_yetim_dal_acar_dosyalari_yazar_ve_temizdir(gz, tmp_path):

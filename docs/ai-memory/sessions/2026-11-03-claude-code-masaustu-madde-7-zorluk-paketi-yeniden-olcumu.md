@@ -63,6 +63,15 @@ masaüstünde 2026-11-01 21:20'de başlatılan zorluk paketinin sonucu işlenmem
   "uzun token" sanılıyordu — commit'ten önce düzeltildi ve teste bağlandı. (2) testteki sahte `sk-` anahtarı ön-commit
   kancasına takıldı (kanca doğru çalıştı); parçalı yazıldı.
 
+## Devam: faz unutma ölçümü (10b)
+- tests/e2e_marathon_real_api.py projesi F (tek mesaj, 10 faz, SURECI.md) + MARATON_PLAN_BEKCISI; rapor: devam_et_toplam, bekci_notu, acik_plan_maddesi. Kabul: doğru 17/17, yanlış 14/17 (3 kasıtlı hata yakalandı).
+- İlk koşu GEÇERSİZDİ (Proje ajanı önerisi kartı ilk mesajı bekletti, betik bunu tur sonu sandı); öneri F'de
+  kapatıldı, betik artık ulaşmayan mesajı "GEÇERSİZ" diye bildirir.
+- Sonuç: eşik 15000 (özet yok) açık/kapalı 17/17; eşik 8000 (3 otomatik özet) açık/kapalı 17/17; "devam et" 0.
+  Üretilemedi → gözleme `devam_zorunlu` (gerçek kullanımda belirti) + R-31 tur akışı testi.
+- R-29 üçüncü ihlal (kendi hatam): heredoc'lu Markdown yaması AGENTS.md'ye (master'da) ve DEVIR'e kontrol karakteri
+  yazdı; hijyen testine kontrol karakteri denetimi eklendi, ilk koşuda master'daki bozulmayı yakaladı.
+
 ## Sonraki motor için notlar
 - Gözlem ajanı: yeni bir gözlem kaynağı eklerken R-36 (temizle + izinli ayrıntı anahtarları). Bilerek kapsam dışı:
   arayüz donması (olay döngüsü takılması) bekçisi, `start_job` arka plan işleri, paketlenmiş (kaynaksız) kurulumda

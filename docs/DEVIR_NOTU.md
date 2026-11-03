@@ -13,16 +13,17 @@
 ## Şu an
 
 - **Güncelleme:** 2026-11-03 akşam · Claude Code (claude-opus-5-5) · dizüstü bilgisayar
-- **Aktif dal:** `master` (PR #30, #31, #32 ve gözlem ajanı PR'ı birleştirildi). Yeni iş için master'dan dal aç.
-- **Kaldığı yer:** Madde 11 (gözlem ajanı) YAPILDI ve birleştirildi; Madde 10a YAPILDI. Sıradaki (kullanıcı
+- **Aktif dal:** `master` (10b dalı `feat/faz-unutma-olcumu` ölçüm sonrası birleştirilir). Yeni iş için master'dan dal aç.
+- **Kaldığı yer:** Madde 11 (gözlem ajanı) ve 10a YAPILDI. **10b YAPILDI:** maraton F (tek mesaj, 10 faz) gerçek
+  API'de 4 koşu — 3 otomatik özetli koşular dahil hepsi 17/17, "devam et" gerekmedi; sorun üretilemedi →
+  gerçek kullanım için gözleme `devam_zorunlu` eklendi (CHALLENGE_RESULTS "Faz unutma ölçümü"). Ayrıca hijyen
+  testi kontrol karakterini yakalıyor (AGENTS.md'deki heredoc bozulması düzeltildi). Sıradaki (kullanıcı
   2026-11-03: "doğruluk bir tık daha önemli", sırayı motor belirler):
-  1. **10b** faz unutma kaydını (2026-10-21) uzun gerçek oturumla ölç (özet sonrası, `e2e_plan_bekcisi_real_api`
-     + maraton D); yeniden üretilirse düzelt.
-  2. **Madde 8** Derin Mod: aşama başına en doğru EVREN modeli (ölçümle), plan/doğrulama aşamasında `"high"`
+  1. **Madde 8** Derin Mod: aşama başına en doğru EVREN modeli (ölçümle), plan/doğrulama aşamasında `"high"`
      effort ölçümü, kısa canlı durum cümleleri; `e2e_derin_real_api` önce/sonra.
-  3. **Madde 6** klasörsüz sohbette yalnız web_search/web_fetch.
-  4. **Madde 9** sade sağlayıcı ekranı.
-  5. **Madde 7** hız (en son): önce EVREN yükünü ayır; yalnız doğruluğa dokunmayan kaldıraçlar; kod/plan rolünde
+  2. **Madde 6** klasörsüz sohbette yalnız web_search/web_fetch.
+  3. **Madde 9** sade sağlayıcı ekranı.
+  4. **Madde 7** hız (en son): önce EVREN yükünü ayır; yalnız doğruluğa dokunmayan kaldıraçlar; kod/plan rolünde
      effort düşürülmez.
 - **Gözlem ajanı notu:** her oturum başında `baslangic` "Uygulamadan gelen gözlemler" bölümünü gösterir; `!
   KULLANICIYA BİLDİR` varsa kullanıcıya söyle (R-36). Deneme gözlemi b12eb83f411c kabul-edildi olarak kapalı.
@@ -44,7 +45,7 @@ kritikse mutasyon + paket; R-13/R-21 gerçek ölçümler dal sonunda.
 | 6 | Testlerde bulunan hata/eksikler | SIRADA | — | aşağıdaki liste |
 | 7 | Proje bitirme hızı (tutarlılığı bozmadan) | SÜRÜYOR | (bu commit) | KARAR (kullanıcı 2026-11-01): UYARLANABİLİR sıra — kullanıcının sırası varsayılan; öndeki model son 3 saatte yedeğinden 2 kattan fazla yavaşsa o gün yedek öne alınır (YAPILDI: router.choose speeds, modelstats.effective_speeds, test_uyarlanabilir_sira 8, mutasyon). Zorluk paketi (21:20, EVREN yoğun) 8/12: celiski'de yavaşlık geçişi gemma'ya düştü → gemma hile yazdı (DÜZELTİLDİ: SLOW_SWITCH_EXCLUDE), kapsam/mini_proje düzenek hatasıyla iptal (DÜZELTİLDİ), planlama EVREN yavaşlığıyla zaman aşımı. 2026-11-03 tekrar (1117fae): düşen 4 görev 4/4, tam paket 12/12 · 1595 sn (YAPILDI). Kalan: adım sayısı azaltma / hız. Döküm YAPILDI (2026-11-01, maraton A-D + proje ajanı DB'leri): sürenin ~%97'si MODEL BEKLEMESİ; araç/komut toplam 0,3-1,4 dk. deepseek-v4.1-flash çağrı başına ort. 30-85 sn (en uzun 274), qwen3.8-flash-next 15-40 sn. Kaldıraçlar: kod rolünde model sırası (ölçümle), düşünme süresi (reasoning_effort/çıktı uzunluğu), adım sayısı (paralel araç çağrısı, gereksiz okuma), yavaş model erken geçişi (`_slow`). Tutarlılık zorluk + maraton kabulüyle korunur |
 | 8 | Derin Mod yeniden ele alınacak | SIRADA | — | aşamaya göre en doğru/güçlü EVREN modelleri (ölçümle); çalışırken kısa canlı durum cümleleri; mevcut özellikleri önce kodda doğrula; `e2e_derin_real_api` önce/sonra |
-| 10 | Doğruluk turu (kullanıcı 2026-11-03: "doğruluk ve sağlam iş bir tık daha önemli"; sıra: dalı kapat → doğruluk → güvenli hız) | SÜRÜYOR | `feat/dogruluk-turu` | 10a YAPILDI: test dosyası koruması komutla değiştirme/silmeyi de yakalar (kayıt 2026-11-03-test-dosyasi-korumasi-…). Sonra: faz unutma kaydını uzun gerçek oturumla ölç; Madde 8 (Derin Mod, aşama başına en güçlü model, `"high"` effort ölçümü); en son Madde 7 hız (önce EVREN yükünü ayır, yalnız doğruluğa dokunmayan kaldıraçlar, kod/plan rolünde effort DÜŞÜRÜLMEZ) |
+| 10 | Doğruluk turu (kullanıcı 2026-11-03: "doğruluk ve sağlam iş bir tık daha önemli"; sıra: dalı kapat → doğruluk → güvenli hız) | SÜRÜYOR | `feat/dogruluk-turu` | 10a YAPILDI: test dosyası koruması komutla değiştirme/silmeyi de yakalar (kayıt 2026-11-03-test-dosyasi-korumasi-…). 10b YAPILDI (`feat/faz-unutma-olcumu`): faz unutma maraton F'de 4 koşuda üretilemedi, gözleme `devam_zorunlu` eklendi. Sonra: Madde 8 (Derin Mod, aşama başına en güçlü model, `"high"` effort ölçümü); en son Madde 7 hız (önce EVREN yükünü ayır, yalnız doğruluğa dokunmayan kaldıraçlar, kod/plan rolünde effort DÜŞÜRÜLMEZ) |
 | 11 | Gözlem ajanı (kullanıcı 2026-11-03): uygulama/geliştirme sırasındaki hata ve anormallikleri temizleyip depoya gönder; geliştirme motoru görüp kullanıcıya bildirsin | YAPILDI | `feat/gozlem-ajani` (98c6cf2 +) | `src/evren_studio/gozlem.py`, `gozlem-kayitlari` dalı, `ai_memory.py gozlem …`, baslangic bildirimi, R-36. Ayrıntı: CHANGELOG "Gözlem ajanı" |
 | 9 | Sade sağlayıcı/API anahtarı ekranı | SIRADA | — | tek "Sağlayıcı ekle": EVREN, OpenAI, Anthropic, Kilo, OpenRouter, OpenAI-uyumlu; çok modelli ağ geçitleri tek anahtarla |
 
