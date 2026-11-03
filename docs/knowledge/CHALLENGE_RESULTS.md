@@ -84,6 +84,20 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Madde 7 sonrası zorluk paketi (2026-11-03, auto-pro, gerçek EVREN API, dizüstü bilgisayar)
+
+Kod: `1117fae` (uyarlanabilir sıra + `SLOW_SWITCH_EXCLUDE` + düzenek zaman aşımı düzeltmesi). 2026-11-01'deki
+koşu 8/12 idi (celiski: yavaşlık geçişi gemma'ya düştü ve hile yazdı; kapsam/mini_proje düzenek hatası;
+planlama EVREN yavaşlığıyla zaman aşımı).
+
+- Önce düşen 4 görev: **4/4** · 716 sn — celiski 42 sn (deepseek-v4.1-flash, gemma'ya geçiş yok), kapsam 77 sn,
+  planlama 235 sn, mini_proje 363 sn (6 dk sınırında `cancelled` ama kabul 5/5; düzenek turun bitmesini bekledi).
+- Tam paket: **12/12** · 1595 sn · yakalanmamış hata 0 · bekçi 0 · hata kartı 0. Rol dağılımı: kod →
+  deepseek-v4.1-flash (6), qwen3.8-flash-next (1: mini_proje); kod_kolay → gemma-4-31b (5); plan → deepseek.
+- Süre: F7 370 sn, son paket 502 sn, bu koşu 1595 sn. Adım sayıları önceki koşularla aynı düzeyde (2-8), yani
+  fark adım başına model beklemesinden; EVREN o saatteki yükü ayrıca ölçülmedi, kök neden **doğrulanmadı**.
+  Tutarlılık gerilemesi yok; hız Madde 7'nin kalan işi (adım azaltma, düşünme süresi).
+
 ## Web araması web_search açık/kapalı (2026-11-01, `tests/e2e_websearch_real_api.py`, Auto Pro, R-25)
 
 Doğru cevap koşu anında kaynağından okunur (PyPI JSON, endoflife.date); kabul denetimi bilinen doğru ve
