@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .prompts import COMPACT_PROMPT, SUMMARY_SYSTEM
-from .runner import estimate_tokens, history_after_summary, to_api_messages, trim_for_context
+from .runner import calibration, estimate_tokens, history_after_summary, to_api_messages, trim_for_context
 
 DEFAULT_PERCENT = 75
 DEFAULT_MAX_TOKENS = 100_000
@@ -31,7 +31,6 @@ HARD_PERCENT = 90
 HARD_FACTOR = 1.5
 MAX_AUTO_RESUMES = 3
 MIN_MESSAGES = 4
-SYSTEM_OVERHEAD_TOKENS = 2_500     # sistem istemi + araç tanımları (tahmini)
 
 
 @dataclass
@@ -57,7 +56,8 @@ class CompactPolicy:
 def history_tokens(history: list[dict], extra_text: str = "") -> int:
     """Modele gidecek geçmişin (son özetten sonrası) tahmini token sayısı."""
     msgs = to_api_messages("", history, "native")
-    return estimate_tokens(msgs) + estimate_tokens([{"content": extra_text}]) + SYSTEM_OVERHEAD_TOKENS
+    # sistem istemi + araç tanımları: gerçek token sayısından kalibre edilmiş ek yük (runner.calibration)
+    return estimate_tokens(msgs) + estimate_tokens([{"content": extra_text}]) + calibration()[1]
 
 
 def needs_compaction(history: list[dict], policy: CompactPolicy, context_tokens: int | None,

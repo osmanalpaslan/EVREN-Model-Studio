@@ -348,7 +348,6 @@ class ProjectController(QObject):
         self.start()
 
     def _auto_resume(self) -> None:
-        self._resume_timer = None
         if self.active or self.view.running:
             return
         return_to_session(self)
@@ -357,7 +356,7 @@ class ProjectController(QObject):
 
     def stop(self) -> None:
         sv = self.view
-        if getattr(self, "_resume_timer", None) is not None and not self.active:
+        if has_pending_resume(self) and not self.active:
             cancel_auto_resume(self)
             sv._note("Projenin otomatik sürdürülmesi iptal edildi.", "stop")
             return
@@ -535,51 +534,42 @@ def clean_commit_message(text: str) -> str:
     return first + ("\n\n" + "\n".join(rest) if rest else "")
 
 
+FLOWS = {"ProjectController": "proje", "QaController": "qa", "DeepController": "derin"}
+
+
 def schedule_auto_resume(ctrl, reason: str) -> str:
-    """Kota yüzünden duraklayan çalışmayı kota yenilenince sürdürmek üzere zamanlar (Qt ana iş
-    parçacığı). Yenilenme saati son kota sorgusunun ÖNBELLEĞİNDEN okunur (ağ isteği yok, R-04).
-    Dönüş: kullanıcıya gösterilecek not ("" → zamanlanmadı)."""
-    from datetime import datetime
+    """Kota yüzünden duraklayan Proje/QA/Derin çalışması için oturumdaki ortak kota kartını aç: devam planı
+    veritabanına yazılır (uygulama kapanıp açılsa da kalır), "Kota yenilenince otomatik devam et" işaretliyse
+    saatinde kota yoklanıp akış kaldığı yerden sürdürülür (session_view._quota_pause / agent/resume.py).
+    Dönüş: kullanıcıya gösterilecek not ("" → kota nedeni değil, kart açılmadı)."""
+    from ..agent import resume
 
-    from ..agent.quota import resume_delay_ms
-
-    if not ctrl.ctx.settings.auto_resume:
+    kind = resume.kind_from_reason(reason)
+    if kind is None:
         return ""
-    low = (reason or "").lower()
     cache = getattr(ctrl.view.project, "_quota_cache", None)
-    q = cache[1] if cache else None
-    if "günlük" in low:
-        delay = resume_delay_ms(getattr(q, "daily_reset_at", None))
-    elif "kota" in low or "pencere" in low or "rate" in low:
-        delay = 6 * 60 * 1000                # 5 dk penceresi + pay
-    else:
-        return ""
-    old = getattr(ctrl, "_resume_timer", None)
-    if old is not None:
-        old.stop()
-    timer = QTimer(ctrl)
-    timer.setSingleShot(True)
-    timer.timeout.connect(ctrl._auto_resume)
-    timer.start(delay)
-    ctrl._resume_timer = timer
-    ctrl._resume_sid = ctrl.view.session_id
-    when = datetime.fromtimestamp(datetime.now().timestamp() + delay / 1000).strftime("%d.%m %H:%M")
-    return (f"Kota yenilenince (yaklaşık {when}) otomatik sürdürülecek; uygulama açık kalmalı. "
-            "İptal için durdur komutunu yazın.")
+    ctrl.view._quota_pause(kind, reason, flow=FLOWS.get(type(ctrl).__name__, "proje"),
+                           quota=cache[1] if cache else None)
+    if ctrl.ctx.settings.auto_resume:
+        return "Kota yenilenince otomatik sürdürülecek (sohbetteki kota kartı); iptal için kartta Vazgeç."
+    return "Otomatik devam kapalı: kota kartındaki kutuyu işaretleyin ya da yenilenince elle sürdürün."
 
 
 def return_to_session(ctrl) -> None:
-    """Otomatik sürdürmeden önce, bekleme sırasında başka oturuma geçildiyse çalışmanın oturumuna dön."""
+    """Eski uyumluluk: kota kartı oturumu kendisi açar (session_view._resume_now)."""
     sid = getattr(ctrl, "_resume_sid", None)
     if sid and ctrl.view.session_id != sid:
         ctrl.view.open_session(sid)
 
 
+def has_pending_resume(ctrl) -> bool:
+    return ctrl.view.pending_flow() == FLOWS.get(type(ctrl).__name__)
+
+
 def cancel_auto_resume(ctrl) -> None:
-    t = getattr(ctrl, "_resume_timer", None)
-    if t is not None:
-        t.stop()
-        ctrl._resume_timer = None
+    """Bu akış için bekleyen otomatik devamı iptal et (akış elle başlatıldı ya da durduruldu)."""
+    if has_pending_resume(ctrl):
+        ctrl.view.cancel_auto_resume()
 
 
 def quota_decision(q) -> tuple[float, str]:

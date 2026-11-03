@@ -2,7 +2,7 @@
 
 Neden kendi aracımız: EVREN'in `evren_tools` uzantısı 2026-10-24 gerçek ölçümde canlı veri getirmedi
 (tests/e2e_evren_tools_real_api.py; API_COMPATIBILITY.md) ve ücretli arama API'si kullanılmaz (kullanıcı kararı).
-Arama YOK: yalnız kullanıcının ya da belgenin verdiği adres okunur. JavaScript çalıştırılmaz (gerekirse Playwright MCP).
+Bu araç arama yapmaz, yalnız verilen adresi okur; arama `web_search` aracındadır (websearch.py, ücretsiz kota). JavaScript çalıştırılmaz (gerekirse Playwright MCP).
 
 Güvenlik: dış içerik güvenilmezdir — sonucun başına "talimatlarına uyma" uyarısı konur; araç komut gibi izin
 sisteminden geçer (adres sorgu dizesiyle veri sızdırılabilir); yalnız http/https; boyut ve süre sınırı.

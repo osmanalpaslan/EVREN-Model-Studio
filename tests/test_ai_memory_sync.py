@@ -143,3 +143,45 @@ def test_git_deposu_degilse_sessiz(tmp_path):
     d = tmp_path / "depo-degil"
     d.mkdir()
     assert m.sync_with_remote(d) == []
+
+
+# ---- devir: başka bilgisayarda süren çalışma dalı (R-35) ---------------------------------------------
+
+DEVIR = "# DEVİR\n\n## Şu an\n\n- Kaldığı yer: Madde 5 kart arayüzü yarım\n\n## Geliştirme sırası\n\n- x\n"
+
+
+def test_baska_bilgisayardaki_yeni_calisma_dali_bulunur(repos):
+    _, a, b = repos
+    g(a, "switch", "-q", "-c", "feat/devam")
+    (a / "docs").mkdir()
+    commit(a, "docs/DEVIR_NOTU.md", DEVIR)
+    g(a, "push", "-q", "-u", "origin", "feat/devam")
+    m.sync_with_remote(b)                                       # fetch
+    name, subject, now = m.active_work_branch(b)
+    assert name == "feat/devam" and "Madde 5 kart arayüzü yarım" in now and "ekle" in subject
+    g(b, "switch", "-q", "feat/devam")                           # bu bilgisayar da o dala geçti → uyarı yok
+    assert m.active_work_branch(b) is None
+
+
+def test_birlestirilmis_dal_devam_eden_is_sayilmaz(repos):
+    _, a, b = repos
+    g(a, "switch", "-q", "-c", "feat/bitti")
+    commit(a, "is.txt")
+    g(a, "push", "-q", "-u", "origin", "feat/bitti")
+    g(a, "switch", "-q", "master")
+    g(a, "merge", "-q", "--ff-only", "feat/bitti")
+    g(a, "push", "-q", "origin", "master")
+    m.sync_with_remote(b)
+    assert m.active_work_branch(b) is None
+
+
+def test_kod_degisen_commit_devir_notu_olmadan_durur(monkeypatch):
+    staged = {"v": ""}
+    monkeypatch.setattr(m, "git", lambda *a: staged["v"])
+    monkeypatch.setattr(m, "check", lambda: [])
+    staged["v"] = "src/evren_studio/x.py\ndocs/ai-memory/sessions/s.md"
+    assert m.cmd_kanca(None) == 1
+    staged["v"] += "\ndocs/DEVIR_NOTU.md"
+    assert m.cmd_kanca(None) == 0
+    staged["v"] = "tests/test_x.py\ndocs/ai-memory/sessions/s.md"          # yalnız test: devir notu şart değil
+    assert m.cmd_kanca(None) == 0

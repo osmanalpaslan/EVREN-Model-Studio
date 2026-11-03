@@ -1,7 +1,7 @@
 """Ana pencere: sol menü | oturum çalışma alanı (veya araç sayfası) | sağ panel."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -104,6 +104,8 @@ class MainWindow(QMainWindow):
         self.session.set_sidebar_hidden(not s.sidebar_visible)
         self.panel.setVisible(s.panel_visible)
         self.show_sessions()
+        # Kota yüzünden duran iş varsa (önceki açılıştan) oturumunu aç ve otomatik devamı yeniden kur
+        QTimer.singleShot(0, self, self.session.restore_pending_resume)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

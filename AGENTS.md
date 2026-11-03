@@ -21,9 +21,12 @@
    (Komut çalıştıramıyorsan sırayla oku: `docs/ai-memory/RULES.md`,
    `docs/ai-memory/INDEX.md` içindeki **açık kayıtlar**, son 3 oturum
    günlüğü `docs/ai-memory/sessions/`, `docs/PROJECT_STATE.md`.)
-2. Aşağıdaki **Kritik kurallar** bölümündeki her kurala uy. Bir kuralla
+2. **Devir notunu oku: `docs/DEVIR_NOTU.md`** (`baslangic` en üstte gösterir). "Şu an" bölümündeki
+   dala geç ve "Kaldığı yer"den devam et; geliştirme sırasındaki SIRADA maddeleri sırayla yap. Çıktıda
+   "DEVAM EDEN İŞ BAŞKA DALDA" uyarısı varsa o dala geç (`git switch <dal>`) — iş başka bilgisayarda sürüyordur.
+3. Aşağıdaki **Kritik kurallar** bölümündeki her kurala uy. Bir kuralla
    çelişen bir istek gelirse kullanıcıya söyle.
-3. Yapacağın işle ilgili kayıtları ara:
+4. Yapacağın işle ilgili kayıtları ara:
    `.\.venv\Scripts\python.exe tools\ai_memory.py ara <kelime>`
    Daha önce BAŞARISIZ olmuş bir çözümü yeni bilgi olmadan tekrarlama.
 
@@ -39,6 +42,10 @@
 
 ## 3. Bitirmeden önce (ZORUNLU — kod değiştirdiysen)
 
+0. **Devir notunu güncelle ve gönder (R-35):** `docs/DEVIR_NOTU.md` → "Şu an" (tarih, motor, dal, son commit,
+   yarım kalan TAM OLARAK ne, sıradaki adım, yarıda kalan uzun test) ve maddenin durumu (YAPILDI/SÜRÜYOR +
+   commit). Commit'le ve **push et**; yarım iş `wip:` commit'iyle gönderilir. `src/` değişen commit devir
+   notu olmadan kanca tarafından durdurulur. Kullanıcı başka bilgisayardan buradan devam eder.
 1. Oturum günlüğü yaz (veya bu oturumun günlüğünü güncelle):
    `.\.venv\Scripts\python.exe tools\ai_memory.py oturum --baslik "..." --motor "..." --model "..."`
    Görev, yapılanlar, test sonuçları, karşılaşılan sorunlar (kayıt
@@ -78,7 +85,8 @@ durdurur. Her bilgisayarda bir kez kur:
   (R-21): `tests\e2e_zorluk_real_api.py auto-pro` (12 kısa zor görev, ~5 dk) ·
   proje ajanı: `tests\e2e_proje_real_api.py` · MCP/Serena (R-25):
   `tests\e2e_mcp_real_api.py` ve zorluk paketine `--serena build\mcp_data` ·
-  arayüz görsel kontrol: `tools/ui_screenshots.py` (bkz. R-05)
+  arayüz görsel kontrol + okunurluk: `tools/ui_denetim.py <klasör> ikisi --goruntu` (R-05, R-33) · web araması (R-25):
+  `tests\e2e_websearch_real_api.py auto-pro [--kapali]` · uzun oturum: maraton D/E
 - **Yapı**: `src/evren_studio/agent/` (Qt'siz ajan çekirdeği),
   `api/` (EVREN istemcisi), `ui/` (arayüz), `db.py` (SQLite),
   `docs/knowledge/` (uygulamanın EVREN API bilgisi), `docs/ai-memory/`
@@ -94,7 +102,7 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-02** · .gitignore kalıbını kaynak dosyalara karşı doğrula — Yeni ignore kalıbından sonra `git check-ignore -v` ve `git ls-files -o -i --exclude-standard src` ile kaynak kodun dışlanmadığını kontrol et; mümkünse temiz klonda test et.
 - **R-03** · "Kaydediliyor" yetmez, okuma yolunu da test et — Bir ayar/veri kaydediliyorsa uygulamanın açılışta onu gerçekten okuduğunu uçtan uca test et.
 - **R-04** · Arayüz iş parçacığında ağ isteği yapma — Ağ/disk ağırlıklı işleri Task (arka plan iş parçacığı) ile çalıştır; Qt sinyalleriyle sonuç döndür.
-- **R-05** · Arayüz işini görmeden "tamamlandı" deme — Arayüz değişikliğinden sonra tools/ui_screenshots.py ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) ekran görüntüsü alıp bak; duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
+- **R-05** · Arayüz işini görmeden "tamamlandı" deme — Arayüz değişikliğinden sonra `tools/ui_denetim.py <klasör> ikisi --goruntu` ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) iki temada ekran görüntüsü alıp bak (eski tools/ui_screenshots.py yalnız EVREN_STUDIO_DATA_DIR verilirse çalışır, ölçüm yapmaz); duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
 - **R-06** · Gecikmeli Qt çağrısına bağlam nesnesi ver — QTimer.singleShot(ms, self, fn) biçimini kullan; widget silinince çağrı iptal olur.
 - **R-07** · Gerçek API ile doğrulanmamış yeteneği doğrulanmış gibi sunma — tools, görsel, OCR vb. yetenekleri gerçek istekle test etmeden "çalışıyor" yazma; sonucu docs/knowledge/MODEL_CAPABILITIES.md'ye işle.
 - **R-08** · Kararsız testte rastgele kod değiştirme — Zamanlamaya bağlı bir test yük altında düşerse önce tek başına tekrar çalıştır; kararsızlığı kayda bağla, ilgisiz kodu değiştirme.
@@ -122,4 +130,7 @@ durdurur. Her bilgisayarda bir kez kur:
 - **R-30** · Testi değişikliğin türüne göre seç; gerçek API ölçümünü faz sonunda topla — Her değişiklikte pytest; arayüzde yalnız değişen ekranın iki temalı ekran görüntüsü; gerçek API (R-13, zorluk paketi R-21) faz sonunda bir kez; yeni araç/özellikte yalnız onun küçük açık/kapalı ölçümü (R-25); çok motorlu sıralama ölçümünü yalnız motor sırası değişirken veya EVREN model listesi değişince yap.
 - **R-31** · Tura bağlanan özelliği gerçek tur akışından da test et — Tur başına veya sonuna bağlanan her özellik (denetçi, öneri kartı, özet, kayıt) için en az bir testi `send` → koşucu → `_on_done` yolundan sahte istemciyle geçir; yalnız yardımcı fonksiyonu doğrudan çağıran test yetmez.
 - **R-32** · Model isteğini bağlama KESİN sığdır; sığmayan geçmişi gönderme — Özet veya iç yapay zekâ isteği oluştururken içeriği hedef modelin bağlamına temkinli sayımla (~2,6 karakter/token) sığdır (`compaction.fit_for_summary` düzeni); özet başarısız olunca geçmiş modele sığmıyorsa mesajı gönderme, kullanıcıya /clear öner; ölçülen süreye kurulum (istemci/SSL) maliyetini katma.
+- **R-33** · Renk/stil değişikliğini okunurluk denetimiyle ölç — theme.py renklerine, QSS'e veya yeni bileşen stiline dokunduğunda `tools/ui_denetim.py <klasör> ikisi --goruntu` (QT_QPA_PLATFORM=windows) çalıştır ve görüntülere bak; tests/test_okunurluk.py HATA=0 olmalı. Yeni renk seçerken tüm zeminlerde (bg, sidebar, panel, surface, surface2, hover, selected) WCAG oranını hesapla; liste yenilerken eski bileşeni `hide()` sonra `deleteLater()` et.
+- **R-34** · Token/bağlam hesabını gerçek kullanımla kalibre et; sabit oran varsayma — Bağlam göstergesi, özet eşiği, kırpma ve sert sınır `runner.estimate_tokens` / `calibration()` ile hesaplanır; yeni bir token hesabı yazma, sabit karakter/token oranı veya sabit sistem ek yükü ekleme. Modelden gelen `usage` girdi token'ı kalibrasyona akmalı (`runner.calibrate`); görselin base64'ünü sayma. Oranı değiştirince tests/test_token_kalibrasyonu.py'de hem tetiklenen hem tetiklenmeyen durumu sına.
+- **R-35** · Devir notunu her adımda güncelle ve gönder; iş tek bilgisayarda kalmasın — `docs/DEVIR_NOTU.md` işin tek "şu an" kaynağıdır: başlarken oku (baslangic gösterir; "DEVAM EDEN İŞ BAŞKA DALDA" uyarısında o dala geç), her madde/alt adım bitince durumunu (YAPILDI/SÜRÜYOR + commit) ve "Şu an" bölümünü (dal, yarım kalan, sıradaki adım, yarıda kalan uzun test) güncelle, commit'le ve push et; ayrılırken yarım işi `wip:` commit'iyle gönder. Kullanıcının verdiği yeni geliştirme maddesini hemen tabloya ekle.
 <!-- KURALLAR:BITIR -->

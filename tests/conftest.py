@@ -48,6 +48,16 @@ def _gercek_program_kurulumu_yok(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _token_kalibrasyonu_temiz():
+    """runner._CALIB süreç geneli; bir testin sahte `usage` değeri diğerinin bağlam hesabını değiştirmesin."""
+    from evren_studio.agent import runner
+
+    runner._CALIB.clear()
+    yield
+    runner._CALIB.clear()
+
+
+@pytest.fixture(autouse=True)
 def _yapay_zeka_basligi_kapali(monkeypatch):
     """Otomatik oturum başlığı ilk yanıttan sonra EK bir model çağrısı yapar; sahte istemcilerin
     sıralı yanıtlarını kaydırmasın. Özelliğin kendisi test_auto_pro.py'de açıkça sınanır."""

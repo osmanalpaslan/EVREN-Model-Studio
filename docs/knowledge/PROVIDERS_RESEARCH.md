@@ -152,6 +152,20 @@ Yeni tokenizer aynı metinde ~%30 daha fazla token üretir (maliyet tahmininde d
 - Katalog ve fiyatlar: `api/providers.py` (`PRICES_AS_OF`, `verified=False`).
 - Doğrulama betiği: `tests/e2e_providers_real_api.py --evet`.
 
+## 6. Web araması sağlayıcıları (2026-11-01, `web_search`, gerçek istekle denendi)
+
+| Sağlayıcı | Anahtar | Kota | Denenen | Not |
+|---|---|---|---|---|
+| Tavily `POST /search` | `Authorization: Bearer tvly-…` | Researcher (ücretsiz): ayda 1000 kredi; temel arama 1, `advanced` 2 kredi | 200, ~2,5 sn | `include_answer` kısa cevap verir; `time_range=year` + `search_depth=advanced` güncel sürüm sorusunda doğru sonuç getirdi; `topic=news` + `time_range=week` günün haberleri |
+| Tavily anahtarsız | `X-Tavily-Access-Mode: keyless` başlığı | hız sınırlı (sayı belgelenmemiş) | 200 | yalnız search/extract |
+| Tavily `GET /usage` | Bearer | — | 200 | `account.current_plan`, `plan_usage`, `plan_limit` (kredi harcamaz) |
+| DuckDuckGo HTML `POST html.duckduckgo.com/html/` | yok | resmî değil (robot doğrulaması çıkabilir) | 200, ~1 sn, 10 sonuç | reklam satırı `y.js`; bazen adres `/l/?uddg=` ile sarılı |
+
+Hata kodları (Tavily belgesi, denenmedi): 401 geçersiz anahtar, 429 hız sınırı, 432 plan kotası doldu,
+433 kullandıkça öde sınırı. Uygulama 401/403/432/433'te anahtarı 1 saat denemez, anahtarsız Tavily'ye, sonra
+DuckDuckGo'ya geçer; hiçbiri yoksa ajana "eldeki bilgiyle devam et" denir (agent/websearch.py).
+Tavily `extract` dosya indirmez: sayfa metnini çıkarır.
+
 ## Kaynaklar
 
 OpenAI: developers.openai.com/api/docs/{pricing, models, models/gpt-6-astra,

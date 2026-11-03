@@ -48,6 +48,7 @@ from ..agent.runner import (
     to_api_messages,
 )
 from ..agent import architect, learnings, router, userrules
+from ..agent import resume
 from ..agent.quota import QuotaGate
 from ..agent.tools import FileChange, ToolBox, ToolError, Workspace
 from ..api.client import CancelToken
@@ -66,6 +67,7 @@ from .transcript import (
     ErrorCard,
     InstallCard,
     NoteWidget,
+    QuotaResumeCard,
     ToolCallWidget,
     Transcript,
     UserMessageWidget,
@@ -307,6 +309,7 @@ class WelcomeView(QWidget):
         while self.grid.count():
             item = self.grid.takeAt(0)
             if item.widget():
+                item.widget().hide()          # silinmeyi beklerken yeni kartların üstüne binmesin
                 item.widget().deleteLater()
         items = self.AGENT_SUGGESTIONS if self.workspace else self.CHAT_SUGGESTIONS
         p = theme.current()
@@ -448,6 +451,9 @@ class SessionView(QWidget):
         self.composer.usage_btn.refresh_requested.connect(self.refresh_usage)
         self.composer.usage_btn.details_requested.connect(lambda: self.page_requested.emit("usage"))
         self._quota = None
+        self._resume_timer: QTimer | None = None      # kota sonrası otomatik devam (agent/resume.py)
+        self._resume_card: QuotaResumeCard | None = None
+        self._run_gate = None
         self.profile: str | None = None         # F4/E5: oturumun ajan profili (sessions.profile)
         self._rules_asked: set = set()          # E4: bu açılışta sorulan kural dosyaları (tekrar sorma)
         # A6: kolay işte (hızlı motor) tur başarısız olduysa veya kullanıcı "olmadı" derse güçlü motora yüksel
@@ -1099,7 +1105,7 @@ class SessionView(QWidget):
                             mode=("plan" if self._plan_turn else self.mode), has_images=has_images,
                             est_tokens=est, context_of=context_of, available=avail or None, health=health,
                             level=level, level_reason=lreason, kind=kind, kind_reason=kreason,
-                            penalties=self.ctx.model_penalties())
+                            penalties=self.ctx.model_penalties(), speeds=self.ctx.model_speeds())
 
     def _ws_names(self) -> list[str]:
         """İş türü (A7) için proje dosya adları: kök + bir alt düzey, en çok ~600 ad; 60 sn önbellek."""
@@ -1319,6 +1325,9 @@ class SessionView(QWidget):
         if text.startswith("/") and not atts:
             if self._command(text):
                 return
+        pending = self._pending_plan()
+        if pending is not None and pending.session_id == self.session_id:
+            self.cancel_auto_resume()       # kullanıcı kendisi sürdürüyor: bekleyen otomatik devam iptal
         if self.qa.active or self.qa.planning:
             self._note("QA ajanı çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için "
                        "/qa-durdur yazın (veya Esc).", "alert")
@@ -1446,7 +1455,7 @@ class SessionView(QWidget):
 
     # ---- F6 / E1: konuşmayı geri sarma ---------------------------------------------------------
 
-    UNDOABLE_TOOLS = {"run_command", "start_job", "start_service", "install_program", "web_fetch"}
+    UNDOABLE_TOOLS = {"run_command", "start_job", "start_service", "install_program", "web_fetch", "web_search"}
 
     def rewind_plan(self, message_id: int) -> dict:
         """Geri sarmanın etkisi (onay kartı ve testler için): silinecek mesajlar, geri alınacak değişiklikler,
@@ -1723,6 +1732,7 @@ class SessionView(QWidget):
         # harcamaz); günlük kota azsa DURDURMAZ, bir kez uyarır. Derin/Proje kendi kapısını kullanır.
         gate = (QuotaGate(self._fetch_quota) if provider == "evren" and s.quota_guard_turns
                 and model_override is None else None)
+        self._run_gate = gate
         warned: list[bool] = []
 
         def before_call(_step: int):
@@ -1731,6 +1741,10 @@ class SessionView(QWidget):
             if gate is None:
                 return None
             low, reset = gate.daily_low()
+            if low and s.auto_resume:
+                # Kota bitince otomatik devam: model çağrısından ÖNCE dur (araç sonuçları kayıtlı, yarım iş yok);
+                # kart + zamanlayıcı _on_done → _quota_pause'ta kurulur.
+                return "quota_daily"
             if low and not warned:
                 warned.append(True)
                 b.sig_status.emit("Günlük EVREN kotası azaldı" + (f" (yenilenme: {reset})" if reset else "")
@@ -2370,6 +2384,8 @@ class SessionView(QWidget):
             else:
                 self._note("Aylık bütçe nedeniyle durduruldu. Bütçeyi Ayarlar > Sağlayıcılar'dan "
                            "artırabilir veya ücretsiz bir EVREN modeline geçebilirsiniz.", "stop")
+        elif outcome.stopped == "quota_daily":
+            self._quota_pause("gunluk", "günlük EVREN kotası azaldı")
         elif outcome.stopped == "context_limit":
             if self._auto_resumes < MAX_AUTO_RESUMES:
                 self._auto_resumes += 1
@@ -2401,6 +2417,12 @@ class SessionView(QWidget):
             hook(None, exc)
             return
         self._finish()
+        if (isinstance(exc, ApiError) and exc.kind == ErrorKind.RATE_LIMIT and self.session_id
+                and self.ctx.provider_of(exc.model or self.model) == "evren"):
+            # 429 tekrarları tükendi: hata kartı yerine kota kartı (iş kaldığı yerden sürdürülebilir)
+            q = getattr(self._run_gate, "_q", None) or self._quota
+            self._quota_pause(resume.kind_for(q) if q is not None else "pencere", f"EVREN kota sınırı (429): {exc}")
+            return
         if isinstance(exc, ApiError):
             open_mon = self.ctx.db.get_open_monitor_session()
             monitor_state = f"izleme #{open_mon['id']} çalışıyor" if open_mon else "izleme kapalı"
@@ -2562,8 +2584,8 @@ class SessionView(QWidget):
         """
         msgs = self.ctx.db.get_session_messages(self.session_id) if self.session_id else []
         ctx = self._context_tokens()
-        # uygulamanın tahmini Türkçe/kodda düşük kalıyor (EVREN 1,35 kat fazla saydı) → temkinli pay
-        too_big = bool(ctx) and history_tokens(msgs) * 1.35 > ctx * 0.95
+        # tahmin artık ölçülmüş/kalibre oranla yapılıyor (runner.calibration); eski ×1,35 telafisi gerekmez
+        too_big = bool(ctx) and history_tokens(msgs) > ctx * 0.95
         if not too_big:
             self._note(f"{why}; özetsiz devam ediliyor (eski araç çıktıları kısaltılarak gönderilir).", "alert")
             then()
@@ -2885,11 +2907,141 @@ class SessionView(QWidget):
 
         Task(lambda: [environment.install(k) for k in keys], on_done=done, on_error=fail).start()
 
-    def _auto_continue(self, note: str = "") -> None:
-        """Güvenli noktada duran turu (özet veya adım sınırı sonrası) otomatik sürdürür."""
+    # ---- kota bitince otomatik devam (agent/resume.py; kullanıcı isteği 2026-11-01) ----
+
+    def _quota_pause(self, kind: str, reason: str, flow: str = "sohbet", quota=None) -> None:
+        """Kota yüzünden güvenli noktada duran iş: devam planını KALICI yaz, kartı göster, açıksa zamanlayıcı kur.
+        flow: sürdürülecek akış (sohbet turu ya da Proje/QA/Derin denetleyicisi)."""
         if not self.session_id:
             return
-        self.ctx.db.add_session_message(self.session_id, "user", prompts.AUTO_CONTINUE_PROMPT,
+        q = quota or getattr(self._run_gate, "_q", None) or self._quota
+        plan = resume.make_plan(self.session_id, kind, q, reason, flow=flow)
+        self.ctx.db.set_meta(resume.META_KEY, plan.to_json())
+        self._show_resume_card(plan)
+
+    def _show_resume_card(self, plan) -> None:
+        if self._resume_card is not None:
+            self._resume_card.finish("Yerine yeni kota kartı açıldı.")
+        title = ("Günlük EVREN kotası doldu — iş güvenli noktada durdu" if plan.kind == "gunluk"
+                 else "EVREN kota sınırına ulaşıldı — iş güvenli noktada durdu")
+        self._resume_card = QuotaResumeCard(
+            title, lambda: resume.describe(self._pending_plan() or plan), bool(self.ctx.settings.auto_resume),
+            self._set_auto_resume, lambda: self._resume_probe(manual=True), self.cancel_auto_resume)
+        self.transcript.add(self._resume_card)
+        self.transcript.scroll_to_bottom()
+        self._schedule_resume(plan)
+
+    def _pending_plan(self):
+        return resume.ResumePlan.from_json(self.ctx.db.get_meta(resume.META_KEY))
+
+    def _set_auto_resume(self, on: bool) -> None:
+        self.ctx.settings.auto_resume = bool(on)
+        self.ctx.save_settings()
+        plan = self._pending_plan()
+        if on and plan is not None:
+            self._schedule_resume(plan)
+        elif not on and self._resume_timer is not None:
+            self._resume_timer.stop()
+        if self._resume_card is not None:
+            self._resume_card.refresh()
+
+    def _schedule_resume(self, plan) -> None:
+        if self._resume_timer is not None:
+            self._resume_timer.stop()
+        if not self.ctx.settings.auto_resume:
+            return
+        self._resume_timer = QTimer(self)
+        self._resume_timer.setSingleShot(True)
+        self._resume_timer.timeout.connect(self._resume_probe)
+        self._resume_timer.start(int(max(1.0, plan.seconds_left()) * 1000))
+
+    def _resume_probe(self, manual: bool = False) -> None:
+        """Kotayı yokla (token harcamaz, R-04: arka planda); yeterliyse devam, değilse yeni saat kur."""
+        if getattr(self, "_closed", False):
+            return
+        plan = self._pending_plan()
+        if plan is None:
+            return
+        if self.running:
+            self._schedule_resume(resume.after_probe(plan, None))
+            return
+
+        def done(q):
+            self._quota = q
+            if resume.quota_ok(q):
+                self._resume_now(plan)
+                return
+            nxt = resume.after_probe(plan, q)
+            self.ctx.db.set_meta(resume.META_KEY, nxt.to_json())
+            if manual:
+                self._note(f"Kota henüz yenilenmedi; yeni deneme: {resume.describe(nxt)}.", "alert")
+            self._schedule_resume(nxt)
+            if self._resume_card is not None:
+                self._resume_card.refresh()
+
+        def fail(exc):
+            nxt = resume.after_probe(plan, None)
+            self.ctx.db.set_meta(resume.META_KEY, nxt.to_json())
+            if manual:
+                self._note(f"Kota okunamadı ({exc}); yeni deneme: {resume.describe(nxt)}.", "alert")
+            self._schedule_resume(nxt)
+
+        Task(self._fetch_quota, on_done=done, on_error=fail).start()
+
+    def _resume_now(self, plan) -> None:
+        self.ctx.db.delete_meta(resume.META_KEY)
+        if self._resume_timer is not None:
+            self._resume_timer.stop()
+        if self.session_id != plan.session_id:
+            self.open_session(plan.session_id)      # bekleme sırasında başka oturuma geçilmişse işin oturumuna dön
+        if self._resume_card is not None:
+            self._resume_card.finish("Kota yenilendi; iş kaldığı yerden devam etti.")
+            self._resume_card = None
+        ctrl = {"proje": self.project, "qa": self.qa, "derin": self.deep}.get(plan.flow)
+        if ctrl is None:
+            self._auto_continue(note="Kota yenilendi; ajan kaldığı yerden otomatik devam ediyor.",
+                                prompt=prompts.QUOTA_CONTINUE_PROMPT)
+            return
+        if plan.flow == "derin" and getattr(ctrl, "state", None) is None:
+            # Derin Mod durumu yalnız bellekte: uygulama kapanmışsa kaldığı fazdan sürdürülemez
+            self._note("Kota yenilendi ama Derin Mod uygulama kapatıldığı için kaldığı fazdan sürdürülemiyor; "
+                       "/derin ile yeniden başlatın (projedeki dosyalar korunur).", "alert")
+            return
+        ctrl._auto_resume()
+
+    def pending_flow(self) -> str | None:
+        """Bu oturumda kota yüzünden bekleyen otomatik devamın akışı (yoksa None)."""
+        plan = self._pending_plan()
+        return plan.flow if plan is not None and plan.session_id == self.session_id else None
+
+    def cancel_auto_resume(self) -> None:
+        """Vazgeç ya da kullanıcı kendisi yeni mesaj yazdı: bekleyen devam silinir."""
+        if self._resume_timer is not None:
+            self._resume_timer.stop()
+        if self.ctx.db.get_meta(resume.META_KEY) is not None:
+            self.ctx.db.delete_meta(resume.META_KEY)
+        if self._resume_card is not None:
+            self._resume_card.finish("Otomatik devam iptal edildi. Sürdürmek için yeni bir mesaj yazın.")
+            self._resume_card = None
+
+    def restore_pending_resume(self) -> None:
+        """Uygulama açılışı: önceki çalışmadan kalan devam planı varsa oturumu aç, kartı göster, zamanlayıcıyı kur."""
+        if getattr(self, "_closed", False):
+            return                              # pencere açılır açılmaz kapatıldı (veritabanı kapalı)
+        plan = self._pending_plan()
+        if plan is None:
+            return
+        if self.ctx.db.get_session(plan.session_id) is None:
+            self.ctx.db.delete_meta(resume.META_KEY)      # oturum silinmiş
+            return
+        self.open_session(plan.session_id)
+        self._show_resume_card(plan)
+
+    def _auto_continue(self, note: str = "", prompt: str = "") -> None:
+        """Güvenli noktada duran turu (özet, adım sınırı veya kota sonrası) otomatik sürdürür."""
+        if not self.session_id:
+            return
+        self.ctx.db.add_session_message(self.session_id, "user", prompt or prompts.AUTO_CONTINUE_PROMPT,
                                         meta={"auto_continue": True})
         self.transcript.add(NoteWidget(note or "Bağlam özetlendi; ajan kaldığı yerden otomatik devam ediyor.",
                                        "refresh"))
@@ -2947,6 +3099,9 @@ class SessionView(QWidget):
         return True
 
     def shutdown(self) -> None:
+        self._closed = True
+        if self._resume_timer is not None:
+            self._resume_timer.stop()          # devam planı veritabanında kalır; sonraki açılışta yeniden kurulur
         self.stop_services(quiet=True)
         if self.running and self.cancel_token is not None:
             self.cancel_token.cancel()

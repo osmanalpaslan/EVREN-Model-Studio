@@ -268,3 +268,30 @@ def test_modeller_sayfasinda_son_24_saat_tablosu_ve_ipucu(win):
     s._run_route = router.Route("qwen3.8-flash-next", "kod", "proje klasöründe ajan görevi", ["gemma-4-31b"])
     tip = s._route_explain("qwen3.8-flash-next", ["gemma-4-31b"])
     assert "rol: kod" in tip and "3 çağrı" in tip and "gemma-4-31b" in tip
+
+
+def test_yavaslikta_kod_rolunde_zayif_modele_gecilmez(db, tmp_path):
+    """2026-11-01 zorluk "celiski": qwen 'yavaş' sayılıp gemma-4-31b'ye geçildi, gemma hile kodu yazdı."""
+    g = "gemma-4-31b"
+    yavas = [res(str(i), [call("list_files", cid=f"c{i}", depth=i + 1)], first=30) for i in range(3)]
+    # gemma atlanır, sonraki güçlü yedek seçilir
+    c = Script({"x": list(yavas), "z": [res("bitti", out=10)], g: [res("bitti", out=10)]})
+    r, hist, _ = runner_for(db, tmp_path, c, base={**BASE, g: BASE["x"]}, fallbacks=(g, "z"))
+    out = r.run(hist)
+    assert g not in c.models and "z" in c.models and out.model_switches[0][1] == "z"
+    # yalnız zayıf yedek kaldıysa yavaş ama güçlü modelde kalınır
+    c2 = Script({"x": list(yavas) + [res("bitti", out=10)], g: [res("bitti", out=10)]})
+    r2, hist2, _ = runner_for(db, tmp_path, c2, base={**BASE, g: BASE["x"]}, fallbacks=(g,))
+    assert r2.run(hist2).model_switches == [] and set(c2.models) == {"x"}
+
+
+def test_sunucu_hatasinda_zayif_modele_gecis_serbest(db, tmp_path):
+    from evren_studio.api.errors import ApiError, ErrorKind
+
+    g = "gemma-4-31b"
+    r, hist, _ = runner_for(db, tmp_path, Script({}), fallbacks=(g,))
+    from evren_studio.agent.runner import TurnOutcome
+
+    o = TurnOutcome()
+    assert r._switch_model(o, ApiError(ErrorKind.SERVER_UNAVAILABLE, "503", status=503))
+    assert r.model == g

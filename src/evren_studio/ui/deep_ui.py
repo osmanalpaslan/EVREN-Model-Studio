@@ -470,7 +470,6 @@ class DeepController(QObject):
         self.view._note(text, "alert")
 
     def _auto_resume(self) -> None:
-        self._resume_timer = None
         st = self.state
         if self.active or st is None or st.status != "duraklatildi" or self.view.running:
             return
@@ -484,9 +483,9 @@ class DeepController(QObject):
          "dogrula": self._verify}.get(st.phase, self._run_understand)()
 
     def stop(self) -> None:
-        from .project_ui import cancel_auto_resume
+        from .project_ui import cancel_auto_resume, has_pending_resume
 
-        if getattr(self, "_resume_timer", None) is not None and not self.active:
+        if has_pending_resume(self) and not self.active:
             cancel_auto_resume(self)
             self.view._note("Derin Mod'un otomatik sürdürülmesi iptal edildi.", "stop")
             return

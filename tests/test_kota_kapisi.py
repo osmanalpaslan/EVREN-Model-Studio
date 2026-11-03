@@ -90,45 +90,82 @@ def win(tmp_path, monkeypatch, fake_keyring):
     w.close()
 
 
-def test_gunluk_kota_sonrasi_otomatik_surdurur_ve_iptal_edilebilir(win, monkeypatch):
-    _app, w = win
+def _oturum(w, tmp):
+    proj = tmp / "proje"
+    proj.mkdir(exist_ok=True)
+    sid = w.ctx.db.create_session("deepseek-v4.1-flash", str(proj))   # proje/QA her zaman bir oturumda çalışır
+    w.session.open_session(sid)
+    w.ctx.save_settings = lambda: None
+    return w.session
+
+
+def _bekle(app, cond, timeout=8.0):
+    import time
+
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        app.processEvents()
+        if cond():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def test_gunluk_kota_sonrasi_otomatik_surdurur_ve_iptal_edilebilir(win, monkeypatch, tmp_path):
+    """2026-11-01: Proje/QA/Derin de sohbetteki ortak kota kartını ve kalıcı devam planını kullanır
+    (agent/resume.py); saatinde kota yoklanır, yeterliyse akış kaldığı yerden sürer."""
+    app, w = win
+    from evren_studio.agent import resume
     from evren_studio.ui.project_ui import schedule_auto_resume
 
-    proj = w.session.project
-    proj._quota_cache = (0, _q(daily_reset_s=7200))
+    s = _oturum(w, tmp_path)
+    proj = s.project
+    proj._quota_cache = (0, _q(daily=1, daily_reset_s=7200))
     resumed = []
     monkeypatch.setattr(proj, "resume", lambda: resumed.append(1))
     note = schedule_auto_resume(proj, "günlük EVREN kotası azaldı (kalan ~1 token)")
-    assert "otomatik sürdürülecek" in note and proj._resume_timer.isActive()
-    assert 7200_000 <= proj._resume_timer.interval() <= 7330_000
-    proj._resume_timer.timeout.emit()                                # süre doldu
-    assert resumed == [1] and proj._resume_timer is None
-    # iptal: durdur komutu zamanlayıcıyı kapatır
+    plan = resume.ResumePlan.from_json(w.ctx.db.get_meta(resume.META_KEY))
+    assert "otomatik sürdürülecek" in note and plan.flow == "proje" and plan.kind == "gunluk"
+    assert s._resume_timer.isActive() and 7200_000 <= s._resume_timer.remainingTime() <= 7330_000
+    s._fetch_quota = lambda: _q()                                    # kota yenilendi
+    s._resume_timer.timeout.emit()                                   # süre doldu → yoklama → devam
+    assert _bekle(app, lambda: resumed == [1])
+    assert w.ctx.db.get_meta(resume.META_KEY) is None
+    # iptal: durdur komutu bekleyen devamı siler ve zamanlayıcıyı kapatır
+    proj._quota_cache = (0, _q(ratio=0.99, reset_s=60))
     schedule_auto_resume(proj, "kota: pencere")
-    t = proj._resume_timer
-    assert t.interval() == 6 * 60 * 1000
+    t = s._resume_timer
+    assert t.isActive() and t.remainingTime() <= (60 + resume.WINDOW_EXTRA_S + 2) * 1000
     proj.stop()
-    assert not t.isActive() and proj._resume_timer is None
+    assert not t.isActive() and w.ctx.db.get_meta(resume.META_KEY) is None
 
 
-def test_ayar_kapaliysa_ve_kota_disi_nedende_zamanlanmaz(win):
+def test_ayar_kapaliysa_ve_kota_disi_nedende_zamanlanmaz(win, tmp_path):
     _app, w = win
+    from evren_studio.agent import resume
     from evren_studio.ui.project_ui import schedule_auto_resume
 
-    proj = w.session.project
+    s = _oturum(w, tmp_path)
+    proj = s.project
     assert schedule_auto_resume(proj, "kullanıcı durdurdu") == ""
+    assert w.ctx.db.get_meta(resume.META_KEY) is None                # kota dışı neden: kart/plan yok
     w.ctx.settings.auto_resume = False
-    assert schedule_auto_resume(proj, "günlük EVREN kotası azaldı") == ""
-    assert getattr(proj, "_resume_timer", None) is None
+    note = schedule_auto_resume(proj, "günlük EVREN kotası azaldı")
+    assert "kapalı" in note                                          # kart açılır, elle sürdürülebilir
+    assert s._resume_timer is None or not s._resume_timer.isActive()  # ama zamanlayıcı KURULMAZ
 
 
-def test_qa_da_otomatik_surdurme(win, monkeypatch):
-    _app, w = win
+def test_qa_da_otomatik_surdurme(win, monkeypatch, tmp_path):
+    app, w = win
+    from evren_studio.agent import resume
     from evren_studio.ui.project_ui import schedule_auto_resume
 
-    qa = w.session.qa
+    s = _oturum(w, tmp_path)
+    qa = s.qa
     resumed = []
     monkeypatch.setattr(qa, "resume", lambda: resumed.append(1))
     assert schedule_auto_resume(qa, "kota: 429")
-    qa._resume_timer.timeout.emit()
-    assert resumed == [1]
+    assert resume.ResumePlan.from_json(w.ctx.db.get_meta(resume.META_KEY)).flow == "qa"
+    s._fetch_quota = lambda: _q()
+    s._resume_timer.timeout.emit()
+    assert _bekle(app, lambda: resumed == [1])

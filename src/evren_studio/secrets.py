@@ -16,6 +16,7 @@ KEY_NAMES = {
     "evren": KEY_NAME,
     "openai": "openai_api_key",
     "anthropic": "anthropic_api_key",
+    "tavily": "tavily_api_key",          # web araması (agent/websearch.py); model sağlayıcısı değil
 }
 MASK_TOKEN = "***MASKED***"
 
@@ -24,6 +25,7 @@ _KEY_PATTERN = re.compile(
     r"evren_llm_[A-Za-z0-9_\-]{6,}"          # EVREN
     r"|sk-ant-[A-Za-z0-9_\-]{8,}"            # Anthropic (sk-ant-api03-…, sk-ant-admin01-…)
     r"|sk-(?:proj-|admin-|svcacct-)?[A-Za-z0-9_\-]{16,}"  # OpenAI
+    r"|tvly-[A-Za-z0-9_\-]{8,}"              # Tavily
 )
 _HEADER_PATTERN = re.compile(r"(x-api-key[\"']?\s*[:=]\s*[\"']?)[A-Za-z0-9_\-\.]{6,}", re.IGNORECASE)
 _BEARER_PATTERN = re.compile(r"(Bearer\s+)[A-Za-z0-9_\-\.]{6,}", re.IGNORECASE)

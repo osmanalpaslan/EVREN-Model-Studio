@@ -34,7 +34,7 @@
 - **Kaynak:** 2026-10-15-acilista-senkron-model-yukleme-arayuzu-donduruyordu
 
 ### R-05 · Arayüz işini görmeden "tamamlandı" deme
-- **Kural:** Arayüz değişikliğinden sonra tools/ui_screenshots.py ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) ekran görüntüsü alıp bak; duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
+- **Kural:** Arayüz değişikliğinden sonra `tools/ui_denetim.py <klasör> ikisi --goruntu` ile (QT_QPA_PLATFORM=windows; offscreen'de yazılar kutucuk çıkar) iki temada ekran görüntüsü alıp bak (eski tools/ui_screenshots.py yalnız EVREN_STUDIO_DATA_DIR verilirse çalışır, ölçüm yapmaz); duman testi yalnızca açıldığını kanıtlar. Doğrulanmayanı açıkça yaz.
 - **Neden:** Duman testi SMOKE_OK verirken arayüzde bozuk metinler ve eksik Code Studio vardı; belgeler "tamamlandı" diyordu.
 - **Kaynak:** 2026-10-15-duman-testi-bozuk-arayuzu-yakalamadi, 2026-10-15-code-studio-ajan-ozellikleri-eksikti, 2026-10-16-offscreen-ekran-goruntulerinde-yazilar-kutucuk
 
@@ -173,3 +173,19 @@
 - **Kural:** Özet veya iç yapay zekâ isteği oluştururken içeriği hedef modelin bağlamına temkinli sayımla (~2,6 karakter/token) sığdır (`compaction.fit_for_summary` düzeni); özet başarısız olunca geçmiş modele sığmıyorsa mesajı gönderme, kullanıcıya /clear öner; ölçülen süreye kurulum (istemci/SSL) maliyetini katma.
 - **Neden:** 1M token'lık oturumda özet isteği de sığmadı, mesaj yine gönderildi, EVREN 4 kez reddetti; kullanıcı ne /compact ne cevap alabildi. Uygulamanın 3,5 karakter/token tahmini Türkçe/kodda ~1,35 kat düşük kalıyor.
 - **Kaynak:** 2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r
+
+### R-33 · Renk/stil değişikliğini okunurluk denetimiyle ölç
+- **Kural:** theme.py renklerine, QSS'e veya yeni bileşen stiline dokunduğunda `tools/ui_denetim.py <klasör> ikisi --goruntu` (QT_QPA_PLATFORM=windows) çalıştır ve görüntülere bak; tests/test_okunurluk.py HATA=0 olmalı. Yeni renk seçerken tüm zeminlerde (bg, sidebar, panel, surface, surface2, hover, selected) WCAG oranını hesapla; liste yenilerken eski bileşeni `hide()` sonra `deleteLater()` et.
+- **Neden:** Açık temada soluk yazılar 2,4–3,0 kontrasttaydı (109 bileşen), yer tutucu rengi QSS yüzünden uygulanmıyordu, yenilenen listelerde eski yazı yenisinin üstüne biniyordu; gözle kontrol bunları kaçırdı.
+- **Kaynak:** 2026-11-01-acik-temada-soluk-yazilar-ve-bazi-dugmeler-okunmuyordu
+
+### R-34 · Token/bağlam hesabını gerçek kullanımla kalibre et; sabit oran varsayma
+- **Kural:** Bağlam göstergesi, özet eşiği, kırpma ve sert sınır `runner.estimate_tokens` / `calibration()` ile hesaplanır; yeni bir token hesabı yazma, sabit karakter/token oranı veya sabit sistem ek yükü ekleme. Modelden gelen `usage` girdi token'ı kalibrasyona akmalı (`runner.calibrate`); görselin base64'ünü sayma. Oranı değiştirince tests/test_token_kalibrasyonu.py'de hem tetiklenen hem tetiklenmeyen durumu sına.
+- **Neden:** 3,5 karakter/token varsayımı EVREN'de bağlamı %40-60 küçük gösterdi (Türkçe 2,55, araç çıktısı 2,2, sistem+araç tanımları 2,16; ek yük 2.500 değil 5.620 token); otomatik özet uzun projelerde hiç tetiklenmedi.
+- **Kaynak:** 2026-11-01-token-tahmini-baglami-yuzde-40-60-kucuk-gosteriyordu-otomati
+
+### R-35 · Devir notunu her adımda güncelle ve gönder; iş tek bilgisayarda kalmasın
+- **Kural:** `docs/DEVIR_NOTU.md` işin tek "şu an" kaynağıdır: başlarken oku (baslangic gösterir; "DEVAM EDEN İŞ BAŞKA DALDA" uyarısında o dala geç), her madde/alt adım bitince durumunu (YAPILDI/SÜRÜYOR + commit) ve "Şu an" bölümünü (dal, yarım kalan, sıradaki adım, yarıda kalan uzun test) güncelle, commit'le ve push et; ayrılırken yarım işi `wip:` commit'iyle gönder. Kullanıcının verdiği yeni geliştirme maddesini hemen tabloya ekle.
+- **Neden:** Kullanıcı farklı bilgisayar ve oturumlardan çalışıyor; durum yalnız sohbette/yerel hafızada kalınca başka ortamdaki motor işi bilmiyor, proje askıda kalıyor (2026-11-01 kullanıcı isteği).
+- **Kaynak:** AGENTS.md
+

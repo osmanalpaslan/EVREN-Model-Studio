@@ -226,6 +226,34 @@ class ChangesTab(QWidget):
         return errors
 
 
+class _YolEtiketi(QLabel):
+    """Uzun klasör yolunu ORTADAN kısaltan etiket (C:\\Users\\…\\proje); tamamı ipucunda.
+
+    2026-11-01 arayüz denetimi: yol etiketi panele sığmayıp yarıda kesiliyordu.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setProperty("role", "faint")
+        self._tam = ""
+        self.setMinimumWidth(40)
+
+    def set_full(self, text: str) -> None:
+        self._tam = text or ""
+        self.setToolTip(self._tam)
+        self._kisalt()
+
+    def resizeEvent(self, e) -> None:
+        super().resizeEvent(e)
+        self._kisalt()
+
+    def _kisalt(self) -> None:
+        fm, w = self.fontMetrics(), max(20, self.contentsRect().width())
+        satirlar = self._tam.splitlines()
+        out = [fm.elidedText(s, Qt.ElideMiddle if i == 0 else Qt.ElideRight, w) for i, s in enumerate(satirlar)]
+        super().setText("\n".join(out))
+
+
 class FilesTab(QWidget):
     attach_requested = Signal(str)
 
@@ -238,7 +266,7 @@ class FilesTab(QWidget):
         lay.setContentsMargins(6, 8, 6, 8)
         lay.setSpacing(6)
         head = QHBoxLayout()
-        self.root_label = faint_label("")
+        self.root_label = _YolEtiketi()
         head.addWidget(self.root_label, 1)
         open_btn = icon_button("external", "Klasörü Dosya Gezgini'nde aç", 15)
         open_btn.clicked.connect(self._open_explorer)
@@ -316,10 +344,10 @@ class FilesTab(QWidget):
         if has:
             idx = self.model.setRootPath(str(self.root))
             self.tree.setRootIndex(idx)
-            self.root_label.setText(str(self.root))
+            self.root_label.set_full(str(self.root))
             self._update_root_label()
         else:
-            self.root_label.setText("")
+            self.root_label.set_full("")
         self.current = None
         self.preview.clear()
         self.file_label.setText("Bir dosya seçin")
@@ -427,7 +455,7 @@ class FilesTab(QWidget):
         text = str(self.root)
         if here:
             text += "\n⚠ Güvenilmeyen: " + ", ".join(Path(d).name for d in here)
-        self.root_label.setText(text)
+        self.root_label.set_full(text)
 
     def _context_menu(self, pos) -> None:
         from PySide6.QtWidgets import QMenu
