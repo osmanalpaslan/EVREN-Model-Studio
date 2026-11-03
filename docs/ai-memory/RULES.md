@@ -168,3 +168,8 @@
 - **Kural:** Tur başına veya sonuna bağlanan her özellik (denetçi, öneri kartı, özet, kayıt) için en az bir testi `send` → koşucu → `_on_done` yolundan sahte istemciyle geçir; yalnız yardımcı fonksiyonu doğrudan çağıran test yetmez.
 - **Neden:** `_on_done` runner'ı `_finish()` ile sildikten sonra okuduğu için skill denetçisi gerçek kullanımda hiç çalışmadı; doğrudan çağıran birim testleri ve R-25 ölçümü bunu yakalamadı, hata bir PR ile birleşti.
 - **Kaynak:** 2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de
+
+### R-32 · Model isteğini bağlama KESİN sığdır; sığmayan geçmişi gönderme
+- **Kural:** Özet veya iç yapay zekâ isteği oluştururken içeriği hedef modelin bağlamına temkinli sayımla (~2,6 karakter/token) sığdır (`compaction.fit_for_summary` düzeni); özet başarısız olunca geçmiş modele sığmıyorsa mesajı gönderme, kullanıcıya /clear öner; ölçülen süreye kurulum (istemci/SSL) maliyetini katma.
+- **Neden:** 1M token'lık oturumda özet isteği de sığmadı, mesaj yine gönderildi, EVREN 4 kez reddetti; kullanıcı ne /compact ne cevap alabildi. Uygulamanın 3,5 karakter/token tahmini Türkçe/kodda ~1,35 kat düşük kalıyor.
+- **Kaynak:** 2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r

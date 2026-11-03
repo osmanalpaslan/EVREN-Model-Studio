@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 94 · Açık/izlenen: 6 · Oturum: 34 · Kural: 31
+Kayıt: 95 · Açık/izlenen: 6 · Oturum: 35 · Kural: 32
 
 ## Açık ve izlenen kayıtlar
 
@@ -19,6 +19,7 @@ Kayıt: 94 · Açık/izlenen: 6 · Oturum: 34 · Kural: 31
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-10-29 | [2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r](incidents/2026-10-29-buyuk-oturumda-compact-calismiyor-mesajlar-baglam-asimiyla-r.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Büyük oturumda /compact çalışmıyor, mesajlar bağlam aşımıyla reddediliyordu |
 | 2026-10-24 | [2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot](incidents/2026-10-24-zorluk-kurali-program-calistirma-isini-kolay-sayip-hizli-mot.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Zorluk kuralı program çalıştırma işini kolay sayıp hızlı motora gönderdi |
 | 2026-10-24 | [2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de](incidents/2026-10-24-tur-sonu-isleri-runner-silindikten-sonra-okunuyordu-skill-de.md) | hata | yuksek | cozuldu | Claude Code (masaüstü) | Tur sonu işleri runner silindikten sonra okunuyordu, skill denetçisi hiç çalışmıyordu |
 | 2026-10-24 | [2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast](incidents/2026-10-24-sqlite-datetime-ile-iso-zaman-damgasi-metin-olarak-karsilast.md) | hata | dusuk | cozuldu | Claude Code (masaüstü) | SQLite datetime ile ISO zaman damgası metin olarak karşılaştırılınca aynı gün hep "yeni" sayılır |
@@ -118,6 +119,7 @@ Kayıt: 94 · Açık/izlenen: 6 · Oturum: 34 · Kural: 31
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-10-29 | [2026-10-29-claude-code-masaustu-claude-code-masaustu-clear-komutu-ve-buy](sessions/2026-10-29-claude-code-masaustu-claude-code-masaustu-clear-komutu-ve-buy.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: clear komutu ve büyük oturum özeti |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-son-paket-ve-proje-kapanisi](sessions/2026-10-24-claude-code-masaustu-son-paket-ve-proje-kapanisi.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Son paket ve proje kapanisi |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f7-oyun](sessions/2026-10-24-claude-code-masaustu-f7-oyun.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F7 oyun |
 | 2026-10-24 | [2026-10-24-claude-code-masaustu-f6-guvenlik-ve-kurallar](sessions/2026-10-24-claude-code-masaustu-f6-guvenlik-ve-kurallar.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | F6 güvenlik ve kurallar |
@@ -186,3 +188,4 @@ Kayıt: 94 · Açık/izlenen: 6 · Oturum: 34 · Kural: 31
 - **R-29** · Python kodunu bash heredoc ile yazma
 - **R-30** · Testi değişikliğin türüne göre seç; gerçek API ölçümünü faz sonunda topla
 - **R-31** · Tura bağlanan özelliği gerçek tur akışından da test et
+- **R-32** · Model isteğini bağlama KESİN sığdır; sığmayan geçmişi gönderme
