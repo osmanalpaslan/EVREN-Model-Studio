@@ -4,11 +4,11 @@ baslik: API hatası: sunucu_kullanılamıyor (HTTP 503)
 tur: api_hatasi
 onem: dusuk
 alan: ortam
-durum: acik                # acik | cozuldu | kabul-edildi
+durum: kabul-edildi                # acik | cozuldu | kabul-edildi
 kaynak: e2e
 ilk_gorulme: 2026-11-04T16:51:42+00:00
-cozuldu_tarih:
-cozum_kaydi:
+cozuldu_tarih: 2026-11-04T19:54:16+00:00
+cozum_kaydi: 2026-11-04-api-hatasi-sunucu-kullanilamiyor-http-503
 ---
 
 # API hatası: sunucu_kullanılamıyor (HTTP 503)
