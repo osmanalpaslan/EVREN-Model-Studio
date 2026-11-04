@@ -12,19 +12,14 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-04 akşam · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Eşitlendi (39 commit);
-  bu bilgisayarda tam takım 777/778 — kırılan gözlem testi ortam farkıydı (depo ev klasörü altında) → düzeltildi
-  (`fix/gozlem-ev-alti-yol`, PR #37 — birleştirme bu bilgisayarda Claude Code sınıflandırıcısınca engellendi,
-  KULLANICI birleştirecek). Madde 6 SÜRÜYOR: kod + birim testleri commit'li (`feat/sohbette-web-arama`, #37'nin
-  üstünde) — ÖLÇÜMLER TAMAM: sohbet açık/kapalı 2/2·2/2 (CHALLENGE_RESULTS), zorluk 12/12, R-13 E2E_OK · ui 15/15 ·
-  ajan 5/6 (bilinen deepseek kaydı). PR #38 açıldı; #37'den sonra kullanıcı birleştirecek.
-  Madde 9 KOD+TEST TAMAM (`feat/saglayici-ekle`, #38 üstünde; PR açıldı): ağ geçitleri (OpenRouter/Kilo/OpenAI
-  uyumlu), "Sağlayıcı ekle" penceresi, sade Ayarlar. Gerçek anahtarla DOĞRULANMADI (ücretli; R-17). Tam takım
-  792/794 — kırılan 2 test tek başına geçti (kararsız, aşağıda Madde 6 listesi). Sıradaki: Madde 7 (hız).
-- **Aktif dal zinciri:** `fix/gozlem-ev-alti-yol` (#37) → `feat/sohbette-web-arama` (#38) → `feat/saglayici-ekle`.
-  KULLANICI sırayla birleştirir (Claude Code bu bilgisayarda birleştiremiyor). Yeni iş bu zincirin ucundan sürer.
-- **Çalışan uzun test:** yok. Önceki son durum: pytest 778/778 · zorluk auto-pro 12/12 (719 sn) · R-13 E2E_OK, ajan 5/6
-  (deepseek metin protokolü — açık kayıt 2026-10-17-deepseek-…), arayüz 15/15 · e2e_derin GEÇTİ.
+- **Güncelleme:** 2026-11-04 20:30 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Yarım iş YOK.
+- **Aktif dal:** `master` (f213613 + bu not). Bu oturumda birleşenler: PR #37 (gözlem yol düzeltmesi), #38 (Madde 6:
+  klasörsüz sohbette web araması), #39 (Madde 9: sade sağlayıcı ekranı) + kararsız izleme testi düzeltmesi.
+  master'da tam takım 794/794 (4 dk 50 sn). Sıradaki: Madde 7 (hız) — aşağıdaki plan 3.
+- **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
+  motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı
+  eklemesini anlat ya da PR'ları GitHub'dan ters sırayla (en üstteki önce) 'Merge pull request' ile birleştirt.
+- **Çalışan uzun test:** yok.
 - **Kullanıcının çalışma ilkesi (2026-11-03):** "Amacım sağlam, doğru iş ve olabildiği kadar hızlı; doğruluk bir
   tık daha önemli. Sırayı sen belirle." → Her maddede: hedefli test + tetiklenen/tetiklenmeyen (R-22) + kritikse
   mutasyon; ajan/arayüz değiştiyse dal sonunda R-13 üçlüsü + zorluk paketi; her şey geçerse PR'ı motor açar ve
