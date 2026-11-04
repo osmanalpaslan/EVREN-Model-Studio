@@ -6,7 +6,8 @@
 (--kapali: web_search ajana HİÇ sunulmaz; yalnız eski yollar — web_fetch, komut — kalır).
 
 Görevler güncel bilgi ister; doğru cevap koşu anında kaynağından (PyPI, endoflife.date) okunur, yani model
-eğitim bilgisinden ezbere yazarsa kalır. `gereksiz` görevi internet gerektirmez: orada arama YAPILMAMALI (R-22).
+eğitim bilgisinden ezbere yazarsa kalır. `gereksiz` ve `sohbet_genel` internet gerektirmez: orada arama YAPILMAMALI (R-22). `sohbet_*` görevleri
+klasörsüz sohbettir (Ayarlar `web_tools_chat`; --kapali iken sohbette de araç sunulmaz).
 Tavily anahtarı Ayarlar'dan (Credential Manager) okunur; yoksa anahtarsız zincir kullanılır.
 Sürücü zorluk paketininkidir (tests/e2e_zorluk_real_api.py main): rapor <cikti>/<model>/rapor.json.
 """
@@ -63,6 +64,17 @@ def _kontrol_gereksiz(proj: Path, _durum, yanit: str):
             ("testler geçiyor", r.returncode == 0 and "OK" in (r.stderr + r.stdout), r.stderr[-120:])]
 
 
+def _kontrol_sohbet_python(_proj: Path, _durum, yanit: str):
+    dogru = _python_son()
+    return [("yanıtta Python son sürümü", dogru in (yanit or ""), f"doğru={dogru}"),
+            ("yanıtta kaynak adresi", "http" in (yanit or ""), "")]
+
+
+def _kontrol_sohbet_genel(_proj: Path, _durum, yanit: str):
+    t = (yanit or "").lower()
+    return [("yanıt verdi", len(t) > 20, ""), ("reverse/[::-1] anlatıldı", "reverse" in t or "[::-1]" in t, "")]
+
+
 GOREVLER = {
     "surum": {"kur": lambda p: None, "kontrol": _kontrol_surum,
               "mesaj": "Bu klasörde requirements.txt oluştur: flask ve requests paketlerini PyPI'daki EN SON kararlı "
@@ -75,6 +87,12 @@ GOREVLER = {
     "gereksiz": {"kur": lambda p: None, "kontrol": _kontrol_gereksiz,
                  "mesaj": "topla.py yaz: iki sayıyı toplayan `topla(a, b)` fonksiyonu olsun. test_topla.py içinde "
                           "unittest ile 3 test yaz ve `python -m unittest` ile çalıştırıp geçtiğini göster."},
+    # Madde 6 (2026-11-04): klasörsüz sohbet — yalnız web_search/web_fetch sunulur
+    "sohbet_python": {"kur": lambda p: None, "kontrol": _kontrol_sohbet_python, "klasorsuz": True,
+                      "mesaj": "Python programlama dilinin şu an yayımlanmış en son kararlı sürümü kaç (3.x.y)? "
+                               "Güncel bilgiyi doğrula ve kaynağın adresini yaz."},
+    "sohbet_genel": {"kur": lambda p: None, "kontrol": _kontrol_sohbet_genel, "klasorsuz": True,
+                     "mesaj": "Python'da bir listeyi ters çevirmenin iki yolunu kısaca örnekle göster."},
 }
 
 

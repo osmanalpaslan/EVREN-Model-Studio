@@ -166,6 +166,8 @@ class Settings:
     suggest_project: bool = True
     # Kota yüzünden duraklayan Proje/QA/Derin çalışması, kota yenilenince kendiliğinden sürdürülsün
     auto_resume: bool = True
+    # Klasörsüz sohbette de internette arama / sayfa okuma (web_search, web_fetch) — DEVIR_NOTU Madde 6
+    web_tools_chat: bool = True
     # Gözlem ajanı (gozlem.py; kullanıcı kararı 2026-11-03): hata ve anormallikleri temizleyip kaydet ve
     # uygulama kaynaktan çalışıyorsa projenin deposundaki `gozlem-kayitlari` dalına gönder
     gozlem_enabled: bool = True

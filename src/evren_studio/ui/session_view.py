@@ -1776,6 +1776,7 @@ class SessionView(QWidget):
                               else None),
             install_mode=s.install_mode,
             fallback_models=fallbacks,
+            chat_tools=bool(ws is None and s.web_tools_chat),
             # MCP (Ayarlar > MCP Sunucuları): yalnız EVREN turunda ve gerektiğinde; yoksa None
             mcp=(self.ctx.mcp_toolset(ws.root, self._last_user_text(history), provider,
                                       status=b.sig_status.emit)

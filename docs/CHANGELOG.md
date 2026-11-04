@@ -1,5 +1,11 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Klasörsüz sohbette internet
+
+- **Sohbette web araması**: proje klasörü bağlı olmayan sohbette de ajan gerektiğinde internette arar ve
+  sayfa okur (dosya araçları yine yoktur). Ayarlar > Web Araması'ndaki kutuyla kapatılabilir; Manuel modda
+  her aramadan önce sorulur.
+
 ## Yayınlanmamış — Derin Mod iyileştirmeleri (Madde 8)
 
 - **Canlı durum çubuğu**: Derin Mod incelerken, planlarken ve doğrularken yazma kutusunun üstünde ne yaptığını

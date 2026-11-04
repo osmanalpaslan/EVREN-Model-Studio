@@ -249,6 +249,10 @@ class SettingsPage(BasePage):
         for b in (tv_save, self.tavily_quota_btn, tv_del):
             row.addWidget(b)
         l.addLayout(row)
+        self.web_tools_chat = QCheckBox("Klasörsüz sohbette de internette arama ve sayfa okuma kullanılsın")
+        self.web_tools_chat.setToolTip("Proje klasörü bağlı olmayan sohbette yalnız web_search ve web_fetch sunulur; "
+                                       "dosya araçları sunulmaz.")
+        l.addWidget(self.web_tools_chat)
         self.tavily_status = QLabel("")
         self.tavily_status.setWordWrap(True)
         self.tavily_status.setProperty("role", "dim")
@@ -551,6 +555,7 @@ class SettingsPage(BasePage):
         self.learnings_suggest.setChecked(s.learnings_suggest)
         self.suggest_project.setChecked(s.suggest_project)
         self.auto_resume.setChecked(s.auto_resume)
+        self.web_tools_chat.setChecked(s.web_tools_chat)
         self.gozlem_card.enabled.setChecked(s.gozlem_enabled)
         self.gozlem_card.refresh()
         self.auto_compact.setChecked(s.auto_compact)
@@ -603,6 +608,7 @@ class SettingsPage(BasePage):
         s.learnings_suggest = self.learnings_suggest.isChecked()
         s.suggest_project = self.suggest_project.isChecked()
         s.auto_resume = self.auto_resume.isChecked()
+        s.web_tools_chat = self.web_tools_chat.isChecked()
         s.gozlem_enabled = self.gozlem_card.enabled.isChecked()
         s.auto_compact = self.auto_compact.isChecked()
         s.auto_compact_percent = int(self.compact_percent.value())

@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 103 · Açık/izlenen: 7 · Oturum: 37 · Kural: 36
+Kayıt: 103 · Açık/izlenen: 7 · Oturum: 38 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -128,6 +128,7 @@ Kayıt: 103 · Açık/izlenen: 7 · Oturum: 37 · Kural: 36
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-11-04 | [2026-11-04-claude-code-masaustunde-devam-gozlem-yol-duzeltmesi](sessions/2026-11-04-claude-code-masaustunde-devam-gozlem-yol-duzeltmesi.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Masaüstünde devam: gözlem yol düzeltmesi, klasörsüz sohbette web arama |
 | 2026-11-03 | [2026-11-03-claude-code-masaustu-madde-7-zorluk-paketi-yeniden-olcumu](sessions/2026-11-03-claude-code-masaustu-madde-7-zorluk-paketi-yeniden-olcumu.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Madde 7 zorluk paketi yeniden olcumu |
 | 2026-11-01 | [2026-11-01-claude-code-profesyonel-kalite-turu-acik-tema-web-ar](sessions/2026-11-01-claude-code-profesyonel-kalite-turu-acik-tema-web-ar.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Profesyonel kalite turu: açık tema, web araması, maraton D/E |
 | 2026-10-29 | [2026-10-29-claude-code-masaustu-claude-code-masaustu-clear-komutu-ve-buy](sessions/2026-10-29-claude-code-masaustu-claude-code-masaustu-clear-komutu-ve-buy.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Claude Code masaüstü: clear komutu ve büyük oturum özeti |
