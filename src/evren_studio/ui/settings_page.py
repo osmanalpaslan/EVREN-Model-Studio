@@ -14,7 +14,7 @@ import json
 from dataclasses import fields
 from pathlib import Path
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QSize, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -133,9 +133,40 @@ def kv_row_with(label: str, widget: QWidget, extra: QWidget) -> QWidget:
     return w
 
 
+_FOLD = str.maketrans("çğıöşüâîû", "cgiosuaiu")
+
+
+def _fold(text: str) -> str:
+    """Arama için: Türkçe büyük/küçük harf ve şapkalı/noktalı harflerden bağımsız (İ→i, ş→s …)."""
+    import re
+
+    text = re.sub(r"<[^>]+>", " ", text or "")              # bağlantı etiketlerindeki HTML
+    return text.replace("İ", "i").replace("I", "ı").lower().translate(_FOLD)
+
+
 class SettingsPage(BasePage):
     title = "Ayarlar"
     settings_saved = Signal()
+    open_workspace = Signal(str)          # GitHub'dan indirilen klasörü yeni oturumda aç
+
+    # Claude Code tarzı ayarlar (kullanıcı isteği 2026-11-04): solda menü, sağda yalnız seçilen menünün ayarları.
+    # (anahtar, menü adı, simge, açıklama). Yeni bir ayar eklerken: ilgili kategorinin sayfasına `self._add(anahtar, kart)`.
+    CATEGORIES = (
+        ("genel", "Genel", "settings", "Varsayılan model, çalışma modu ve yazma kutusu"),
+        ("gorunum", "Görünüm", "eye", "Tema, yazı boyutu ve sohbet görünümü"),
+        ("saglayicilar", "Hesap ve sağlayıcılar", "plug", "EVREN anahtarı, diğer sağlayıcılar ve bütçe"),
+        ("ajan", "Kod ajanı", "terminal", "Ajanın nasıl çalıştığı, bekçiler ve sınırlar"),
+        ("autopro", "Auto Pro", "spark", "Motor seçimi, yoklama ve kota davranışı"),
+        ("baglam", "Bağlam ve özet", "list", "Uzun konuşmaların otomatik özetlenmesi"),
+        ("zamanlanmis", "Zamanlanmış görevler", "clock", "Görevlerin çalışma koşulları"),
+        ("web", "Web araması", "search", "İnternette arama ve sayfa okuma"),
+        ("baglayicilar", "Bağlayıcılar (MCP)", "server", "Ajana ek araçlar sağlayan sunucular"),
+        ("github", "GitHub", "git", "GitHub hesabı ve depo işlemleri"),
+        ("bilgisayar", "Bu bilgisayar", "cpu", "Program kurulumu, veri klasörü, oyun araçları, güvenlik"),
+        ("ag", "Bağlantı ve ağ", "activity", "API adresi, zaman aşımı ve tekrar denemeleri"),
+        ("gizlilik", "Gizlilik ve veri", "shield", "Kayıtlar, yedek, dışa aktarma ve silme"),
+        ("hakkinda", "Hakkında", "help", "Sürüm bilgisi"),
+    )
 
     def __init__(self, ctx, parent=None):
         super().__init__(ctx, parent)
@@ -148,15 +179,113 @@ class SettingsPage(BasePage):
         save_top.clicked.connect(self.save_all)
         self.header_extra.addWidget(save_top)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QScrollArea.NoFrame)
-        inner = QWidget()
-        col = QVBoxLayout(inner)
-        col.setSpacing(12)
+        # ---- iskelet: sol menü (arama + liste) + sağda sayfa yığını ----
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QListWidgetItem, QStackedWidget
+
+        from . import icons
+
+        body = QHBoxLayout()
+        body.setSpacing(16)
+        nav_col = QVBoxLayout()
+        nav_col.setSpacing(8)
+        self.search = QLineEdit()
+        self.search.setObjectName("SettingsSearch")
+        self.search.setPlaceholderText("Ayarlarda ara…")
+        self.search.setClearButtonEnabled(True)
+        self.search.textChanged.connect(self._filter_nav)
+        nav_col.addWidget(self.search)
+        self.nav = QListWidget()
+        self.nav.setObjectName("SettingsNav")
+        self.nav.setFixedWidth(230)
+        self.nav.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        nav_col.addWidget(self.nav, 1)
+        self.no_match = QLabel("Eşleşen ayar yok")
+        self.no_match.setProperty("role", "dim")
+        self.no_match.hide()
+        nav_col.addWidget(self.no_match)
+        body.addLayout(nav_col)
+        self.stack = QStackedWidget()
+        self.stack.setMinimumWidth(420)
+        body.addWidget(self.stack, 1)
+        self._page_cols: dict[str, QVBoxLayout] = {}
+        self._page_index: dict[str, int] = {}
+        for key, label, icon_name, desc in self.CATEGORIES:
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QScrollArea.NoFrame)
+            inner = QWidget()
+            col = QVBoxLayout(inner)
+            col.setSpacing(12)
+            col.setContentsMargins(0, 0, 8, 0)
+            title = QLabel(label)
+            title.setProperty("role", "h1")
+            title.setObjectName("settingsCategoryTitle")
+            col.addWidget(title)
+            col.addWidget(hint(desc))
+            scroll.setWidget(inner)
+            self._page_index[key] = self.stack.addWidget(scroll)
+            self._page_cols[key] = col
+            item = QListWidgetItem(icons.icon(icon_name, size=16), label)
+            item.setData(Qt.UserRole, key)
+            item.setToolTip(desc)
+            item.setSizeHint(QSize(0, 34))           # Claude Code'daki gibi sıkı satır (varsayılan ~50 px idi)
+            self.nav.addItem(item)
+        self.nav.currentRowChanged.connect(self._on_nav)
         d = DEFAULTS
 
-        # ---- API anahtarı ----
+        # ================= Genel =================
+        c, l = card()
+        l.addWidget(section("Model ve çalışma modu"))
+        self.default_model = QComboBox()
+        self.default_model.setEditable(True)
+        l.addWidget(kv_row_widget("Varsayılan model:", self.default_model, d.default_model))
+        l.addWidget(hint("Sohbet ekranında seçtiğiniz motor ve onay modu burada varsayılan olarak "
+                         "kaydedilir; siz yeniden değiştirene kadar yeni oturumlar onunla açılır."))
+        self.agent_mode = QComboBox()
+        for key, label in MODES.items():
+            self.agent_mode.addItem(f"{label} — {MODE_HINTS[key]}", key)
+        # Uzun öğe metni kartı (ve sayfayı) 1000+ px'e genişletip yatay kaydırma açıyordu (2026-10-21)
+        self.agent_mode.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.agent_mode.setMinimumContentsLength(24)
+        l.addWidget(kv_row_widget("Varsayılan çalışma modu:", self.agent_mode, MODES[d.agent_mode]))
+        l.addWidget(hint(
+            "Kod ajanı yalnızca seçtiğiniz proje klasöründe çalışır. Otomatik modda hiçbir işlem için onay "
+            "istenmez; diğer modlarda komutlar sorulur. Dosya değişiklikleri sağ paneldeki “Değişiklikler” "
+            "sekmesinden geri alınabilir."))
+        self._add("genel", c)
+        c, l = card()
+        l.addWidget(section("Yazma kutusu ve oturumlar"))
+        self.send_enter = QCheckBox("Enter ile gönder (kapalıysa Ctrl+Enter)")
+        l.addWidget(self.send_enter)
+        self.ai_titles = QCheckBox("Oturum başlıklarını yapay zekâ üretsin (bağlı API ile, ilk yanıttan sonra)")
+        l.addWidget(self.ai_titles)
+        self._add("genel", c)
+
+        # ================= Görünüm =================
+        c, l = card()
+        l.addWidget(section("Tema ve yazı"))
+        self.theme = QComboBox()
+        self.theme.addItems(["koyu", "açık"])
+        l.addWidget(kv_row_widget("Tema:", self.theme, d.theme))
+        self.font_size = QSpinBox()
+        self.font_size.setRange(8, 16)
+        self.font_size.setSuffix(" pt")
+        l.addWidget(kv_row_widget("Yazı boyutu:", self.font_size, f"{d.font_size} pt"))
+        l.addWidget(hint("Kısayol: Ctrl+= büyüt, Ctrl+- küçült, Ctrl+0 varsayılan. Tema ve yazı boyutu "
+                         "kaydedince uygulanır; bazı bileşenler yeniden başlatmada tamamen güncellenir."))
+        self._add("gorunum", c)
+        c, l = card()
+        l.addWidget(section("Sohbet görünümü"))
+        self.compact_view = QCheckBox("Sıkışık görünüm: daha az boşluk, ekrana daha çok içerik sığar")
+        l.addWidget(self.compact_view)
+        self.simple_view = QCheckBox("Sade görünüm: biten araç adımlarını ve düşünce bloklarını gizle (Ctrl+Shift+H)")
+        l.addWidget(self.simple_view)
+        self.show_reasoning = QCheckBox("Modelin düşünce sürecini göster (muhakeme modelleri)")
+        l.addWidget(self.show_reasoning)
+        self._add("gorunum", c)
+
+        # ================= Hesap ve sağlayıcılar =================
         c, l = card()
         l.addWidget(section("EVREN API Anahtarı (Windows Credential Manager)"))
         l.addWidget(hint(
@@ -185,9 +314,8 @@ class SettingsPage(BasePage):
         row.addWidget(save_btn)
         row.addWidget(del_btn)
         l.addLayout(row)
-        col.addWidget(c)
+        self._add("saglayicilar", c)
 
-        # ---- ücretli sağlayıcılar ----
         self._prov: dict[str, dict] = {}
         c, l = card()
         l.addWidget(section("Sağlayıcılar (isteğe bağlı)"))
@@ -202,8 +330,9 @@ class SettingsPage(BasePage):
 
         self.gateways = GatewaysSection(ctx, on_changed=self.settings_saved.emit)
         l.addWidget(self.gateways)
+        self._add("saglayicilar", c)
 
-        # bütçe
+        c, l = card()
         l.addWidget(section("Aylık bütçe (ücretli sağlayıcıların toplamı)"))
         self.budget = QDoubleSpinBox()
         self.budget.setRange(0, 10_000)
@@ -221,9 +350,106 @@ class SettingsPage(BasePage):
             "TAHMİN edilir; %80'de bir kez uyarılır. Gerçek tutar ve kalan kredi için sağlayıcı "
             "panelindeki Usage sayfasına bakın (kalan kredi API'den okunamıyor). Sağlayıcı "
             "panelinde ayrıca bir harcama sınırı koymanız önerilir."))
-        col.addWidget(c)
+        self._add("saglayicilar", c)
 
-        # ---- web araması ----
+        # ================= Kod ajanı =================
+        c, l = card()
+        l.addWidget(section("Çalışma biçimi"))
+        self.plan_first = QCheckBox("Önce plan: dosyaya dokunmadan önce plan sun, “Uygula” deyince başla")
+        l.addWidget(self.plan_first)
+        l.addWidget(hint("Tasarım gibi yoruma açık işler için açın. Kapalıyken ajan doğrudan çalışır."))
+        self.scope_check = QCheckBox("Tur bitince kapsam denetimi yap: istenmemiş değişiklikleri işaretle (önerilir)")
+        l.addWidget(self.scope_check)
+        l.addWidget(hint("Ajan istemediğiniz dosyalara/tasarıma dokunduysa sohbette uyarı kartı çıkar; "
+                         "tek tıkla geri alabilirsiniz. Onay istemez, işi yavaşlatmaz (hızlı modelle denetlenir)."))
+        self.project_map = QCheckBox("Proje haritası: ajana dosya ağacını ve fonksiyon/sınıf adlarını baştan ver (daha az keşif adımı)")
+        l.addWidget(self.project_map)
+        self.learnings_suggest = QCheckBox("Proje hafızası: ajan bir ders çıkarınca (çalışan komut, tuzak) EVREN.md'ye eklemeyi öner")
+        l.addWidget(self.learnings_suggest)
+        self.suggest_project = QCheckBox("Çok aşamalı uzun istemde Proje ajanını öner")
+        l.addWidget(self.suggest_project)
+        self._add("ajan", c)
+        c, l = card()
+        l.addWidget(section("Bekçiler"))
+        self.edit_diag = QCheckBox("Hata bekçisi: ajan dosya düzenleyince hataları denetle ve modele bildir (önerilir)")
+        l.addWidget(self.edit_diag)
+        self.test_check = QCheckBox("Test bekçisi: ajan dosya değiştirince tur sonunda projenin testlerini çalıştır (önerilir)")
+        l.addWidget(self.test_check)
+        self.plan_guard = QCheckBox("Plan bekçisi: ajan fazlara ayırdığı işte açık madde varken durmasın, sıradakine geçsin (önerilir)")
+        l.addWidget(self.plan_guard)
+        self._add("ajan", c)
+        c, l = card()
+        l.addWidget(section("Sınırlar"))
+        self.tool_protocol = QComboBox()
+        for key, label in PROTOCOLS:
+            self.tool_protocol.addItem(label, key)
+        l.addWidget(kv_row_widget("Araç protokolü:", self.tool_protocol, d.tool_protocol))
+        self.max_steps = QSpinBox()
+        self.max_steps.setRange(5, 200)
+        l.addWidget(kv_row_widget("Tur başına en fazla adım:", self.max_steps, str(d.agent_max_steps)))
+        self.cmd_timeout = QSpinBox()
+        self.cmd_timeout.setRange(10, 1800)
+        self.cmd_timeout.setSuffix(" sn")
+        l.addWidget(kv_row_widget("Komut zaman aşımı:", self.cmd_timeout, f"{d.command_timeout_seconds} sn"))
+        self.output_limit = QSpinBox()
+        self.output_limit.setRange(2000, 200000)
+        self.output_limit.setSingleStep(1000)
+        self.output_limit.setSuffix(" karakter")
+        l.addWidget(kv_row_widget("Araç çıktısı sınırı (modele):", self.output_limit,
+                                  f"{d.tool_output_limit:,}".replace(",", ".")))
+        self._add("ajan", c)
+
+        # ================= Auto Pro =================
+        c, l = card()
+        l.addWidget(section("Motor seçimi"))
+        self.autopro_smart = QCheckBox("Auto Pro: işin zorluğuna ve türüne (veri, web, oyun, metin) göre motor seç (önerilir)")
+        l.addWidget(self.autopro_smart)
+        self.autopro_probe = QCheckBox("Auto Pro: açılışta ve Derin/Proje başlarken motorları kısa bir istekle yokla (az token)")
+        l.addWidget(self.autopro_probe)
+        self.autopro_architect = QCheckBox("Auto Pro: zor işte önce bir motor planlasın, başka bir motor yazsın (deneysel)")
+        l.addWidget(self.autopro_architect)
+        self.auto_switch = QCheckBox("Hata durumunda otomatik model değiştirme (önerilmez)")
+        l.addWidget(self.auto_switch)
+        l.addWidget(hint(f"Varsayılan: {'açık' if d.auto_model_switch else 'kapalı'}. Auto Pro kendi yedek "
+                         "motorlarına bu ayardan bağımsız geçer."))
+        self._add("autopro", c)
+        c, l = card()
+        l.addWidget(section("Kota"))
+        self.quota_guard_turns = QCheckBox("Kota koruması: 5 dakikalık EVREN penceresi dolarken normal turda da bekle (önerilir)")
+        l.addWidget(self.quota_guard_turns)
+        self.auto_resume = QCheckBox("Kota dolunca duran işi (normal oturum, Proje/QA/Derin) kota yenilenince kaldığı yerden sürdür")
+        l.addWidget(self.auto_resume)
+        self._add("autopro", c)
+
+        # ================= Bağlam ve özet =================
+        c, l = card()
+        l.addWidget(section("Otomatik özet"))
+        self.auto_compact = QCheckBox("Uzun konuşmaları otomatik özetle (önerilir)")
+        l.addWidget(self.auto_compact)
+        l.addWidget(hint(
+            "Özet, yeni mesaj gönderilmeden önce yapılır; uzun bir görev sırasında yalnızca "
+            "güvenli noktada (araç sonuçlarından sonra) yapılır ve ajan kendiliğinden devam eder. "
+            "Eşik: modelin bağlamının yüzdesi veya üst sınır (token), hangisi önce gelirse. Görev "
+            "sırasında eski komut çıktıları önce kısaltılır; özet ancak bu yetmezse yapılır."))
+        self.compact_percent = QSpinBox()
+        self.compact_percent.setRange(40, 90)
+        self.compact_percent.setSuffix(" %")
+        l.addWidget(kv_row_widget("Özet eşiği (bağlamın):", self.compact_percent, f"%{d.auto_compact_percent}"))
+        self.compact_max = QSpinBox()
+        self.compact_max.setRange(10_000, 900_000)
+        self.compact_max.setSingleStep(10_000)
+        self.compact_max.setSuffix(" token")
+        l.addWidget(kv_row_widget("Özet eşiği üst sınırı:", self.compact_max,
+                                  f"{d.auto_compact_max_tokens:,}".replace(",", ".")))
+        self.compact_model = QComboBox()
+        self.compact_model.setEditable(True)
+        l.addWidget(kv_row_widget("Özeti üreten model:", self.compact_model, d.auto_compact_model))
+        l.addWidget(hint("auto-pro: Auto Pro o an sağlıklı ve hızlı bir özet motoru seçer (önerilir). Boş: oturumun "
+                         "modeli. Seçilen model listede yoksa Auto Pro seçer. Hızlı motor önemli: aynı özet glm-5.3 "
+                         "ile ~150 sn, hızlı motorla ~40 sn sürdü."))
+        self._add("baglam", c)
+
+        # ================= Web araması =================
         c, l = card()
         l.addWidget(section("Web Araması (Tavily · ücretsiz kota)"))
         l.addWidget(hint(
@@ -231,9 +457,10 @@ class SettingsPage(BasePage):
             "anahtarıyla ayda 1000 arama kredisi kullanılır; anahtar yoksa ya da kota biterse anahtarsız Tavily, "
             "o da olmazsa DuckDuckGo denenir. Hiçbiri yanıt vermezse iş durmaz, ajan eldeki bilgiyle devam eder. "
             "Arama sorgusu bu servislere gider; Manuel modda her aramadan önce sorulur."))
-        l.addWidget(QLabel(link("Ücretsiz Tavily anahtarı al", "https://app.tavily.com")
-                           + " · " + link("Kullanım paneli", "https://app.tavily.com/home")))
-        l.itemAt(l.count() - 1).widget().setOpenExternalLinks(True)
+        links = QLabel(link("Ücretsiz Tavily anahtarı al", "https://app.tavily.com")
+                       + " · " + link("Kullanım paneli", "https://app.tavily.com/home"))
+        links.setOpenExternalLinks(True)
+        l.addWidget(links)
         self.tavily_row = kv_row("Kayıtlı Tavily anahtarı:", "yok")
         l.addWidget(self.tavily_row)
         row = QHBoxLayout()
@@ -261,75 +488,18 @@ class SettingsPage(BasePage):
         self.tavily_status.setProperty("role", "dim")
         l.addWidget(self.tavily_status)
         self._refresh_tavily_row()
-        col.addWidget(c)
+        self._add("web", c)
 
-        # ---- bağlantı ----
+        # ================= Bağlayıcılar (MCP) =================
         c, l = card()
-        l.addWidget(section("Bağlantı"))
-        self.base_url = QLineEdit()
-        l.addWidget(kv_row_widget("API adresi:", self.base_url, "evren-llmapi…/v1"))
-        self.announcement_url = QLineEdit()
-        l.addWidget(kv_row_widget("Duyuru sayfası (izlenecek URL):", self.announcement_url,
-                                  "evren.ssyz.org.tr"))
-        col.addWidget(c)
+        l.addWidget(section("MCP Sunucuları (ek ajan araçları)"))
+        self.mcp_card = McpSettingsCard(ctx)
+        l.addWidget(self.mcp_card)
+        self._add("baglayicilar", c)
 
-        # ---- model tercihleri ----
+        # ================= Bu bilgisayar =================
         c, l = card()
-        l.addWidget(section("Model Tercihleri"))
-        self.default_model = QComboBox()
-        self.default_model.setEditable(True)
-        l.addWidget(kv_row_widget("Varsayılan model:", self.default_model, d.default_model))
-        l.addWidget(hint("Sohbet ekranında seçtiğiniz motor ve onay modu burada varsayılan olarak "
-                         "kaydedilir; siz yeniden değiştirene kadar yeni oturumlar onunla açılır."))
-        self.auto_switch = QCheckBox("Hata durumunda otomatik model değiştirme (önerilmez)")
-        l.addWidget(self.auto_switch)
-        l.addWidget(hint(f"Varsayılan: {'açık' if d.auto_model_switch else 'kapalı'}"))
-        col.addWidget(c)
-
-        # ---- istek davranışı ----
-        c, l = card()
-        l.addWidget(section("İstek Davranışı"))
-        self.timeout = QDoubleSpinBox()
-        self.timeout.setRange(10, 600)
-        self.timeout.setDecimals(0)
-        self.timeout.setSuffix(" sn")
-        l.addWidget(kv_row_widget("Zaman aşımı:", self.timeout, f"{d.timeout_seconds:.0f} sn"))
-        self.stall = QSpinBox()
-        self.stall.setRange(0, 600)
-        self.stall.setSuffix(" sn")
-        self.stall.setSpecialValueText("kapalı")
-        self.stall.setToolTip("Model bu sürede yanıt vermeye başlamaz veya akış bu kadar susarsa Auto Pro "
-                              "yedek motora geçer. 0 = kapalı.")
-        l.addWidget(kv_row_widget("Yanıt vermeme süresi:", self.stall, f"{d.stream_idle_timeout_seconds} sn"))
-        self.retries = QSpinBox()
-        self.retries.setRange(0, 5)
-        l.addWidget(kv_row_widget("Otomatik tekrar sınırı (429/5xx):", self.retries, str(d.max_retries)))
-        self.streaming = QCheckBox("Yanıtları akış halinde göster (önerilir)")
-        l.addWidget(self.streaming)
-        col.addWidget(c)
-
-        # ---- kod ajanı ----
-        c, l = card()
-        l.addWidget(section("Kod Ajanı"))
-        l.addWidget(hint(
-            "Kod ajanı yalnızca seçtiğiniz proje klasöründe çalışır. Otomatik modda hiçbir "
-            "işlem için onay istenmez; diğer modlarda komutlar sorulur. Dosya değişiklikleri "
-            "sağ paneldeki “Değişiklikler” sekmesinden geri alınabilir."
-        ))
-        self.agent_mode = QComboBox()
-        for key, label in MODES.items():
-            self.agent_mode.addItem(f"{label} — {MODE_HINTS[key]}", key)
-        # Uzun öğe metni kartı (ve sayfayı) 1000+ px'e genişletip yatay kaydırma açıyordu (2026-10-21)
-        self.agent_mode.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
-        self.agent_mode.setMinimumContentsLength(24)
-        l.addWidget(kv_row_widget("Varsayılan çalışma modu:", self.agent_mode, MODES[d.agent_mode]))
-        self.tool_protocol = QComboBox()
-        for key, label in PROTOCOLS:
-            self.tool_protocol.addItem(label, key)
-        l.addWidget(kv_row_widget("Araç protokolü:", self.tool_protocol, d.tool_protocol))
-        self.max_steps = QSpinBox()
-        self.max_steps.setRange(5, 200)
-        l.addWidget(kv_row_widget("Tur başına en fazla adım:", self.max_steps, str(d.agent_max_steps)))
+        l.addWidget(section("Eksik program kurulumu"))
         self.install_mode = QComboBox()
         for key, label in INSTALL_MODES.items():
             self.install_mode.addItem(label, key)
@@ -338,132 +508,22 @@ class SettingsPage(BasePage):
             "Proje klasörü bağlanınca gereken programlar (Node, pnpm, Python, Git, Go, .NET …) "
             "denetlenir. Otomatik: eksik olan sorulmadan kurulur. Manuel: kurmadan önce sorulur. "
             "Kurulum Windows Paket Yöneticisi (winget) veya npm ile, yalnız bilinen listeden yapılır."))
-        self.scope_check = QCheckBox("Tur bitince kapsam denetimi yap: istenmemiş değişiklikleri işaretle (önerilir)")
-        l.addWidget(self.scope_check)
-        l.addWidget(hint("Ajan istemediğiniz dosyalara/tasarıma dokunduysa sohbette uyarı kartı çıkar; "
-                         "tek tıkla geri alabilirsiniz. Onay istemez, işi yavaşlatmaz (hızlı modelle denetlenir)."))
-        self.plan_first = QCheckBox("Önce plan: dosyaya dokunmadan önce plan sun, “Uygula” deyince başla")
-        l.addWidget(self.plan_first)
-        l.addWidget(hint("Tasarım gibi yoruma açık işler için açın. Kapalıyken ajan doğrudan çalışır."))
-        self.cmd_timeout = QSpinBox()
-        self.cmd_timeout.setRange(10, 1800)
-        self.cmd_timeout.setSuffix(" sn")
-        l.addWidget(kv_row_widget("Komut zaman aşımı:", self.cmd_timeout, f"{d.command_timeout_seconds} sn"))
-        self.output_limit = QSpinBox()
-        self.output_limit.setRange(2000, 200000)
-        self.output_limit.setSingleStep(1000)
-        self.output_limit.setSuffix(" karakter")
-        l.addWidget(kv_row_widget("Araç çıktısı sınırı (modele):", self.output_limit,
-                                  f"{d.tool_output_limit:,}".replace(",", ".")))
-        self.auto_compact = QCheckBox("Uzun konuşmaları otomatik özetle (önerilir)")
-        l.addWidget(self.auto_compact)
-        l.addWidget(hint(
-            "Özet, yeni mesaj gönderilmeden önce yapılır; uzun bir görev sırasında yalnızca "
-            "güvenli noktada (araç sonuçlarından sonra) yapılır ve ajan kendiliğinden devam eder. "
-            "Eşik: modelin bağlamının yüzdesi veya üst sınır (token), hangisi önce gelirse."))
-        self.compact_percent = QSpinBox()
-        self.compact_percent.setRange(40, 90)
-        self.compact_percent.setSuffix(" %")
-        l.addWidget(kv_row_widget("Özet eşiği (bağlamın):", self.compact_percent, f"%{d.auto_compact_percent}"))
-        self.compact_max = QSpinBox()
-        self.compact_max.setRange(10_000, 900_000)
-        self.compact_max.setSingleStep(10_000)
-        self.compact_max.setSuffix(" token")
-        l.addWidget(kv_row_widget("Özet eşiği üst sınırı:", self.compact_max,
-                                  f"{d.auto_compact_max_tokens:,}".replace(",", ".")))
-        self.compact_model = QComboBox()
-        self.compact_model.setEditable(True)
-        l.addWidget(kv_row_widget("Özeti üreten model:", self.compact_model, d.auto_compact_model))
-        l.addWidget(hint("auto-pro: Auto Pro o an sağlıklı ve hızlı bir özet motoru seçer (önerilir). Boş: oturumun "
-                         "modeli. Seçilen model listede yoksa Auto Pro seçer. Hızlı motor önemli: aynı özet glm-5.3 "
-                         "ile ~150 sn, hızlı motorla ~40 sn sürdü."))
-        self.show_reasoning = QCheckBox("Modelin düşünce sürecini göster (muhakeme modelleri)")
-        l.addWidget(self.show_reasoning)
-        self.ai_titles = QCheckBox("Oturum başlıklarını yapay zekâ üretsin (bağlı API ile, ilk yanıttan sonra)")
-        l.addWidget(self.ai_titles)
-        self.send_enter = QCheckBox("Enter ile gönder (kapalıysa Ctrl+Enter)")
-        l.addWidget(self.send_enter)
-        self.edit_diag = QCheckBox("Hata bekçisi: ajan dosya düzenleyince hataları denetle ve modele bildir (önerilir)")
-        l.addWidget(self.edit_diag)
-        self.test_check = QCheckBox("Test bekçisi: ajan dosya değiştirince tur sonunda projenin testlerini çalıştır (önerilir)")
-        l.addWidget(self.test_check)
-        self.plan_guard = QCheckBox("Plan bekçisi: ajan fazlara ayırdığı işte açık madde varken durmasın, sıradakine geçsin (önerilir)")
-        l.addWidget(self.plan_guard)
-        self.autopro_smart = QCheckBox("Auto Pro: işin zorluğuna ve türüne (veri, web, oyun, metin) göre motor seç (önerilir)")
-        l.addWidget(self.autopro_smart)
-        self.autopro_probe = QCheckBox("Auto Pro: açılışta ve Derin/Proje başlarken motorları kısa bir istekle yokla (az token)")
-        l.addWidget(self.autopro_probe)
-        self.autopro_architect = QCheckBox("Auto Pro: zor işte önce bir motor planlasın, başka bir motor yazsın (deneysel)")
-        l.addWidget(self.autopro_architect)
-        self.quota_guard_turns = QCheckBox("Kota koruması: 5 dakikalık EVREN penceresi dolarken normal turda da bekle (önerilir)")
-        l.addWidget(self.quota_guard_turns)
-        self.project_map = QCheckBox("Proje haritası: ajana dosya ağacını ve fonksiyon/sınıf adlarını baştan ver (daha az keşif adımı)")
-        l.addWidget(self.project_map)
-        self.learnings_suggest = QCheckBox("Proje hafızası: ajan bir ders çıkarınca (çalışan komut, tuzak) EVREN.md'ye eklemeyi öner")
-        l.addWidget(self.learnings_suggest)
-        self.suggest_project = QCheckBox("Çok aşamalı uzun istemde Proje ajanını öner")
-        l.addWidget(self.suggest_project)
-        self.auto_resume = QCheckBox("Kota dolunca duran işi (normal oturum, Proje/QA/Derin) kota yenilenince kaldığı yerden sürdür")
-        l.addWidget(self.auto_resume)
-        col.addWidget(c)
-
-        # ---- MCP sunucuları ----
+        self._add("bilgisayar", c)
         c, l = card()
-        l.addWidget(section("MCP Sunucuları (ek ajan araçları)"))
-        self.mcp_card = McpSettingsCard(ctx)
-        l.addWidget(self.mcp_card)
-        col.addWidget(c)
-
-        # ---- oyun araçları (Godot + şablonlar, Blender) ----
-        c, l = card()
-        l.addWidget(section("Oyun araçları"))
-        self.game_card = GameToolsCard(ctx)
-        l.addWidget(self.game_card)
-        col.addWidget(c)
-
-        # ---- gözlem ajanı (gozlem.py) ----
-        from .gozlem_card import GozlemCard
-
-        c, l = card()
-        l.addWidget(section("Geliştirici gözlemi"))
-        self.gozlem_card = GozlemCard(ctx)
-        l.addWidget(self.gozlem_card)
-        col.addWidget(c)
-
-        # ---- veri ve görünüm ----
-        c, l = card()
-        l.addWidget(section("Veri ve Görünüm"))
+        l.addWidget(section("Veri klasörü"))
         self.data_dir = QLineEdit()
         # "…" yazılı düğme neredeyse görünmüyordu (2026-11-01 okunurluk denetimi): simge + metin
-        from . import icons
-
         browse = QPushButton("Seç…")
         browse.setIcon(icons.icon("folder", size=15))
         browse.setToolTip("Veri klasörünü seçin")
         browse.clicked.connect(self.browse_data_dir)
         l.addWidget(kv_row_with("Yerel verilerin konumu:", self.data_dir, browse))
-        self.theme = QComboBox()
-        self.theme.addItems(["koyu", "açık"])
-        l.addWidget(kv_row_widget("Tema:", self.theme, d.theme))
-        self.font_size = QSpinBox()
-        self.font_size.setRange(8, 16)
-        self.font_size.setSuffix(" pt")
-        l.addWidget(kv_row_widget("Yazı boyutu:", self.font_size, f"{d.font_size} pt"))
-        l.addWidget(hint("Kısayol: Ctrl+= büyüt, Ctrl+- küçült, Ctrl+0 varsayılan."))
-        self.compact_view = QCheckBox("Sıkışık görünüm: daha az boşluk, ekrana daha çok içerik sığar")
-        l.addWidget(self.compact_view)
-        self.simple_view = QCheckBox("Sade görünüm: biten araç adımlarını ve düşünce bloklarını gizle (Ctrl+Shift+H)")
-        l.addWidget(self.simple_view)
-        self.retention = QSpinBox()
-        self.retention.setRange(7, 365)
-        self.retention.setSuffix(" gün")
-        l.addWidget(kv_row_widget("Hata kayıtlarını saklama süresi:", self.retention,
-                                  f"{d.error_log_retention_days} gün"))
-        l.addWidget(hint("Tema ve yazı boyutu kaydedince uygulanır; bazı bileşenler "
-                         "yeniden başlatmada tamamen güncellenir."))
-        col.addWidget(c)
-
-        # ---- F6 #15 güvenilmeyen klasörler ----
+        self._add("bilgisayar", c)
+        c, l = card()
+        l.addWidget(section("Oyun araçları"))
+        self.game_card = GameToolsCard(ctx)
+        l.addWidget(self.game_card)
+        self._add("bilgisayar", c)
         c, l = card()
         l.addWidget(section("Güvenilmeyen klasörler"))
         l.addWidget(hint("İnternetten indirdiğiniz dosyaları (mod, örnek proje) koyduğunuz klasörler. Ajan buradaki "
@@ -481,19 +541,62 @@ class SettingsPage(BasePage):
         row.addWidget(del_u)
         row.addStretch(1)
         l.addLayout(row)
-        col.addWidget(c)
+        self._add("bilgisayar", c)
 
-        # ---- dışa aktarma / silme ----
+        # ================= Bağlantı ve ağ =================
         c, l = card()
-        l.addWidget(section("Veri Dışa Aktarma ve Silme"))
+        l.addWidget(section("Adresler"))
+        self.base_url = QLineEdit()
+        l.addWidget(kv_row_widget("API adresi:", self.base_url, "evren-llmapi…/v1"))
+        self.announcement_url = QLineEdit()
+        l.addWidget(kv_row_widget("Duyuru sayfası (izlenecek URL):", self.announcement_url,
+                                  "evren.ssyz.org.tr"))
+        self._add("ag", c)
+        c, l = card()
+        l.addWidget(section("İstek davranışı"))
+        self.timeout = QDoubleSpinBox()
+        self.timeout.setRange(10, 600)
+        self.timeout.setDecimals(0)
+        self.timeout.setSuffix(" sn")
+        l.addWidget(kv_row_widget("Zaman aşımı:", self.timeout, f"{d.timeout_seconds:.0f} sn"))
+        self.stall = QSpinBox()
+        self.stall.setRange(0, 600)
+        self.stall.setSuffix(" sn")
+        self.stall.setSpecialValueText("kapalı")
+        self.stall.setToolTip("Model bu sürede yanıt vermeye başlamaz veya akış bu kadar susarsa Auto Pro "
+                              "yedek motora geçer. 0 = kapalı.")
+        l.addWidget(kv_row_widget("Yanıt vermeme süresi:", self.stall, f"{d.stream_idle_timeout_seconds} sn"))
+        self.retries = QSpinBox()
+        self.retries.setRange(0, 5)
+        l.addWidget(kv_row_widget("Otomatik tekrar sınırı (429/5xx):", self.retries, str(d.max_retries)))
+        self.streaming = QCheckBox("Yanıtları akış halinde göster (önerilir)")
+        l.addWidget(self.streaming)
+        self._add("ag", c)
+
+        # ================= Gizlilik ve veri =================
+        c, l = card()
+        l.addWidget(section("Kayıtlar"))
+        self.retention = QSpinBox()
+        self.retention.setRange(7, 365)
+        self.retention.setSuffix(" gün")
+        l.addWidget(kv_row_widget("Hata kayıtlarını saklama süresi:", self.retention,
+                                  f"{d.error_log_retention_days} gün"))
+        self._add("gizlilik", c)
+        from .gozlem_card import GozlemCard
+
+        c, l = card()
+        l.addWidget(section("Geliştirici gözlemi"))
+        self.gozlem_card = GozlemCard(ctx)
+        l.addWidget(self.gozlem_card)
+        self._add("gizlilik", c)
+        c, l = card()
+        l.addWidget(section("Veri dışa aktarma ve silme"))
         open_btn = QPushButton("Veri klasörünü aç")
         open_btn.setToolTip("Oturumların, ayarların ve skill'lerin tutulduğu klasörü Dosya Gezgini'nde açar")
         open_btn.clicked.connect(lambda _=None: open_data_dir(self, self.ctx))
         backup_btn = QPushButton("Oturumları yedekle (.zip)…")
         backup_btn.setToolTip("Veritabanı, ayarlar ve skill'ler tek dosyaya; API anahtarları yedeğe girmez")
         backup_btn.clicked.connect(lambda _=None: backup_sessions(self, self.ctx))
-        for b in (open_btn, backup_btn):
-            l.addWidget(b)
         export_btn = QPushButton("Tüm verileri dışa aktar (JSON)")
         export_btn.clicked.connect(self.export_data)
         purge_btn = QPushButton("Eski hata kayıtlarını temizle")
@@ -501,22 +604,118 @@ class SettingsPage(BasePage):
         wipe_btn = QPushButton("Tüm oturumları ve kayıtları sil")
         wipe_btn.setProperty("variant", "danger")
         wipe_btn.clicked.connect(self.wipe_data)
-        for b in (export_btn, purge_btn, wipe_btn):
+        for b in (open_btn, backup_btn, export_btn, purge_btn, wipe_btn):
             l.addWidget(b)
-        col.addWidget(c)
+        self._add("gizlilik", c)
 
+        # ================= Hakkında =================
         c, l = card()
         l.addWidget(kv_row("Uygulama sürümü:", __version__))
-        col.addWidget(c)
-        col.addStretch(1)
+        self._add("hakkinda", c)
 
-        save_all = QPushButton("Tüm ayarları kaydet")
-        save_all.setProperty("variant", "primary")
-        save_all.clicked.connect(self.save_all)
-        col.addWidget(save_all)
-        scroll.setWidget(inner)
-        self.root.addWidget(scroll, 1)
+        # Sonradan eklenen kategoriler (zamanlayıcı, GitHub) kendi kartlarını _build_extra ile ekler
+        self._build_extra()
+        for key, col in self._page_cols.items():
+            if col.count() <= 2:                       # başlık + açıklama dışında kart yok → menüde gösterme
+                self.nav.item(self._row_of(key)).setHidden(True)
+            col.addStretch(1)
+        self._page_texts = {key: self._texts_of(self.stack.widget(i)) for key, i in self._page_index.items()}
+        self.root.addLayout(body, 1)
+        self.nav.setCurrentRow(0)
         self.load_values()
+
+    # ---- menü / arama ----------------------------------------------------------
+
+    def _build_extra(self) -> None:
+        """Sonradan eklenen kategorilerin kartları (zamanlanmış görevler, GitHub)."""
+        d = DEFAULTS
+        # ---- Zamanlanmış görevler (Madde 12c) ----
+        c, l = card()
+        l.addWidget(section("Çalışma koşulları"))
+        self.schedule_enabled = QCheckBox("Zamanlanmış görevler zamanı gelince kendiliğinden çalışsın")
+        self.schedule_enabled.setToolTip("Kapalıyken hiçbir görev kendiliğinden başlamaz; “Şimdi çalıştır” yine çalışır.")
+        l.addWidget(self.schedule_enabled)
+        self.schedule_keep_awake = QCheckBox("Etkin görev varken bilgisayarın boşta uykuya geçmesini engelle")
+        l.addWidget(self.schedule_keep_awake)
+        l.addWidget(hint("Görevler yalnız EVREN Studio açıkken ve bilgisayar uyanıkken çalışır. Bilgisayar uyurken "
+                         "geçen zaman atlanır; kapağı kapatmak yine uyutur. Kaçırılanlardan son 7 gün içindeki en "
+                         "yenisi uygulama açılınca bir kez telafi edilir."))
+        self.schedule_notify = QCheckBox("Çalıştırma bitince ve telafi başlayınca Windows bildirimi göster")
+        l.addWidget(self.schedule_notify)
+        self.schedule_max = QSpinBox()
+        self.schedule_max.setRange(5, 600)
+        self.schedule_max.setSuffix(" dk")
+        l.addWidget(kv_row_widget("Bir çalıştırmanın en uzun süresi:", self.schedule_max,
+                                  f"{d.schedule_max_minutes} dk"))
+        l.addWidget(hint("Görevleri oluşturmak ve yönetmek için kenar çubuğundaki “Zamanlanmış görevler”i açın."))
+        self._add("zamanlanmis", c)
+        # ---- GitHub (Madde 12d) ----
+        from .github_card import GitHubCard
+
+        c, l = card()
+        l.addWidget(section("GitHub hesabı"))
+        self.github_card = GitHubCard(self.ctx)
+        self.github_card.open_workspace.connect(self.open_workspace.emit)
+        l.addWidget(self.github_card)
+        self._add("github", c)
+
+    def _add(self, key: str, widget: QWidget) -> None:
+        self._page_cols[key].addWidget(widget)
+
+    def _row_of(self, key: str) -> int:
+        return [k for k, *_ in self.CATEGORIES].index(key)
+
+    def _on_nav(self, row: int) -> None:
+        if row < 0:
+            return
+        from PySide6.QtCore import Qt
+
+        key = self.nav.item(row).data(Qt.UserRole)
+        self.stack.setCurrentIndex(self._page_index[key])
+        if key == "github" and hasattr(self, "github_card"):
+            self.github_card.refresh()           # GitHub durumu yalnız bu menü açılınca denetlenir (ağ)
+
+    def open_category(self, key: str) -> None:
+        """Ayarlar'da belirli bir menüyü açar (ör. başka ekrandan 'Web araması ayarı')."""
+        if key in self._page_index:
+            self.search.clear()
+            self.nav.setCurrentRow(self._row_of(key))
+
+    def current_category(self) -> str:
+        from PySide6.QtCore import Qt
+
+        item = self.nav.currentItem()
+        return item.data(Qt.UserRole) if item else ""
+
+    @staticmethod
+    def _texts_of(root: QWidget) -> str:
+        """Sayfadaki tüm görünür metinler (etiket, kutu, düğme, ipucu) — aramada kullanılır."""
+        from PySide6.QtWidgets import QAbstractButton
+
+        parts: list[str] = []
+        for w in root.findChildren(QWidget):
+            if isinstance(w, QLabel):
+                parts.append(w.text())
+            elif isinstance(w, QAbstractButton):
+                parts.append(w.text())
+            if w.toolTip():
+                parts.append(w.toolTip())
+        return _fold(" ".join(parts))
+
+    def _filter_nav(self, text: str) -> None:
+        q = _fold(text.strip())
+        first = -1
+        for i, (key, label, _icon, desc) in enumerate(self.CATEGORIES):
+            item = self.nav.item(i)
+            empty = self._page_cols[key].count() <= 3          # başlık + açıklama + esneme
+            hit = not empty and (not q or q in _fold(label) or q in _fold(desc) or q in self._page_texts.get(key, ""))
+            item.setHidden(not hit)
+            if hit and first < 0:
+                first = i
+        self.no_match.setVisible(first < 0)
+        cur = self.nav.currentRow()
+        if first >= 0 and (cur < 0 or self.nav.item(cur).isHidden()):
+            self.nav.setCurrentRow(first)
 
     # ---- formu doldur / oku ------------------------------------------------
 
@@ -576,6 +775,10 @@ class SettingsPage(BasePage):
         self.retention.setValue(s.error_log_retention_days)
         self.budget.setValue(s.monthly_budget_usd)
         self.budget_enforce.setChecked(s.budget_enforce)
+        self.schedule_enabled.setChecked(s.schedule_enabled)
+        self.schedule_keep_awake.setChecked(s.schedule_keep_awake)
+        self.schedule_notify.setChecked(s.schedule_notify)
+        self.schedule_max.setValue(int(s.schedule_max_minutes))
         self._refresh_provider_rows()
         self._refresh_spend(s)
         self.mcp_card.load(s)
@@ -626,6 +829,10 @@ class SettingsPage(BasePage):
         s.error_log_retention_days = int(self.retention.value())
         s.monthly_budget_usd = float(self.budget.value())
         s.budget_enforce = self.budget_enforce.isChecked()
+        s.schedule_enabled = self.schedule_enabled.isChecked()
+        s.schedule_keep_awake = self.schedule_keep_awake.isChecked()
+        s.schedule_notify = self.schedule_notify.isChecked()
+        s.schedule_max_minutes = int(self.schedule_max.value())
         self.mcp_card.collect(s)
 
     def changed_fields(self) -> list[str]:

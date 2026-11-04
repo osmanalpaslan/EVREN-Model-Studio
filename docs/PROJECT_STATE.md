@@ -64,6 +64,8 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-11-05) Madde 12 (`feat/claude-tarzi-arayuz`): Ayarlar menüleri, sade kenar çubuğu, zamanlanmış görevler,
+      GitHub bağlantısı (gh, tarayıcı). Tam takım 870/870, R-13, gerçek zamanlanmış görev 6/6.
   - (2026-11-04 akşam) Madde 7 hız (`feat/hiz-adim-azaltma`): çağrı içi damla akış → yedek, tur içi kısaltma sert
       sınırdan önce, boş yanıtta yedek, bağımsız okumalar tek yanıtta. Zorluk 12/12, maraton F 17/17 (özet 3 → 1).
   - (2026-11-04) **Güncel iş ve plan: `docs/DEVIR_NOTU.md` "Şu an"** (tek kaynak). Master'da yarım iş yok.

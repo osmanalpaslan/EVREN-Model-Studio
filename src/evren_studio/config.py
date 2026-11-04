@@ -179,6 +179,11 @@ class Settings:
     # Derin Mod'da aynı anda çalışan alt ajan sayısı (1-3; kota penceresi doluysa kendiliğinden 1'e iner)
     deep_parallel: int = 2
     mcp_servers: list[dict] = field(default_factory=list)
+    # Zamanlanmış görevler (Madde 12c, 2026-11-05): yalnız uygulama açıkken çalışır (Claude Code yerel görevleri gibi)
+    schedule_enabled: bool = True          # kapalıysa hiçbir görev kendiliğinden başlamaz ("Şimdi çalıştır" çalışır)
+    schedule_keep_awake: bool = False      # etkin görev varken bilgisayarın boşta uykuya geçmesini engelle
+    schedule_notify: bool = True           # çalıştırma bitince / telafi başlayınca Windows bildirimi
+    schedule_max_minutes: int = 120        # tek çalıştırmanın üst süresi; aşılırsa durdurulur
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
     # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).
     settings_version: int = SETTINGS_VERSION

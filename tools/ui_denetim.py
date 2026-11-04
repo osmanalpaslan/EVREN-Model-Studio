@@ -338,11 +338,40 @@ def denetle(tema: str, out: Path, goruntu: bool) -> list[dict]:
     for ad in ("todos", "changes", "files", "terminal", "work", "git"):
         w.panel.show_tab(ad)
         olc(f"panel_{ad}")
-    # 4) tüm sayfalar (Ayarlar dahil, kaydırılarak)
+    # 4) tüm sayfalar (Ayarlar dahil, kaydırılarak). Zamanlanmış görevler sayfası örnek görev ve geçmişle dolu
+    #    gösterilir (2026-11-05, Madde 12c); ayrıntı görünümü ayrıca ölçülür.
+    from datetime import datetime as _dt
+
+    from evren_studio.agent import schedule as _sched
+
+    _tid = db.create_scheduled_task(name="Sabah test denetimi", description="Testleri çalıştır, kırmızıyı özetle",
+                                    prompt="Testleri çalıştır; kırmızı test varsa nedenini kısaca yaz.",
+                                    workspace=str(proj), model="auto-pro", mode="auto", kind="weekdays",
+                                    time_hm="09:00", last_handled_at=_sched.to_utc_iso(_dt.now()))
+    db.create_scheduled_task(name="Haftalık değişiklik özeti", prompt="Bu haftanın git değişikliklerini özetle.",
+                             workspace=str(proj), kind="weekly", weekday=4, time_hm="17:00", enabled=0)
+    _r = db.add_scheduled_run(_tid, "tamamlandi", manual=True)
+    db.update_scheduled_run(_r, started_at=_sched.to_utc_iso(_dt.now()), session_id=sid)
+    db.add_scheduled_run(_tid, "atlandi", reason="2 çalıştırma kaçırıldı (uygulama kapalıydı)")
     for key, sayfa in w.pages.items():
         w.show_page(key)
         pump(0.6)
-        kaydir_ve_olc(f"sayfa_{key}", sayfa)
+        kategoriler = getattr(sayfa, "CATEGORIES", None)
+        if kategoriler and hasattr(sayfa, "open_category"):
+            # Ayarlar menülere bölündü (2026-11-04): her menü ayrı açılıp kaydırılarak ölçülür
+            for kat, *_ in kategoriler:
+                if sayfa.nav.item(sayfa._row_of(kat)).isHidden():
+                    continue
+                sayfa.open_category(kat)
+                pump(0.3)
+                kaydir_ve_olc(f"sayfa_{key}_{kat}", sayfa)
+        else:
+            kaydir_ve_olc(f"sayfa_{key}", sayfa)
+        if key == "scheduled" and hasattr(sayfa, "show_task"):
+            sayfa.show_task(_tid)
+            pump(0.4)
+            kaydir_ve_olc("sayfa_scheduled_ayrinti", sayfa)
+            sayfa.show_list()
     w.close()
     return sorted(bulgular, key=lambda b: (b["duzey"] != "HATA", b["oran"]))
 

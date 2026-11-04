@@ -143,13 +143,13 @@ def _wait(app, cond, timeout=6.0):
 def test_yalniz_ucretli_anahtarla_evren_ekranlari_gizlenir(win):
     app, w = win
     w._apply_providers()
-    assert w.sidebar.nav_buttons["monitor"].isVisibleTo(w.sidebar)
+    assert w.sidebar.page_visible("monitor")                  # 2026-11-04: "Diğer" menüsünde
     w.ctx._cached_key = ""
     w.ctx._provider_keys["anthropic"] = "sk-ant-api03-SAHTE1234567890abcdef"
     w.show_page("usage")
     w._apply_providers()
     for k in ("models", "usage", "monitor", "connection"):
-        assert not w.sidebar.nav_buttons[k].isVisibleTo(w.sidebar), k
+        assert not w.sidebar.page_visible(k), k
     assert w.center.currentWidget() is w.session                            # gizlenen sayfadan çıkıldı
     s = w.session
     s.refresh_models()

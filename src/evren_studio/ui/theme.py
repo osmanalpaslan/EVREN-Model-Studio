@@ -200,19 +200,21 @@ QPushButton#SendButton:disabled {{ background: {p.selected}; }}
 QPushButton#SendButton[running="true"] {{ background: {p.text}; }}
 
 /* ---- girişler ---- */
-QLineEdit, QPlainTextEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
+QLineEdit, QPlainTextEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTimeEdit, QDateTimeEdit {{
     background: {p.surface}; color: {p.text}; border: 1px solid {p.border};
     border-radius: 8px; padding: 5px 8px; selection-background-color: {p.accent_soft};
     selection-color: {p.text};
     placeholder-text-color: {p.muted};
 }}
-QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
+QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus,
+QTimeEdit:focus, QDateTimeEdit:focus {{
     border-color: {p.accent};
 }}
 QComboBox::drop-down {{ border: none; width: 20px; }}
 QComboBox QAbstractItemView {{ background: {p.surface}; border: 1px solid {p.border_strong};
                                selection-background-color: {p.selected}; }}
-QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{ width: 16px; border: none; }}
+QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button,
+QTimeEdit::up-button, QTimeEdit::down-button {{ width: 16px; border: none; }}
 QCheckBox {{ spacing: 8px; background: transparent; }}
 QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {p.border_strong}; background: {p.surface}; }}
 QCheckBox::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; image: url({check}); }}
@@ -250,6 +252,13 @@ QPushButton[nav="true"] {{ background: transparent; border: none; text-align: le
 QPushButton[nav="true"]:hover {{ background: {p.hover}; color: {p.text}; }}
 QPushButton[nav="true"]:checked {{ background: {p.selected}; color: {p.text}; }}
 QPushButton#NewSession {{ text-align: left; padding: 8px 12px; font-weight: 600; }}
+
+/* ---- Ayarlar menüsü (Claude Code tarzı: sade liste, seçili satır yumuşak zemin) ---- */
+QListWidget#SettingsNav {{ background: transparent; border: none; outline: none; }}
+QListWidget#SettingsNav::item {{ padding: 7px 10px; border-radius: 8px; margin: 1px 0; color: {p.text_dim}; }}
+QListWidget#SettingsNav::item:hover {{ background: {p.hover}; color: {p.text}; }}
+QListWidget#SettingsNav::item:selected {{ background: {p.selected}; color: {p.text}; }}
+QLabel[role="h1"] {{ font-size: {font_pt + 4}pt; font-weight: 600; }}
 
 /* ---- sağ panel ---- */
 QWidget#SidePanel {{ background: {p.panel}; border-left: 1px solid {p.border}; }}
