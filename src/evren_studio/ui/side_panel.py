@@ -623,7 +623,8 @@ class WorkTab(QWidget):
 
 class GitTab(QWidget):
     """Madde 1: proje klasörünün git durumu, dosya farkı, yapay zekâ commit mesajı önerisi, onaylı commit.
-    push/reset yok. Git işleri arka plan iş parçacığında (R-04)."""
+    Madde 12d (2026-11-05): GitHub — onaylı Gönder (push, zorlamasız), Al (pull, yalnız ileri sarma), uzak depo yoksa
+    "GitHub'da depo oluştur" (gizli). reset/zorla gönderme yok. Git işleri arka plan iş parçacığında (R-04)."""
 
     def __init__(self, ctx, parent=None):
         super().__init__(parent)
@@ -642,6 +643,24 @@ class GitTab(QWidget):
         self.refresh_btn.clicked.connect(lambda _=None: self.refresh())
         head.addWidget(self.refresh_btn)
         lay.addLayout(head)
+        # GitHub satırı (Madde 12d): uzak depo + Gönder / Al / Depo oluştur
+        gh_row = QHBoxLayout()
+        self.remote_label = faint_label("")
+        self.remote_label.setWordWrap(True)
+        gh_row.addWidget(self.remote_label, 1)
+        self.pull_btn = QPushButton("Al")
+        self.pull_btn.setToolTip("GitHub'daki yeni commit'leri al (git pull --ff-only; yerel değişiklik ezilmez)")
+        self.pull_btn.clicked.connect(lambda _=None: self.pull())
+        self.push_btn = QPushButton("Gönder")
+        self.push_btn.setToolTip("Commit'lenmiş değişiklikleri GitHub'a gönder (git push; zorlama yok)")
+        self.push_btn.clicked.connect(lambda _=None: self.push())
+        self.create_btn = QPushButton("GitHub'da depo oluştur")
+        self.create_btn.setToolTip("Bu proje için GitHub'da gizli bir depo oluşturur ve commit'leri gönderir")
+        self.create_btn.clicked.connect(lambda _=None: self.create_remote())
+        for b in (self.pull_btn, self.push_btn, self.create_btn):
+            gh_row.addWidget(b)
+        lay.addLayout(gh_row)
+        self._remote = ""
         self.body = QSplitter(Qt.Vertical)
         self.list = QListWidget()
         self.list.currentRowChanged.connect(self._show)
@@ -692,7 +711,7 @@ class GitTab(QWidget):
         self._busy(False)
 
     def _busy(self, on: bool) -> None:
-        for b in (self.suggest_btn, self.commit_btn, self.refresh_btn):
+        for b in (self.suggest_btn, self.commit_btn, self.refresh_btn, self.pull_btn, self.push_btn, self.create_btn):
             b.setEnabled(not on)
 
     def set_root(self, root: str | None) -> None:
@@ -706,10 +725,19 @@ class GitTab(QWidget):
         if not self.root:
             self._apply(None)
             return
-        from ..agent import gitview
+        from ..agent import github, gitview
 
         root = self.root
-        self._bg(lambda: gitview.status(root), lambda st: self._apply(st) if root == self.root else None)
+
+        def job():
+            st = gitview.status(root)
+            return st, (github.remote_url(root) if st.repo else "")
+
+        def done(res):
+            if root == self.root:
+                self._remote = res[1]
+                self._apply(res[0])
+        self._bg(job, done)
 
     def _apply(self, st) -> None:
         repo = bool(st and st.repo)
@@ -719,6 +747,7 @@ class GitTab(QWidget):
         self.refresh_btn.setVisible(bool(self.root))
         if st is not None and st.error:
             self.empty.setText(f"Git kullanılamıyor: {st.error}")
+        self._apply_remote(st if repo else None)
         if not repo:
             self.branch.setText("")
             self.entries = []
@@ -806,6 +835,73 @@ class GitTab(QWidget):
             self.refresh()
 
         self._bg(lambda: gitview.commit(root, msg), done)
+
+    def _apply_remote(self, st) -> None:
+        """GitHub satırı: uzak depo yoksa "depo oluştur", varsa Gönder/Al (gönderilecek/alınacak sayısıyla)."""
+        from ..agent import github
+
+        if st is None:
+            self.remote_label.setText("")
+            for b in (self.pull_btn, self.push_btn, self.create_btn):
+                b.setVisible(False)
+            return
+        name = github.github_name(self._remote)
+        has = bool(self._remote)
+        self.remote_label.setText(f"GitHub: {name}" if name else (f"Uzak depo: {self._remote}" if has
+                                                                     else "Uzak depo yok (GitHub'a bağlı değil)"))
+        self.push_btn.setVisible(has)
+        self.pull_btn.setVisible(has)
+        self.create_btn.setVisible(not has)
+        self.push_btn.setText(f"Gönder ({st.ahead})" if st.ahead else "Gönder")
+        self.pull_btn.setText(f"Al ({st.behind})" if st.behind else "Al")
+
+    def push(self) -> None:
+        if not self.root or not self._remote:
+            return
+        from ..agent import github
+
+        if QMessageBox.question(self, "GitHub'a gönderilsin mi?",
+                                f"Commit'lenmiş değişiklikler {github.github_name(self._remote) or self._remote} "
+                                "deposuna gönderilecek (git push). Commit'lenmemiş dosyalar gönderilmez; zorla "
+                                "gönderme yapılmaz.") != QMessageBox.Yes:
+            return
+        self._remote_job(lambda root: github.push(root), "Gönderildi", "Gönderilemedi")
+
+    def pull(self) -> None:
+        if not self.root or not self._remote:
+            return
+        from ..agent import github
+
+        self._remote_job(lambda root: github.pull(root), "Güncellendi", "Alınamadı")
+
+    def create_remote(self) -> None:
+        if not self.root:
+            return
+        from PySide6.QtWidgets import QInputDialog
+
+        from ..agent import github
+
+        name, ok = QInputDialog.getText(self, "GitHub'da depo oluştur",
+                                        "Depo adı (gizli depo olarak oluşturulur, commit'ler gönderilir):",
+                                        text=github.suggest_repo_name(self.root))
+        if not ok or not name.strip():
+            return
+        self._remote_job(lambda root: github.create_repo(root, name.strip(), private=True),
+                         "Depo oluşturuldu", "Depo oluşturulamadı",
+                         hint="GitHub hesabını Ayarlar > GitHub'dan bağlayın; depoda en az bir commit olmalı.")
+
+    def _remote_job(self, fn, ok_text: str, fail_text: str, hint: str = "") -> None:
+        root = self.root
+        self._busy(True)
+        self.note.setText("GitHub ile iletişim kuruluyor…")
+
+        def done(res):
+            ok, out = res
+            self._busy(False)
+            last = (out or "").strip().splitlines()[-1:] or [""]
+            self.note.setText(f"{ok_text}." if ok else f"{fail_text}: {last[0][:200]}" + (f" {hint}" if hint else ""))
+            self.refresh()
+        self._bg(lambda: fn(root), done)
 
     def init_repo(self) -> None:
         if not self.root:

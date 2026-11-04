@@ -147,6 +147,7 @@ def _fold(text: str) -> str:
 class SettingsPage(BasePage):
     title = "Ayarlar"
     settings_saved = Signal()
+    open_workspace = Signal(str)          # GitHub'dan indirilen klasörü yeni oturumda aç
 
     # Claude Code tarzı ayarlar (kullanıcı isteği 2026-11-04): solda menü, sağda yalnız seçilen menünün ayarları.
     # (anahtar, menü adı, simge, açıklama). Yeni bir ayar eklerken: ilgili kategorinin sayfasına `self._add(anahtar, kart)`.
@@ -648,6 +649,15 @@ class SettingsPage(BasePage):
                                   f"{d.schedule_max_minutes} dk"))
         l.addWidget(hint("Görevleri oluşturmak ve yönetmek için kenar çubuğundaki “Zamanlanmış görevler”i açın."))
         self._add("zamanlanmis", c)
+        # ---- GitHub (Madde 12d) ----
+        from .github_card import GitHubCard
+
+        c, l = card()
+        l.addWidget(section("GitHub hesabı"))
+        self.github_card = GitHubCard(self.ctx)
+        self.github_card.open_workspace.connect(self.open_workspace.emit)
+        l.addWidget(self.github_card)
+        self._add("github", c)
 
     def _add(self, key: str, widget: QWidget) -> None:
         self._page_cols[key].addWidget(widget)
@@ -662,6 +672,8 @@ class SettingsPage(BasePage):
 
         key = self.nav.item(row).data(Qt.UserRole)
         self.stack.setCurrentIndex(self._page_index[key])
+        if key == "github" and hasattr(self, "github_card"):
+            self.github_card.refresh()           # GitHub durumu yalnız bu menü açılınca denetlenir (ağ)
 
     def open_category(self, key: str) -> None:
         """Ayarlar'da belirli bir menüyü açar (ör. başka ekrandan 'Web araması ayarı')."""

@@ -12,14 +12,17 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-05 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 12 SÜRÜYOR (12a-c YAPILDI).
-- **Aktif dal:** `feat/claude-tarzi-arayuz` (master 48396e7 üstünde). YAPILDI: 12a Ayarlar menüleri (016185c) · 12b kenar
-  çubuğu (8820a32) · 12c **zamanlanmış görevler** (bu commit): `agent/schedule.py` (zaman hesabı, cron, telafi),
-  `ui/schedule_host.py` (dakikalık denetim, kuyruk, görünmez `SessionView.unattended` oturumda çalıştırma, sonuç/
-  bildirim, uyanık tut), `ui/scheduled_page.py` (liste/ayrıntı/geçmiş/oluştur-düzenle), DB `scheduled_tasks` +
-  `scheduled_runs` + `sessions.scheduled_task_id`, Ayarlar > Zamanlanmış görevler. tests/test_zamanlayici.py 23
-  (gerçek görünümle uçtan uca dahil), mutasyon 19/19. Sıradaki: tam takım → 12d GitHub (`gh auth login --web`) →
-  R-13 + zorluk paketi (session_view değişti) → PR.
+- **Güncelleme:** 2026-11-05 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 12 SÜRÜYOR (12a-d kodu YAPILDI).
+- **Aktif dal:** `feat/claude-tarzi-arayuz` (master 48396e7 üstünde). 12a Ayarlar menüleri (016185c) · 12b kenar çubuğu
+  (8820a32) · 12c zamanlanmış görevler (86b098e) · 12d **GitHub** (bu commit): `agent/github.py` (gh CLI: `auth login
+  --web` cihaz kodu, setup-git, logout, repo list/clone/create --private --push, push zorlamasız, pull --ff-only),
+  `ui/github_card.py` (Ayarlar > GitHub: bağla/kes/depolarımdan aç; giriş penceresi kodu gösterir, panoya kopyalar,
+  tarayıcıyı açar), Git paneli Gönder/Al/Depo oluştur. Testler gh yerine tests/fake_gh.py (conftest, otomatik).
+  tests/test_github.py 16, mutasyon 11/11. GERÇEK: hesap durumu, depo listesi, uzak depo adı (salt okuma) doğrulandı;
+  cihaz kodu yalıtılmış ayar klasöründe alındı. DOĞRULANMADI (kullanıcı gerekir / dışa dönük): tarayıcı onayının
+  tamamlanması, gerçek GitHub'da depo oluşturma/gönderme. Sıradaki: temiz tam takım → R-13 → gerçek zamanlanmış
+  görev denemesi (EVREN) → PR + birleştirme. NOT: 12c sonrası tam koşu (854/854) sırasında kaynak değiştirildi →
+  geçersiz sayıldı, tekrarlanacak.
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı
   eklemesini anlat ya da PR'ları GitHub'dan ters sırayla (en üstteki önce) 'Merge pull request' ile birleştirt.

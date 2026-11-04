@@ -25,15 +25,22 @@ tarayıcı yönlendirmesiyle ücretsiz bağlanma ve entegrasyon. Onay istemeden 
   varsayılana yazılmaz; kota beklerken bitmiş sayılmaz; süre sınırı; telafi + bitiş bildirimi; bilgisayarı uyanık tut),
   `ui/scheduled_page.py`, DB tabloları (yalnız ekleme), kenar çubuğunda "Zamanlanmış ·" alt yazısı, çalışan görev
   oturumunu açarken "Durdur ve aç" koruması. Modlar yalnız Otomatik / Plan (başında kimse yok).
-- 12d GitHub: sürüyor.
+- 12d GitHub: `agent/github.py` + `ui/github_card.py` + Git paneli (Gönder/Al/Depo oluştur). Ücretsiz: GitHub'ın
+  resmî `gh` aracı (`auth login --web`); belirteç gh tarafından Credential Manager'da, uygulama görmez. gh yoksa winget
+  ile kurulum düğmesi. Durum yalnız GitHub menüsü açılınca denetlenir (açılışta ağ yok).
 
 ## Test sonuçları
 - tests/test_ayarlar_menu.py 16, mutasyon 6/6; ui_denetim iki tema HATA 0.
 - tests/test_zamanlayici.py 23; mutasyon zaman 6/6, motor 10/10, gözetimsiz kip 3/3 (ilk koşuda 3 mutant kaçtı → testler güçlendirildi).
+- tests/test_github.py 16 (sahte gh + yerel çıplak git deposu; ağ yok); mutasyon 11/11 (ilk koşuda 1 kaçtı).
 - Ekran: zamanlanmış liste/ayrıntı/oluşturma penceresi iki tema; düzeltilen: ana düğme simgesi görünmüyordu, saat kutusu temasızdı, geri oku ters.
 - Kenar çubuğu: test_auto_pro (sayfa görünürlüğü yeni API'ye uyarlandı), test_kenar_cubugu_surukleme, test_f5_arayuz geçti.
 
 ## Sorunlar ve kayıtlar
+- Süreç hatası (kendi): 12c sonrası tam takım koşarken kaynak değiştirdim (GitHub kartı) → o koşu (854/854) geçersiz
+  sayıldı; Faz D sonunda temiz tam koşu. Kural zaten vardı (tam koşuda yalnız belge işi).
+- Mutasyon koşusunda depo adı denetimi kaldırılınca sahte gh repo kökünde `etc; rm -rf` klasörü açtı (silindi): test
+  sonuca değil "gh hiç çağrılmadı mı"ya bakacak şekilde güçlendirildi. Denetimin değerini de gösterdi.
 - Tasarım tuzağı (önlendi): `SessionView.set_model/set_mode` seçimi kullanıcının VARSAYILAN ayarı olarak kaydediyor;
   zamanlanmış görevin görünmez oturumu bunu çağırırsa kullanıcının ayarı değişirdi → görünmez oturumda `_remember` kapalı.
 

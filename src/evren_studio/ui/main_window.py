@@ -173,6 +173,7 @@ class MainWindow(QMainWindow):
         add("monitor", MonitorPage(self.ctx))
         settings = SettingsPage(self.ctx)
         settings.settings_saved.connect(self._settings_saved)
+        settings.open_workspace.connect(self.open_workspace)
         add("settings", settings)
         add("help", HelpPage(self.ctx))
         skills = SkillsPage(self.ctx)
@@ -223,6 +224,14 @@ class MainWindow(QMainWindow):
     def new_session(self) -> None:
         self.show_sessions()
         self.session.new_session()
+
+    def open_workspace(self, path: str) -> None:
+        """GitHub'dan indirilen (veya başka yerden gelen) klasörü yeni oturumda proje olarak açar."""
+        self.show_sessions()
+        if self.session.running:
+            return
+        self.session.new_session()
+        self.session.welcome._choose(path)
 
     def open_session(self, sid: int) -> None:
         a = self.scheduler.active

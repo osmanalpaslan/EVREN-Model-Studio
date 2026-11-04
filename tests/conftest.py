@@ -54,6 +54,18 @@ def _gercek_program_kurulumu_yok(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _sahte_github_cli(monkeypatch, tmp_path):
+    """Testler gerçek GitHub'a / gerçek gh girişine ASLA dokunmaz (Madde 12d): gh yerine tests/fake_gh.py.
+    Durum dosyası test başına ayrı; GitHub testleri FAKE_GH_* değişkenleriyle davranışı seçer."""
+    import json as _json
+
+    fake = Path(__file__).with_name("fake_gh.py")
+    monkeypatch.setenv("EVREN_GH_CMD", _json.dumps([sys.executable, str(fake)]))
+    monkeypatch.setenv("FAKE_GH_DIR", str(tmp_path / "_fake_gh"))
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _token_kalibrasyonu_temiz():
     """runner._CALIB süreç geneli; bir testin sahte `usage` değeri diğerinin bağlam hesabını değiştirmesin."""
     from evren_studio.agent import runner
