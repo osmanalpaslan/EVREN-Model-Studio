@@ -38,6 +38,8 @@ Devir notuna göre sıradaki: Madde 6 (klasörsüz sohbette web_search/web_fetch
 
 - Madde 9: tests/test_saglayici_ekle.py 7 (istemci yolları, ön ek, kalıcılık R-03, Auto Pro dışı, pencere, gerçek tur akışı R-31); mutasyon 2. ui_denetim iki tema HATA 0; pencere görüntüleri bakıldı. Ücretli/gerçek anahtarla istek YAPILMADI (R-17).
 
+- Kararsız test: monitor testi ilk arka plan kontrolünü beklemiyordu → düzeltildi (3/3); qa bekçi testi yeniden üretilemedi (DEVIR_NOTU).
+
 ## Sorunlar ve kayıtlar
 - 2026-11-04-gozlem-temizleyici-depo-ev-klasorundeyken-kaynak-yolunu-gizl (çözüldü)
 - `gh pr merge` "Merge Without Review" sınıflandırıcısıyla engellendi (bu bilgisayarda); kullanıcı birleştirmeli

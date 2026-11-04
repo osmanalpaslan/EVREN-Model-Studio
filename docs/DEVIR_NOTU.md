@@ -109,7 +109,8 @@ uygulama açıkken QTimer. Normal ajan turunda günlük kota azsa yalnız uyarı
 
 - [x] R-05/AGENTS eski `ui_screenshots.py`'yi gösteriyordu → `ui_denetim.py`.
 
-- [ ] Yük altında kararsız testler (tek başına geçiyor, R-08): `test_db_recovery_monitor::test_icerik_degisikligi_tespit_edilir` (2026-11-04'te 2 kez), `test_qa_araclari::test_bekci_bozulan_testi_bir_kez_bildirir` (1 kez). Kök neden araştırılmalı (zamanlama/dosya saati); kontroller gevşetilmez.
+- [x] `test_db_recovery_monitor::test_icerik_degisikligi_tespit_edilir` kararsızlığı: kök neden testte — `start()` ilk kontrolü arka planda yapıyor, test beklemeden sayfayı değiştiriyordu; ilk kayıt beklenir (doğrulama aynı).
+- [ ] `test_qa_araclari::test_bekci_bozulan_testi_bir_kez_bildirir` tam koşuda 1 kez düştü (2/3 çağrı; bekçi "düştü" görmedi, 1,7 sn — zaman aşımı değil). Tek başına ve önündeki 12 dosyayla 177/177 geçti; yeniden üretilemedi. Tekrar düşerse sıra bağımlılığı (PATH/ortam değişkeni sızıntısı) ve `testcheck.detect_command` seçimine bak.
 
 ## Birleştirmeden önce (zorunlu)
 - Tam takım (`pytest -q`, ~4 dk) · R-13 gerçek e2e üçlüsü · R-21 zorluk paketi `auto-pro` (CHALLENGE_RESULTS
