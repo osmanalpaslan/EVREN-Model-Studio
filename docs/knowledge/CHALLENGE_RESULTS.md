@@ -84,6 +84,38 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Madde 7 hız: adım azaltma, tur içi kısaltma, boş yanıt ve damla akışta yedek (2026-11-04, dal `feat/hiz-adim-azaltma`)
+
+**Analiz (gerçek kayıtlar):** kullanıcının 28 Ekim gerçek işinde (Godot, 602 araçlı adım) adımların %82'sinde tek
+araç çağrısı, değişmemiş dosyayı tekrar okuma 3 (yok denecek kadar az); kod rolünde deepseek-v4.1-flash çağrı başına
+ort. 89 sn (çıktının çoğu düşünme), qwen3.8-flash-next 15 sn. Süre ≈ model beklemesi. Aynı model çağrısı aynı akşam
+4,6 sn ile 71 sn arasında oynadı → asıl ölçüt adım/çağrı sayısı ve kabul; süre ikincil.
+
+**Akış ölçümü** (geçici betik, araçla ~2.000 karakter dosya yazdırma): deepseek-v4.1-flash 182 / 396 sn, akış satırı
+0,5-0,6/sn, görünür karakter 0,4-0,8/sn (düşünmeyi göstermiyor); qwen 14-15 sn, 33-35 satır/sn; gemma 14-20 sn, 5-23
+satır/sn. → damla akış kuralı (DECISIONS #121).
+
+| Koşu (aynı akşam) | Kabul | Süre | Model çağrısı | Ort. çağrı | Adım başına araç | Not |
+|---|---|---|---|---|---|---|
+| ÖNCE (master b0998db, 20:35) | 11/12 | 851 sn | 49 | 16,0 sn | 1,34 | mini_proje: qwen 6 dk sınırında kesildi (çağrı başı ~110 sn, yavaş üretim) |
+| SONRA-1 (istem + kısaltma + boş yanıt, 20:53) | 11/12 | 1300 sn | 42 | 22,8 sn | 1,32 | EVREN %43 yavaş; mini_proje: deepseek'in tek çağrısı **304 sn yanıtsız** → damla kuralı |
+| SON (+ damla akış, 21:32) | **12/12** | 1027 sn | 61 | 14,1 sn | 1,39 | damla kuralı 1 kez: celiski'de deepseek 120 sn/1.101 karakter → qwen, görev 3/3 (hile yok); gemma'ya geçiş 0 |
+
+Dürüst çıkarım: istemin adım azaltma etkisi bu kısa görevlerde küçük (adım başına araç 1,34 → 1,39; SONRA-1'de çağrı
+49 → 42); SON koşuda kod rolünde uyarlanabilir sıra qwen'i öne aldığı için adım arttı (qwen daha çok, daha kısa adım
+atar). Asıl kazanç damla akış kuralında: 2-6 dakikalık yanıtsız çağrı 2 dakikada kesilip yedekle sürüyor. Her koşu
+tek; tekrar ölçülmedi.
+
+**Maraton F, özet eşiği 8000** (`MARATON_OZET_ESIK=8000`, tur içi kısaltmanın doğrudan sınaması; dünkü koşu aynı
+ayarla, bekçi açık): dün 17/17 · 1228 sn · tur parçaları 18+4+4+6 adım · otomatik özet 3 → bugün **17/17 · 1051 sn ·
+26+14 adım · otomatik özet 1** · onay 0 · hata 0 · açık plan 0. Kısaltma, sert sınırdan önce eski çıktıları
+kırptığı için tur 26 adım kesintisiz sürdü; doğruluk korunarak özet sayısı 3 → 1.
+
+**R-13 (son kod 256967a):** e2e_ui_real_api 15/15 · e2e_agent_real_api 4/6 (glm-5.3 yerel: EVREN 503
+`model_capacity_exhausted`; deepseek-v4.1-flash metin: bilinen boş yanıt — bu betikte yedek model yok) ·
+e2e_real_api: sağlık/model/kota/ilk sohbet geçti, `auto`'nun glm-5.3'e yönlendirdiği akış isteği 3 denemede 503
+(sunucu; dalda `api/` değişikliği yok).
+
 ## Derin Mod denetçi ve yargıç karşılaştırması (2026-11-03/04, Madde 8, gerçek EVREN)
 
 **Effort yoklaması** (kolay sayı sorusu, `build/derin/effort_yoklama.py`): deepseek-v4.1-flash, qwen3.8-flash-next,

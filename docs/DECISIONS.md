@@ -122,6 +122,8 @@
 | 118 | Dışa aktarma `godot_export` aracıyla (ön ayar yoksa yazar, varsa dokunmaz); EXE + PWA, gl_compatibility | Ajan elle kurarken 15 dk'da bitiremedi; araçla 297 sn (R-25) | 2026-10-24 |
 | 119 | godot-mcp kurulu ama VARSAYILAN KAPALI; editör açan araç ajana verilmez | Gerçek ölçümde model MCP araçlarını hiç çağırmadı, adım 13 → 36 (R-25) | 2026-10-24 |
 | 120 | Güvenilmeyen klasöre otomatik `.gdignore` ve yazma engeli | Godot mod klasörünü içe aktarınca tarama yarıda kalıp oyun modelsiz paketlendi; ajan klasöre yazıp sildi | 2026-10-24 |
+| 121 | Yavaşlık kuralı (#88) çağrı içine genişletildi: tek model çağrısı 2 dk'yı geçmiş ve neredeyse hiç çıktı akmıyorsa (görünür <15 karakter/sn VE akış satırı <10/sn) çağrı kesilir, yarım yanıt kaydedilmez, yedek AYNI adımı yapar; görev başına bir kez, zayıf modele (SLOW_SWITCH_EXCLUDE) değil, yalnız akışlı istekte | Gerçek ölçüm 2026-11-04: deepseek-v4.1-flash aynı dosya yazma işinde 182/396 sn (akışta neredeyse veri yok), qwen 15 sn; zorluk mini_proje'de 304 sn'lik çağrı yanıtsız kaldı. Kesme anında araç çalışmamıştır (yan etkisiz) | 2026-11-04 |
+| 122 | Tur içi eski araç çıktısı kısaltması sert sınırın %70'inde; sert sınır kısaltılmış geçmişe bakar; dürtmeden sonra da boş yanıt → yedek model (tur başına bir kez); istem: bağımsız okumalar tek yanıtta | Kısaltma 1M bağlamda hiç çalışmıyordu (gözlem a0d2b1645e16); boş yanıtla biten tur kullanıcıya boş cevap veriyordu | 2026-11-04 |
 
 ## Değerlendirilip reddedilenler
 

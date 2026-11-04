@@ -64,6 +64,12 @@ metin protokolünde (~30 sn). glm-5.3 muhakeme modelidir (düşünce süreci
 gösterilir). Bazı modeller kısa sorulara gereksiz güvenlik notu ekliyor
 (mimo, deepseek-v4.1-flash). Tablo: docs/knowledge/MODEL_CAPABILITIES.md.
 
+2026-11-04 akış ölçümü (araçla ~2.000 karakterlik dosya yazdırma, `stream=True`): deepseek-v4.1-flash düşünmesini
+akışta GÖSTERMİYOR — 182 ve 396 sn boyunca saniyede ~0,5 akış satırı, görünür ~0,5 karakter; yanıt sonda tek
+seferde. Aynı iş qwen3.8-flash-next 14-15 sn (33-35 satır/sn), gemma-4-31b 14-20 sn. Zorluk paketinde deepseek'in bir
+çağrısı 304 sn yanıtsız kaldı. Koşucu artık bunu çağrı içinde yakalayıp yedeğe geçiyor (DECISIONS #121, `DRIP_*`).
+Gerçek kullanım (2026-10-28, kod rolü): deepseek çağrı başına ort. 89 sn, qwen 15 sn.
+
 ## EVREN Studio'nun kendi ajanı (uygulama içi)
 
 - Bu depoda proje klasörü olarak açıldığında AGENTS.md'yi proje hafızası
