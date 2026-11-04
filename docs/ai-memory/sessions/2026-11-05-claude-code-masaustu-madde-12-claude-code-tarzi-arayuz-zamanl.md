@@ -5,7 +5,7 @@ motor: Claude Code (masaüstü)
 model: claude-opus-5-5
 ortam: Windows 11, Python 3.12.10
 dal: feat/claude-tarzi-arayuz
-sonuc: devam-ediyor        # tamamlandi | kismi | basarisiz | devam-ediyor
+sonuc: tamamlandi        # tamamlandi | kismi | basarisiz | devam-ediyor
 ---
 
 # Madde 12 Claude Code tarzı arayüz, zamanlayıcı, GitHub
@@ -49,3 +49,6 @@ tarayıcı yönlendirmesiyle ücretsiz bağlanma ve entegrasyon. Onay istemeden 
 - Temiz tam koşu 1 (ad92072): 869/870 — test_github giriş reddi testinde JSONDecodeError: sahte gh çağrı günlüğüne
   yazarken test okudu (yarım satır, yük altında yarış). Tek başına 3/3 geçti. Düzeltme: yardımcı yalnız tamamlanmış
   satırları okur (doğrulama aynı). Tam koşu tekrarlandı.
+- Temiz tam koşu 2 (3159bb0): 870/870 (6 dk 11 sn). R-13: E2E_OK · arayüz 15/15 · ajan 5/6 (glm 503). Gerçek
+  zamanlanmış görev (tests/e2e_zamanlayici_real_api.py): 6/6, 37 sn. Zorluk paketi koşulmadı (ajan davranışı değişmedi).
+- Doğrulanmadı: GitHub tarayıcı onayının tamamlanması, gerçek GitHub'da depo oluşturma/push (sahte gh + yerel git).

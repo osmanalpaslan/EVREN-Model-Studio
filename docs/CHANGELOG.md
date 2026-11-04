@@ -1,5 +1,22 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Claude Code tarzı arayüz, zamanlanmış görevler, GitHub (Madde 12)
+
+- **Zamanlanmış görevler**: kenar çubuğunda "Zamanlanmış görevler". Bir talimatı, klasörü, modeli ve sıklığı (Saatlik,
+  Günlük, Hafta içi, Haftalık, Elle ya da özel cron) seçin; zamanı gelince ajan yeni bir oturumda kendiliğinden
+  çalışır. Görev ayrıntısında Şimdi çalıştır / Durdur, Etkin–Duraklatıldı, Düzenle, Sil ve her çalıştırmanın Geçmiş'i
+  (tıklayınca oturumu açılır; atlanan çalıştırmanın nedeni yazar). Görevler uygulama açıkken çalışır; uygulama
+  kapalıyken kaçırılanlardan son 7 gün içindeki en yenisi açılışta bir kez telafi edilir. Görev arka planda çalışır,
+  açık oturumunuzu bölmez.
+- **Ayarlar menülere bölündü**: solda menü (Genel, Görünüm, Hesap ve sağlayıcılar, Kod ajanı, Auto Pro, Bağlam ve
+  özet, Zamanlanmış görevler, Web araması, Bağlayıcılar, GitHub, Bu bilgisayar, Bağlantı ve ağ, Gizlilik ve veri,
+  Hakkında) ve arama kutusu ("ozet" yazınca da "özet" bulunur).
+- **Sade kenar çubuğu**: üstte Yeni oturum, Zamanlanmış görevler, Skill'ler; altta Ayarlar ve az kullanılan
+  sayfaları toplayan "⋯" menüsü.
+- **GitHub**: Ayarlar > GitHub > "GitHub hesabını bağla" — kod gösterilir, tarayıcı açılır, onaylayınca bağlanır
+  (ücretsiz). Git panelinde Gönder (push), Al (pull) ve uzak depo yoksa "GitHub'da depo oluştur"; Ayarlar'dan
+  "Depolarımdan aç" ile bir depoyu indirip proje olarak açabilirsiniz.
+
 ## Yayınlanmamış — Daha hızlı ve takılmayan Auto Pro (Madde 7)
 
 - **Takılan model beklenmiyor**: bir model tek adımda 2 dakikadan uzun süre neredeyse hiçbir şey üretmeden

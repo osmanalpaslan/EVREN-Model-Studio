@@ -84,6 +84,13 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Zamanlanmış görev gerçek çalıştırma (2026-11-05, Madde 12c, `tests/e2e_zamanlayici_real_api.py`)
+
+Elle görev → "Şimdi çalıştır" → görünmez gözetimsiz oturumda Auto Pro (deepseek-v4.1-flash seçti): **6/6** · 37 sn ·
+4 yanıt (topla.py doğru, unittest geçer, çalıştırma "tamamlandı", oturum göreve bağlı, kullanıcı görünümü ve
+varsayılan model/mod değişmedi). R-13 aynı gece: E2E_OK · arayüz 15/15 · ajan 5/6 (glm-5.3 metin protokolü EVREN 503
+kapasite). Ajan davranışı (araç/istem/koşucu) değişmediği için zorluk paketi koşulmadı.
+
 ## Madde 7 hız: adım azaltma, tur içi kısaltma, boş yanıt ve damla akışta yedek (2026-11-04, dal `feat/hiz-adim-azaltma`)
 
 **Analiz (gerçek kayıtlar):** kullanıcının 28 Ekim gerçek işinde (Godot, 602 araçlı adım) adımların %82'sinde tek
