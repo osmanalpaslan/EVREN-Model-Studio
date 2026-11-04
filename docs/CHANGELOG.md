@@ -1,5 +1,21 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Sade sağlayıcı ekranı (Madde 9)
+
+- **Sağlayıcı ekle**: Ayarlar > Sağlayıcılar'da tek anahtarla çok model sunan ağ geçitleri eklenebilir
+  (OpenRouter, Kilo, OpenAI uyumlu yerel/kurum sunucusu). Tür seç → anahtarı yapıştır → "Modelleri getir"
+  (ücretsiz liste isteği) → kullanacağın modelleri işaretle. Modeller seçicide ağ geçidinin adıyla görünür;
+  Auto Pro bunları kendiliğinden kullanmaz (habersiz ücretli kullanım olmaz). Anahtarlar yalnız Windows
+  Credential Manager'da; gerçek anahtarla henüz doğrulanmadı.
+- **Daha sade Ayarlar**: OpenAI/Anthropic için uzun yönergeler "Nasıl alınır?" düğmesinin arkasında.
+- Listelerdeki işaret kutuları artık işaretsizken de görünür.
+
+## Yayınlanmamış — Klasörsüz sohbette internet
+
+- **Sohbette web araması**: proje klasörü bağlı olmayan sohbette de ajan gerektiğinde internette arar ve
+  sayfa okur (dosya araçları yine yoktur). Ayarlar > Web Araması'ndaki kutuyla kapatılabilir; Manuel modda
+  her aramadan önce sorulur.
+
 ## Yayınlanmamış — Derin Mod iyileştirmeleri (Madde 8)
 
 - **Canlı durum çubuğu**: Derin Mod incelerken, planlarken ve doğrularken yazma kutusunun üstünde ne yaptığını

@@ -458,3 +458,15 @@ def test_tur_akisindan_adim_sinirinda_gozlem(gz, tmp_path, monkeypatch, fake_key
         assert turs and turs[0].ayrinti["durma"] == "max_steps" and turs[0].ayrinti["model"]
     finally:
         w.close()
+
+
+def test_depo_ev_klasorunun_altindaysa_kaynak_yolu_yine_goreli(monkeypatch):
+    """2026-11-04: depo "C:/Users/Ad Soyad/Projects/..." altındayken ev klasörü önce "~" yapılıyor, kaynak yolu
+    <yol> oluyordu (yalnız o bilgisayarda kırılan test). Ev dışındaki yollar yine gizlenir."""
+    from pathlib import Path
+
+    root = Path.home() / "Projeler Klasoru" / "EVREN-Model-Studio"
+    monkeypatch.setattr(gozlem, "SOURCE_ROOT", root)
+    monkeypatch.setattr(gozlem, "_rel_source", lambda p: None)          # diskte yok: yalnız metin kuralı sınanır
+    s = gozlem.temizle(f'File "{root / "src" / "evren_studio" / "runner.py"}", line 7 · {Path.home() / "gizli" / "a.txt"}')
+    assert 'File "src/evren_studio/runner.py", line 7' in s and "gizli" not in s and str(Path.home()) not in s

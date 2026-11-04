@@ -12,11 +12,18 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-04 gece · Claude Code (claude-opus-5-5) · dizüstü bilgisayar. Kullanıcı ertesi gün
-  BAŞKA bir bilgisayar ve oturumdan devam edecek.
-- **Aktif dal:** `master` — yarım iş YOK. Bu oturumda birleşenler: PR #30-#35 (profesyonel kalite, doğruluk
-  turu, gözlem ajanı, faz unutma ölçümü, Derin Mod v2). Yeni maddeye master'dan yeni dalla başla.
-- **Çalışan uzun test:** yok. Son durum: pytest 778/778 · zorluk auto-pro 12/12 (719 sn) · R-13 E2E_OK, ajan 5/6
+- **Güncelleme:** 2026-11-04 akşam · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Eşitlendi (39 commit);
+  bu bilgisayarda tam takım 777/778 — kırılan gözlem testi ortam farkıydı (depo ev klasörü altında) → düzeltildi
+  (`fix/gozlem-ev-alti-yol`, PR #37 — birleştirme bu bilgisayarda Claude Code sınıflandırıcısınca engellendi,
+  KULLANICI birleştirecek). Madde 6 SÜRÜYOR: kod + birim testleri commit'li (`feat/sohbette-web-arama`, #37'nin
+  üstünde) — ÖLÇÜMLER TAMAM: sohbet açık/kapalı 2/2·2/2 (CHALLENGE_RESULTS), zorluk 12/12, R-13 E2E_OK · ui 15/15 ·
+  ajan 5/6 (bilinen deepseek kaydı). PR #38 açıldı; #37'den sonra kullanıcı birleştirecek.
+  Madde 9 KOD+TEST TAMAM (`feat/saglayici-ekle`, #38 üstünde; PR açıldı): ağ geçitleri (OpenRouter/Kilo/OpenAI
+  uyumlu), "Sağlayıcı ekle" penceresi, sade Ayarlar. Gerçek anahtarla DOĞRULANMADI (ücretli; R-17). Tam takım
+  792/794 — kırılan 2 test tek başına geçti (kararsız, aşağıda Madde 6 listesi). Sıradaki: Madde 7 (hız).
+- **Aktif dal zinciri:** `fix/gozlem-ev-alti-yol` (#37) → `feat/sohbette-web-arama` (#38) → `feat/saglayici-ekle`.
+  KULLANICI sırayla birleştirir (Claude Code bu bilgisayarda birleştiremiyor). Yeni iş bu zincirin ucundan sürer.
+- **Çalışan uzun test:** yok. Önceki son durum: pytest 778/778 · zorluk auto-pro 12/12 (719 sn) · R-13 E2E_OK, ajan 5/6
   (deepseek metin protokolü — açık kayıt 2026-10-17-deepseek-…), arayüz 15/15 · e2e_derin GEÇTİ.
 - **Kullanıcının çalışma ilkesi (2026-11-03):** "Amacım sağlam, doğru iş ve olabildiği kadar hızlı; doğruluk bir
   tık daha önemli. Sırayı sen belirle." → Her maddede: hedefli test + tetiklenen/tetiklenmeyen (R-22) + kritikse
@@ -78,7 +85,7 @@ kritikse mutasyon + paket; R-13/R-21 gerçek ölçümler dal sonunda.
 | 8 | Derin Mod yeniden ele alınacak | YAPILDI | `feat/derin-mod-v2` | Denetçi 10 yapılandırma / yargıç 11 yapılandırma ölçüldü (CHALLENGE_RESULTS); ikinci denetçi glm-5.3+high, yargıç değişmedi (hepsi 8/8), `high` qwen/deepseek'te kazanç yok; durum çubuğu arka plan fazında görünür (önceden hiç görünmüyordu); Plan modunda ilk yanıt araçsız inceleme niyetiyse dürtülür. Planlayıcı kalitesi ve Anla modeli ÖLÇÜLMEDİ (değişmedi). Eski not: | aşamaya göre en doğru/güçlü EVREN modelleri (ölçümle); çalışırken kısa canlı durum cümleleri; mevcut özellikleri önce kodda doğrula; `e2e_derin_real_api` önce/sonra |
 | 10 | Doğruluk turu (kullanıcı 2026-11-03: "doğruluk ve sağlam iş bir tık daha önemli"; sıra: dalı kapat → doğruluk → güvenli hız) | SÜRÜYOR | `feat/dogruluk-turu` | 10a YAPILDI: test dosyası koruması komutla değiştirme/silmeyi de yakalar (kayıt 2026-11-03-test-dosyasi-korumasi-…). 10b YAPILDI (`feat/faz-unutma-olcumu`): faz unutma maraton F'de 4 koşuda üretilemedi, gözleme `devam_zorunlu` eklendi. Sonra: Madde 8 (Derin Mod, aşama başına en güçlü model, `"high"` effort ölçümü); en son Madde 7 hız (önce EVREN yükünü ayır, yalnız doğruluğa dokunmayan kaldıraçlar, kod/plan rolünde effort DÜŞÜRÜLMEZ) |
 | 11 | Gözlem ajanı (kullanıcı 2026-11-03): uygulama/geliştirme sırasındaki hata ve anormallikleri temizleyip depoya gönder; geliştirme motoru görüp kullanıcıya bildirsin | YAPILDI | `feat/gozlem-ajani` (98c6cf2 +) | `src/evren_studio/gozlem.py`, `gozlem-kayitlari` dalı, `ai_memory.py gozlem …`, baslangic bildirimi, R-36. Ayrıntı: CHANGELOG "Gözlem ajanı" |
-| 9 | Sade sağlayıcı/API anahtarı ekranı | SIRADA | — | tek "Sağlayıcı ekle": EVREN, OpenAI, Anthropic, Kilo, OpenRouter, OpenAI-uyumlu; çok modelli ağ geçitleri tek anahtarla |
+| 9 | Sade sağlayıcı/API anahtarı ekranı | YAPILDI (birleşme bekliyor) | `feat/saglayici-ekle` | OpenRouter/Kilo/OpenAI uyumlu ağ geçitleri tek anahtarla; Sağlayıcı ekle penceresi + Modelleri getir; modeller seçicide, Auto Pro'ya GİRMEZ; gerçek anahtarla doğrulanmadı (R-17); test_saglayici_ekle 7, mutasyon 2, ui_denetim HATA 0 |
 
 ### Madde 5 planı — kota bitince otomatik devam
 Bugün: yalnız Proje/QA/Derin akışında (`project_ui.schedule_auto_resume`, Ayarlar'daki gizli `auto_resume`),
@@ -101,6 +108,9 @@ uygulama açıkken QTimer. Normal ajan turunda günlük kota azsa yalnız uyarı
 - [ ] deepseek-v4.1-flash bazı adımlarda 30-130 sn bekletiyor (Madde 7 ile birlikte).
 
 - [x] R-05/AGENTS eski `ui_screenshots.py`'yi gösteriyordu → `ui_denetim.py`.
+
+- [x] `test_db_recovery_monitor::test_icerik_degisikligi_tespit_edilir` kararsızlığı: kök neden testte — `start()` ilk kontrolü arka planda yapıyor, test beklemeden sayfayı değiştiriyordu; ilk kayıt beklenir (doğrulama aynı).
+- [ ] `test_qa_araclari::test_bekci_bozulan_testi_bir_kez_bildirir` tam koşuda 1 kez düştü (2/3 çağrı; bekçi "düştü" görmedi, 1,7 sn — zaman aşımı değil). Tek başına ve önündeki 12 dosyayla 177/177 geçti; yeniden üretilemedi. Tekrar düşerse sıra bağımlılığı (PATH/ortam değişkeni sızıntısı) ve `testcheck.detect_command` seçimine bak.
 
 ## Birleştirmeden önce (zorunlu)
 - Tam takım (`pytest -q`, ~4 dk) · R-13 gerçek e2e üçlüsü · R-21 zorluk paketi `auto-pro` (CHALLENGE_RESULTS

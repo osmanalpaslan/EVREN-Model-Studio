@@ -173,6 +173,15 @@ planlama EVREN yavaşlığıyla zaman aşımı).
   fark adım başına model beklemesinden; EVREN o saatteki yükü ayrıca ölçülmedi, kök neden **doğrulanmadı**.
   Tutarlılık gerilemesi yok; hız Madde 7'nin kalan işi (adım azaltma, düşünme süresi).
 
+## Klasörsüz sohbette web araçları (2026-11-04, Madde 6, Auto Pro, R-25)
+
+| Görev | Açık | Kapalı (web_search sunulmaz) |
+|---|---|---|
+| sohbet_python (son sürüm + kaynak) | 2/2 · 135 sn · web_search 1 + web_fetch 1 | 2/2 · 43 sn · web_fetch 2 |
+| sohbet_genel (liste ters çevirme) | 2/2 · 15 sn · araç 0 | 2/2 · 14 sn · araç 0 |
+
+Model güncel bilgi sorusunda aracı kendiliğinden seçti; genel bilgide çağırmadı (gereksiz tetiklenme yok).
+
 ## Web araması web_search açık/kapalı (2026-11-01, `tests/e2e_websearch_real_api.py`, Auto Pro, R-25)
 
 Doğru cevap koşu anında kaynağından okunur (PyPI JSON, endoflife.date); kabul denetimi bilinen doğru ve
