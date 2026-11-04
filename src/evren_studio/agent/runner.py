@@ -100,6 +100,10 @@ def _chars(messages: list[dict]) -> int:
 # "gerekirse yeniden oku" demiyoruz: modeli aynı dosyaları tekrar okumaya itiyordu (döngü).
 TRIMMED_NOTE = ("[Bu araç çıktısı bağlam sınırı nedeniyle kısaltıldı. İşlem zaten yapıldı; "
                 "yalnızca içeriğe gerçekten yeniden ihtiyacın varsa tekrar çağır.]")
+# Madde 7 (2026-11-04): tur içinde eski araç çıktıları sert sınırın bu oranına inene kadar kısaltılır. Eskiden kısaltma
+# yalnız bağlamın %70'inde başlıyordu (1M bağlamlı modelde ~700k) ve sert sınır (~150k) hep önce geliyordu: tur durup
+# özetleniyordu (gözlem a0d2b1645e16: 18. adımda 6 kez). Kısaltma özetten az bilgi kaybeder ve model çağrısı istemez.
+TRIM_OF_HARD = 0.7
 
 # ---- döngü bekçisi (2026-10-17 gerçek API ölçümü, docs/knowledge/LOOP_ANALYSIS.md) ----
 # Aynı araç + aynı parametre, arada başarılı dosya değişikliği olmadan:
@@ -425,11 +429,14 @@ def estimate_tokens(messages: list[dict], model: str | None = None) -> int:
 
 
 def trim_for_context(history: list[dict], context_tokens: int | None,
-                     keep_recent: int = 8, model: str | None = None) -> list[dict]:
-    """Bağlam sınırına yaklaşılırsa eski araç çıktılarını kısaltır (kayıt değişmez)."""
-    if not context_tokens:
+                     keep_recent: int = 8, model: str | None = None,
+                     budget: int | None = None) -> list[dict]:
+    """Bağlam sınırına yaklaşılırsa eski araç çıktılarını kısaltır (kayıt değişmez).
+    `budget`: açık hedef (token); verilmezse bağlamın %70'i. İkisi birden varsa küçüğü."""
+    limits = [b for b in (int(context_tokens * 0.7) if context_tokens else 0, budget or 0) if b > 0]
+    if not limits:
         return history
-    budget = int(context_tokens * 0.7)
+    budget = min(limits)
     trimmed = [dict(m) for m in history]
     if estimate_tokens(trimmed, model) <= budget:
         return trimmed
@@ -705,7 +712,7 @@ class AgentRunner:
         self._record(model=self.model, ok=False, event=event, detail=detail[:200])
 
     def _switch_model(self, outcome: "TurnOutcome", exc: ApiError | None, loop_reason: str = "",
-                      slow_reason: str = "") -> bool:
+                      slow_reason: str = "", empty_reason: str = "") -> bool:
         """Yedek model varsa ona geçer. Kota/hız sınırı hesap başınadır: model değiştirmek
         çözmez, geçilmez. Döngüde tur başına yalnız bir kez geçilir. Yavaşlıkta (A3, DECISIONS #88)
         yalnız güvenli noktada ve görev başına bir kez (koşucu döngüsü ve SlowDetector sağlar)."""
@@ -722,6 +729,10 @@ class AgentRunner:
             reason = f"{exc.kind.value}" + (f" (HTTP {exc.status})" if exc.status else "")
         elif slow_reason:
             reason = f"yavaşlık: {slow_reason}"
+        elif empty_reason:
+            if any(s[2].startswith("boş yanıt") for s in outcome.model_switches):
+                return False
+            reason = f"boş yanıt: {empty_reason}"
         else:
             if any(s[2].startswith("döngü") for s in outcome.model_switches):
                 return False
@@ -730,7 +741,8 @@ class AgentRunner:
                                f"Önceki model döngüye girdi ({loop_reason}). Aynı çağrıları tekrarlama; "
                                "farklı bir yol dene veya neyin engel olduğunu kullanıcıya açıkla.").strip()
         idx = 0
-        if slow_reason and exc is None:
+        if (slow_reason or empty_reason) and exc is None:
+            # Hata olmayan geçişte zayıf modele düşme (SLOW_SWITCH_EXCLUDE; gemma çelişkili testte hile yazdı)
             banned = modelstats.SLOW_SWITCH_EXCLUDE.get(self.route_role, set())
             idx = next((i for i, m in enumerate(self.fallback_models) if m not in banned), -1)
             if idx < 0:
@@ -801,8 +813,21 @@ class AgentRunner:
         self.events.message_saved(msg)
         return msg
 
+    def _trim_budget(self) -> int | None:
+        """Tur içi kısaltma hedefi: sert sınır varsa onun TRIM_OF_HARD oranı (bağlamın %70'iyle birlikte küçüğü)."""
+        return int(self.hard_context_limit * TRIM_OF_HARD) if self.hard_context_limit else None
+
+    def _visible(self, history: list[dict]) -> list[dict]:
+        """Modele gidecek geçmiş (eski araç çıktıları gerekirse kısaltılmış; kayıt değişmez)."""
+        return trim_for_context(history, self.context_tokens, model=self.model, budget=self._trim_budget())
+
     def _call_model(self, history: list[dict]):
-        visible = trim_for_context(history, self.context_tokens, model=self.model)
+        visible = self._visible(history)
+        trimmed = sum(1 for m in visible if m.get("role") == "tool" and m.get("content") == TRIMMED_NOTE)
+        if trimmed > getattr(self, "_trimmed_seen", 0):
+            # Kısaltılan çıktıyı yeniden okumak meşrudur: döngü bekçisi bunu "aynı sonuçla tekrar" saymasın
+            self._trim_reset = True
+        self._trimmed_seen = trimmed
         messages = to_api_messages(self._system(), visible, self.protocol)
         if self._nudge:
             # Geçici: kayda yazılmaz, yalnız bu çağrıda gider.
@@ -870,6 +895,8 @@ class AgentRunner:
         loop_reason = ""
         json_retries = 0
         pending_slow = ""
+        self._trimmed_seen = 0
+        self._trim_reset = False
         while step < self.max_steps:
             if self._cancelled():
                 outcome.stopped = "cancelled"
@@ -924,6 +951,9 @@ class AgentRunner:
                 outcome.stopped = "error"
                 raise
 
+            if self._trim_reset:
+                self._trim_reset = False
+                repeats.clear()
             content = result.content or ""
             raw_calls = list(getattr(result, "tool_calls", None) or [])
             parse_errors: list[str] = []
@@ -990,6 +1020,12 @@ class AgentRunner:
                         "Model boş yanıt döndürdü; kısa bir hatırlatmayla bir kez yeniden deneniyor."
                         if stall == "empty" else
                         "Model işi yapmadan durdu; devam etmesi için bir kez hatırlatıldı.")
+                    continue
+                if (not content.strip() and self.agentic and not self._cancelled() and step < self.max_steps
+                        and self._switch_model(outcome, None, empty_reason="dürtmeden sonra da boş yanıt")):
+                    # Auto Pro (2026-11-04, e2e ajan testi): dürtülen model yine boş döndü → tur boş "bitti"
+                    # sayılmasın; yedek model aynı yerden sürdürür (tur başına bir kez, _switch_model).
+                    nudged.discard("empty")
                     continue
                 if not content.strip():
                     self.events.status("Model boş yanıt döndürdü (düşünme bütçesi tükenmiş olabilir). "
@@ -1093,7 +1129,8 @@ class AgentRunner:
                     f"Döngü algılandı: {loop_reason}. Model aynı işi sonuç almadan tekrarlıyor; "
                     "tur durduruldu. Yeni bir yönlendirme yazın ya da başka bir model deneyin.")
                 break
-            if self.hard_context_limit and self._history_tokens(history) >= self.hard_context_limit:
+            # Sert sınır, modele GERÇEKTEN gidecek (eski çıktıları kısaltılmış) geçmişe bakar; kısaltma yetmezse durur
+            if self.hard_context_limit and self._history_tokens(self._visible(history)) >= self.hard_context_limit:
                 outcome.stopped = "context_limit"
                 break
         else:

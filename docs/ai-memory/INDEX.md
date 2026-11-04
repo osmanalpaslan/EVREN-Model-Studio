@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 103 · Açık/izlenen: 7 · Oturum: 38 · Kural: 36
+Kayıt: 104 · Açık/izlenen: 7 · Oturum: 38 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -20,6 +20,7 @@ Kayıt: 103 · Açık/izlenen: 7 · Oturum: 38 · Kural: 36
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-04 | [2026-11-04-tur-baglam-sinirinda-durdu](incidents/2026-11-04-tur-baglam-sinirinda-durdu.md) | risk | orta | cozuldu | EVREN Studio gözlem ajanı | Tur bağlam sınırında durdu |
 | 2026-11-04 | [2026-11-04-gozlem-temizleyici-depo-ev-klasorundeyken-kaynak-yolunu-gizl](incidents/2026-11-04-gozlem-temizleyici-depo-ev-klasorundeyken-kaynak-yolunu-gizl.md) | hata | dusuk | cozuldu | Claude Code | Gözlem temizleyici depo ev klasöründeyken kaynak yolunu gizliyordu |
 | 2026-11-04 | [2026-11-04-derin-mod-arka-plan-fazlarinda-durum-cubugu-hic-gorunmuyordu](incidents/2026-11-04-derin-mod-arka-plan-fazlarinda-durum-cubugu-hic-gorunmuyordu.md) | hata | orta | cozuldu | Claude Code (masaüstü) | Derin Mod arka plan fazlarında durum çubuğu hiç görünmüyordu |
 | 2026-11-03 | [2026-11-03-test-dosyasi-korumasi-komutla-yapilan-degisikligi-gormuyordu](incidents/2026-11-03-test-dosyasi-korumasi-komutla-yapilan-degisikligi-gormuyordu.md) | eksik | yuksek | cozuldu | Claude Code (masaüstü) | Test dosyasi korumasi komutla yapilan degisikligi gormuyordu |

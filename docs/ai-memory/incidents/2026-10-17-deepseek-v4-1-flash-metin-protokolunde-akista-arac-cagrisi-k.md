@@ -51,3 +51,11 @@ tests/e2e_agent_real_api.py art arda 4 koşu: deepseek-v4.1-flash metin protokol
 KALDI, 2 kez GEÇTİ (aralıklı). Bu test AgentRunner'ı doğrudan kurar; aynı gün eklenen servis
 araçları/test bekçisi bu senaryoda devrede değil (services=None) — gerileme değil. Durum açık kalır.
 
+## Gözlem 2026-11-04 (Claude Code masaüstü, claude-opus-5-5) — gözlemler 3854d7522898, 6d629fb7f224
+Gözlem ajanı aynı e2e senaryosunun düştüğünü bildirdi (deepseek-v4.1-flash metin 4 kez / 2 makine; glm-5.3 metin
+1 kez). Bugün `e2e_agent_real_api.py deepseek-v4.1-flash glm-5.3` 3 tur: deepseek metin 2/3 geçti (düşen turda
+dürtmeden sonra da BOŞ yanıt → tur boş "done" bitti); glm-5.3 yerel ve metin protokolünde birer kez EVREN hatası
+(adım 0, `durum=hata`). Aynı çağrı bir turda 4,6 sn, diğerinde 71 sn sürdü (EVREN yükü). Sonuç: sorun sunucu/model
+tarafında, açık kalır. Uygulama tarafı iyileştirme (dal `feat/hiz-adim-azaltma`): dürtmeden sonra da boş yanıt
+gelirse yedek model varsa (Auto Pro) ona geçilir, tur boş bitmez (`tests/test_hiz_adim.py`). Metin protokolü Auto
+Pro'da yalnız model yerel araç çağrısını reddederse devreye girer.
