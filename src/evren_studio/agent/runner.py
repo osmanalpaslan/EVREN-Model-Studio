@@ -459,6 +459,7 @@ class AgentRunner:
                  stall_retry_body: dict[str, Any] | None = None,
                  install_mode: str = "otomatik",
                  fallback_models: list[str] | None = None,
+                 chat_tools: bool = False,
                  mcp: Any = None, edit_check: bool = True, services: Any = None,
                  test_check: bool = False, no_writes: bool = False, extra_tools: Any = None,
                  final_marker: str | None = None, plan_guard: bool = False, jobs: Any = None,
@@ -494,6 +495,9 @@ class AgentRunner:
         self.stats_sink = stats_sink
         self.route_role = route_role
         self._slow = modelstats.SlowDetector(baselines, slow_factor)
+        # Klasörsüz sohbette yalnız web araçları (web_search, web_fetch): dosya sistemine dokunmazlar
+        # (DEVIR_NOTU Madde 6, 2026-11-04). Klasörlü oturumda anlamsız (orada tüm araçlar zaten var).
+        self.chat_tools = bool(chat_tools) and workspace is None
         # F2: her çağrıya eklenecek alanlar (A10 tutarlılık: temperature/seed — yalnız seed'i dinleyen modelde;
         # model değişince bırakılır) ve tur ipucuna eklenecek metin (A7 rol talimatı, A13 planlayıcının planı).
         self.base_body = dict(base_body) if base_body else None
@@ -563,9 +567,14 @@ class AgentRunner:
     def agentic(self) -> bool:
         return self.workspace is not None
 
+    @property
+    def tooling(self) -> bool:
+        """Modele araç sunulur mu: klasörlü ajan turu ya da web araçlı klasörsüz sohbet."""
+        return self.agentic or self.chat_tools
+
     def _specs(self):
         if not self.agentic:
-            return []
+            return [s for s in TOOL_SPECS if s.name in WEB_TOOLS] if self.chat_tools else []
         plan = normalize_mode(self.mode) == "plan"
         base = READ_ONLY_SPECS if plan else TOOL_SPECS
         base = [s for s in base
@@ -596,7 +605,9 @@ class AgentRunner:
 
     def _system(self) -> str:
         if not self.agentic:
-            return build_chat_system()
+            system = build_chat_system(web=self.chat_tools)
+            hint = getattr(self, "_turn_hint", "")
+            return system + "\n\n" + hint if hint else system
         if self._env_section is None:
             from . import environment
 
@@ -649,6 +660,12 @@ class AgentRunner:
     def _compute_turn_hint(self, history: list[dict]) -> str:
         """Tur başı: kullanıcının andığı ama projede olmayan dosyalar için uyarı (scope.py); istek güncel/dış
         bilgi gerektiriyorsa web araması hatırlatması (websearch.needs_web)."""
+        if not self.agentic and self.chat_tools:
+            from . import websearch
+
+            real = next((m for m in reversed(history) if m.get("role") == "user"
+                         and not (m.get("meta") or {}).get("auto_continue")), None)
+            return websearch.HINT if real and websearch.needs_web(real.get("content") or "") else ""
         if not self.agentic or self.workspace is None:
             return ""
         for m in reversed(history):
@@ -793,7 +810,7 @@ class AgentRunner:
             self._nudge = None
         extra_body, self._extra_body = self._extra_body, None
         tools = None
-        if self.agentic and self.protocol == "native":
+        if self.tooling and self.protocol == "native":
             tools = [s.openai_schema() for s in self._specs()]
 
         guard = _StepCancel(self.cancel)
@@ -892,7 +909,7 @@ class AgentRunner:
                         and self._switch_model(outcome, exc)):
                     step -= 1
                     continue
-                if (self.agentic and self.protocol == "native" and self.allow_fallback
+                if (self.tooling and self.protocol == "native" and self.allow_fallback
                         and not fallback_used and exc.kind == ErrorKind.VALIDATION):
                     fallback_used = True
                     self.protocol = outcome.protocol = "text"
@@ -910,10 +927,10 @@ class AgentRunner:
             content = result.content or ""
             raw_calls = list(getattr(result, "tool_calls", None) or [])
             parse_errors: list[str] = []
-            if self.agentic and (self.protocol == "text" or (not raw_calls and textproto.OPEN in content)):
+            if self.tooling and (self.protocol == "text" or (not raw_calls and textproto.OPEN in content)):
                 content, text_calls, parse_errors = textproto.parse_tool_calls(content)
                 raw_calls += text_calls
-            calls = [ToolCall.from_raw(c) for c in raw_calls] if self.agentic else []
+            calls = [ToolCall.from_raw(c) for c in raw_calls] if self.tooling else []
             content, repetitive = collapse_repetition(content)
 
             cancelled = result.finish_reason == "cancelled_by_user"
@@ -1158,8 +1175,10 @@ class AgentRunner:
                               + ", ".join(names), f"Bilinmeyen araç: {call.name}")
         if call.parse_error:
             return ToolResult(False, call.parse_error, "Parametreler okunamadı")
-        if self.toolbox is None:
-            return ToolResult(False, "Bu oturumda proje klasörü yok; araç kullanılamaz.", "Proje yok")
+        if self.toolbox is None and not (self.chat_tools and call.name in WEB_TOOLS):
+            return ToolResult(False, "Bu oturumda proje klasörü yok; yalnız web_search ve web_fetch kullanılabilir"
+                              if self.chat_tools else "Bu oturumda proje klasörü yok; araç kullanılamaz.",
+                              "Proje yok")
         if self.no_writes and spec.kind == WRITE:
             return ToolResult(False, "Bu çalışmada (QA) dosya değiştirilemez: yalnız test et ve bulguyu raporla.",
                               "Engellendi (QA)")

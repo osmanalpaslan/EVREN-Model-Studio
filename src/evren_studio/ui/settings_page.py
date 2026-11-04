@@ -190,15 +190,18 @@ class SettingsPage(BasePage):
         # ---- ücretli sağlayıcılar ----
         self._prov: dict[str, dict] = {}
         c, l = card()
-        l.addWidget(section("Ücretli Sağlayıcılar (isteğe bağlı)"))
+        l.addWidget(section("Sağlayıcılar (isteğe bağlı)"))
         l.addWidget(hint(
-            "EVREN ücretsizdir. OpenAI veya Anthropic modellerini de kullanmak isterseniz kendi "
-            "ücretli API anahtarınızı girin; anahtarlar EVREN anahtarı gibi Windows Credential "
-            "Manager'da saklanır. Bu modellere gönderdiğiniz mesajlar ve proje dosyası içerikleri "
-            "o şirketin sunucularına gider. Bu iki entegrasyon belgelere göre yazıldı, henüz "
-            "gerçek anahtarla doğrulanmadı."))
+            "EVREN ücretsizdir. Başka modeller için anahtar ekleyin: OpenAI, Anthropic ya da tek anahtarla "
+            "çok model sunan ağ geçitleri (OpenRouter, Kilo, OpenAI uyumlu sunucu). Anahtarlar yalnız Windows "
+            "Credential Manager'da saklanır; mesajlar ve dosya içerikleri o şirketin sunucularına gider. "
+            "Gerçek anahtarla henüz doğrulanmadı."))
         for pid in PAID_PROVIDERS:
             l.addWidget(self._provider_block(pid))
+        from .gateways_card import GatewaysSection
+
+        self.gateways = GatewaysSection(ctx, on_changed=self.settings_saved.emit)
+        l.addWidget(self.gateways)
 
         # bütçe
         l.addWidget(section("Aylık bütçe (ücretli sağlayıcıların toplamı)"))
@@ -249,6 +252,10 @@ class SettingsPage(BasePage):
         for b in (tv_save, self.tavily_quota_btn, tv_del):
             row.addWidget(b)
         l.addLayout(row)
+        self.web_tools_chat = QCheckBox("Klasörsüz sohbette de internette arama ve sayfa okuma kullanılsın")
+        self.web_tools_chat.setToolTip("Proje klasörü bağlı olmayan sohbette yalnız web_search ve web_fetch sunulur; "
+                                       "dosya araçları sunulmaz.")
+        l.addWidget(self.web_tools_chat)
         self.tavily_status = QLabel("")
         self.tavily_status.setWordWrap(True)
         self.tavily_status.setProperty("role", "dim")
@@ -551,6 +558,7 @@ class SettingsPage(BasePage):
         self.learnings_suggest.setChecked(s.learnings_suggest)
         self.suggest_project.setChecked(s.suggest_project)
         self.auto_resume.setChecked(s.auto_resume)
+        self.web_tools_chat.setChecked(s.web_tools_chat)
         self.gozlem_card.enabled.setChecked(s.gozlem_enabled)
         self.gozlem_card.refresh()
         self.auto_compact.setChecked(s.auto_compact)
@@ -603,6 +611,7 @@ class SettingsPage(BasePage):
         s.learnings_suggest = self.learnings_suggest.isChecked()
         s.suggest_project = self.suggest_project.isChecked()
         s.auto_resume = self.auto_resume.isChecked()
+        s.web_tools_chat = self.web_tools_chat.isChecked()
         s.gozlem_enabled = self.gozlem_card.enabled.isChecked()
         s.auto_compact = self.auto_compact.isChecked()
         s.auto_compact_percent = int(self.compact_percent.value())
@@ -700,11 +709,19 @@ class SettingsPage(BasePage):
         head.addWidget(paid)
         head.addStretch(1)
         v.addLayout(head)
+        # Sade görünüm (Madde 9): anahtar alma adımları, bağlantılar ve notlar "Nasıl alınır?" ile açılır
+        more = QPushButton("Nasıl alınır?")
+        more.setProperty("variant", "ghost")
+        more.setCheckable(True)
+        head.insertWidget(head.count() - 1, more)
+        details = QWidget()
+        dv = QVBoxLayout(details)
+        dv.setContentsMargins(0, 0, 0, 0)
         steps = "".join(f"<li>{s}</li>" for s in info.steps)
         how = QLabel(f"Anahtar nasıl alınır:<ol style='margin-top:2px'>{steps}</ol>")
         how.setWordWrap(True)
         how.setProperty("role", "dim")
-        v.addWidget(how)
+        dv.addWidget(how)
         links = QLabel(" · ".join([
             link("API anahtarları", info.keys_url),
             link("Kredi / faturalama", info.billing_url),
@@ -712,9 +729,12 @@ class SettingsPage(BasePage):
             link("Belgeler", info.docs_url),
         ]))
         links.setOpenExternalLinks(True)
-        v.addWidget(links)
+        dv.addWidget(links)
         for n in info.notes:
-            v.addWidget(hint("• " + n))
+            dv.addWidget(hint("• " + n))
+        details.setVisible(False)
+        more.toggled.connect(details.setVisible)
+        v.addWidget(details)
         key_row = kv_row(f"Kayıtlı {info.name} anahtarı:", "yok")
         v.addWidget(key_row)
         row = QHBoxLayout()

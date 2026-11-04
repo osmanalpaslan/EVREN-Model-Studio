@@ -268,7 +268,9 @@ def test_klasorsuz_oturuma_proje_klasoru_baglanir(win, tmp_path):
     w.session.welcome._choose(None)
     w.session.send("dosyamı düzenle")
     assert _wait(app, lambda: not w.session.running)
-    assert client.calls[0]["tools"] is None
+    # 2026-11-04 (Madde 6): klasörsüz sohbette yalnız web araçları; dosya/komut araçları yok
+    names = {t["function"]["name"] for t in client.calls[0]["tools"] or []}
+    assert names <= {"web_search", "web_fetch"} and "write_file" not in names
     assert "Proje klasörü bağla" in client.calls[0]["messages"][0]["content"]
     assert w.session.ws_chip.text() == "Proje klasörü bağla"
 
@@ -280,7 +282,8 @@ def test_klasorsuz_oturuma_proje_klasoru_baglanir(win, tmp_path):
     assert w.session.ws_chip.text() == "proje"
     w.session.send("şimdi dene")
     assert _wait(app, lambda: not w.session.running)
-    assert client.calls[1]["tools"], "bağlandıktan sonra araçlar gönderilmeli"
+    names2 = {t["function"]["name"] for t in client.calls[1]["tools"] or []}
+    assert {"write_file", "read_file"} <= names2, "bağlandıktan sonra dosya araçları gönderilmeli"
 
 
 def test_mod_komutlari_ve_eski_oturum(win, tmp_path):

@@ -83,6 +83,49 @@ PROVIDERS: dict[str, ProviderInfo] = {
 }
 
 
+# ---- ağ geçitleri (Madde 9, 2026-11-04): tek anahtarla çok model, OpenAI uyumlu Chat Completions ----
+# Adresler sağlayıcı belgelerine göre; GERÇEK ANAHTARLA DOĞRULANMADI (R-17, ücretli istek yapılmadı).
+GATEWAY_KINDS: dict[str, dict] = {
+    "openrouter": {"name": "OpenRouter", "base_url": "https://openrouter.ai/api/v1", "key_prefix": "sk-or-",
+                   "keys_url": "https://openrouter.ai/settings/keys", "docs_url": "https://openrouter.ai/docs",
+                   "billing_url": "https://openrouter.ai/settings/credits",
+                   "note": "Tek anahtarla OpenAI, Anthropic, Google, DeepSeek… modelleri (model adı: sağlayıcı/model)."},
+    "kilo": {"name": "Kilo Gateway", "base_url": "https://api.kilo.ai/api/gateway", "key_prefix": "",
+             "keys_url": "https://app.kilo.ai", "docs_url": "https://kilo.ai/docs",
+             "billing_url": "https://app.kilo.ai",
+             "note": "Kilo hesabının anahtarıyla çok sayıda model (model adı: sağlayıcı/model)."},
+    "openai_uyumlu": {"name": "OpenAI uyumlu sunucu", "base_url": "", "key_prefix": "",
+                      "keys_url": "", "docs_url": "", "billing_url": "",
+                      "note": "Chat Completions destekleyen herhangi bir sunucu (yerel LM Studio/Ollama, kurum içi…)."},
+}
+
+
+def gateway_id(kind: str, existing: set[str]) -> str:
+    """Yeni ağ geçidi için benzersiz kimlik: gw-openrouter, gw-openrouter-2…"""
+    base = f"gw-{kind.replace('_', '-')}"
+    pid, n = base, 2
+    while pid in existing:
+        pid, n = f"{base}-{n}", n + 1
+    return pid
+
+
+def register_gateway(pid: str, kind: str, name: str = "", base_url: str = "") -> ProviderInfo:
+    """Kullanıcının eklediği ağ geçidini çalışma anında PROVIDERS'a kaydeder (ad, faturalama bağlantısı vb.
+    mevcut ekranlarda değişiklik gerektirmeden görünsün). Ücretli sayılır; doğrulanmamış."""
+    k = GATEWAY_KINDS.get(kind, GATEWAY_KINDS["openai_uyumlu"])
+    info = ProviderInfo(pid, name or k["name"], base_url or k["base_url"], paid=(kind != "openai_uyumlu"),
+                        verified=False, key_prefix=k["key_prefix"], keys_url=k["keys_url"],
+                        billing_url=k["billing_url"], usage_url=k["billing_url"], docs_url=k["docs_url"],
+                        notes=(k["note"], "Harcama uygulamada tahmin edilemez: sağlayıcı panelinden izleyin."))
+    PROVIDERS[pid] = info
+    return info
+
+
+def unregister_gateways(keep: set[str]) -> None:
+    for pid in [p for p in PROVIDERS if p.startswith("gw-") and p not in keep]:
+        PROVIDERS.pop(pid, None)
+
+
 @dataclass(frozen=True)
 class CatalogModel:
     id: str
@@ -120,6 +163,8 @@ CATALOG_BY_ID = {m.id: m for m in CATALOG}
 
 
 def provider_of_model(model_id: str) -> str:
+    if "::" in (model_id or ""):
+        return model_id.split("::", 1)[0]          # ağ geçidi modeli: gw-…::sağlayıcı/model
     m = CATALOG_BY_ID.get(model_id)
     if m:
         return m.provider

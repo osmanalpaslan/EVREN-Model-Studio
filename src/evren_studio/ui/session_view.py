@@ -641,12 +641,16 @@ class SessionView(QWidget):
                 desc.append(f"{m.context_length // 1000}k")
             if m.id == router.AUTO_PRO_ID:
                 provs = self.ctx.available_providers()
-                scope = (" + ".join(sorted({"evren": "EVREN", "openai": "OpenAI", "anthropic": "Anthropic"}[p]
-                                           for p in provs)) or "EVREN")
+                names = {"evren": "EVREN", "openai": "OpenAI", "anthropic": "Anthropic"}
+                # ağ geçitleri (gw-…) Auto Pro'nun otomatik sırasına girmez (Madde 9): kapsamda gösterilmez
+                scope = " + ".join(sorted(names[p] for p in provs if p in names)) or "EVREN"
                 desc = [f"önerilen · işe göre motor seçer ({scope})"]
             elif m.id == "auto":
                 desc = ["EVREN sunucusu seçer · her istekte değişebilir"]
-            if m.provider != "evren":
+            if m.provider.startswith("gw-"):
+                gw = PROVIDERS.get(m.provider)
+                desc = [f"{gw.name if gw else m.provider} · ücretli olabilir · doğrulanmadı"]
+            elif m.provider != "evren":
                 desc = [d for d in desc if d != "araç"] + [price_hint(m.id)]
             group = "otomatik" if m.id == router.AUTO_PRO_ID else m.provider
             items.append((m.id, " · ".join(d for d in desc if d), m.supports_tools, group, True))
@@ -1776,6 +1780,7 @@ class SessionView(QWidget):
                               else None),
             install_mode=s.install_mode,
             fallback_models=fallbacks,
+            chat_tools=bool(ws is None and s.web_tools_chat),
             # MCP (Ayarlar > MCP Sunucuları): yalnız EVREN turunda ve gerektiğinde; yoksa None
             mcp=(self.ctx.mcp_toolset(ws.root, self._last_user_text(history), provider,
                                       status=b.sig_status.emit)

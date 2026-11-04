@@ -178,6 +178,13 @@ def test_icerik_degisikligi_tespit_edilir(db):
     agent = RecordingAgent(db, "https://ornek.test/",
                            page_html="<title>Duyuru</title><body>durum: normal</body>")
     sid = agent.start()
+    # start() ilk kontrolü ARKA PLANDA yapar: sayfayı değiştirmeden önce o kontrolün yazılmasını bekle
+    # (2026-11-04: tam koşu yükünde sıralama karışıp "İlk kontrolde değişiklik olmaz" düşüyordu; R-08)
+    import time
+
+    end = time.monotonic() + 10
+    while len(db.list_monitor_checks(sid)) < 1 and time.monotonic() < end:
+        time.sleep(0.02)
     agent._page_html = "<title>Duyuru</title><body>durum: BAKIM VAR</body>"
     agent._single_round()
     agent.stop("stopped_by_user")
