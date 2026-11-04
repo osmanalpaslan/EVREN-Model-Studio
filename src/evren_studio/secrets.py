@@ -49,6 +49,8 @@ def _kr() -> Any:
 
 
 def _key_name(provider: str) -> str:
+    if provider.startswith("gw-") and provider[3:].replace("-", "").isalnum():
+        return f"{provider}_api_key"            # kullanıcının eklediği ağ geçidi (Madde 9)
     if provider not in KEY_NAMES:
         raise ValueError(f"Bilinmeyen sağlayıcı: {provider}")
     return KEY_NAMES[provider]

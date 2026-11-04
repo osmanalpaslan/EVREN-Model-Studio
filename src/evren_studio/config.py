@@ -168,6 +168,9 @@ class Settings:
     auto_resume: bool = True
     # Klasörsüz sohbette de internette arama / sayfa okuma (web_search, web_fetch) — DEVIR_NOTU Madde 6
     web_tools_chat: bool = True
+    # Kullanıcının eklediği ağ geçitleri (OpenRouter, Kilo, OpenAI uyumlu): [{id, kind, name, base_url, models}]
+    # Anahtarlar yalnız Credential Manager'da (gw-…_api_key). Madde 9, 2026-11-04.
+    gateways: list = field(default_factory=list)
     # Gözlem ajanı (gozlem.py; kullanıcı kararı 2026-11-03): hata ve anormallikleri temizleyip kaydet ve
     # uygulama kaynaktan çalışıyorsa projenin deposundaki `gozlem-kayitlari` dalına gönder
     gozlem_enabled: bool = True
