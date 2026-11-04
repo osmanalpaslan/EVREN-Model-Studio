@@ -70,6 +70,7 @@ class MainWindow(QMainWindow):
 
         self.pages: dict[str, QWidget] = {}
         self._build_pages()
+        self.sidebar.set_available_pages(self.pages)
 
         self.splitter.addWidget(self.sidebar)
         self.splitter.addWidget(self.center)

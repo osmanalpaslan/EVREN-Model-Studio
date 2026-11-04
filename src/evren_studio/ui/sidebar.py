@@ -32,8 +32,13 @@ ROLE_PINNED = Qt.UserRole + 4
 
 # Yalnız EVREN anahtarı varken anlamlı sayfalar (EVREN kotası, sağlık izleme, EVREN modelleri)
 EVREN_ONLY_PAGES = {"models", "usage", "monitor", "connection"}
-TOOL_PAGES = [
+# Claude Code masaüstü düzeni (kullanıcı isteği 2026-11-04, Madde 12b): üstte sık kullanılan sayfalar, altta
+# yalnız Ayarlar ve az kullanılan sayfaları toplayan "Diğer" (⋯) menüsü. Eskiden 9 düğme alt alta duruyordu.
+PRIMARY_PAGES = [
+    ("scheduled", "Zamanlanmış görevler", "clock"),
     ("skills", "Skill'ler ve Profiller", "bulb"),
+]
+MORE_PAGES = [
     ("models", "Modeller", "cpu"),
     ("usage", "Kullanım ve Kota", "gauge"),
     ("monitor", "EVREN Durum İzleme", "activity"),
@@ -41,8 +46,9 @@ TOOL_PAGES = [
     ("connection", "Bağlantı Testi", "plug"),
     ("home", "Sistem Durumu", "server"),
     ("help", "Yardım ve Tanılama", "help"),
-    ("settings", "Ayarlar", "settings"),
 ]
+SETTINGS_PAGE = ("settings", "Ayarlar", "settings")
+TOOL_PAGES = PRIMARY_PAGES + MORE_PAGES + [SETTINGS_PAGE]      # komut paleti tüm sayfaları listeler
 
 
 def _group_for(iso: str, pinned: bool) -> str:
@@ -169,6 +175,13 @@ class Sidebar(QWidget):
         self.new_btn.clicked.connect(self.new_session.emit)
         lay.addWidget(self.new_btn)
 
+        self.nav_buttons: dict[str, QPushButton] = {}
+        prim = QVBoxLayout()
+        prim.setSpacing(1)
+        for key, label, icon_name in PRIMARY_PAGES:
+            prim.addWidget(self._nav_button(key, label, icon_name))
+        lay.addLayout(prim)
+
         self.search = QLineEdit()
         self.search.setPlaceholderText("Oturumlarda ara…")
         self.search.addAction(icons.icon("search", size=15), QLineEdit.LeadingPosition)
@@ -195,19 +208,67 @@ class Sidebar(QWidget):
         sep.setFixedHeight(1)
         sep.setStyleSheet(f"background: {theme.current().border};")
         lay.addWidget(sep)
-        self.nav_buttons: dict[str, QPushButton] = {}
-        for key, label, icon_name in TOOL_PAGES:
-            b = QPushButton("  " + label)
-            b.setProperty("nav", True)
-            b.setCheckable(True)
-            b.setIcon(icons.icon(icon_name, size=16))
-            b.setIconSize(QSize(16, 16))
-            b.setCursor(Qt.PointingHandCursor)
-            b.clicked.connect(lambda _=False, k=key: self.page_requested.emit(k))
-            lay.addWidget(b)
-            self.nav_buttons[key] = b
+        bottom = QHBoxLayout()
+        bottom.setSpacing(4)
+        bottom.addWidget(self._nav_button(*SETTINGS_PAGE), 1)
+        # "Diğer" menüsü: az kullanılan sayfalar (Claude Code'daki hesap/daha fazla menüsü gibi)
+        self.more_btn = QPushButton()
+        self.more_btn.setObjectName("SidebarMore")
+        self.more_btn.setProperty("nav", True)
+        self.more_btn.setCheckable(True)
+        self.more_btn.setIcon(icons.icon("more", size=16))
+        self.more_btn.setIconSize(QSize(16, 16))
+        self.more_btn.setToolTip("Diğer: Modeller, Kullanım ve Kota, Durum İzleme, Hata Merkezi, Bağlantı Testi, "
+                                 "Sistem Durumu, Yardım")
+        self.more_btn.setAccessibleName("Diğer sayfalar")
+        self.more_btn.setCursor(Qt.PointingHandCursor)
+        self.more_menu = QMenu(self)
+        self.more_actions: dict = {}
+        for key, label, icon_name in MORE_PAGES:
+            act = self.more_menu.addAction(icons.icon(icon_name, size=15), label)
+            act.setCheckable(True)
+            act.triggered.connect(lambda _=False, k=key: self.page_requested.emit(k))
+            self.more_actions[key] = act
+        self.more_btn.clicked.connect(self._show_more)
+        bottom.addWidget(self.more_btn)
+        lay.addLayout(bottom)
+        self._current_page: str | None = None
         self._current_id: int | None = None
         self.refresh()
+
+    def _nav_button(self, key: str, label: str, icon_name: str) -> QPushButton:
+        b = QPushButton("  " + label)
+        b.setProperty("nav", True)
+        b.setCheckable(True)
+        b.setIcon(icons.icon(icon_name, size=16))
+        b.setIconSize(QSize(16, 16))
+        b.setCursor(Qt.PointingHandCursor)
+        b.clicked.connect(lambda _=False, k=key: self.page_requested.emit(k))
+        self.nav_buttons[key] = b
+        return b
+
+    def _show_more(self) -> None:
+        self.more_btn.setChecked(self._current_page in self.more_actions)   # tıklama işaretini bozmasın
+        from PySide6.QtCore import QPoint
+
+        # alt köşedeki düğmenin ÜSTÜNDE açılır (aşağıda yer yok)
+        self.more_menu.exec(self.more_btn.mapToGlobal(QPoint(0, -self.more_menu.sizeHint().height())))
+
+    def set_available_pages(self, keys) -> None:
+        """Ana pencerede kayıtlı olmayan sayfanın düğmesi/menü öğesi gösterilmez."""
+        keys = set(keys)
+        for k, b in self.nav_buttons.items():
+            if k not in keys:
+                b.setVisible(False)
+        for k, a in self.more_actions.items():
+            if k not in keys:
+                a.setVisible(False)
+
+    def page_visible(self, key: str) -> bool:
+        if key in self.nav_buttons:
+            return self.nav_buttons[key].isVisibleTo(self)
+        act = self.more_actions.get(key)
+        return bool(act is not None and act.isVisible())
 
     # -- liste --
 
@@ -257,10 +318,16 @@ class Sidebar(QWidget):
         for key in EVREN_ONLY_PAGES:
             if key in self.nav_buttons:
                 self.nav_buttons[key].setVisible(show)
+            if key in self.more_actions:
+                self.more_actions[key].setVisible(show)
 
     def set_page(self, key: str | None) -> None:
+        self._current_page = key
         for k, b in self.nav_buttons.items():
             b.setChecked(k == key)
+        for k, a in self.more_actions.items():
+            a.setChecked(k == key)
+        self.more_btn.setChecked(key in self.more_actions)
         if key:
             self.list.clearSelection()
 

@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 106 · Açık/izlenen: 7 · Oturum: 39 · Kural: 36
+Kayıt: 106 · Açık/izlenen: 7 · Oturum: 40 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -131,6 +131,7 @@ Kayıt: 106 · Açık/izlenen: 7 · Oturum: 39 · Kural: 36
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-11-05 | [2026-11-05-claude-code-masaustu-madde-12-claude-code-tarzi-arayuz-zamanl](sessions/2026-11-05-claude-code-masaustu-madde-12-claude-code-tarzi-arayuz-zamanl.md) | Claude Code (masaüstü) / claude-opus-5-5 | devam-ediyor | Madde 12 Claude Code tarzı arayüz, zamanlayıcı, GitHub |
 | 2026-11-04 | [2026-11-04-claude-code-masaustunde-devam-gozlem-yol-duzeltmesi](sessions/2026-11-04-claude-code-masaustunde-devam-gozlem-yol-duzeltmesi.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Masaüstünde devam: gözlem yol düzeltmesi, klasörsüz sohbette web arama |
 | 2026-11-04 | [2026-11-04-claude-code-masaustu-madde-7-hiz-adim-azaltma-tur-ici-kisaltm](sessions/2026-11-04-claude-code-masaustu-madde-7-hiz-adim-azaltma-tur-ici-kisaltm.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Madde 7 hız: adım azaltma, tur içi kısaltma, boş yanıt ve damla akışta yedek |
 | 2026-11-03 | [2026-11-03-claude-code-masaustu-madde-7-zorluk-paketi-yeniden-olcumu](sessions/2026-11-03-claude-code-masaustu-madde-7-zorluk-paketi-yeniden-olcumu.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Madde 7 zorluk paketi yeniden olcumu |
