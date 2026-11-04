@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .. import __version__
 from ..api.client import EvrenClient, ModelInfo
-from ..api.providers import CATALOG, PROVIDERS, provider_of_model
+from ..api.providers import CATALOG, PROVIDERS, provider_of_model, register_gateway, unregister_gateways
 from ..config import ConfigStore, Settings, default_data_dir
 from ..db import Database
 from ..recovery import RecoveryEngine
@@ -100,8 +100,30 @@ class AppContext:
             for c in CATALOG
         ]
         self._provider_keys: dict[str, str | None] = {}
+        self.gateway_models: list[ModelInfo] = []
+        self.sync_gateways()
         self._list_change_listeners: list = []
         self.model_list_change: tuple[list[str], list[str]] | None = None
+
+    # ---- ağ geçitleri (Madde 9) ----------------------------------------------
+
+    def gateways(self) -> list[dict]:
+        return [g for g in (self.settings.gateways or []) if isinstance(g, dict) and g.get("id")]
+
+    def sync_gateways(self) -> None:
+        """Ayarlardaki ağ geçitlerini PROVIDERS'a kaydet ve modellerini ModelInfo yap (seçici için)."""
+        from ..api.compat_client import join_model
+
+        gws = self.gateways()
+        unregister_gateways({g["id"] for g in gws})
+        models: list[ModelInfo] = []
+        for g in gws:
+            register_gateway(g["id"], g.get("kind", "openai_uyumlu"), g.get("name", ""), g.get("base_url", ""))
+            for m in g.get("models") or []:
+                models.append(ModelInfo(id=join_model(g["id"], m), task="chat", modalities=["text"],
+                                        context_length=None, default_max_output_tokens=None,
+                                        capabilities={"tools": True}, provider=g["id"]))
+        self.gateway_models = models
 
     # ---- modeller -------------------------------------------------------
 
@@ -156,7 +178,7 @@ class AppContext:
         out = set()
         if self.has_api_key():
             out.add("evren")
-        for p in ("openai", "anthropic"):
+        for p in ("openai", "anthropic", *(g["id"] for g in self.gateways())):
             if self.has_provider_key(p):
                 out.add(p)
         return out
@@ -166,7 +188,8 @@ class AppContext:
         provs = self.available_providers()
         evren = [m for m in self.models if m.supports_chat] if ("evren" in provs or not provs) else []
         paid = [m for m in self.paid_models if m.provider in provs]
-        return [AUTO_PRO_INFO] + evren + paid
+        gw = [m for m in self.gateway_models if m.provider in provs]
+        return [AUTO_PRO_INFO] + evren + paid + gw
 
     def evren_chat_models(self) -> list[ModelInfo]:
         """Gerçek EVREN sohbet modelleri (anahtar durumundan bağımsız)."""
@@ -258,7 +281,7 @@ class AppContext:
 
         if router.is_auto_pro(model_id):
             return AUTO_PRO_INFO
-        for m in list(self.models) + list(self.paid_models):
+        for m in list(self.models) + list(self.paid_models) + list(self.gateway_models):
             if m.id == model_id:
                 return m
         return None
@@ -507,6 +530,14 @@ class AppContext:
             from ..api.openai_client import OpenAIClient
 
             return OpenAIClient(key, timeout=timeout, max_retries=self.settings.max_retries, log_sink=log_sink)
+        if provider.startswith("gw-"):
+            from ..api.compat_client import CompatClient
+
+            info = PROVIDERS.get(provider)
+            if info is None or not info.base_url:
+                raise RuntimeError("Ağ geçidinin adresi tanımlı değil. Ayarlar > Sağlayıcılar'dan düzenleyin.")
+            return CompatClient(info.base_url, key, provider, timeout=timeout, max_retries=self.settings.max_retries,
+                                log_sink=log_sink)
         if provider == "anthropic":
             from ..api.anthropic_client import AnthropicClient
 
@@ -604,6 +635,7 @@ class AppContext:
 
     def save_settings(self) -> None:
         self.store.save(self.settings)
+        self.sync_gateways()
         from .. import gozlem
 
         gozlem.AYAR_ACIK = bool(self.settings.gozlem_enabled)

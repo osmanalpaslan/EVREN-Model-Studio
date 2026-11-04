@@ -216,6 +216,8 @@ QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSp
 QCheckBox {{ spacing: 8px; background: transparent; }}
 QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {p.border_strong}; background: {p.surface}; }}
 QCheckBox::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; image: url({check}); }}
+QListView::indicator {{ width: 16px; height: 16px; border-radius: 4px; border: 1px solid {p.border_strong}; background: {p.surface}; }}
+QListView::indicator:checked {{ background: {p.accent}; border-color: {p.accent}; image: url({check}); }}
 
 /* ---- menü ---- */
 QMenu {{ background: {p.surface}; border: 1px solid {p.border_strong}; border-radius: 10px; padding: 6px; }}

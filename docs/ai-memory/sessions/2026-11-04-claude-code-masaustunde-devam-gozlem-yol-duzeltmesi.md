@@ -24,6 +24,8 @@ Devir notuna göre sıradaki: Madde 6 (klasörsüz sohbette web_search/web_fetch
   `prompts.CHAT_WEB_NOTE`; tur başı `needs_web` ipucu sohbette de. Ayar `web_tools_chat` (varsayılan açık;
   Ayarlar > Web Araması kutusu). `tests/e2e_websearch_real_api.py`'ye `sohbet_python` / `sohbet_genel`.
 
+- Madde 9 (`feat/saglayici-ekle`, #38 üstüne): `api/compat_client.py` (CompatClient: /v1'siz adres, model `gw-…::sağlayıcı/model`, kota ucu yok), `providers.GATEWAY_KINDS` + `register_gateway` (çalışma anı PROVIDERS kaydı; ücretli, doğrulanmadı), `secrets` gw-… anahtar adı, `Settings.gateways`, AppContext `sync_gateways` / `gateway_models` (seçicide görünür, `available_model_ids`'e GİRMEZ → Auto Pro kullanmaz), `ui/gateways_card.py` (Sağlayıcı ekle penceresi, Modelleri getir, liste), Ayarlar sadeleşti (Nasıl alınır? katlanır). Bulunan hatalar: model seçicide Auto Pro kapsamı sabit sözlükten okunuyordu (KeyError gw-…); listelerde işaretsiz onay kutusu görünmüyordu (QSS `QListView::indicator`).
+
 ## Test sonuçları
 - tests/test_sohbet_web.py 8 (gerçek tur akışı açık/kapalı dahil); mutasyon: araçlar kapatılınca 4, tüm araçlar
   sunulunca 2 test kırıldı.
@@ -33,6 +35,8 @@ Devir notuna göre sıradaki: Madde 6 (klasörsüz sohbette web_search/web_fetch
 - Gerçek API (R-25) klasörsüz sohbet: açık 2/2 (güncel soruda web_search+web_fetch, genel soruda araç 0), kapalı 2/2 (web_fetch 2) — CHALLENGE_RESULTS.md.
 
 - Dal sonu (R-21/R-13, son kod e86225a): zorluk auto-pro 12/12 (1117 sn) · e2e_real_api E2E_OK · e2e_ui 15/15 · e2e_agent 4/6 → glm native EVREN 503 model_capacity_exhausted (tek başına tekrar 2/2) ve bilinen deepseek metin protokolü kaydı; yani 5/6, önceki ölçümle aynı.
+
+- Madde 9: tests/test_saglayici_ekle.py 7 (istemci yolları, ön ek, kalıcılık R-03, Auto Pro dışı, pencere, gerçek tur akışı R-31); mutasyon 2. ui_denetim iki tema HATA 0; pencere görüntüleri bakıldı. Ücretli/gerçek anahtarla istek YAPILMADI (R-17).
 
 ## Sorunlar ve kayıtlar
 - 2026-11-04-gozlem-temizleyici-depo-ev-klasorundeyken-kaynak-yolunu-gizl (çözüldü)
