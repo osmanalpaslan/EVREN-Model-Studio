@@ -12,7 +12,11 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-04 20:52 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 7 SÜRÜYOR.
+- **Güncelleme:** 2026-11-04 21:35 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 7 SÜRÜYOR.
+  Commit 2 (bu): damla akış / yanıtsız uzun çağrı → yedek aynı adımı yapar (DECISIONS #121; gerçek ölçüm: deepseek
+  araçla dosya yazarken 182/396 sn akışta veri yok, qwen 15 sn); testler 21, mutasyon 7/7, paket 204/204. SONRA zorluk
+  ölçümü (yalnız commit 1 ile, 21:13): 11/12 · model çağrısı 49→42 · EVREN o saatte çağrı başına %43 yavaştı;
+  mini_proje bu kez deepseek'in 304 sn yanıtsız çağrısıyla düştü (commit 2'nin nedeni).
 - **Aktif dal:** `feat/hiz-adim-azaltma` (master b0998db üstünde). Kullanıcı (2026-11-04): "önceliğim ajanların
   tutarlı ve doğru çalışması, aynı zamanda hız da artsın; onay istemeden önerilerinle devam et, sıradaki maddelere de".
   Analiz (gerçek DB'ler): sürenin ~%97'si model beklemesi; adımların %82'sinde tek araç çağrısı; tekrar okuma ~0;

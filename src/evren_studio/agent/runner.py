@@ -130,16 +130,43 @@ REPEAT_COLLAPSED = "\n\n[Tekrar eden metin kısaltıldı.]"
 _INTENT_RE = None
 
 
-class _StepCancel:
-    """Kullanıcı iptaline ek olarak, akışta metin tekrarı görülünce isteği kesmeye yarar."""
+# Damla akış (Madde 7, 2026-11-04 zorluk paketi mini_proje): deepseek-v4.1-flash tek çağrıda 304 sn boyunca yalnız
+# ~2.100 karakter düşünme damlattı, yanıt üretmedi; akış durmadığı için 60 sn'lik boşta kalma sınırı tetiklenmedi, adım
+# arası yavaşlık kuralı (SlowDetector) ise ancak 2 adım sonra çalışır. Çağrı en az DRIP_MIN_S sürmüşken hem görünür
+# karakter hızı hem akış olayı hızı çok düşükse çağrı kesilir ve yedek model AYNI adımı yeniden yapar. Olay hızı şart:
+# araç argümanları (büyük write_file) geri çağrıya gelmez, yalnız karakter sayan kural sağlıklı çağrıyı keserdi.
+# Gerçek ölçüm (2026-11-04 21:20, araçla ~2.000 karakterlik dosya yazdırma, akış satırı/sn · görünür karakter/sn):
+# qwen3.8-flash-next 14-15 sn, 33-35 · 10-17; gemma-4-31b 14-20 sn, 5-23 · 19-104; deepseek-v4.1-flash 182 ve 396 sn,
+# 0,5-0,6 · 0,4-0,8 (düşünmeyi akışta göstermiyor, dakikalarca bekletip yanıtı sonda veriyor). Yani kural deepseek'in
+# 2 dakikayı aşan çağrısında da tetiklenir: bu, kullanıcının onayladığı yavaşlık kuralının (A3, DECISIONS #88: güvenli
+# noktada, görev başına bir kez, zayıf modele değil) çağrı içi hâlidir; kesme anında hiçbir araç çalışmamıştır.
+DRIP_MIN_S = 120.0
+DRIP_MAX_CHARS_S = 15.0
+DRIP_MAX_EVENTS_S = 10.0
+_now = time.monotonic          # testler sahte saatle değiştirir
 
-    def __init__(self, outer: Any):
+
+class _StepCancel:
+    """Kullanıcı iptaline ek olarak, akışta metin tekrarı veya damla akış görülünce isteği kesmeye yarar.
+    İstemciler `cancelled`'ı her akış satırında okur: okuma sayısı = akış olayı sayısı (yaklaşık)."""
+
+    def __init__(self, outer: Any, drip_check: bool = False):
         self.outer = outer
         self.repetition = False
+        self.drip = False
+        self.drip_check = drip_check
+        self.chars = 0
+        self.polls = 0
+        self.t0 = _now()
 
     @property
     def cancelled(self) -> bool:
-        return self.repetition or bool(self.outer is not None and getattr(self.outer, "cancelled", False))
+        self.polls += 1
+        if self.drip_check and not self.drip:
+            el = _now() - self.t0
+            if el >= DRIP_MIN_S and self.chars / el < DRIP_MAX_CHARS_S and self.polls / el < DRIP_MAX_EVENTS_S:
+                self.drip = True
+        return self.repetition or self.drip or bool(self.outer is not None and getattr(self.outer, "cancelled", False))
 
 
 STREAM_REPEAT_MIN = 8      # akışta bu kadar tekrar eden cümle görülürse istek kesilir
@@ -813,6 +840,13 @@ class AgentRunner:
         self.events.message_saved(msg)
         return msg
 
+    def _slow_switch_possible(self) -> bool:
+        """Yavaşlık yüzünden yedeğe geçilebilir mi (görev başına bir kez; zayıf modele değil)."""
+        if not self.fallback_models or self._slow.used:
+            return False
+        banned = modelstats.SLOW_SWITCH_EXCLUDE.get(self.route_role, set())
+        return any(m not in banned for m in self.fallback_models)
+
     def _trim_budget(self) -> int | None:
         """Tur içi kısaltma hedefi: sert sınır varsa onun TRIM_OF_HARD oranı (bağlamın %70'iyle birlikte küçüğü)."""
         return int(self.hard_context_limit * TRIM_OF_HARD) if self.hard_context_limit else None
@@ -838,10 +872,15 @@ class AgentRunner:
         if self.tooling and self.protocol == "native":
             tools = [s.openai_schema() for s in self._specs()]
 
-        guard = _StepCancel(self.cancel)
+        guard = _StepCancel(self.cancel, drip_check=self.stream and self._slow_switch_possible())
         streamed: list[str] = []
 
+        def on_reasoning(text: str) -> None:
+            guard.chars += len(text)
+            self.events.reasoning_delta(text)
+
         def on_delta(text: str, _finish: str = "") -> None:
+            guard.chars += len(text)
             self.events.text_delta(text)
             streamed.append(text)
             # Akışta aynı cümleler dönüp duruyorsa isteği erken kes (zaman ve kota).
@@ -856,9 +895,12 @@ class AgentRunner:
             kwargs["extra_body"] = extra_body
         result = self.client.chat(
             self.model, messages, stream=self.stream, cancel=guard,
-            on_delta=on_delta, on_reasoning=self.events.reasoning_delta,
+            on_delta=on_delta, on_reasoning=on_reasoning,
             tools=tools, **kwargs,
         )
+        if guard.drip and not self._cancelled():
+            result.finish_reason = "slow_drip"
+            self._drip_chars = guard.chars
         try:          # gerçek token sayısından oranı öğren (bağlam/özet eşiği doğru hesaplansın)
             used = (result.token_usage() if hasattr(result, "token_usage") else {}).get("input_tokens") or 0
             tools_chars = len(json.dumps(tools, ensure_ascii=False)) if tools else 0
@@ -951,6 +993,15 @@ class AgentRunner:
                 outcome.stopped = "error"
                 raise
 
+            if result.finish_reason == "slow_drip":
+                # Yarım yanıt kaydedilmez (araç çalışmadı, yan etki yok); yedek model aynı adımı yeniden yapar
+                dur = round(time.monotonic() - t0, 1)
+                why = f"tek çağrıda {dur:.0f} sn'de yalnız {getattr(self, '_drip_chars', 0)} karakter (akış damlıyor)"
+                self._record(model=self.model, ok=False, error_kind="yavas_akis", duration_s=dur, detail=why)
+                if self._switch_model(outcome, None, slow_reason=why):
+                    self._slow.used = True
+                    step -= 1
+                    continue
             if self._trim_reset:
                 self._trim_reset = False
                 repeats.clear()
