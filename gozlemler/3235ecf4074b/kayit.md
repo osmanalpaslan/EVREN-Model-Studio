@@ -4,11 +4,11 @@ baslik: Auto Pro yedek modele geçti
 tur: ajan_anomali
 onem: dusuk
 alan: ortam
-durum: acik                # acik | cozuldu | kabul-edildi
+durum: kabul-edildi                # acik | cozuldu | kabul-edildi
 kaynak: e2e
 ilk_gorulme: 2026-11-04T16:40:53+00:00
-cozuldu_tarih:
-cozum_kaydi:
+cozuldu_tarih: 2026-11-04T19:54:21+00:00
+cozum_kaydi: 2026-11-04-api-hatasi-sunucu-kullanilamiyor-http-503
 ---
 
 # Auto Pro yedek modele geçti
