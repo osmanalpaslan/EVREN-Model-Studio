@@ -12,10 +12,11 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-04 gece · Claude Code (claude-opus-5-5) · dizüstü bilgisayar. Kullanıcı ertesi gün
-  BAŞKA bir bilgisayar ve oturumdan devam edecek.
-- **Aktif dal:** `master` — yarım iş YOK. Bu oturumda birleşenler: PR #30-#35 (profesyonel kalite, doğruluk
-  turu, gözlem ajanı, faz unutma ölçümü, Derin Mod v2). Yeni maddeye master'dan yeni dalla başla.
+- **Güncelleme:** 2026-11-04 akşam · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Eşitlendi (39 commit);
+  bu bilgisayarda tam takım 777/778 — kırılan gözlem testi ortam farkıydı (depo ev klasörü altında) → düzeltildi
+  (`fix/gozlem-ev-alti-yol`, kayıt 2026-11-04-gozlem-temizleyici-…). Sıradaki: Madde 6 (aşağıdaki plan 1).
+- **Aktif dal:** `master` + kısa düzeltme dalı `fix/gozlem-ev-alti-yol` (PR açılıp birleştirilecek). Önceki
+  oturumda birleşenler: PR #30-#36. Yeni maddeye master'dan yeni dalla başla.
 - **Çalışan uzun test:** yok. Son durum: pytest 778/778 · zorluk auto-pro 12/12 (719 sn) · R-13 E2E_OK, ajan 5/6
   (deepseek metin protokolü — açık kayıt 2026-10-17-deepseek-…), arayüz 15/15 · e2e_derin GEÇTİ.
 - **Kullanıcının çalışma ilkesi (2026-11-03):** "Amacım sağlam, doğru iş ve olabildiği kadar hızlı; doğruluk bir

@@ -92,6 +92,12 @@ def temizle(text: Any, limit: int = MAX_METIN) -> str:
     s = mask_secret(str(text or ""))
     s = _QUERY.sub(r"\1?<sorgu>", s)
     s = _EMAIL.sub("<eposta>", s)
+    # Uygulamanın kendi kaynağı ev klasörünün ALTINDA olabilir (C:\Users\Ad Soyad\Projects\...): ev klasörü "~"
+    # yapılmadan önce depo içi yolları göreli yaz; yoksa "~\..." bilinmeyen yol sayılıp <yol> oluyordu (2026-11-04).
+    root = str(SOURCE_ROOT)
+    for variant in {root, root.replace("\\", "/")}:
+        s = re.sub(re.escape(variant) + r"[\\/]((?!\.\.)[^'\"<>|\s]*)",
+                   lambda m: m.group(1).replace("\\", "/"), s, flags=re.IGNORECASE)
     # Ev klasörü boşluk içerebilir ("C:\Users\Ad Soyad"): yol deseninden ÖNCE bütün olarak sil
     for home in {str(Path.home()), os.environ.get("USERPROFILE", "")}:
         if len(home) >= 4:
