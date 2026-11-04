@@ -64,6 +64,8 @@ kayıt/kural yazar (protokol: AGENTS.md). Açık kayıtlar: docs/ai-memory/INDEX
 
 ## Sıradaki iş
 
+  - (2026-11-04 akşam) Madde 7 hız (`feat/hiz-adim-azaltma`): çağrı içi damla akış → yedek, tur içi kısaltma sert
+      sınırdan önce, boş yanıtta yedek, bağımsız okumalar tek yanıtta. Zorluk 12/12, maraton F 17/17 (özet 3 → 1).
   - (2026-11-04) **Güncel iş ve plan: `docs/DEVIR_NOTU.md` "Şu an"** (tek kaynak). Master'da yarım iş yok.
     2026-11-03/04 birleşenler: #30 /clear + büyük özet · #31 profesyonel kalite (açık tema, web araması, bağlam
     kalibrasyonu, kota sonrası devam) · #32 doğruluk turu (komutla test değiştirme koruması) · #33 gözlem ajanı

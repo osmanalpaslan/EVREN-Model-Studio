@@ -1,5 +1,16 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Daha hızlı ve takılmayan Auto Pro (Madde 7)
+
+- **Takılan model beklenmiyor**: bir model tek adımda 2 dakikadan uzun süre neredeyse hiçbir şey üretmeden
+  beklerse (ölçümde aynı dosyayı bir model 3-6 dakikada, yedeği 15 sn'de yazdı) Auto Pro o isteği keser ve
+  aynı adımı yedek modelle yapar. Henüz hiçbir işlem yapılmadığı için iş yarım kalmaz; görev başına bir kez
+  olur ve zayıf modele geçilmez.
+- **Boş cevapla bitmez**: model hatırlatmadan sonra da boş yanıt verirse yedek model işi sürdürür.
+- **Uzun işlerde daha az kesinti**: uzun bir görevde konuşma hafızası dolmaya yaklaşınca önce eski komut/dosya
+  çıktıları kısaltılır; görev ancak bu yetmezse durup özetlenir (eskiden özet hep önce geliyordu).
+- **Daha az bekleme**: ajan birbirinden bağımsız dosya okumalarını ve incelemeleri tek seferde ister.
+
 ## Yayınlanmamış — Sade sağlayıcı ekranı (Madde 9)
 
 - **Sağlayıcı ekle**: Ayarlar > Sağlayıcılar'da tek anahtarla çok model sunan ağ geçitleri eklenebilir
