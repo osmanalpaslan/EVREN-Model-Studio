@@ -17,8 +17,14 @@ GERCEK_CIKTI = ("! First copy your one-time code: 9F3A-1B7C\n"
 
 
 def _calls() -> list[list[str]]:
+    """Sahte gh'nin çağrı günlüğü. Sahte süreç o an satır yazıyor olabilir (tam koşuda yük altında yarım satır
+    okundu, 2026-11-05): yalnız tamamlanmış (\\n ile biten) satırlar okunur."""
     p = Path(os.environ["FAKE_GH_DIR"]) / "calls.jsonl"
-    return [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines()] if p.exists() else []
+    if not p.exists():
+        return []
+    text = p.read_text(encoding="utf-8")
+    done = text[: text.rfind("\n") + 1]
+    return [json.loads(x) for x in done.splitlines() if x.strip()]
 
 
 def _git(cwd, *args):

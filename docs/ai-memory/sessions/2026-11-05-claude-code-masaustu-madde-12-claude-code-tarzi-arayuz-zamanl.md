@@ -46,3 +46,6 @@ tarayıcı yönlendirmesiyle ücretsiz bağlanma ve entegrasyon. Onay istemeden 
 
 ## Sonraki motor için notlar
 - Zamanlayıcı yalnız uygulama açıkken çalışır (Claude Code yerel görevleri gibi); kaçırılanlardan son 7 günde tek telafi.
+- Temiz tam koşu 1 (ad92072): 869/870 — test_github giriş reddi testinde JSONDecodeError: sahte gh çağrı günlüğüne
+  yazarken test okudu (yarım satır, yük altında yarış). Tek başına 3/3 geçti. Düzeltme: yardımcı yalnız tamamlanmış
+  satırları okur (doğrulama aynı). Tam koşu tekrarlandı.
