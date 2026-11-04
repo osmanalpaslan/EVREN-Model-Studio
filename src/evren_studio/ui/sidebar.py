@@ -289,6 +289,8 @@ class Sidebar(QWidget):
                 last_group = group
             ws = r["workspace"]
             sub = Path(ws).name if ws else "Sohbet"
+            if "scheduled_task_id" in r.keys() and r["scheduled_task_id"]:
+                sub = "Zamanlanmış · " + sub        # görevin başlattığı oturum (Madde 12c)
             it = QListWidgetItem(r["title"])
             it.setData(ROLE_KIND, "session")
             it.setData(ROLE_ID, r["id"])

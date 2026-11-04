@@ -191,6 +191,38 @@ CREATE TABLE IF NOT EXISTS file_changes (
     reverted INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
+-- Zamanlanmış görevler (Madde 12c, 2026-11-05; Claude Code masaüstü "Scheduled tasks" örnek alındı)
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT NOT NULL DEFAULT '',
+    prompt TEXT NOT NULL,
+    workspace TEXT,
+    model TEXT NOT NULL DEFAULT 'auto-pro',
+    mode TEXT NOT NULL DEFAULT 'auto',
+    kind TEXT NOT NULL DEFAULT 'daily',
+    time_hm TEXT NOT NULL DEFAULT '09:00',
+    weekday INTEGER NOT NULL DEFAULT 0,
+    cron TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    last_handled_at TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS scheduled_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id INTEGER NOT NULL REFERENCES scheduled_tasks(id) ON DELETE CASCADE,
+    scheduled_for TEXT,
+    started_at TEXT,
+    finished_at TEXT,
+    status TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT '',
+    session_id INTEGER,
+    catch_up INTEGER NOT NULL DEFAULT 0,
+    manual INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_scheduled_runs ON scheduled_runs(task_id, id);
 """
 
 
@@ -255,6 +287,9 @@ class Database:
         # F4 (2026-10-24): oturuma bağlı ajan profili (E5); eski oturumlar profilsiz
         if "profile" not in cols:
             self._exec("ALTER TABLE sessions ADD COLUMN profile TEXT")
+        # Madde 12c (2026-11-05): zamanlanmış görevin başlattığı oturum (görev silinince oturum KALIR)
+        if "scheduled_task_id" not in cols:
+            self._exec("ALTER TABLE sessions ADD COLUMN scheduled_task_id INTEGER")
         self._exec(
             "INSERT INTO meta(key, value) VALUES('schema_version', ?)"
             " ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -655,7 +690,8 @@ class Database:
         ).fetchall()
 
     def update_session(self, session_id: int, **fields: Any) -> None:
-        allowed = {"title", "workspace", "model", "mode", "protocol", "pinned", "provider", "profile"}
+        allowed = {"title", "workspace", "model", "mode", "protocol", "pinned", "provider", "profile",
+                   "scheduled_task_id"}
         sets = {k: v for k, v in fields.items() if k in allowed}
         if not sets:
             return
@@ -669,6 +705,68 @@ class Database:
     def delete_session(self, session_id: int) -> None:
         self._exec("DELETE FROM sessions WHERE id=?", (session_id,))
         self._commit()
+
+    # ---- zamanlanmış görevler (Madde 12c) ----
+
+    TASK_FIELDS = ("name", "description", "prompt", "workspace", "model", "mode", "kind", "time_hm", "weekday",
+                   "cron", "enabled", "last_handled_at")
+
+    def create_scheduled_task(self, **fields: Any) -> int:
+        now = utcnow_iso()
+        data = {k: v for k, v in fields.items() if k in self.TASK_FIELDS}
+        cols = ", ".join(list(data) + ["created_at", "updated_at"])
+        marks = ", ".join("?" for _ in range(len(data) + 2))
+        cur = self._exec(f"INSERT INTO scheduled_tasks({cols}) VALUES({marks})", (*data.values(), now, now))
+        self._commit()
+        return int(cur.lastrowid)
+
+    def update_scheduled_task(self, task_id: int, **fields: Any) -> None:
+        data = {k: v for k, v in fields.items() if k in self.TASK_FIELDS}
+        if not data:
+            return
+        sets = ", ".join(f"{k}=?" for k in data)
+        self._exec(f"UPDATE scheduled_tasks SET {sets}, updated_at=? WHERE id=?",
+                   (*data.values(), utcnow_iso(), task_id))
+        self._commit()
+
+    def delete_scheduled_task(self, task_id: int) -> None:
+        """Görev ve geçmişi silinir; başlattığı oturumlar SİLİNMEZ (Claude Code'da da arşivde kalır)."""
+        self._exec("UPDATE sessions SET scheduled_task_id=NULL WHERE scheduled_task_id=?", (task_id,))
+        self._exec("DELETE FROM scheduled_runs WHERE task_id=?", (task_id,))
+        self._exec("DELETE FROM scheduled_tasks WHERE id=?", (task_id,))
+        self._commit()
+
+    def get_scheduled_task(self, task_id: int) -> sqlite3.Row | None:
+        return self._exec("SELECT * FROM scheduled_tasks WHERE id=?", (task_id,)).fetchone()
+
+    def list_scheduled_tasks(self) -> list[sqlite3.Row]:
+        return self._exec("SELECT * FROM scheduled_tasks ORDER BY name COLLATE NOCASE").fetchall()
+
+    def add_scheduled_run(self, task_id: int, status: str, *, scheduled_for: str | None = None,
+                          reason: str = "", catch_up: bool = False, manual: bool = False) -> int:
+        cur = self._exec(
+            "INSERT INTO scheduled_runs(task_id, scheduled_for, status, reason, catch_up, manual, created_at)"
+            " VALUES(?, ?, ?, ?, ?, ?, ?)",
+            (task_id, scheduled_for, status, reason, int(catch_up), int(manual), utcnow_iso()))
+        self._commit()
+        return int(cur.lastrowid)
+
+    def update_scheduled_run(self, run_id: int, **fields: Any) -> None:
+        allowed = {"status", "reason", "session_id", "started_at", "finished_at"}
+        data = {k: v for k, v in fields.items() if k in allowed}
+        if not data:
+            return
+        sets = ", ".join(f"{k}=?" for k in data)
+        self._exec(f"UPDATE scheduled_runs SET {sets} WHERE id=?", (*data.values(), run_id))
+        self._commit()
+
+    def list_scheduled_runs(self, task_id: int, limit: int = 20, offset: int = 0) -> list[sqlite3.Row]:
+        return self._exec("SELECT * FROM scheduled_runs WHERE task_id=? ORDER BY id DESC LIMIT ? OFFSET ?",
+                          (task_id, limit, offset)).fetchall()
+
+    def count_scheduled_runs(self, task_id: int) -> int:
+        return int(self._exec("SELECT COUNT(*) AS n FROM scheduled_runs WHERE task_id=?",
+                              (task_id,)).fetchone()["n"])
 
     def set_session_todos(self, session_id: int, todos: list[dict]) -> None:
         self._exec(

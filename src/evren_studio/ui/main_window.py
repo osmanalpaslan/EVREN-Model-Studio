@@ -69,6 +69,10 @@ class MainWindow(QMainWindow):
         self.center.addWidget(self.session)
 
         self.pages: dict[str, QWidget] = {}
+        # Zamanlanmış görevler (Madde 12c): motor sayfadan önce kurulur (sayfa onun sinyallerine bağlanır)
+        from .schedule_host import ScheduleHost
+
+        self.scheduler = ScheduleHost(self.ctx, self)
         self._build_pages()
         self.sidebar.set_available_pages(self.pages)
 
@@ -94,6 +98,8 @@ class MainWindow(QMainWindow):
         self.session.toggle_sidebar.connect(self.toggle_sidebar)
         self.session.toggle_panel.connect(self.toggle_panel)
         self.session.notify.connect(self.show_notification)
+        self.scheduler.notify.connect(self.show_notification)
+        self.scheduler.sessions_changed.connect(self.sidebar.refresh)
         self._tray = None
         self.sidebar.apply_providers(self.ctx.available_providers())
         self.ctx.on_models_changed(self.session.refresh_models)
@@ -107,6 +113,7 @@ class MainWindow(QMainWindow):
         self.show_sessions()
         # Kota yüzünden duran iş varsa (önceki açılıştan) oturumunu aç ve otomatik devamı yeniden kur
         QTimer.singleShot(0, self, self.session.restore_pending_resume)
+        self.scheduler.start()
         # Gözlem ajanı: kuyruktaki gözlemleri arka planda depoya gönder (açılıştan 2 dk sonra, sonra 30 dk'da bir)
         from .. import gozlem
 
@@ -171,6 +178,11 @@ class MainWindow(QMainWindow):
         skills = SkillsPage(self.ctx)
         skills.template_requested.connect(self._use_template)
         add("skills", skills)
+        from .scheduled_page import ScheduledPage
+
+        scheduled = ScheduledPage(self.ctx, self.scheduler)
+        scheduled.open_session.connect(self.open_session)
+        add("scheduled", scheduled)
         # Uzun açıklama yazıları kaydırılsın: kaydırmasız etiket sayfanın (dolayısıyla orta alanın)
         # en küçük genişliğini 1000+ px'e çıkarıyordu (kenar çubuğu kaybolma hatasının kaynağı).
         for page in self.pages.values():
@@ -213,6 +225,24 @@ class MainWindow(QMainWindow):
         self.session.new_session()
 
     def open_session(self, sid: int) -> None:
+        a = self.scheduler.active
+        if a is not None and a["sid"] == sid:
+            # Aynı oturumu iki görünüm birden sürdürmesin: görev bitince açılır ya da durdurulup açılır
+            from PySide6.QtWidgets import QMessageBox
+
+            box = QMessageBox(QMessageBox.Information, "Zamanlanmış görev çalışıyor",
+                              f"“{a['name']}” bu oturumda şu an arka planda çalışıyor. Bitince açabilirsiniz.",
+                              parent=self)
+            stop = box.addButton("Durdur ve aç", QMessageBox.DestructiveRole)
+            box.addButton("Tamam", QMessageBox.AcceptRole)
+            box.exec()
+            if box.clickedButton() is not stop:
+                self.sidebar.set_current(self.session.session_id)
+                return
+            self.scheduler.stop_task(a["task_id"])
+            # durdurma kayıtları (iptal sonuçları) yazılsın, sonra güncel hâli aç
+            QTimer.singleShot(1500, self, lambda: (self.show_sessions(), self.session.open_session(sid)))
+            return
         self.show_sessions()
         self.session.open_session(sid)
 
@@ -420,6 +450,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         workers.set_accepting(False)   # kapanırken geç gelen sonuçlar işlenmesin
         self.session.shutdown()
+        self.scheduler.shutdown()
         monitor = self.pages.get("monitor")
         if monitor and getattr(monitor, "agent", None) and monitor.agent.is_running():
             monitor.agent.stop(status="app_closed")

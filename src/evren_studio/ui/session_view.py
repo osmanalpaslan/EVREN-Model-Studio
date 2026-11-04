@@ -377,6 +377,12 @@ class SessionView(QWidget):
         self.mode = normalize_mode(ctx.settings.agent_mode)
         self.model = ctx.settings.default_model
         self.running = False
+        # Gözetimsiz kip (zamanlanmış görev, Madde 12c): başında kimse yok → kullanıcıyı bekleyen hiçbir kart/soru
+        # açılmaz (önce plan, proje ajanı önerisi, bütçe onayı, anahtar uyarısı) ve seçimler kullanıcının varsayılan
+        # ayarına YAZILMAZ. Son turun sonucu `last_stop` / `last_error`da (zamanlayıcı okur).
+        self.unattended = False
+        self.last_stop = ""
+        self.last_error = ""
         self.cancel_token: CancelToken | None = None
         self.runner: AgentRunner | None = None
         self.bridge: AgentBridge | None = None
@@ -955,6 +961,34 @@ class SessionView(QWidget):
             self.new_session()
         self.sessions_changed.emit()
 
+    def start_unattended(self, *, workspace: str | None, model: str, mode: str, title: str, prompt: str,
+                         task_id: int | None = None) -> int | None:
+        """Zamanlanmış görev çalıştırması (Madde 12c): yeni oturum açar ve isteği gönderir. Oturum kimliği döner;
+        başlatılamazsa None ve neden `last_error`da. Yalnız `unattended=True` görünümde çağrılır."""
+        assert self.unattended, "start_unattended yalnız gözetimsiz görünümde"
+        self.last_stop, self.last_error = "", ""
+        provider = self.ctx.provider_of(model)
+        if not self.ctx.has_provider_key(provider):
+            name = PROVIDERS.get(provider).name if provider in PROVIDERS else provider
+            self.last_error = f"{name} API anahtarı yok"
+            return None
+        if workspace and not Path(workspace).is_dir():
+            self.last_error = f"çalışma klasörü bulunamadı: {workspace}"
+            return None
+        self.new_session()
+        self.welcome.set_workspace(workspace)
+        self._welcome_ws(workspace)
+        self.model = router.normalize_model_id(model)
+        self.composer.set_model(self.model)
+        self.mode = normalize_mode(mode)
+        self.composer.set_mode(self.mode)
+        sid = self._ensure_session(title)
+        self.ctx.db.update_session(sid, title=title[:60], model=self.model, mode=self.mode,
+                                   provider=provider, scheduled_task_id=task_id)
+        self._auto_title = None             # başlık görev adı + saat olarak kalır
+        self.send(prompt)
+        return sid
+
     def _welcome_ws(self, ws: str | None) -> None:
         self.composer.set_agentic(ws is not None)
         self.panel.set_session(None, ws, [])
@@ -990,6 +1024,8 @@ class SessionView(QWidget):
     def _remember(self, **values) -> None:
         """Kullanıcının son seçimi (motor / onay modu) yeni oturumlarda da gelir;
         kullanıcı yeniden değiştirene kadar korunur (kullanıcı kararı, 2026-10-16)."""
+        if self.unattended:
+            return                          # zamanlanmış görevin seçimi kullanıcının varsayılanını değiştirmez
         s = self.ctx.settings
         changed = {k: v for k, v in values.items() if getattr(s, k) != v}
         if changed:
@@ -1035,6 +1071,9 @@ class SessionView(QWidget):
 
     def _ask_budget(self) -> bool:
         st = self._budget_state()
+        if self.unattended:                 # gözetimsiz: bütçe aşılmaz, iş durur (sorulacak kimse yok)
+            self.last_error = f"aylık bütçe doldu ({st.text()})"
+            return False
         ok = QMessageBox.question(
             self, "Aylık bütçe doldu",
             f"Ücretli sağlayıcılar için aylık bütçeye ulaşıldı ({st.text()}). Bu tahmindir; "
@@ -1380,9 +1419,13 @@ class SessionView(QWidget):
             self.composer.set_model("auto", emit=True)
         provider = self.ctx.provider_of(self.model)
         if not self.ctx.has_provider_key(provider):
+            name = PROVIDERS.get(provider).name if provider in PROVIDERS else provider
+            if self.unattended:
+                self.last_error = f"{name} API anahtarı yok"
+                back()
+                return
             self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome)
             self.welcome.refresh()
-            name = PROVIDERS.get(provider).name if provider in PROVIDERS else provider
             QMessageBox.warning(self, "API anahtarı yok",
                                 f"Önce Ayarlar sayfasından {name} API anahtarınızı girin.")
             back()
@@ -1434,7 +1477,7 @@ class SessionView(QWidget):
         self._turn_id = msg_id
         # "Önce plan" (Ayarlar, varsayılan kapalı): dosyaya dokunmadan önce plan turu
         self._plan_turn = bool(self.ctx.settings.plan_first and self.workspace and self.mode != "plan"
-                               and not self._skip_plan_once)
+                               and not self._skip_plan_once and not self.unattended)
         self._skip_plan_once = False
         _, attached = split_attachments(content)
         labels = set((meta or {}).get("file_labels") or [])
@@ -1638,6 +1681,9 @@ class SessionView(QWidget):
     def _note(self, text: str, icon_name: str = "dot") -> None:
         if self.stack.currentWidget() is not self.transcript:
             if not self.session_id:
+                if self.unattended:
+                    self.last_error = self.last_error or text
+                    return
                 QMessageBox.information(self, "EVREN Studio", text)
                 return
             self.stack.setCurrentWidget(self.transcript)
@@ -2357,6 +2403,7 @@ class SessionView(QWidget):
         return None
 
     def _on_done(self, outcome) -> None:
+        self.last_stop = getattr(outcome, "stopped", "") or "done"
         hook, self._turn_hook = self._turn_hook, None
         if hook is not None:                    # proje ajanı turu: sonrası denetleyicide
             self._finish()
@@ -2429,6 +2476,7 @@ class SessionView(QWidget):
         self._maybe_auto_title()
 
     def _on_fail(self, exc: Exception) -> None:
+        self.last_stop, self.last_error = "error", str(exc)[:300]
         hook, self._turn_hook = self._turn_hook, None
         if hook is not None:                    # proje ajanı: hata yönetimi (bekle/yedek/duraklat) orada
             self._finish()
@@ -3091,6 +3139,8 @@ class SessionView(QWidget):
         ayrı git dalı ve commit demektir). True → mesaj kartın kararına bırakıldı."""
         from ..agent.planguard import looks_multi_phase, plan_only_request
 
+        if self.unattended:                 # öneri kartı kararı beklerdi; zamanlanmış görev doğrudan çalışır
+            return False
         s = self.ctx.settings
         key = hash(text)
         if (not s.suggest_project or not self.workspace or atts or key in self._project_offered

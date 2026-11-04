@@ -626,7 +626,28 @@ class SettingsPage(BasePage):
     # ---- menü / arama ----------------------------------------------------------
 
     def _build_extra(self) -> None:
-        """Alt sınıfların veya sonraki fazların kategori kartları (zamanlanmış görevler, GitHub)."""
+        """Sonradan eklenen kategorilerin kartları (zamanlanmış görevler, GitHub)."""
+        d = DEFAULTS
+        # ---- Zamanlanmış görevler (Madde 12c) ----
+        c, l = card()
+        l.addWidget(section("Çalışma koşulları"))
+        self.schedule_enabled = QCheckBox("Zamanlanmış görevler zamanı gelince kendiliğinden çalışsın")
+        self.schedule_enabled.setToolTip("Kapalıyken hiçbir görev kendiliğinden başlamaz; “Şimdi çalıştır” yine çalışır.")
+        l.addWidget(self.schedule_enabled)
+        self.schedule_keep_awake = QCheckBox("Etkin görev varken bilgisayarın boşta uykuya geçmesini engelle")
+        l.addWidget(self.schedule_keep_awake)
+        l.addWidget(hint("Görevler yalnız EVREN Studio açıkken ve bilgisayar uyanıkken çalışır. Bilgisayar uyurken "
+                         "geçen zaman atlanır; kapağı kapatmak yine uyutur. Kaçırılanlardan son 7 gün içindeki en "
+                         "yenisi uygulama açılınca bir kez telafi edilir."))
+        self.schedule_notify = QCheckBox("Çalıştırma bitince ve telafi başlayınca Windows bildirimi göster")
+        l.addWidget(self.schedule_notify)
+        self.schedule_max = QSpinBox()
+        self.schedule_max.setRange(5, 600)
+        self.schedule_max.setSuffix(" dk")
+        l.addWidget(kv_row_widget("Bir çalıştırmanın en uzun süresi:", self.schedule_max,
+                                  f"{d.schedule_max_minutes} dk"))
+        l.addWidget(hint("Görevleri oluşturmak ve yönetmek için kenar çubuğundaki “Zamanlanmış görevler”i açın."))
+        self._add("zamanlanmis", c)
 
     def _add(self, key: str, widget: QWidget) -> None:
         self._page_cols[key].addWidget(widget)
@@ -742,6 +763,10 @@ class SettingsPage(BasePage):
         self.retention.setValue(s.error_log_retention_days)
         self.budget.setValue(s.monthly_budget_usd)
         self.budget_enforce.setChecked(s.budget_enforce)
+        self.schedule_enabled.setChecked(s.schedule_enabled)
+        self.schedule_keep_awake.setChecked(s.schedule_keep_awake)
+        self.schedule_notify.setChecked(s.schedule_notify)
+        self.schedule_max.setValue(int(s.schedule_max_minutes))
         self._refresh_provider_rows()
         self._refresh_spend(s)
         self.mcp_card.load(s)
@@ -792,6 +817,10 @@ class SettingsPage(BasePage):
         s.error_log_retention_days = int(self.retention.value())
         s.monthly_budget_usd = float(self.budget.value())
         s.budget_enforce = self.budget_enforce.isChecked()
+        s.schedule_enabled = self.schedule_enabled.isChecked()
+        s.schedule_keep_awake = self.schedule_keep_awake.isChecked()
+        s.schedule_notify = self.schedule_notify.isChecked()
+        s.schedule_max_minutes = int(self.schedule_max.value())
         self.mcp_card.collect(s)
 
     def changed_fields(self) -> list[str]:

@@ -19,10 +19,18 @@ tarayıcı yönlendirmesiyle ücretsiz bağlanma ve entegrasyon. Onay istemeden 
 - 12a Ayarlar: sol menü + arama, 14 kategori (`SettingsPage.CATEGORIES`, `_add`, `open_category`, `_fold`).
 - 12b Kenar çubuğu: `PRIMARY_PAGES` (Zamanlanmış, Skill) üstte; altta Ayarlar + "Diğer" ⋯ menüsü (`MORE_PAGES`);
   `set_available_pages`, `page_visible`.
-- 12c Zamanlayıcı, 12d GitHub: sürüyor.
+- 12c Zamanlayıcı: `agent/schedule.py` (Saatlik/Günlük/Hafta içi/Haftalık/Elle/Özel cron ≥1 sa; son 7 günde tek telafi),
+  `ui/schedule_host.py` (dakikada bir; tek seferde tek çalıştırma + kuyruk; sürerken gelen zaman "atlandı";
+  görünmez `SessionView.unattended` oturum: önce plan / proje önerisi / bütçe sorusu / anahtar uyarısı kapalı, seçimler
+  varsayılana yazılmaz; kota beklerken bitmiş sayılmaz; süre sınırı; telafi + bitiş bildirimi; bilgisayarı uyanık tut),
+  `ui/scheduled_page.py`, DB tabloları (yalnız ekleme), kenar çubuğunda "Zamanlanmış ·" alt yazısı, çalışan görev
+  oturumunu açarken "Durdur ve aç" koruması. Modlar yalnız Otomatik / Plan (başında kimse yok).
+- 12d GitHub: sürüyor.
 
 ## Test sonuçları
 - tests/test_ayarlar_menu.py 16, mutasyon 6/6; ui_denetim iki tema HATA 0.
+- tests/test_zamanlayici.py 23; mutasyon zaman 6/6, motor 10/10, gözetimsiz kip 3/3 (ilk koşuda 3 mutant kaçtı → testler güçlendirildi).
+- Ekran: zamanlanmış liste/ayrıntı/oluşturma penceresi iki tema; düzeltilen: ana düğme simgesi görünmüyordu, saat kutusu temasızdı, geri oku ters.
 - Kenar çubuğu: test_auto_pro (sayfa görünürlüğü yeni API'ye uyarlandı), test_kenar_cubugu_surukleme, test_f5_arayuz geçti.
 
 ## Sorunlar ve kayıtlar

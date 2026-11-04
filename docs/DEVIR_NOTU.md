@@ -12,14 +12,14 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-04 23:30 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 12 SÜRÜYOR.
-- **Aktif dal:** `feat/claude-tarzi-arayuz` (master 48396e7 = PR #41 birleşti). Madde 12 (Claude Code tarzı arayüz,
-  zamanlayıcı, GitHub) — tablodaki satıra bak. YAPILDI: **12a Ayarlar menüleri** (sol menü + arama, 14 kategori,
-  `SettingsPage.CATEGORIES`, yeni ayar → `self._add(kategori, kart)`; tests/test_ayarlar_menu.py 16, mutasyon 6/6;
-  ui_denetim iki tema HATA 0, Ayarlar her menüsüyle ayrı ölçülüyor). 12b kenar çubuğu YAPILDI (üstte Yeni oturum +
-  Zamanlanmış + Skill; altta Ayarlar + "Diğer" ⋯ menüsü; `Sidebar.page_visible`). Önceki plan: 12b kenar çubuğu (Claude Code düzeni:
-  üstte Yeni oturum / Zamanlanmış / ara; altta Ayarlar + "Diğer" menüsü) → 12c zamanlayıcı → 12d GitHub.
-  Gece kapatılan gözlemler: c9b5…/cbf0… (mini_proje, çözüldü), 70f7…/3235… (EVREN 503, kabul).
+- **Güncelleme:** 2026-11-05 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 12 SÜRÜYOR (12a-c YAPILDI).
+- **Aktif dal:** `feat/claude-tarzi-arayuz` (master 48396e7 üstünde). YAPILDI: 12a Ayarlar menüleri (016185c) · 12b kenar
+  çubuğu (8820a32) · 12c **zamanlanmış görevler** (bu commit): `agent/schedule.py` (zaman hesabı, cron, telafi),
+  `ui/schedule_host.py` (dakikalık denetim, kuyruk, görünmez `SessionView.unattended` oturumda çalıştırma, sonuç/
+  bildirim, uyanık tut), `ui/scheduled_page.py` (liste/ayrıntı/geçmiş/oluştur-düzenle), DB `scheduled_tasks` +
+  `scheduled_runs` + `sessions.scheduled_task_id`, Ayarlar > Zamanlanmış görevler. tests/test_zamanlayici.py 23
+  (gerçek görünümle uçtan uca dahil), mutasyon 19/19. Sıradaki: tam takım → 12d GitHub (`gh auth login --web`) →
+  R-13 + zorluk paketi (session_view değişti) → PR.
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı
   eklemesini anlat ya da PR'ları GitHub'dan ters sırayla (en üstteki önce) 'Merge pull request' ile birleştirt.
