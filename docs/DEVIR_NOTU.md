@@ -16,11 +16,10 @@
   bu bilgisayarda tam takım 777/778 — kırılan gözlem testi ortam farkıydı (depo ev klasörü altında) → düzeltildi
   (`fix/gozlem-ev-alti-yol`, PR #37 — birleştirme bu bilgisayarda Claude Code sınıflandırıcısınca engellendi,
   KULLANICI birleştirecek). Madde 6 SÜRÜYOR: kod + birim testleri commit'li (`feat/sohbette-web-arama`, #37'nin
-  üstünde); kalan: gerçek ölçüm sonucu (aşağıda), zorluk paketi + R-13, PR.
+  üstünde) — ÖLÇÜMLER TAMAM: sohbet açık/kapalı 2/2·2/2 (CHALLENGE_RESULTS), zorluk 12/12, R-13 E2E_OK · ui 15/15 ·
+  ajan 5/6 (bilinen deepseek kaydı). PR açıldı; #37'den sonra kullanıcı birleştirecek. Sıradaki: Madde 9.
 - **Aktif dal:** `feat/sohbette-web-arama` (taban `fix/gozlem-ev-alti-yol`). #37 birleşince bu dalın PR'ı master'a.
-- **Çalışan uzun test:** klasörsüz sohbet web ölçümü (açık/kapalı), bu bilgisayarda 19:31; günlük
-  `C:\Users\Osman Alpaslan\evm_t7\acik.log` / `kapali.log`. Başka yerde: `tests\e2e_websearch_real_api.py auto-pro
-  sohbet_python sohbet_genel [--kapali]`. Önceki son durum: pytest 778/778 · zorluk auto-pro 12/12 (719 sn) · R-13 E2E_OK, ajan 5/6
+- **Çalışan uzun test:** yok. Önceki son durum: pytest 778/778 · zorluk auto-pro 12/12 (719 sn) · R-13 E2E_OK, ajan 5/6
   (deepseek metin protokolü — açık kayıt 2026-10-17-deepseek-…), arayüz 15/15 · e2e_derin GEÇTİ.
 - **Kullanıcının çalışma ilkesi (2026-11-03):** "Amacım sağlam, doğru iş ve olabildiği kadar hızlı; doğruluk bir
   tık daha önemli. Sırayı sen belirle." → Her maddede: hedefli test + tetiklenen/tetiklenmeyen (R-22) + kritikse

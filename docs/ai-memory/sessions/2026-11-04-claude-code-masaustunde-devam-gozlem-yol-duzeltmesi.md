@@ -30,7 +30,9 @@ Devir notuna göre sıradaki: Madde 6 (klasörsüz sohbette web_search/web_fetch
 - Tam takım (değişiklik sonrası) 785/787: `test_auto_mode::test_klasorsuz_oturuma_proje_klasoru_baglanir` eski
   "araç yok" kararını sınıyordu → yeni karara uyarlandı (dosya araçları yok, bağlanınca var); `test_db_recovery_monitor::
   test_icerik_degisikligi_tespit_edilir` yük altında kırıldı, tek başına 19/19 → kararsız (R-08), koda dokunulmadı.
-- Gerçek API (R-25) klasörsüz sohbet açık/kapalı: sonuç aşağıya eklenecek.
+- Gerçek API (R-25) klasörsüz sohbet: açık 2/2 (güncel soruda web_search+web_fetch, genel soruda araç 0), kapalı 2/2 (web_fetch 2) — CHALLENGE_RESULTS.md.
+
+- Dal sonu (R-21/R-13, son kod e86225a): zorluk auto-pro 12/12 (1117 sn) · e2e_real_api E2E_OK · e2e_ui 15/15 · e2e_agent 4/6 → glm native EVREN 503 model_capacity_exhausted (tek başına tekrar 2/2) ve bilinen deepseek metin protokolü kaydı; yani 5/6, önceki ölçümle aynı.
 
 ## Sorunlar ve kayıtlar
 - 2026-11-04-gozlem-temizleyici-depo-ev-klasorundeyken-kaynak-yolunu-gizl (çözüldü)
