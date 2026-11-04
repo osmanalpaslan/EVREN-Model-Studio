@@ -12,19 +12,13 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-04 22:35 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 7 YAPILDI — PR #41 AÇIK, birleşme bekliyor.
-- **Aktif dal:** `feat/hiz-adim-azaltma` (master b0998db üstünde; commit 7a51eaf, 256967a + belge). Kullanıcı (2026-11-04):
-  "önceliğim ajanların tutarlı ve doğru çalışması, hız da artsın; onay istemeden önerilerinle devam et, sıradaki
-  maddelere de". Yapılan: istem (bağımsız okumalar tek yanıtta) · tur içi kısaltma sert sınırın %70'inde (gözlem
-  a0d2b1645e16 çözüldü) · dürtmeden sonra da boş yanıt → yedek · çağrı içi damla akış → yedek aynı adımı yapar
-  (DECISIONS #121/#122). Ölçüm (CHALLENGE_RESULTS "Madde 7 hız"): zorluk ÖNCE 11/12 → SON 12/12 (damla kuralı celiski'de
-  1 kez, doğru); maraton F eşik 8000: 17/17, özet 3 → 1, 1228 → 1051 sn; R-13 arayüz 15/15, ajan 4/6 ve e2e_real_api
-  `auto` akışı EVREN 503 (sunucu; `api/` değişmedi); tam takım 814/815 → düşen ortak hafıza dizini (oturum günlüğü dizinden
-  sonra yazıldı) düzeltildi, tam takım tekrarı 815/815. PR #41 açıldı; birleştirme bu oturumda ENGELLENDİ (oturum ana
-  klasörde açıldığı için proje `.claude/settings.local.json` izni yüklenmedi) → kullanıcı GitHub'dan 'Merge pull request'
-  yapar ya da sohbet proje klasöründe açılınca motor birleştirir. Gözlemler a0d2b1645e16 (çözüldü), 3854d7522898 ve
-  6d629fb7f224 (kabul-edildi, sunucu) kapatıldı. Sıradaki: sonra Madde 6 listesinde kalan tek
-  kalem (`test_qa_araclari` kararsızlığı — tam koşularda izlenir). Plan dışı (kullanıcı kararı): Setup.exe, ücretli anahtar.
+- **Güncelleme:** 2026-11-04 23:30 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 12 SÜRÜYOR.
+- **Aktif dal:** `feat/claude-tarzi-arayuz` (master 48396e7 = PR #41 birleşti). Madde 12 (Claude Code tarzı arayüz,
+  zamanlayıcı, GitHub) — tablodaki satıra bak. YAPILDI: **12a Ayarlar menüleri** (sol menü + arama, 14 kategori,
+  `SettingsPage.CATEGORIES`, yeni ayar → `self._add(kategori, kart)`; tests/test_ayarlar_menu.py 16, mutasyon 6/6;
+  ui_denetim iki tema HATA 0, Ayarlar her menüsüyle ayrı ölçülüyor). Sıradaki: 12b kenar çubuğu (Claude Code düzeni:
+  üstte Yeni oturum / Zamanlanmış / ara; altta Ayarlar + "Diğer" menüsü) → 12c zamanlayıcı → 12d GitHub.
+  Gece kapatılan gözlemler: c9b5…/cbf0… (mini_proje, çözüldü), 70f7…/3235… (EVREN 503, kabul).
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı
   eklemesini anlat ya da PR'ları GitHub'dan ters sırayla (en üstteki önce) 'Merge pull request' ile birleştirt.
@@ -90,6 +84,7 @@ kritikse mutasyon + paket; R-13/R-21 gerçek ölçümler dal sonunda.
 | 10 | Doğruluk turu (kullanıcı 2026-11-03: "doğruluk ve sağlam iş bir tık daha önemli"; sıra: dalı kapat → doğruluk → güvenli hız) | YAPILDI | `feat/dogruluk-turu` | 10a YAPILDI: test dosyası koruması komutla değiştirme/silmeyi de yakalar (kayıt 2026-11-03-test-dosyasi-korumasi-…). 10b YAPILDI (`feat/faz-unutma-olcumu`): faz unutma maraton F'de 4 koşuda üretilemedi, gözleme `devam_zorunlu` eklendi. Sonra: Madde 8 (Derin Mod, aşama başına en güçlü model, `"high"` effort ölçümü); en son Madde 7 hız (önce EVREN yükünü ayır, yalnız doğruluğa dokunmayan kaldıraçlar, kod/plan rolünde effort DÜŞÜRÜLMEZ) |
 | 11 | Gözlem ajanı (kullanıcı 2026-11-03): uygulama/geliştirme sırasındaki hata ve anormallikleri temizleyip depoya gönder; geliştirme motoru görüp kullanıcıya bildirsin | YAPILDI | `feat/gozlem-ajani` (98c6cf2 +) | `src/evren_studio/gozlem.py`, `gozlem-kayitlari` dalı, `ai_memory.py gozlem …`, baslangic bildirimi, R-36. Ayrıntı: CHANGELOG "Gözlem ajanı" |
 | 9 | Sade sağlayıcı/API anahtarı ekranı | YAPILDI (birleşme bekliyor) | `feat/saglayici-ekle` | OpenRouter/Kilo/OpenAI uyumlu ağ geçitleri tek anahtarla; Sağlayıcı ekle penceresi + Modelleri getir; modeller seçicide, Auto Pro'ya GİRMEZ; gerçek anahtarla doğrulanmadı (R-17); test_saglayici_ekle 7, mutasyon 2, ui_denetim HATA 0 |
+| 12 | Claude Code tarzı arayüz (kullanıcı 2026-11-04 gece): (a) Ayarlar menülere bölünsün (sol menü, ilgili ayar ilgili menüde, yeni ayarlar da oraya) · (b) tasarımın tamamı Claude Code masaüstü gibi (kenar çubuğu düzeni) · (c) GÖREV ZAMANLAYICI: Claude Code masaüstündeki "Scheduled tasks" gibi görülebilen/yönetilebilen yapı · (d) GitHub bağlantısı tarayıcıyla (ücretsiz), entegrasyon | SÜRÜYOR | `feat/claude-tarzi-arayuz` | Sıra: A Ayarlar → B kenar çubuğu → C zamanlayıcı → D GitHub. Zamanlayıcı başvurusu: code.claude.com/docs/en/desktop-scheduled-tasks (Hourly/Daily/Weekdays/Weekly/Manual/Custom cron ≥1 sa; dakikada bir denetim; uygulama açıkken; kaçırılanlardan son 7 günde TEK telafi; Run now / Active-Paused / Edit / History (atlananlar nedenle) / Delete → oturumlar silinmez). GitHub: `gh auth login --web` (cihaz kodu, tarayıcı) + `gh auth setup-git` |
 
 ### Madde 5 planı — kota bitince otomatik devam
 Bugün: yalnız Proje/QA/Derin akışında (`project_ui.schedule_auto_resume`, Ayarlar'daki gizli `auto_resume`),

@@ -251,6 +251,13 @@ QPushButton[nav="true"]:hover {{ background: {p.hover}; color: {p.text}; }}
 QPushButton[nav="true"]:checked {{ background: {p.selected}; color: {p.text}; }}
 QPushButton#NewSession {{ text-align: left; padding: 8px 12px; font-weight: 600; }}
 
+/* ---- Ayarlar menüsü (Claude Code tarzı: sade liste, seçili satır yumuşak zemin) ---- */
+QListWidget#SettingsNav {{ background: transparent; border: none; outline: none; }}
+QListWidget#SettingsNav::item {{ padding: 7px 10px; border-radius: 8px; margin: 1px 0; color: {p.text_dim}; }}
+QListWidget#SettingsNav::item:hover {{ background: {p.hover}; color: {p.text}; }}
+QListWidget#SettingsNav::item:selected {{ background: {p.selected}; color: {p.text}; }}
+QLabel[role="h1"] {{ font-size: {font_pt + 4}pt; font-weight: 600; }}
+
 /* ---- sağ panel ---- */
 QWidget#SidePanel {{ background: {p.panel}; border-left: 1px solid {p.border}; }}
 QTabWidget#PanelTabs::pane {{ border: none; border-top: 1px solid {p.border}; }}

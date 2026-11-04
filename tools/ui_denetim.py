@@ -342,7 +342,17 @@ def denetle(tema: str, out: Path, goruntu: bool) -> list[dict]:
     for key, sayfa in w.pages.items():
         w.show_page(key)
         pump(0.6)
-        kaydir_ve_olc(f"sayfa_{key}", sayfa)
+        kategoriler = getattr(sayfa, "CATEGORIES", None)
+        if kategoriler and hasattr(sayfa, "open_category"):
+            # Ayarlar menülere bölündü (2026-11-04): her menü ayrı açılıp kaydırılarak ölçülür
+            for kat, *_ in kategoriler:
+                if sayfa.nav.item(sayfa._row_of(kat)).isHidden():
+                    continue
+                sayfa.open_category(kat)
+                pump(0.3)
+                kaydir_ve_olc(f"sayfa_{key}_{kat}", sayfa)
+        else:
+            kaydir_ve_olc(f"sayfa_{key}", sayfa)
     w.close()
     return sorted(bulgular, key=lambda b: (b["duzey"] != "HATA", b["oran"]))
 
