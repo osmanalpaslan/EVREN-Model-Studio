@@ -19,7 +19,6 @@ from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLay
 
 from ..agent import mcp as mcpmod
 from ..agent import qa
-from ..agent import router
 from ..agent.tools import ToolBox, Workspace
 from ..api.errors import ApiError
 from . import icons, theme
@@ -161,9 +160,12 @@ class QaController(QObject):
         return self.view.workspace if self.view.session_id else (self.view.workspace or self.view.welcome.workspace)
 
     def _evren_model(self, role: str) -> tuple[str, list[str], str]:
-        """Yalnız EVREN modelleri (oturum ücretli modelde olsa bile)."""
-        ids = {m for m in self.ctx.available_model_ids() if self.ctx.provider_of(m) == "evren"}
-        r = router.choose(role, available=ids or None)
+        """Yalnız EVREN modelleri (oturum ücretli modelde olsa bile). Madde 14: sağlık, bugünkü hız, kalite cezası,
+        motor karnesi puanı ve bugünkü yoklama zayıflığı hesaba katılır — önceden hiçbiri katılmıyordu ve QA hep
+        sabit tablonun ilk motorunu alıyordu (2026-11-05 gerçek QA: süre %84 model beklemesi)."""
+        r = self.ctx.ai_route(role, reason="QA", evren_only=True)
+        if r.reason and r.reason != "QA" and r.model:
+            self.view._note(f"QA motoru: {r.model} ({r.reason.removeprefix('QA · ')})", "spark")
         return r.model, r.fallbacks, role
 
     def _pw_config(self):
@@ -219,6 +221,8 @@ class QaController(QObject):
         if problem:
             sv._note(problem, "alert")
             return
+        if cmd in ("/qa", "/qa-masaustu") and not self._ready_or_confirmed(cmd, arg):
+            return
         if cmd in ("/qa", "/qa-masaustu"):
             self.plan(arg.strip(), target="masaustu" if cmd == "/qa-masaustu" else "web")
         elif cmd == "/qa-duzelt":
@@ -227,6 +231,25 @@ class QaController(QObject):
                 return
             self.plan(self.state.goal, feedback=arg.strip() or "Senaryoları daha net ve ölçülebilir yaz.",
                       target=self.state.target)
+
+    READY_CONFIRM_S = 300.0
+
+    def _ready_or_confirmed(self, cmd: str, arg: str) -> bool:
+        """QA motorlarının hepsi bugün zayıfsa uyarır ve başlamaz; kullanıcı AYNI komutu 5 dk içinde yeniden gönderirse
+        başlar (Madde 14, kullanıcı 2026-11-06: "motor kötüyse 'şu an QA için uygun değil' diyebiliriz")."""
+        ok, why = self.ctx.qa_readiness()
+        if ok:
+            return True
+        key = (cmd, arg.strip())
+        last = getattr(self, "_ready_warned", None)
+        now = time.monotonic()
+        if last and last[0] == key and now - last[1] <= self.READY_CONFIRM_S:
+            self._ready_warned = None
+            self.view._note("Uyarıya rağmen QA başlatılıyor.", "alert")
+            return True
+        self._ready_warned = (key, now)
+        self.view._note(why + " Yine de başlatmak için aynı komutu yeniden gönderin.", "alert")
+        return False
 
     def _auto_install_kind(self, target: str) -> str:
         """Gerekli test aracı eksik ve kullanıcı kapatmamışsa → kurulacak tür ("web" | "masaustu"), yoksa ""."""
@@ -290,7 +313,7 @@ class QaController(QObject):
         display = (f"QA ajanı · test planı isteği\n{self._goal}" if not feedback
                    else f"QA ajanı · plan düzeltme\n{feedback}")
         msg_id = self._add_user(qa.planning_prompt(self._goal, feedback, target), display, {"qa": "plan"})
-        model, fallbacks, role = self._evren_model("plan")
+        model, fallbacks, role = self._evren_model("qa")
         sv._turn_id = msg_id
         sv._turn_hook = self._plan_done
         sv.start_run(history_from=msg_id, mode_override="plan", model_override=(model, fallbacks, role))
@@ -494,7 +517,7 @@ class QaController(QObject):
         if not followup:
             self._scenario_msg = msg_id
         start_from = getattr(self, "_scenario_msg", msg_id) if followup else msg_id
-        model, fallbacks, role = self._evren_model("kod")
+        model, fallbacks, role = self._evren_model("qa")
         ws = Path(self._ws())
         s = self.ctx.settings
         pw = self._pw_config()

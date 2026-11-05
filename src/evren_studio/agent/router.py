@@ -48,6 +48,7 @@ ROLE_LABELS = {
     "oyun": "oyun",
     "web": "web",
     "metin": "Türkçe metin",
+    "qa": "QA testi",
 }
 
 # EVREN: 2026-10-19 ölçümü (12 görev, gerçek API; CHALLENGE_RESULTS.md "8 motor"):
@@ -90,6 +91,10 @@ EVREN_ROUTES: dict[str, list[str]] = {
     "oyun": ["qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
     "web": ["qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
     "metin": ["qwen3.8-flash-next", "gemma-4-31b", "deepseek-v4.1-flash"],
+    # Madde 14 (2026-11-06): QA testi. 2026-11-05 gerçek masaüstü QA'da süre %84 model beklemesiydi; QA "kod" rolünü
+    # kullanıyordu ve sağlık/hız bilgisi olmadan hep deepseek-v4.1-flash seçiliyordu (~43 sn/çağrı). Rol paketlerinde
+    # (2026-10-24) qwen3.8-flash-next hem en doğru hem en hızlıydı → önde. gemma QA kararında yok: zor işte hile yazdı.
+    "qa": ["qwen3.8-flash-next", "deepseek-v4.1-flash"],
 }
 ROUTES = EVREN_ROUTES               # eski ad
 ROUTES_MEASURED = "2026-10-21"
@@ -112,6 +117,7 @@ PAID_ROUTES: dict[str, list[str]] = {
     "oyun": ["claude-sonnet-5-5", "gpt-5.3-codex", "gpt-6.1-sol"],
     "web": ["claude-sonnet-5-5", "gpt-5.3-codex", "gpt-6.1-sol"],
     "metin": ["claude-sonnet-5-5", "gpt-6.1-sol", "claude-haiku-5-5"],
+    "qa": ["claude-sonnet-5-5", "gpt-6.1-sol", "claude-haiku-5-5"],
 }
 PAID_ROUTES_VERIFIED = False
 # Dengeli politika: bu rollerde (az token, yüksek değer) ücretli güçlü model önce gelir
@@ -121,6 +127,9 @@ PAID_FIRST_ROLES = {"plan", "inceleme", "gorsel"}
 TEXT_ONLY = {"glm-5.3", "deepseek-v4-flash"}
 BIG_CONTEXT_RATIO = 0.6
 HEALTH_FRESH = timedelta(minutes=30)
+# Motor karnesi puanı (Madde 14) yalnız karnenin ölçtüğü işlerde sırayı etkiler: zorluk paketi ajan/kod görevleri
+# ölçer; görsel, özet, başlık gibi işlerde bu puan anlamsızdır.
+SCORE_ROLES = {"kod", "kod_kolay", "plan", "veri", "web", "oyun", "inceleme", "qa"}
 
 # A10 tutarlılık (2026-10-24 ölçümü, tests/e2e_tutarlilik_real_api.py, aynı istem 3 kez): temperature=0 +
 # seed=42 YALNIZ gemma-4-31b'de yanıtı sabitledi (3/3 aynı); deepseek-v4.1-flash ve qwen3.8-flash-next her
@@ -215,17 +224,40 @@ def _unhealthy(health: dict[str, dict] | None, model: str, now: datetime) -> boo
 
 def choose(role: str, *, available: set[str] | None = None, health: dict[str, dict] | None = None,
            reason: str = "", now: datetime | None = None, penalties: dict[str, str] | None = None,
-           speeds: dict[str, float] | None = None, speed_factor: float = 2.0) -> Route:
+           speeds: dict[str, float] | None = None, speed_factor: float = 2.0,
+           scores: dict[str, float] | None = None, weak: dict[str, str] | None = None) -> Route:
     """Rol için birincil model + yedekler. Son 30 dk'da sağlıksız ölçülenler en sona, kalite puanı düşenler
-    (A5, `penalties`: model → gerekçe) sağlamların arkasına alınır; hiçbiri zincirden ÇIKARILMAZ."""
+    (A5, `penalties`: model → gerekçe) sağlamların arkasına alınır; hiçbiri zincirden ÇIKARILMAZ.
+
+    Madde 14 (kullanıcı 2026-11-06): `scores` (motor karnesi: modelin EN İYİ ölçüm günündeki gerçek puanı, 0-100)
+    en az iki aday puanlıysa puanlı adayları kendi yerlerinde puana göre dizer (puansızın yeri değişmez); `weak`
+    (bugünkü hafif yoklamada hatalı/aşırı yavaş: model → gerekçe) o modeli sağlam adayların arkasına alır — sıradaki
+    en güçlü yedek öne geçer. Zayıf rolde (modelstats.SLOW_SWITCH_EXCLUDE, ör. kodda gemma) zayıflık yüzünden öne
+    GEÇİLMEZ: yavaş ama güçlü model zayıf modelden iyidir."""
+    from . import modelstats
+
     now = now or datetime.now(timezone.utc)
     pen = penalties or {}
+    wk = weak or {}
+    sc = (scores or {}) if role in SCORE_ROLES else {}
     chain = chain_for(role, available)
+    note = reason
+    slots = [i for i, m in enumerate(chain) if m in sc]
+    if len(slots) >= 2:
+        before = [chain[i] for i in slots]
+        ranked = sorted(before, key=lambda m: -sc[m])             # eşit puanda tablo sırası korunur
+        for i, m in zip(slots, ranked):
+            chain[i] = m
+        if ranked != before:
+            note += " · gerçek puana göre: " + ", ".join(f"{m} {sc[m]:.0f}" for m in ranked)
     first = chain[0] if chain else ""
-    chain.sort(key=lambda m: (_unhealthy(health, m, now), m in pen))   # kararlı sıralama
+    excl = modelstats.SLOW_SWITCH_EXCLUDE.get(role, set())
+    any_weak = any(m in wk for m in chain)
+    chain.sort(key=lambda m: (_unhealthy(health, m, now), m in wk or (any_weak and m in excl), m in pen))
     if role == "gorsel":
         chain = [m for m in chain if m not in TEXT_ONLY] or chain
-    note = reason
+    if first in wk and chain and chain[0] != first:
+        note += f" · {first} bugün zayıf ({wk[first]}) → {chain[0]}"
     if first in pen and chain and chain[0] != first:
         note += f" · {first} geri alındı: {pen[first]}"
     if chain and _unhealthy(health, chain[0], now):
@@ -235,7 +267,7 @@ def choose(role: str, *, available: set[str] | None = None, health: dict[str, di
     sp = speeds or {}
     if len(chain) > 1 and sp.get(chain[0]):
         fast = [m for m in chain[1:] if sp.get(m) and sp[m] >= sp[chain[0]] * speed_factor
-                and not _unhealthy(health, m, now) and m not in pen]
+                and not _unhealthy(health, m, now) and m not in pen and m not in wk]
         if fast:
             best = max(fast, key=lambda m: sp[m])
             note += (f" · {chain[0]} bugün yavaş ({sp[chain[0]]:.0f} token/sn) → {best} öne alındı "
@@ -251,11 +283,13 @@ def route(*, agentic: bool, mode: str = "", has_images: bool = False, est_tokens
           context_of: dict[str, int] | None = None, available: set[str] | None = None,
           health: dict[str, dict] | None = None, level: str = "", level_reason: str = "",
           kind: str = "", kind_reason: str = "", penalties: dict[str, str] | None = None,
-          speeds: dict[str, float] | None = None) -> Route:
+          speeds: dict[str, float] | None = None, scores: dict[str, float] | None = None,
+          weak: dict[str, str] | None = None) -> Route:
     role, reason = classify(agentic=agentic, mode=mode, has_images=has_images,
                             est_tokens=est_tokens, context_of=context_of, available=available,
                             level=level, level_reason=level_reason, kind=kind, kind_reason=kind_reason)
-    r = choose(role, available=available, health=health, reason=reason, penalties=penalties, speeds=speeds)
+    r = choose(role, available=available, health=health, reason=reason, penalties=penalties, speeds=speeds,
+               scores=scores, weak=weak)
     r.level = level
     return r
 

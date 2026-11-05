@@ -1,5 +1,19 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Motor karnesi ve akıllı yönlendirme (Madde 14)
+
+- **Motor karnesi**: motorlara gerçek görev paketiyle 0-100 puan verilir (doğruluk önce, sonra hız). Ölçüm yalnız
+  motorun o gün iyi durumda olduğu günlerde gerçek puan sayılır; her motorun puanı en iyi gününün ölçümüdür. Ölçüm:
+  `tools\motor_karnesi.py olc <motor>` (motor bugün iyi değilse ertelenir), görüntüleme: `... goster`.
+- **Auto Pro sırasını puan ve günlük yoklama yönetir**: en az iki motor puanlıysa sıra puana göre kurulur; açılıştaki
+  hafif yoklamada hata veren ya da normalinden çok yavaş kalan motor o gün sıranın arkasına alınır, sıradaki en güçlü
+  yedek öne geçer (gerekçe notta yazar). Kod işinde zayıf ama "hileci" motor (gemma) bu yüzden öne geçmez.
+- **QA daha hızlı**: QA artık kendi motorunu sağlık, hız ve puanla seçer (önceden hep aynı yavaş motoru alıyordu);
+  QA rolünde hızlı ve doğru motor önde. Senaryo sayısı isteğin büyüklüğüne göre (kısa istek 2-4, kapsamlı istek 12'ye
+  kadar; "en fazla N senaryo" yazarsanız ona uyulur). QA motorlarının hepsi o gün zayıfsa test başlamadan söylenir;
+  aynı komutu yeniden gönderirseniz yine de başlar.
+- Henüz gerçek API ile ölçülmedi (motorlar bakımda; ilk ölçüm 2026-11-06 19:00-20:00).
+
 ## Yayınlanmamış — Masaüstü kontrolü ve masaüstü uygulaması testi (Madde 13)
 
 - **Masaüstü kontrolü (isteğe bağlı)**: Ayarlar > Bağlayıcılar (MCP) > "Masaüstü kontrolünü kur" ile açık kaynak

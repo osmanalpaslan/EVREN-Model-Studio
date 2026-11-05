@@ -104,6 +104,18 @@ CREATE TABLE IF NOT EXISTS model_calls (
     detail TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_model_calls_at ON model_calls(at);
+-- Madde 14 motor karnesi (2026-11-06): belirlenmiş ölçüm günlerinde gerçek görev paketiyle ölçülen puan.
+-- good_day = ölçüm anında hafif yoklama motoru "iyi" buldu mu (yalnız iyi gün ölçümleri gerçek puan sayılır).
+CREATE TABLE IF NOT EXISTS model_scores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT NOT NULL,
+    model TEXT NOT NULL,
+    suite TEXT NOT NULL,
+    score REAL NOT NULL,
+    good_day INTEGER NOT NULL DEFAULT 1,
+    details TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_model_scores_model ON model_scores(model);
 CREATE TABLE IF NOT EXISTS skills (
     slug TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -585,6 +597,18 @@ class Database:
 
     def all_model_health(self) -> list[sqlite3.Row]:
         return self._exec("SELECT * FROM model_health ORDER BY model").fetchall()
+
+    # ---- Madde 14: motor karnesi ------------------------------------------------------------
+
+    def add_model_score(self, model: str, suite: str, score: float, *, good_day: bool = True,
+                        details: str | None = None) -> None:
+        self._exec("INSERT INTO model_scores(at, model, suite, score, good_day, details) VALUES(?,?,?,?,?,?)",
+                   (utcnow_iso(), model, suite, float(score), int(good_day), details))
+        self._commit()
+
+    def model_scores(self, days: float = 60.0) -> list[dict]:
+        sql = ("SELECT * FROM model_scores WHERE at >= strftime('%Y-%m-%dT%H:%M:%S', 'now', ?) ORDER BY id")
+        return [dict(r) for r in self._exec(sql, (f"-{float(days)} days",)).fetchall()]
 
     # ---- Dışa aktarma -----------------------------------------------------
 

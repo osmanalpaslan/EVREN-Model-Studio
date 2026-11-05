@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 106 · Açık/izlenen: 7 · Oturum: 41 · Kural: 36
+Kayıt: 106 · Açık/izlenen: 7 · Oturum: 42 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -131,6 +131,7 @@ Kayıt: 106 · Açık/izlenen: 7 · Oturum: 41 · Kural: 36
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-11-06 | [2026-11-06-claude-code-madde-14-motor-karnesi-ve-akilli-yonlend](sessions/2026-11-06-claude-code-madde-14-motor-karnesi-ve-akilli-yonlend.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 14 motor karnesi ve akilli yonlendirme |
 | 2026-11-05 | [2026-11-05-claude-code-masaustu-madde-13-masaustu-kontrolu-windows-mcp-v](sessions/2026-11-05-claude-code-masaustu-madde-13-masaustu-kontrolu-windows-mcp-v.md) | Claude Code (masaüstü) / claude-opus-5-5 | devam-ediyor | Madde 13 masaüstü kontrolü (Windows-MCP) ve masaüstü QA |
 | 2026-11-05 | [2026-11-05-claude-code-masaustu-madde-12-claude-code-tarzi-arayuz-zamanl](sessions/2026-11-05-claude-code-masaustu-madde-12-claude-code-tarzi-arayuz-zamanl.md) | Claude Code (masaüstü) / claude-opus-5-5 | tamamlandi | Madde 12 Claude Code tarzı arayüz, zamanlayıcı, GitHub |
 | 2026-11-04 | [2026-11-04-claude-code-masaustunde-devam-gozlem-yol-duzeltmesi](sessions/2026-11-04-claude-code-masaustunde-devam-gozlem-yol-duzeltmesi.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Masaüstünde devam: gözlem yol düzeltmesi, klasörsüz sohbette web arama |

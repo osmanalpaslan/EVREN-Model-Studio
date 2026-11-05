@@ -269,8 +269,9 @@ class AppContext:
         ids |= {m.id for m in self.paid_models if m.provider in provs}
         return ids
 
-    def ai_route(self, role: str, reason: str = ""):
-        """Uygulamanın kendi yapay zekâ işi veya Auto Pro turu için rota (router.choose)."""
+    def ai_route(self, role: str, reason: str = "", evren_only: bool = False):
+        """Uygulamanın kendi yapay zekâ işi veya Auto Pro turu için rota (router.choose). `evren_only`: yalnız EVREN
+        modelleri (ör. QA — oturum ücretli modelde olsa bile)."""
         from ..agent import router
 
         health = {}
@@ -278,8 +279,46 @@ class AppContext:
             health = {r["model"]: dict(r) for r in self.db.all_model_health()}
         except Exception:
             pass
-        return router.choose(role, available=self.available_model_ids() or None, health=health, reason=reason,
-                             penalties=self.model_penalties(), speeds=self.model_speeds())
+        avail = self.available_model_ids()
+        if evren_only:
+            avail = {m for m in avail if self.provider_of(m) == "evren"}
+        return router.choose(role, available=avail or None, health=health, reason=reason,
+                             penalties=self.model_penalties(), speeds=self.model_speeds(),
+                             scores=self.model_scores(), weak=self.model_weak())
+
+    # ---- Madde 14: motor karnesi ---------------------------------------------------------------
+
+    def model_scores(self) -> dict[str, float]:
+        """Motor karnesi: model → gerçek puan (iyi-gün ölçümlerinin en yükseği; hata → boş)."""
+        from ..agent import karne
+
+        try:
+            return karne.best_scores(self.db.model_scores(karne.SCORE_DAYS))
+        except Exception:
+            return {}
+
+    def model_weak(self) -> dict[str, str]:
+        """Bugünkü hafif yoklamada zayıf motorlar → gerekçe (hata → boş)."""
+        from ..agent import karne
+
+        try:
+            return karne.weak_models(self.db.recent_model_calls(24 * self.db.MODEL_CALLS_KEEP_DAYS))
+        except Exception:
+            return {}
+
+    def qa_readiness(self) -> tuple[bool, str]:
+        """QA'dan önce: QA zincirindeki EVREN motorlarının HEPSİ bugün zayıf/sorunluysa (False, açıklama).
+        Kullanıcı 2026-11-06: "motor kötüyse 'şu an QA için uygun değil' diyebiliriz"."""
+        from ..agent import router
+
+        weak = self.model_weak()
+        avail = {m for m in self.available_model_ids() if self.provider_of(m) == "evren"}
+        chain = router.chain_for("qa", avail or None)
+        if not chain or not all(m in weak for m in chain):
+            return True, ""
+        why = "; ".join(f"{m}: {weak[m]}" for m in chain)
+        return False, ("QA motorları şu an yavaş ya da sorunlu görünüyor (son hafif yoklama — " + why + "). Test "
+                       "uzun sürebilir ya da yarıda kalabilir; motorlar düzelince denemeniz önerilir.")
 
     def ai_chat(self, role: str, messages: list[dict], max_tokens: int = 800,
                 session_id: int | None = None, evren_only: bool = False) -> tuple[str, str]:

@@ -85,6 +85,35 @@ class QaState:
         return out
 
 
+# ---- senaryo sayısı (Madde 14, kullanıcı 2026-11-06: "basit bir şey için dakikalarca beklememeli") --------------
+# 2026-11-05 gerçek masaüstü QA: "Topla işlevini test et" gibi tek işlevlik istekte 12 senaryo planlandı, 50 dk'da
+# yalnız 3'ü bitti. Senaryo sayısı isteğin büyüklüğüne göre: kısa/tek işlev → az, "tüm uygulama/kapsamlı" → çok.
+_SMALL_RE = re.compile(r"\b(?:tek|sadece|yalnız|yalniz|basit|hızlı|hizli|kısaca|kisaca)\b", re.I)
+_BIG_RE = re.compile(r"tüm uygulama|bütün uygulama|tum uygulama|kapsamlı|kapsamli|baştan sona|her şey|her sey|"
+                     r"tüm (?:sayfa|ekran|işlev|özellik)|bütün (?:sayfa|ekran|işlev|özellik)|detaylı|ayrıntılı", re.I)
+_CAP_RE = re.compile(r"en fazla\s+(\d{1,2})\s*senaryo", re.I)
+
+
+def scenario_range(goal: str) -> tuple[int, int, str]:
+    """(en az, en çok, gerekçe) — planlama istemine yazılır."""
+    g = (goal or "").strip()
+    cap = _CAP_RE.search(g)
+    if cap:
+        hi = max(1, min(int(cap.group(1)), MAX_SCENARIOS))
+        return min(2, hi), hi, f"kullanıcı en fazla {hi} senaryo istedi"
+    if _BIG_RE.search(g) or len(g) > 400:
+        return 6, MAX_SCENARIOS, "kapsamlı test istendi"
+    if _SMALL_RE.search(g) or len(g) < 120:
+        return 2, 4, "kısa/odaklı istek: kullanıcı dakikalarca beklememeli"
+    return 3, 7, "orta büyüklükte istek"
+
+
+def _scenario_rule(goal: str) -> str:
+    lo, hi, why = scenario_range(goal)
+    return (f"- {lo} ile {hi} arasında senaryo ({why}); en önemli işlevden başla, aynı şeyi iki kez deneyen senaryo "
+            "yazma.")
+
+
 # ---- istemler ---------------------------------------------------------------------------------
 
 def planning_prompt(goal: str, feedback: str = "", target: str = "web") -> str:
@@ -104,7 +133,7 @@ SONUNA tek bir <qa_plan> bloğu koy; içinde yalnız şu JSON olsun:
   ]}}
 </qa_plan>
 Kurallar:
-- 4 ile {MAX_SCENARIOS} arasında senaryo; her ana işlev en az bir senaryo.
+{_scenario_rule(goal)}
 - Gerçek bir test uzmanı gibi UÇ DURUMLAR ekle: boş/eksik giriş, çok uzun metin, Türkçe karakter
   (ğüşıöç İ), geçersiz değer, art arda hızlı tıklama, sayfayı yenileme/geri gitme.
 - Adımlar tarayıcıda yapılabilir olsun (aç, tıkla, yaz, bekle, denetle); kod değiştirme adımı yazma.
@@ -289,7 +318,7 @@ bul (ör. "python app.py", "dist\\Uygulama.exe" ya da Başlat menüsündeki adı
   ]}}
 </qa_plan>
 Kurallar:
-- 4 ile {MAX_SCENARIOS} arasında senaryo; her ana işlev en az bir senaryo.
+{_scenario_rule(goal)}
 - Gerçek bir test uzmanı gibi UÇ DURUMLAR ekle: boş/eksik giriş, çok uzun metin, Türkçe karakter (ğüşıöç İ),
   geçersiz değer (harf yerine sayı vb.), art arda hızlı tıklama, pencereyi küçültüp büyütme, kapatırken kaydetme sorusu.
 - Adımlar masaüstünde yapılabilir olsun (aç, tıkla, yaz, bekle, denetle); kod değiştirme adımı yazma.
