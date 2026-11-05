@@ -161,12 +161,18 @@ def run_qa(app, w, hatali: bool) -> tuple[bool, dict]:
     w.new_session()
     w.session.welcome._choose(str(proj))
     w.session.set_mode("auto")
-    w.session.send("/qa-masaustu Topla işlevini test et: iki sayının toplamı doğru mu, harf girilince ne oluyor")
+    w.session.send("/qa-masaustu Topla işlevini test et: iki sayının toplamı doğru mu, harf girilince ne oluyor. "
+                   "En fazla 4 senaryo yeter.")
     if not wait_idle(app, w, 10 * 60) or w.session.qa.state is None:
         print("KALDI | QA planı çıkmadı")
         return False, {}
     w.session.qa.start()
-    wait_idle(app, w, 40 * 60)
+    if not wait_idle(app, w, 40 * 60):
+        # 2026-11-05 ilk QA koşusu: süre dolunca QA durdurulmadı, arka planda sürdü ve "doğru sürüm" denemesi hiç
+        # başlamadı (aynı oturumda hatalı sürüm denenmeye devam etti) → durdur ve bitmesini bekle
+        print("   (süre doldu: QA durduruluyor)")
+        w.session.qa.stop()
+        wait_idle(app, w, 5 * 60)
     st = w.session.qa.state
     counts = st.counts()
     print(f"QA ({'HATALI' if hatali else 'DOĞRU'} sürüm): {counts} · senaryo {len(st.scenarios)}")

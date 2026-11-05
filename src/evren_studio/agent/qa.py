@@ -507,6 +507,8 @@ class DesktopQaTools:
         self.shots = Path(shots_dir)
         self.shots_taken: list[str] = []
 
+    _sleep = staticmethod(time.sleep)                  # testler küçültür
+
     def specs(self, read_only_only: bool = False) -> list[ToolSpec]:
         return [DESKTOP_VISUAL_SPEC] if self.vision is not None else []
 
@@ -518,12 +520,22 @@ class DesktopQaTools:
             return ToolResult(False, f"Bilinmeyen araç: {call.name}", "Bilinmeyen araç")
         q = str((call.arguments or {}).get("question") or "").strip() or "Ekranda görünür bir sorun var mı?"
         path = self.shots / f"masaustu-{datetime.now().strftime('%H%M%S')}-{len(self.shots_taken) + 1}.png"
-        try:
-            res = self.manager.call(self.cfg, self.root, "Screenshot", {})
-        except McpError as exc:
-            return ToolResult(False, f"Ekran görüntüsü alınamadı: {exc}", "Görsel göz: hata")
-        if not save_mcp_image(res, path):
-            return ToolResult(False, "Ekran görüntüsü alınamadı (araç görsel döndürmedi).", "Görsel göz: görüntü yok")
+        res: dict = {}
+        for attempt in range(2):          # 2026-11-05 gerçek QA: 5 görsel kontrolün bazıları görselsiz döndü → bir kez daha
+            try:
+                res = self.manager.call(self.cfg, self.root, "Screenshot", {})
+            except McpError as exc:
+                return ToolResult(False, f"Ekran görüntüsü alınamadı: {exc}", "Görsel göz: hata")
+            if save_mcp_image(res, path):
+                break
+            if attempt == 0:
+                self._sleep(2.0)
+        else:
+            from .mcp import result_text
+
+            why = (result_text(res)[0] or "").strip()[:400]
+            return ToolResult(False, "Ekran görüntüsü alınamadı (araç görsel döndürmedi)."
+                              + (f" Sunucunun yanıtı: {why}" if why else ""), "Görsel göz: görüntü yok")
         self.shots_taken.append(str(path))
         answer = self.vision(q, str(path)) if self.vision else ""
         return ToolResult(True, f"Görsel model yanıtı (ekran görüntüsü: {path.name}):\n{answer}",

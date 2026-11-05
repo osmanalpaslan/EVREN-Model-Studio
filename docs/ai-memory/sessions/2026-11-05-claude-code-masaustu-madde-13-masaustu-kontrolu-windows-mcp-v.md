@@ -95,6 +95,15 @@ ekleyebilir miyiz? Benzer ücretsiz repolardan destek al; en iyisini, en başar�
   aracını ekler (pencerenin düz yazıları + konumları); gerçek Qt penceresinde 6,5-8 sn, "Durum: hazır" okundu. Sınır:
   uygulama etikete erişilebilir ad verdiyse Windows yalnız adı bildirir (gerçek UIA incelemesi). e2e süresi 15 dk.
 
+- 9. deneme (22:16): **5/5 · 740 sn** — ajan `WindowText` ile "Sonuç: 5" okudu; Alt+F4 kapatmadı, kendi
+  sürecini kimliğiyle kapattı. Ayrıntı: docs/knowledge/CHALLENGE_RESULTS.md.
+
+- QA 1. deneme (22:31, geçersiz): hatalı sürümde QA hatayı DOĞRU buldu (3 senaryo kaldı: "2+3 → -1", "-4+6 → -10"),
+  ama 50 dk'da 12 senaryonun 3'ü bitti: süre %84 model beklemesi (65 çağrının 52'si deepseek-v4.1-flash, ~43 sn/çağrı),
+  Snapshot toplam 260 sn. Test düzeneği hatası: süre dolunca QA durdurulmadı, "doğru sürüm" denemesi hiç başlamadı →
+  betik QA'yı durdurup bekler, plan en fazla 4 senaryo. visual_check bazen görselsiz döndü ve nedeni yutuyordu → bir kez
+  yeniden dener, sunucunun yanıtını yazar (mutasyon 2/2). Öneri (kullanıcı kararı): QA rolünde hızlı model önceliği.
+
 ## Sorunlar ve kayıtlar
 - Engel (kayıt gerektirmez): motorun ortamında masaüstü kontrol sunucusunu başlatmak kullanıcı izni ister.
 

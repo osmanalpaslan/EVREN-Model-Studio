@@ -261,8 +261,25 @@ def test_gorsel_goz_ekran_goruntusunu_kaydeder_ve_gorsel_modele_sorar(tmp_path):
 def test_gorsel_goz_goruntu_yoksa_hata_gorsel_model_yoksa_sunulmaz(tmp_path):
     mgr = _Mgr({"content": [{"type": "text", "text": "ekran yok"}]})
     tools = qa.DesktopQaTools(mgr, mcp.windows_config(), tmp_path, lambda q, p: "x", tmp_path / "s")
+    tools._sleep = lambda s: None
     res = tools.run(_Call(question="?"))
     assert not res.ok and "görsel döndürmedi" in res.content
+    assert "ekran yok" in res.content and mgr.calls == ["Screenshot", "Screenshot"]   # neden söylenir, bir kez yeniden
+
+
+def test_gorsel_goz_ilk_denemede_gorsel_gelmezse_ikincide_alir(tmp_path):
+    img = {"content": [{"type": "image", "data": base64.b64encode(PNG).decode(), "mimeType": "image/png"}]}
+
+    class Seq(_Mgr):
+        def call(self, cfg, root, tool, args):
+            self.calls.append(tool)
+            return {"content": [{"type": "text", "text": "meşgul"}]} if len(self.calls) == 1 else img
+
+    mgr = Seq(None)
+    tools = qa.DesktopQaTools(mgr, mcp.windows_config(), tmp_path, lambda q, p: "evet", tmp_path / "s")
+    tools._sleep = lambda s: None
+    res = tools.run(_Call(question="?"))
+    assert res.ok and mgr.calls == ["Screenshot", "Screenshot"]
     assert qa.DesktopQaTools(mgr, None, tmp_path, None, tmp_path).specs() == []
     assert not qa.save_mcp_image({"content": [{"type": "image", "data": ""}]}, tmp_path / "x.png")
     assert not qa.save_mcp_image({"content": [{"type": "image", "data": "===="}]}, tmp_path / "y.png")  # boş çözülür

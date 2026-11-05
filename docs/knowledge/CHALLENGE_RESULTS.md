@@ -84,6 +84,23 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Masaüstü kontrolü gerçek deneme (2026-11-05, Madde 13, `tests/e2e_masaustu_real_api.py`, Auto Pro, Windows-MCP 0.8.8)
+
+Görev: "şu Qt uygulamasını aç, 2 ve 3 yaz, Topla'ya bas, sonucu söyle, pencereyi kapat"; kabul modelden bağımsız
+(uygulamanın yazdığı sonuc.txt = 5, pencere kapandı mı). 9 deneme; her düşüş kök nedeniyle düzeltildi:
+
+| Deneme | Sonuç | Kök neden → düzeltme |
+|---|---|---|
+| 1 | sunucu açılmadı | README'deki `--control-policy` 0.8.8'de yok → seçenek kaldırıldı, kurulumda `--help` denetimi |
+| 2-3 | uydurma "Sonuç: 5" | model göremediği ekran görüntüsünden uydurdu; Tk penceresi UIA'ya içini göstermiyor → Screenshot sunulmuyor, görsel yer tutucu, Qt test uygulaması |
+| 3 | End basıldı | caret_position "end" → End (kullanıcının ekran yakalaması) → engelli tuşlar (varsayılan End) |
+| 4-6 | Snapshot 90 sn yanıtsız | askıdaki VS Code + dwm hayalet penceresi; 0.8.8 atlama listesini pencere listesinde uygulamıyor → `wmcp_baslatici.py` |
+| 7 | pencere oluşmadı | e2e betiğinin `QT_QPA_PLATFORM=offscreen` ayarı açılan uygulamaya geçti → test düzeneği düzeltildi |
+| 8 | 2/5 (uygulama 5 hesapladı) | etiket metni Snapshot'ta yok (0.8.8 yalnız tarayıcıda verir) → salt-okunur `WindowText` aracı; kullanıcı donmada fareyi kullandı → ajan ~63 sn bekleyip sürdü (devralma gerçek doğrulandı) |
+| **9** | **5/5 · 740 sn** | 24 araç (18 masaüstü); `test_araci_ac` YOK (görevde masaüstü sözcüğü vardı, araç baştan sunuldu); sonuç `WindowText` ile "Sonuç: 5" okundu; Alt+F4 pencereyi kapatmadı → ajan kendi başlattığı süreci kimliğini doğrulayıp kapattı |
+
+Her Snapshot bu bilgisayarda ~16 sn (çok pencere); askıdaki pencere dururken de tamamlanıyor.
+
 ## Zamanlanmış görev gerçek çalıştırma (2026-11-05, Madde 12c, `tests/e2e_zamanlayici_real_api.py`)
 
 Elle görev → "Şimdi çalıştır" → görünmez gözetimsiz oturumda Auto Pro (deepseek-v4.1-flash seçti): **6/6** · 37 sn ·
