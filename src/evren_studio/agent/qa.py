@@ -13,6 +13,9 @@ Akış (kullanıcı kararı 2026-10-19: masaüstü değil, web kısmı gerçek Q
 
 Yalnız EVREN modelleriyle çalışır (ücretli sağlayıcıyla MCP/QA yok — kullanıcı kararı).
 Arayüz bağlantısı: ui/qa_ui.py.
+
+Madde 13 (2026-11-05): hedef "masaustu" — Windows masaüstü uygulaması (Windows-MCP: Snapshot/Click/Type/App) aynı
+akışla denenir; görsel göz masaüstü ekran görüntüsünü kullanır (DesktopQaTools). Web QA davranışı değişmez.
 """
 from __future__ import annotations
 
@@ -64,6 +67,7 @@ class QaState:
     started_at: str = ""
     finished_at: str = ""
     log: list[str] = field(default_factory=list)
+    target: str = "web"                   # "web" | "masaustu" (eski kayıtlar web)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -83,8 +87,10 @@ class QaState:
 
 # ---- istemler ---------------------------------------------------------------------------------
 
-def planning_prompt(goal: str, feedback: str = "") -> str:
+def planning_prompt(goal: str, feedback: str = "", target: str = "web") -> str:
     fb = f"\n\nKullanıcının önceki plana geri bildirimi: {feedback}" if feedback else ""
+    if target == "masaustu":
+        return desktop_planning_prompt(goal, fb)
     return f"""QA PLANI İSTEĞİ — bu turda hiçbir dosyayı değiştirme, yalnız incele.
 
 Hedef: {goal or "web uygulamasının ana işlevlerini test et"}{fb}
@@ -106,6 +112,8 @@ Kurallar:
 
 
 def scenario_prompt(state: QaState, sc: Scenario, done: list[Scenario], services: str = "") -> str:
+    if state.target == "masaustu":
+        return desktop_scenario_prompt(state, sc, done)
     prev = "\n".join(f"- {s.idx}. {s.title}: {STATUS_LABEL[s.status]}" for s in done[-6:]) or "- (ilk senaryo)"
     steps = "\n".join(f"  {i}. {s}" for i, s in enumerate(sc.steps, 1)) or "  (adım verilmedi; başlığa göre dene)"
     return f"""QA SENARYOSU {sc.idx}/{len(state.scenarios)} — gerçek bir test uzmanı gibi dene. DOSYA DEĞİŞTİRME
@@ -249,7 +257,8 @@ def render_report(state: QaState) -> str:
     fails = [s for s in state.scenarios if s.status == "kaldi"]
     if fails:
         out += ["## Düzeltilecekler", ""] + [f"- [{s.idx}] {s.title}: {s.actual or s.summary}" for s in fails] + [""]
-    out.append("_EVREN Studio QA ajanı tarafından üretildi; kanıtlar modelin tarayıcıda gözlemidir._")
+    where = "masaüstünde" if getattr(state, "target", "web") == "masaustu" else "tarayıcıda"
+    out.append(f"_EVREN Studio QA ajanı tarafından üretildi; kanıtlar modelin {where} gözlemidir._")
     return "\n".join(out)
 
 
@@ -258,8 +267,66 @@ def fix_goal(state: QaState) -> str:
     fails = [s for s in state.scenarios if s.status == "kaldi"]
     items = "\n".join(f"- {s.title}: beklenen '{s.expected}', gerçekleşen '{s.actual}'. Kanıt: {s.evidence[:300]}"
                       for s in fails)
+    where = "uygulamayı çalıştırıp masaüstünde" if state.target == "masaustu" else "tarayıcıda"
     return ("QA testinde bulunan hataları düzelt (rapor: EVREN_QA_RAPORU.md). Her düzeltmeden sonra davranışı "
-            f"tarayıcıda doğrula:\n{items}")
+            f"{where} doğrula:\n{items}")
+
+
+# ---- masaüstü QA istemleri (Madde 13) -------------------------------------------------------------
+
+def desktop_planning_prompt(goal: str, fb: str = "") -> str:
+    return f"""QA PLANI İSTEĞİ (MASAÜSTÜ UYGULAMASI) — bu turda hiçbir dosyayı değiştirme, yalnız incele.
+
+Hedef: {goal or "masaüstü uygulamasının ana işlevlerini test et"}{fb}
+
+Proje klasörünü incele (README, giriş dosyası, .exe/.bat, arayüz kodu). Uygulamanın Windows'ta NASIL AÇILACAĞINI
+bul (ör. "python app.py", "dist\\Uygulama.exe" ya da Başlat menüsündeki adı). Sonra yanıtının SONUNA tek bir
+<qa_plan> bloğu koy; içinde yalnız şu JSON olsun:
+<qa_plan>
+{{"calistirma": "uygulama nasıl açılır: ör. 'exe: dist\\HesapAraci.exe' veya 'komut: python app.py (pencere başlığı: Hesap)'",
+  "senaryolar": [
+    {{"baslik": "kısa ad", "adimlar": ["1. adım", "2. adım"], "beklenen": "doğru davranış"}}
+  ]}}
+</qa_plan>
+Kurallar:
+- 4 ile {MAX_SCENARIOS} arasında senaryo; her ana işlev en az bir senaryo.
+- Gerçek bir test uzmanı gibi UÇ DURUMLAR ekle: boş/eksik giriş, çok uzun metin, Türkçe karakter (ğüşıöç İ),
+  geçersiz değer (harf yerine sayı vb.), art arda hızlı tıklama, pencereyi küçültüp büyütme, kapatırken kaydetme sorusu.
+- Adımlar masaüstünde yapılabilir olsun (aç, tıkla, yaz, bekle, denetle); kod değiştirme adımı yazma.
+- "beklenen" ölçülebilir olsun (ör. "sonuç kutusunda 5 yazar", "hata iletisi çıkar", "pencere donmaz")."""
+
+
+def desktop_scenario_prompt(state: QaState, sc: Scenario, done: list[Scenario]) -> str:
+    prev = "\n".join(f"- {s.idx}. {s.title}: {STATUS_LABEL[s.status]}" for s in done[-6:]) or "- (ilk senaryo)"
+    steps = "\n".join(f"  {i}. {s}" for i, s in enumerate(sc.steps, 1)) or "  (adım verilmedi; başlığa göre dene)"
+    return f"""QA SENARYOSU {sc.idx}/{len(state.scenarios)} (MASAÜSTÜ UYGULAMASI) — gerçek bir test uzmanı gibi dene.
+DOSYA DEĞİŞTİRME (yazma araçları kapalı); hatayı düzeltme, yalnız bul ve kanıtla.
+
+Uygulama nasıl açılır: {state.run_hint or "proje klasörüne bak"}
+Senaryo: {sc.title}
+Adımlar:
+{steps}
+Beklenen: {sc.expected or "uygulama hatasız çalışır"}
+
+Önceki senaryolar:
+{prev}
+
+Nasıl (masaüstü araçları `mcp__masaustu__*`):
+- Uygulama açık değilse aç: .exe/Başlat menüsü adı için mcp__masaustu__App; "python app.py" gibi komutsa
+  start_service ile başlat (pencere açılır). Zaten açıksa YENİDEN AÇMA.
+- mcp__masaustu__Snapshot ile pencereyi ve öğeleri (ad, tür, koordinat) oku → Click / Type → her önemli
+  adımdan sonra yeniden Snapshot ile sonucu DENETLE. Yalnız test edilen uygulamanın penceresinde işlem yap.
+- Görünüm önemliyse (kesik yazı, taşma, görünmeyen düğme) visual_check ile sor.
+- Varsayım yapma: ekranda gördüğünü yaz. Adım yapılamıyorsa nedenini yaz.
+- Senaryo bitince açtığın iletişim kutularını kapat; sonraki senaryo için uygulama açık kalabilir.
+
+Yanıtının SONUNA tek bir <qa_sonuc> bloğu koy (yalnız JSON):
+<qa_sonuc>
+{{"sonuc": "gecti | kaldi | engellendi",
+  "gerceklesen": "ne oldu (kısa, somut)",
+  "kanit": "ekrandaki metin / iletişim kutusu / öğe durumu",
+  "ozet": "tek cümle"}}
+</qa_sonuc>"""
 
 
 # ---- QA araçları (görsel göz, denetimler) --------------------------------------------------------
@@ -400,6 +467,67 @@ class QaTools:
             except (ValueError, AttributeError):
                 out.append(f"npm audit okunamadı (çıkış {code}).")
         return "\n".join(out)
+
+
+DESKTOP_VISUAL_SPEC = ToolSpec(
+    "visual_check", READ,
+    "Masaüstünün (test edilen uygulama penceresinin) ekran görüntüsünü alır ve görsel okuyabilen bir modele SORAR "
+    "(ör. 'Kaydet düğmesi görünüyor mu?', 'yazı kesik mi?', 'hata iletisi ne diyor?'). Snapshot'ın metin olarak "
+    "veremediği görünüm sorunları için; her çağrı ek kota harcar, gerektiğinde kullan.",
+    {"type": "object", "properties": {"question": {"type": "string", "description": "Ekrana dair somut soru"}},
+     "required": ["question"]})
+
+
+def save_mcp_image(result: dict, path: Path) -> bool:
+    """MCP araç sonucundaki ilk görseli (base64) dosyaya yazar. Görsel yoksa False."""
+    import base64
+
+    for item in (result or {}).get("content") or []:
+        if isinstance(item, dict) and item.get("type") == "image" and item.get("data"):
+            try:
+                data = base64.b64decode(item["data"], validate=False)
+            except (ValueError, TypeError):
+                return False
+            if not data:
+                return False
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+            return True
+    return False
+
+
+class DesktopQaTools:
+    """Masaüstü QA ek aracı (Madde 13): visual_check — Windows-MCP `Screenshot` + görsel model."""
+
+    def __init__(self, manager, cfg, project_root: Path, vision: Callable[[str, str], str] | None, shots_dir: Path):
+        self.manager = manager
+        self.cfg = cfg
+        self.root = Path(project_root)
+        self.vision = vision
+        self.shots = Path(shots_dir)
+        self.shots_taken: list[str] = []
+
+    def specs(self, read_only_only: bool = False) -> list[ToolSpec]:
+        return [DESKTOP_VISUAL_SPEC] if self.vision is not None else []
+
+    def run(self, call):
+        from .mcp import McpError
+        from .runner import ToolResult
+
+        if call.name != "visual_check":
+            return ToolResult(False, f"Bilinmeyen araç: {call.name}", "Bilinmeyen araç")
+        q = str((call.arguments or {}).get("question") or "").strip() or "Ekranda görünür bir sorun var mı?"
+        path = self.shots / f"masaustu-{datetime.now().strftime('%H%M%S')}-{len(self.shots_taken) + 1}.png"
+        try:
+            res = self.manager.call(self.cfg, self.root, "Screenshot", {})
+        except McpError as exc:
+            return ToolResult(False, f"Ekran görüntüsü alınamadı: {exc}", "Görsel göz: hata")
+        if not save_mcp_image(res, path):
+            return ToolResult(False, "Ekran görüntüsü alınamadı (araç görsel döndürmedi).", "Görsel göz: görüntü yok")
+        self.shots_taken.append(str(path))
+        answer = self.vision(q, str(path)) if self.vision else ""
+        return ToolResult(True, f"Görsel model yanıtı (ekran görüntüsü: {path.name}):\n{answer}",
+                          f"Görsel göz: {q[:60]}", {"screenshot": str(path)})
 
 
 # ---- yürütücü ----------------------------------------------------------------------------------

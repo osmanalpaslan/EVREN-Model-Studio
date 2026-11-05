@@ -12,13 +12,12 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-05 00:55 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 12 YAPILDI. Yarım iş YOK.
-- **Aktif dal:** master (Madde 12 PR'ı birleştirildi; kullanıcı 2026-11-05: "hiçbir aşamada onay isteme, başarılı dalları
-  birleştir, her şey bitince 3 dk sonra bilgisayarı kapat"). Madde 12: Ayarlar menüleri · kenar çubuğu · zamanlanmış
-  görevler · GitHub (gh, tarayıcıyla). Tam takım 870/870 · R-13 E2E_OK, arayüz 15/15, ajan 5/6 (glm 503) · gerçek
-  zamanlanmış görev 6/6. DOĞRULANMADI: GitHub tarayıcı onayının tamamlanması ve gerçek GitHub'da depo oluşturma/push
-  (kullanıcı/dışa dönük; sahte gh + yerel git ile test edildi, gerçek hesapla yalnız durum/depo listesi okundu).
-  Sıradaki: kullanıcının yeni isteği; açık kalan tek kalem Madde 6'daki kararsız test izlemesi.
+- **Güncelleme:** 2026-11-05 19:05 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 13 SÜRÜYOR.
+- **Aktif dal:** `feat/masaustu-kontrol` (master 291f960 üstünde). Masaüstü kontrolü (Windows-MCP hazır ayarı) ve
+  masaüstü QA kodu + testleri YAPILDI (tam takım 895/895). YARIM: gerçek masaüstü denemesi — Claude Code otomatik
+  denetimi fare/klavye kontrol sunucusunu başlatmayı engelledi. Kullanıcı izin verince:
+  `.\.venv\Scripts\python.exe -u tests\e2e_masaustu_real_api.py hepsi` (çalışırken bilgisayara dokunulmaz), sonuç
+  CHALLENGE_RESULTS'a; geçerse PR + birleştirme. Deneme kurulumu: build/masaustu_deneme (windows-mcp 0.8.8, 40 sn).
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı
   eklemesini anlat ya da PR'ları GitHub'dan ters sırayla (en üstteki önce) 'Merge pull request' ile birleştirt.
@@ -85,6 +84,7 @@ kritikse mutasyon + paket; R-13/R-21 gerçek ölçümler dal sonunda.
 | 11 | Gözlem ajanı (kullanıcı 2026-11-03): uygulama/geliştirme sırasındaki hata ve anormallikleri temizleyip depoya gönder; geliştirme motoru görüp kullanıcıya bildirsin | YAPILDI | `feat/gozlem-ajani` (98c6cf2 +) | `src/evren_studio/gozlem.py`, `gozlem-kayitlari` dalı, `ai_memory.py gozlem …`, baslangic bildirimi, R-36. Ayrıntı: CHANGELOG "Gözlem ajanı" |
 | 9 | Sade sağlayıcı/API anahtarı ekranı | YAPILDI (birleşme bekliyor) | `feat/saglayici-ekle` | OpenRouter/Kilo/OpenAI uyumlu ağ geçitleri tek anahtarla; Sağlayıcı ekle penceresi + Modelleri getir; modeller seçicide, Auto Pro'ya GİRMEZ; gerçek anahtarla doğrulanmadı (R-17); test_saglayici_ekle 7, mutasyon 2, ui_denetim HATA 0 |
 | 12 | Claude Code tarzı arayüz (kullanıcı 2026-11-04 gece): (a) Ayarlar menülere bölünsün (sol menü, ilgili ayar ilgili menüde, yeni ayarlar da oraya) · (b) tasarımın tamamı Claude Code masaüstü gibi (kenar çubuğu düzeni) · (c) GÖREV ZAMANLAYICI: Claude Code masaüstündeki "Scheduled tasks" gibi görülebilen/yönetilebilen yapı · (d) GitHub bağlantısı tarayıcıyla (ücretsiz), entegrasyon | YAPILDI | `feat/claude-tarzi-arayuz` (016185c, 8820a32, 86b098e, ad92072) | Sıra: A Ayarlar → B kenar çubuğu → C zamanlayıcı → D GitHub. Zamanlayıcı başvurusu: code.claude.com/docs/en/desktop-scheduled-tasks (Hourly/Daily/Weekdays/Weekly/Manual/Custom cron ≥1 sa; dakikada bir denetim; uygulama açıkken; kaçırılanlardan son 7 günde TEK telafi; Run now / Active-Paused / Edit / History (atlananlar nedenle) / Delete → oturumlar silinmez). GitHub: `gh auth login --web` (cihaz kodu, tarayıcı) + `gh auth setup-git` |
+| 13 | Masaüstü kontrolü (imleçle) ve masaüstü QA (kullanıcı 2026-11-05: "benzer ücretsiz repolardan en iyisini seç") | SÜRÜYOR (gerçek deneme bekliyor) | `feat/masaustu-kontrol` | Windows-MCP 0.8.8 hazır ayarı + `/qa-masaustu`; birim 25, mutasyon 13/13, tam takım 895/895. Gerçek masaüstü denemesi motor ortamında engellendi → kullanıcı izniyle `tests/e2e_masaustu_real_api.py hepsi`, sonra PR |
 
 ### Madde 5 planı — kota bitince otomatik devam
 Bugün: yalnız Proje/QA/Derin akışında (`project_ui.schedule_auto_resume`, Ayarlar'daki gizli `auto_resume`),

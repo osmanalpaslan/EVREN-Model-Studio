@@ -1,5 +1,16 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Masaüstü kontrolü ve masaüstü uygulaması testi (Madde 13)
+
+- **Masaüstü kontrolü (isteğe bağlı)**: Ayarlar > Bağlayıcılar (MCP) > "Masaüstü kontrolünü kur" ile açık kaynak
+  Windows-MCP (MIT) kurulur. Etkinleştirince ajan, istekte masaüstü işi geçtiğinde (ör. "Not Defteri'ni aç",
+  "masaüstündeki uygulamayı dene", ".exe") uygulama açabilir, ekrandaki öğeleri okuyabilir, fareyle tıklayıp
+  klavyeyle yazabilir. Ajan kontrol ederken ekran kenarında "AI" ışığı yanar; fareyi belirgin oynatarak ya da
+  Ctrl+Alt+Shift+Backspace ile kontrolü her an geri alırsınız. Komut, dosya ve Kayıt Defteri araçları kapalıdır.
+- **Masaüstü QA**: `/qa-masaustu <neyi test etsin>` — QA ajanı Windows uygulamanızı test uzmanı gibi dener (senaryo
+  planı → onayınız → fare/klavyeyle deneme, gerekirse ekran görüntüsünü görsel modele sorma → rapor).
+- Henüz gerçek masaüstünde denenmedi (bkz. devir notu).
+
 ## Yayınlanmamış — Claude Code tarzı arayüz, zamanlanmış görevler, GitHub (Madde 12)
 
 - **Zamanlanmış görevler**: kenar çubuğunda "Zamanlanmış görevler". Bir talimatı, klasörü, modeli ve sıklığı (Saatlik,

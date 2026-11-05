@@ -169,6 +169,13 @@ class QaController(QObject):
     def _pw_config(self):
         return next((c for c in self.ctx.mcp_configs() if c.name == "playwright"), None)
 
+    def _desk_config(self):
+        """Masaüstü QA (Madde 13): Windows-MCP hazır ayarı (Ayarlar > Bağlayıcılar'da kurulu ve etkin)."""
+        return next((c for c in self.ctx.mcp_configs() if c.name == "masaustu"), None)
+
+    def _target(self) -> str:
+        return self.state.target if self.state is not None else getattr(self, "_plan_target", "web")
+
     def _state_path(self) -> Path:
         return self.ctx.settings.resolved_data_dir() / "qa" / f"oturum-{self.view.session_id}.json"
 
@@ -201,40 +208,52 @@ class QaController(QObject):
         if self.active or self.planning or sv.project.active or sv.project.planning:
             sv._note("Bir ajan zaten çalışıyor. Durdurmak için /qa-durdur veya /proje-durdur yazın.", "alert")
             return
-        problem = self.precheck()
+        target = "masaustu" if cmd == "/qa-masaustu" else (self.state.target if cmd == "/qa-duzelt" and self.state
+                                                             else "web")
+        problem = self.precheck(target)
         if problem:
             sv._note(problem, "alert")
             return
-        if cmd == "/qa":
-            self.plan(arg.strip())
+        if cmd in ("/qa", "/qa-masaustu"):
+            self.plan(arg.strip(), target="masaustu" if cmd == "/qa-masaustu" else "web")
         elif cmd == "/qa-duzelt":
             if self.state is None:
                 sv._note("Düzeltilecek bir QA planı yok. Önce /qa <neyi test etsin> yazın.", "alert")
                 return
-            self.plan(self.state.goal, feedback=arg.strip() or "Senaryoları daha net ve ölçülebilir yaz.")
+            self.plan(self.state.goal, feedback=arg.strip() or "Senaryoları daha net ve ölçülebilir yaz.",
+                      target=self.state.target)
 
-    def precheck(self) -> str:
+    def precheck(self, target: str = "web") -> str:
         """Başlamadan önce koşullar; sorun varsa kullanıcıya gösterilecek metin."""
         if not self._ws():
-            return "QA ajanı bir proje klasöründe çalışır: önce “Proje klasörü bağla” ile web projesini seçin."
+            what = "masaüstü uygulamasının" if target == "masaustu" else "web projesinin"
+            return f"QA ajanı bir proje klasöründe çalışır: önce “Proje klasörü bağla” ile {what} klasörünü seçin."
         if "evren" not in self.ctx.available_providers():
             return ("QA ajanı yalnız ücretsiz EVREN modelleriyle çalışır (ücretli sağlayıcıyla çalışmaz). "
                     "Ayarlar'dan EVREN API anahtarını girin.")
+        if target == "masaustu":
+            if self._desk_config() is None:
+                return ("Masaüstü QA, masaüstü kontrolü gerektirir: Ayarlar > Bağlayıcılar (MCP) > “Masaüstü "
+                        "kontrolünü kur” ve etkinleştirin.")
+            return ""
         if self._pw_config() is None:
             return ("QA ajanı tarayıcı için Playwright MCP gerektirir: Ayarlar > MCP Sunucuları'ndan "
                     "“Playwright'ı kur” ve etkinleştirin.")
         return ""
 
-    def plan(self, goal: str, feedback: str = "") -> None:
+    def plan(self, goal: str, feedback: str = "", target: str = "web") -> None:
         sv = self.view
-        sid = sv._ensure_session(f"QA: {(goal or 'web uygulaması')[:60]}")
+        desk = target == "masaustu"
+        sid = sv._ensure_session(f"QA: {(goal or ('masaüstü uygulaması' if desk else 'web uygulaması'))[:60]}")
         if sid is None:
             return
         self.planning = True
-        self._goal = goal or "web uygulamasının ana işlevlerini test et"
+        self._plan_target = target
+        self._goal = goal or ("masaüstü uygulamasının ana işlevlerini test et" if desk
+                              else "web uygulamasının ana işlevlerini test et")
         display = (f"QA ajanı · test planı isteği\n{self._goal}" if not feedback
                    else f"QA ajanı · plan düzeltme\n{feedback}")
-        msg_id = self._add_user(qa.planning_prompt(self._goal, feedback), display, {"qa": "plan"})
+        msg_id = self._add_user(qa.planning_prompt(self._goal, feedback, target), display, {"qa": "plan"})
         model, fallbacks, role = self._evren_model("plan")
         sv._turn_id = msg_id
         sv._turn_hook = self._plan_done
@@ -255,7 +274,8 @@ class QaController(QObject):
             sv._note("Model senaryoları beklenen biçimde vermedi. /qa-duzelt yazıp yeniden deneyin "
                      "(örn. /qa-duzelt senaryoları <qa_plan> bloğu içinde ver).", "alert")
             return
-        self.state = qa.QaState(goal=self._goal, run_hint=run_hint, scenarios=scenarios)
+        self.state = qa.QaState(goal=self._goal, run_hint=run_hint, scenarios=scenarios,
+                                target=getattr(self, "_plan_target", "web"))
         self._save(self.state)
         card = QaPlanCard(self.state)
         card.approved.connect(self.start)
@@ -287,8 +307,13 @@ class QaController(QObject):
             mcpmod.ensure_axe(self.ctx.settings.resolved_data_dir())
         except Exception:
             pass
-        sv._note("QA ajanı başladı: senaryolar tarayıcıda deneniyor. Bilgisayar uykuya geçmez; bitince "
-                 "bildirim alırsınız.", "spark")
+        if self.state.target == "masaustu":
+            sv._note("Masaüstü QA başladı: senaryolar gerçek fare ve klavyeyle deneniyor; bu sırada bilgisayarı "
+                     "kullanmayın. Kontrolü geri almak için fareyi belirgin oynatın ya da Ctrl+Alt+Shift+Backspace; "
+                     "durdurmak için /qa-durdur. Bitince bildirim alırsınız.", "spark")
+        else:
+            sv._note("QA ajanı başladı: senaryolar tarayıcıda deneniyor. Bilgisayar uykuya geçmez; bitince "
+                     "bildirim alırsınız.", "spark")
         state = self.state
         hooks = qa.QaHooks(run_scenario=self._run_blocking, save=self._save, status=self.sig_status.emit,
                            changed=self.sig_changed.emit, quota_wait=sv.project._quota_wait,
@@ -319,7 +344,7 @@ class QaController(QObject):
         if self.state is None or self.state.status not in ("duraklatildi", "calisiyor", "onay_bekliyor"):
             sv._note("Bu oturumda sürdürülecek bir QA testi yok.", "alert")
             return
-        problem = self.precheck()
+        problem = self.precheck(self.state.target)
         if problem:
             sv._note(problem, "alert")
             return
@@ -444,6 +469,10 @@ class QaController(QObject):
             return r.exit_code, r.output
         tools = qa.QaTools(self.ctx.mcp, pw, ws, self._vision, mcpmod.playwright_dir(data_dir) / "cikti",
                            mcpmod.axe_path(data_dir), run_cmd) if pw is not None else None
+        if self.state is not None and self.state.target == "masaustu":
+            desk = self._desk_config()
+            tools = qa.DesktopQaTools(self.ctx.mcp, desk, ws, self._vision,
+                                      mcpmod.windows_dir(data_dir) / "cikti") if desk is not None else None
 
         def hook(outcome, exc) -> None:
             msgs = [m for m in sv.ctx.db.get_session_messages(sv.session_id) if m["id"] > msg_id]
