@@ -75,6 +75,15 @@ ekleyebilir miyiz? Benzer ücretsiz repolardan destek al; en iyisini, en başar�
   sahibi korumalı `dwm.exe`; OpenProcess reddettiği için adı okunamadı, atlanmadı. Düzeltme: `_process_name` süreç
   açılamazsa adı Toolhelp32 süreç listesinden alır (`_name_from_snapshot`); test (System pid 4 açılamaz → "System"),
   mutasyon 4/4.
+- 6. deneme (21:28, 2/5): dwm.exe de atlandığı hâlde Snapshot 2×90 sn yanıtsız. Kurulu 0.8.8 kaynağı okundu: atlama
+  listesi yalnız öğe ağacı taramasında (`Tree.get_window_wise_nodes`) uygulanıyor; ondan ÖNCE `Desktop.get_windows`
+  (her görünür pencerede ControlFromHandle/Name/GetPattern) ve `get_foreground_window` askıdaki pencereye UIA ile giriyor.
+  Düzeltme: sunucu artık `venv\python.exe -P agent\wmcp_baslatici.py serve …` ile açılıyor; başlatıcı her taramada
+  askıdaki (IsHungAppWindow) ve atlanan programların pencerelerini `get_controls_handles`'tan çıkarır, askıdaki ön
+  pencerede `get_foreground_window` None döner; paket sürümü değişmez. İstemci tarafı ortam değişkeni + yeniden başlatma
+  kaldırıldı (yalnız bilgi notu). Eski kayıt (`{windows_mcp}`) `legacy_commands` ile yeni tanıma taşınır. Gerçek ölçüm
+  (aynı askıdaki VS Code + hayalet dururken, yalnız okuma): Snapshot 15,9 / 18,9 / 15,4 / 18,4 sn, dolu (pencereler +
+  masaüstü öğeleri). Testler: test_wmcp_baslatici 8, mutasyon 7/7 + 7/7.
 
 ## Sorunlar ve kayıtlar
 - Engel (kayıt gerektirmez): motorun ortamında masaüstü kontrol sunucusunu başlatmak kullanıcı izni ister.

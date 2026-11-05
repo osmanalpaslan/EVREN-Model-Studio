@@ -79,15 +79,20 @@ def toolset(mgr, server="masaustu", when="masaustu", names=("Click", "Type")):
 
 # ---- askıdaki pencere (2026-11-05: VS Code yanıt vermezken Snapshot sonsuza kadar bekledi) -------------
 
-def test_askidaki_pencerenin_programi_atlanir_ve_sunucu_yenilenir():
-    mgr = Mgr({"Snapshot": [ok_text("ağaç"), ok_text("ağaç")]})
+def test_askidaki_pencere_bir_kez_bildirilir_sunucu_yenilenmez():
+    """Atlamayı sunucudaki başlatıcı yapar (wmcp_baslatici); burada yalnız kullanıcıya bilgi. 6. gerçek deneme: ortam
+    değişkeni + yeniden başlatma takılmayı çözmedi (0.8.8 onu pencere listesinde uygulamıyor)."""
+    mgr = Mgr({"Snapshot": [ok_text("ağaç"), ok_text("ağaç"), ok_text("ağaç")]})
     ts, notes, _c = toolset(mgr, names=("Snapshot",))
     ts._hung = lambda: {"Code.exe"}
     ts.call("mcp__masaustu__Snapshot", {})
-    assert mgr.envs[-1][mcp.EXCLUDE_ENV] == "Code.exe" and mgr.restarts == 1
-    assert any("Code.exe" in n for n in notes)
-    ts.call("mcp__masaustu__Snapshot", {})                # aynı pencere hâlâ askıda: yeniden başlatma yok (R-22)
-    assert mgr.restarts == 1
+    assert [n for n in notes if "Yanıt vermeyen" in n] == [mcp.HUNG_NOTE.format(names="Code.exe")]
+    assert mgr.restarts == 0 and mcp.EXCLUDE_ENV not in mgr.envs[-1]
+    ts.call("mcp__masaustu__Snapshot", {})                # aynı pencere hâlâ askıda: ikinci not yok (R-22)
+    assert sum("Yanıt vermeyen" in n for n in notes) == 1
+    ts._hung = lambda: {"Code.exe", "dwm.exe"}            # yeni askıdaki program: yalnız o söylenir
+    ts.call("mcp__masaustu__Snapshot", {})
+    assert notes[-1] == mcp.HUNG_NOTE.format(names="dwm.exe") and mgr.restarts == 0
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows süreç listesi")

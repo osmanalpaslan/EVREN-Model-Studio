@@ -9,7 +9,17 @@
   Ctrl+Alt+Shift+Backspace ile kontrolü her an geri alırsınız. Komut, dosya ve Kayıt Defteri araçları kapalıdır.
 - **Masaüstü QA**: `/qa-masaustu <neyi test etsin>` — QA ajanı Windows uygulamanızı test uzmanı gibi dener (senaryo
   planı → onayınız → fare/klavyeyle deneme, gerekirse ekran görüntüsünü görsel modele sorma → rapor).
-- Henüz gerçek masaüstünde denenmedi (bkz. devir notu).
+- **Ajan test aracını kendisi açar**: bir işi denemek için tarayıcı ya da masaüstü test aracı gerekiyorsa ajan onu
+  kendisi kurup açar (elle açmayı unutmanız gerekmez). Ayarlar > Kod ajanı > "Ajan gerektiğinde test araçlarını
+  (tarayıcı, masaüstü) kendisi kurup açsın" ile kapatılabilir; bir aracı Bağlayıcılar'da kapattıysanız ajan onu açmaz. `/qa` ve `/qa-masaustu` eksik aracı
+  kendisi kurar (kurulum onay modunu "manuel" seçtiyseniz önce sorar).
+- **Test sırasında fareye/klavyeye dokunursanız test durmaz**: ajan siz bırakana kadar bekler, sonra aynı adımı
+  tekrarlar (yarıda kalan işte ekranı yeniden okur). 5 dakika bırakmazsanız güvenli bir noktada durur ve
+  "Devam et" kartı gösterir.
+- **Engelli tuşlar**: Ayarlar > Bu bilgisayar > Masaüstü kontrolü — ajanın basmayacağı tuşlar (varsayılan End; bazı
+  bilgisayarlarda ekran yakalamayı açıyor).
+- **Yanıt vermeyen pencere**: masaüstünde "(Yanıt Vermiyor)" bir pencere varsa ekran taraması o pencereyi atlar
+  (önceden tarama orada takılıp 90 sn sonra hata veriyordu); ajan o pencereye dokunamaz, size bir kez söylenir.
 
 ## Yayınlanmamış — Claude Code tarzı arayüz, zamanlanmış görevler, GitHub (Madde 12)
 

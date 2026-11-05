@@ -490,10 +490,11 @@ _STEPS_RE = re.compile(r'"executed_steps"\s*:\s*([0-9]+)')
 _STATE_RE = re.compile(r'"state"\s*:\s*"([a-z_]+)"')
 
 
-# Askıdaki pencere (2026-11-05 gerçek deneme): VS Code "Yanıt Vermiyor" iken Windows-MCP 0.8.8'in Snapshot'ı tüm pencerelerin
-# öğe ağacını tararken o pencerede SONSUZA kadar bekledi (ControlStatus/DisplayInventory hemen yanıt veriyordu). 0.8.8
-# `WINDOWS_MCP_EXCLUDE_PROCESSES` ile bir programın pencerelerini UIA'ya hiç girmeden atlar; askıdaki pencereler değişebildiği
-# için her masaüstü çağrısından önce denetlenir ve gerekirse sunucu o programları atlayacak şekilde yeniden başlatılır.
+# Askıdaki pencere (2026-11-05 gerçek deneme): VS Code "Yanıt Vermiyor" iken Windows-MCP 0.8.8'in Snapshot'ı o pencerede
+# dakikalarca bekledi (ControlStatus/DisplayInventory hemen yanıt veriyordu). Atlamayı sunucunun İÇİNDE başlatıcı yapar
+# (wmcp_baslatici.py: her taramada askıdaki pencereleri pencere listesinden ve ön plan okumasından çıkarır). Burada yalnız
+# kullanıcıya bilgi verilir; sunucu yeniden başlatılmaz (önceki sürüm program adını ortama ekleyip yeniden başlatıyordu:
+# 0.8.8 o ortam değişkenini pencere listesinde uygulamadığı için takılma sürdü — 6. gerçek deneme).
 EXCLUDE_ENV = "WINDOWS_MCP_EXCLUDE_PROCESSES"
 HUNG_NOTE = ("Yanıt vermeyen bir pencere var ({names}); masaüstü taranırken atlanıyor (o pencereye ajan dokunamaz).")
 
@@ -618,15 +619,26 @@ def windows_exe(data_dir: Path) -> Path:
     return windows_dir(data_dir) / "venv" / "Scripts" / "windows-mcp.exe"
 
 
+def windows_python(data_dir: Path) -> Path:
+    return windows_dir(data_dir) / "venv" / "Scripts" / "python.exe"
+
+
+# Sunucu, Windows-MCP'nin ortamındaki Python ile uygulamanın başlatıcısından açılır (askıdaki pencere koruması:
+# wmcp_baslatici.py). `-P`: başlatıcının klasörü (agent/, içinde mcp.py var) içe aktarma yoluna girmesin.
+WINDOWS_LAUNCHER = Path(__file__).with_name("wmcp_baslatici.py")
+WINDOWS_LEGACY_COMMANDS = ["{windows_mcp}"]          # önceki sürümün kaydettiği komut (exe doğrudan)
+
+
 def windows_ready(data_dir: Path) -> bool:
-    return os.name == "nt" and windows_exe(data_dir).exists() and (windows_dir(data_dir) / "hazir.txt").exists()
+    return (os.name == "nt" and windows_exe(data_dir).exists() and windows_python(data_dir).exists()
+            and (windows_dir(data_dir) / "hazir.txt").exists())
 
 
 def windows_config() -> "McpServerConfig":
     return McpServerConfig(
         name="masaustu",
-        command="{windows_mcp}",
-        args=["serve", "--exclude-tools", ",".join(WINDOWS_EXCLUDED)],
+        command="{windows_mcp_python}",
+        args=["-P", "{windows_mcp_baslatici}", "serve", "--exclude-tools", ",".join(WINDOWS_EXCLUDED)],
         env={"ANONYMIZED_TELEMETRY": "false", "PYTHONIOENCODING": "utf-8"},
         allowed_tools=list(WINDOWS_TOOLS),
         read_only_tools=list(WINDOWS_READ_ONLY),
@@ -851,6 +863,8 @@ class McpServerConfig:
                 "{playwright_cli}": str(playwright_cli(data_dir)),
                 "{playwright_dir}": str(playwright_dir(data_dir)),
                 "{node}": find_node() or "node",
+                "{windows_mcp_python}": str(windows_python(data_dir)),
+                "{windows_mcp_baslatici}": str(WINDOWS_LAUNCHER),
                 "{windows_mcp}": str(windows_exe(data_dir)),
                 "{godot}": _gt_find("godot") if "{godot}" in s else "",
                 "{godot_mcp}": _gt_find("godot_mcp") if "{godot_mcp}" in s else "",
@@ -895,7 +909,7 @@ def configs_from_settings(raw: list[Any] | None) -> list[McpServerConfig]:
     for item in raw or []:
         if isinstance(item, dict) and item.get("name") and item.get("command"):
             preset = PRESETS.get(item.get("name"))
-            if preset and item.get("command") == preset["config"]().command:
+            if preset and item.get("command") in (preset["config"]().command, *preset.get("legacy_commands", ())):
                 cfg = preset["config"]()
                 cfg.enabled = bool(item.get("enabled", True))
                 out.append(cfg)
@@ -1231,22 +1245,20 @@ class McpToolset:
         return False
 
     _hung = staticmethod(hung_window_processes)        # testler sahte verir
+    _hung_seen: frozenset[str] = frozenset()
 
-    def _skip_hung(self, cfg: McpServerConfig) -> None:
-        """Askıda pencere varsa sunucuyu o programları atlayacak şekilde (yeniden) başlatır."""
+    def _note_hung(self) -> None:
+        """Askıda pencere varsa (yeni olanı) kullanıcıya bir kez söyler; atlamayı sunucudaki başlatıcı yapar."""
         try:
             hung = set(self._hung())
         except Exception:
             hung = set()
-        current = {x for x in (cfg.env.get(EXCLUDE_ENV) or "").split(",") if x}
-        new = hung - current
+        new = hung - self._hung_seen
         if not new:
             return
-        cfg.env[EXCLUDE_ENV] = ",".join(sorted(current | hung))
+        self._hung_seen = frozenset(self._hung_seen | new)
         if self.status:
             self.status(HUNG_NOTE.format(names=", ".join(sorted(new))))
-        if self.manager.running(cfg.name, self.project_root) is not None:
-            self.manager.restart(cfg.name, self.project_root)
 
     def call(self, name: str, arguments: dict[str, Any]) -> tuple[str, bool]:
         tool = self.tools.get(name)
@@ -1271,7 +1283,7 @@ class McpToolset:
         noted = False
         retried = False
         while True:
-            self._skip_hung(cfg)
+            self._note_hung()
             try:
                 text, err = result_text(self.manager.call(cfg, self.project_root, tool, arguments))
             except McpError:
@@ -1765,7 +1777,7 @@ PRESETS: dict[str, dict[str, Any]] = {
                    "pencere başlıkları) EVREN API'sine gönderilir. Masaüstü işinden önce gizli bilgi içeren pencereleri "
                    "kapatın.",
         "config": windows_config, "install": install_windows_mcp, "ready": windows_ready, "dir": windows_dir,
-        "needs_node": False,
+        "needs_node": False, "legacy_commands": WINDOWS_LEGACY_COMMANDS,
     },
     "godot": {
         "short": "godot-mcp",
