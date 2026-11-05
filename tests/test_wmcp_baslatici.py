@@ -122,3 +122,104 @@ def test_gercek_win32_askidaki_pencere_denetimi_saglam_pencerede_false():
     skip = wb.make_skip(lambda h: bool(ctypes.windll.user32.IsHungAppWindow(h)), lambda: set(), lambda h: None)
     assert skip(desk) is False
     assert sys.version_info >= (3, 11)              # `-P` seçeneği 3.11+ (Windows-MCP ortamı 3.14)
+
+
+# ---- WindowText (8. gerçek deneme: ajan 2+3'ü yaptı ama "Sonuç: 5" etiketini Snapshot'ta göremedi) ----------------
+
+class Rect:
+    def __init__(self, l, t, r, b):
+        self.left, self.top, self.right, self.bottom = l, t, r, b
+
+
+class Node:
+    def __init__(self, kind, name="", kids=(), rect=(0, 0, 10, 10)):
+        self.ControlTypeName, self.Name, self.kids, self.BoundingRectangle = kind, name, list(kids), Rect(*rect)
+
+    def GetChildren(self):
+        return self.kids
+
+
+class Win:
+    def __init__(self, name, handle):
+        self.name, self.handle = name, handle
+
+
+def test_pencere_yazilari_yalniz_duz_yazi_konumlu_ve_tekrarsiz():
+    root = Node("WindowControl", "EVREN Hesap", [
+        Node("EditControl", "Birinci sayı"),
+        Node("PaneControl", "", [Node("TextControl", "Sonuç: 5", rect=(100, 200, 140, 220)),
+                                 Node("TextControl", "Sonuç: 5", rect=(100, 200, 140, 220))]),
+        Node("ButtonControl", "Topla"), Node("TextControl", ""), Node("StatusBarControl", "Hazır")])
+    assert wb.collect_texts(root) == ["(120,210) Sonuç: 5", "(5,5) Hazır"]
+
+
+def test_pencere_yazilari_sinirli_dev_pencerede_takilmaz():
+    many = Node("WindowControl", "", [Node("TextControl", f"satır {i}") for i in range(50)])
+    assert len(wb.collect_texts(many, limit=10)) == 10
+    deep = Node("TextControl", "dip")
+    for _ in range(40):
+        deep = Node("PaneControl", "", [deep])
+    assert wb.collect_texts(deep, max_depth=30) == []                  # derinlik sınırı
+    assert len(wb.collect_texts(many, max_visit=5)) == 4                 # ziyaret sınırı (kök + 4)
+
+
+def test_pencere_secimi_tam_eslesme_once_sonra_icerik():
+    ws = [Win("EVREN Hesap Deneme - eski", 1), Win("EVREN Hesap Deneme", 2), Win("Not Defteri", 3)]
+    assert wb.pick_window(ws, "evren hesap deneme").handle == 2
+    assert wb.pick_window(ws, "not def").handle == 3
+    assert wb.pick_window(ws, "") is None and wb.pick_window(ws, "yok") is None
+
+
+def test_pencere_yoksa_acik_pencereleri_soyler():
+    class D:
+        def get_windows(self):
+            return [Win("Not Defteri", 3)], {3}
+
+    class U:
+        def ControlFromHandle(self, h):
+            return Node("WindowControl", "x", [Node("TextControl", "merhaba")])
+
+    assert "not found" in wb.window_text(D(), U(), "Hesap") and "Not Defteri" in wb.window_text(D(), U(), "Hesap")
+    assert wb.window_text(D(), U(), "Not").endswith("(5,5) merhaba")
+
+
+def test_arac_sunucu_kaydina_eklenir_ve_masaustu_penceresinden_okur():
+    class FakeMcp:
+        def __init__(self):
+            self.tools = {}
+
+        def tool(self, name, description, annotations=None):
+            def deco(fn):
+                self.tools[name] = (fn, annotations)
+                return fn
+            return deco
+
+    class Pkg:
+        @staticmethod
+        def register_all(mcp, *, get_desktop, get_analytics):
+            mcp.tools["Snapshot"] = (None, None)
+
+    class D:
+        def get_windows(self):
+            return [Win("EVREN Hesap Deneme", 7)], {7}
+
+    class U:
+        def ControlFromHandle(self, h):
+            assert h == 7
+            return Node("WindowControl", "", [Node("TextControl", "Sonuç: 5")])
+
+    assert wb.add_text_tool(Pkg, U()) is True
+    m = FakeMcp()
+    Pkg.register_all(m, get_desktop=D, get_analytics=lambda: None)
+    assert set(m.tools) == {"Snapshot", wb.TEXT_TOOL}
+    fn, ann = m.tools[wb.TEXT_TOOL]
+    assert "Sonuç: 5" in fn("EVREN Hesap")
+    assert ann is None or ann.readOnlyHint is True
+    assert wb.add_text_tool(object(), U()) is False                    # beklenmeyen sürüm: dokunmaz
+
+
+def test_uygulama_araci_sorulmadan_sunar_ve_ajana_anlatir():
+    cfg = mcp.windows_config()
+    assert wb.TEXT_TOOL in cfg.allowed_tools and wb.TEXT_TOOL in cfg.read_only_tools
+    assert wb.TEXT_TOOL not in mcp.WINDOWS_EXCLUDED
+    assert "WindowText" in mcp.DESKTOP_PROMPT and "etiket" in mcp.DESKTOP_PROMPT

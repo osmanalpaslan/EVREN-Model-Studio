@@ -82,6 +82,9 @@ def make_window(install: bool):
     data = Path(tempfile.mkdtemp(prefix="evren-masaustu-"))
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(data)
     app = QApplication.instance() or QApplication([])
+    # EVREN Studio penceresi görünmez (offscreen) kalsın ama bu ayar masaüstü sunucusuna ve ajanın açtığı test
+    # uygulamasına GEÇMESİN: 7. gerçek deneme (2026-11-05) — test uygulaması görünmez çizildi, pencere hiç oluşmadı.
+    os.environ.pop("QT_QPA_PLATFORM", None)
     from evren_studio.ui.main_window import MainWindow
 
     w = MainWindow()
@@ -128,7 +131,7 @@ def run_agent(app, w) -> int:
            "penceresini kapat.")
     t0 = time.monotonic()
     w.session.send(msg)
-    finished = wait_idle(app, w, 10 * 60)
+    finished = wait_idle(app, w, 15 * 60)       # her Snapshot ~16 sn (bu bilgisayar, 2026-11-05)
     dur = time.monotonic() - t0
     msgs = w.ctx.db.get_session_messages(w.session.session_id)
     calls = [c["name"] for m in msgs if m["role"] == "assistant" for c in (m.get("tool_calls") or [])]

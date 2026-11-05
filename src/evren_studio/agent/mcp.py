@@ -437,10 +437,12 @@ WINDOWS_MCP_PYTHON = "3.14"
 # "Screenshot" ajana SUNULMAZ: metin modeli görseli göremez ve sonuç uydurur (2026-11-05 gerçek deneme); görünüm denetimi
 # QA'da visual_check ile (görüntü görsel modele sorulur, DesktopQaTools sunucuyu doğrudan çağırır).
 WINDOWS_TOOLS = ["Snapshot", "Click", "Type", "Scroll", "Move", "Shortcut", "Wait", "WaitFor", "App",
-                 "MultiSelect", "MultiEdit", "DisplayInventory", "ControlStatus"]
+                 "MultiSelect", "MultiEdit", "DisplayInventory", "ControlStatus", "WindowText"]
 WINDOWS_EXCLUDED = ["PowerShell", "FileSystem", "Registry", "Process", "Clipboard", "Scrape", "Notification"]
 # Ekranı yalnız OKUYANLAR sorulmadan çalışır; tıklama/yazma/uygulama açma çalışma moduna göre onaya tabidir
-WINDOWS_READ_ONLY = ["Snapshot", "Wait", "WaitFor", "DisplayInventory", "ControlStatus"]
+# WindowText: uygulamanın başlatıcısının eklediği salt-okunur araç (wmcp_baslatici.py; 0.8.8 Snapshot masaüstü
+# uygulamasında düz yazıyı — etiket, sonuç metni — vermiyor)
+WINDOWS_READ_ONLY = ["Snapshot", "Wait", "WaitFor", "DisplayInventory", "ControlStatus", "WindowText"]
 
 
 # MCP sonucundaki görsel modele METİN olarak gitmez. 2026-11-05 gerçek deneme: model aldığı ekran görüntüsünü göremediği
@@ -457,7 +459,8 @@ DESKTOP_PROMPT = (
     "- `mcp__masaustu__*` Windows masaüstünü kullanır (gerçek fare ve klavye). Önce `Snapshot` ile ekrandaki "
     "pencereleri ve etkileşimli öğeleri (adı, türü, koordinatı) oku; tıklama/yazmayı YALNIZ Snapshot'ta gördüğün "
     "koordinatlarla yap — koordinatı koddan, pencere boyutundan ya da tahminle UYDURMA. Her önemli adımdan sonra yeniden "
-    "`Snapshot` ile sonucu DENETLE. Snapshot pencerenin içini göstermiyorsa (öğe yok) bunu kullanıcıya söyle; ekranda "
+    "`Snapshot` ile sonucu DENETLE. Snapshot düz yazıları (etiket, sonuç metni, durum çubuğu, mesaj) GÖSTERMEZ: "
+    "bunları okumak için `WindowText` (window_name: pencere başlığı) kullan. Snapshot pencerenin içini göstermiyorsa (öğe yok) bunu kullanıcıya söyle; ekranda "
     "yazanı göremediysen sonucu 'gördüm' diye bildirme, 'doğrulayamadım' de. Bir kutuya yazmak için önce kutuya tıkla, "
     "sonra Type (caret_position'ı değiştirme); bazı tuşlar bu bilgisayarda engelli olabilir (ör. End). "
     "Uygulama açmak için `App` (Başlat menüsü adı veya "

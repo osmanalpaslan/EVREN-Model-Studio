@@ -12,10 +12,10 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-05 21:55 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 13 SÜRÜYOR. 6. gerçek
-  deneme 2/5: 0.8.8 atlama listesini pencere listesinde uygulamıyor → sunucu artık `agent/wmcp_baslatici.py` ile açılıyor
-  (askıdaki pencereler her taramada pencere listesinden ve ön plan okumasından çıkar); aynı askıdaki pencereler dururken
-  Snapshot 15-19 sn'de doldu. Sırada: 7. gerçek deneme (ajan, sonra qa), tam takım, zorluk paketi, R-13, PR.
+- **Güncelleme:** 2026-11-05 22:25 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 13 SÜRÜYOR. 8. gerçek
+  deneme: ajan 2+3'ü gerçekten yaptı (uygulama 5 hesapladı), devralma beklemesi gerçek masaüstünde çalıştı (~63 sn);
+  etiket okunamadığı için başlatıcıya salt-okunur `WindowText` eklendi. Sırada: 9. gerçek deneme (ajan, sonra qa), tam
+  takım, zorluk paketi, R-13, PR.
 - **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

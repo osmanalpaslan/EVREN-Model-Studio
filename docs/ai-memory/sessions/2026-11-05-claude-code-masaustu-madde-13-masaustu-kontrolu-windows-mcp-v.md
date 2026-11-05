@@ -85,6 +85,16 @@ ekleyebilir miyiz? Benzer ücretsiz repolardan destek al; en iyisini, en başar�
   (aynı askıdaki VS Code + hayalet dururken, yalnız okuma): Snapshot 15,9 / 18,9 / 15,4 / 18,4 sn, dolu (pencereler +
   masaüstü öğeleri). Testler: test_wmcp_baslatici 8, mutasyon 7/7 + 7/7.
 
+- 7. deneme (21:50, durduruldu): Snapshot artık takılmıyor (16 sn) ama ajanın açtığı test uygulamasının penceresi hiç
+  oluşmadı: e2e betiğinin `QT_QPA_PLATFORM=offscreen` ayarı sunucuya ve açılan uygulamaya geçiyordu (test düzeneği
+  hatası; 4./5. denemeleri de etkilemiş olabilir). Betik Qt kurulduktan sonra değişkeni ortamdan çıkarıyor.
+- 8. deneme (22:00, 2/5, VS Code dondu): kullanıcı donma sırasında fareyi kullandı → ajan **~63 sn bekleyip sürdürdü**
+  (devralma beklemesi gerçek masaüstünde doğrulandı). Ajan kutulara 2 ve 3 yazdı, Topla'ya bastı, uygulama **gerçekten 5
+  hesapladı** (sonuc.txt). Kalan: 0.8.8 Snapshot masaüstü uygulamasında düz yazıyı (etiket) hiç vermiyor (yalnız
+  tarayıcıda) → ajan sonucu doğrulayamadı (uydurmadı); 10 dk sınırı doldu. Düzeltme: başlatıcı salt-okunur `WindowText`
+  aracını ekler (pencerenin düz yazıları + konumları); gerçek Qt penceresinde 6,5-8 sn, "Durum: hazır" okundu. Sınır:
+  uygulama etikete erişilebilir ad verdiyse Windows yalnız adı bildirir (gerçek UIA incelemesi). e2e süresi 15 dk.
+
 ## Sorunlar ve kayıtlar
 - Engel (kayıt gerektirmez): motorun ortamında masaüstü kontrol sunucusunu başlatmak kullanıcı izni ister.
 
