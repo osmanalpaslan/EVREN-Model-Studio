@@ -510,6 +510,14 @@ class SettingsPage(BasePage):
             "Kurulum Windows Paket Yöneticisi (winget) veya npm ile, yalnız bilinen listeden yapılır."))
         self._add("bilgisayar", c)
         c, l = card()
+        l.addWidget(section("Masaüstü kontrolü"))
+        self.desktop_blocked = QLineEdit()
+        self.desktop_blocked.setPlaceholderText("ör. End, PrintScreen")
+        l.addWidget(kv_row_widget("Ajanın basmayacağı tuşlar:", self.desktop_blocked, "End"))
+        l.addWidget(hint("Masaüstü kontrolü açıkken ajan bu tuşlara basmaz (virgülle ayırın). Bilgisayarınızda bir tuş "
+                         "başka bir programı açıyorsa (ör. End ekran yakalamayı) buraya ekleyin."))
+        self._add("bilgisayar", c)
+        c, l = card()
         l.addWidget(section("Veri klasörü"))
         self.data_dir = QLineEdit()
         # "…" yazılı düğme neredeyse görünmüyordu (2026-11-01 okunurluk denetimi): simge + metin
@@ -779,6 +787,7 @@ class SettingsPage(BasePage):
         self.schedule_keep_awake.setChecked(s.schedule_keep_awake)
         self.schedule_notify.setChecked(s.schedule_notify)
         self.schedule_max.setValue(int(s.schedule_max_minutes))
+        self.desktop_blocked.setText(", ".join(str(k) for k in (s.desktop_blocked_keys or [])))
         self._refresh_provider_rows()
         self._refresh_spend(s)
         self.mcp_card.load(s)
@@ -833,6 +842,7 @@ class SettingsPage(BasePage):
         s.schedule_keep_awake = self.schedule_keep_awake.isChecked()
         s.schedule_notify = self.schedule_notify.isChecked()
         s.schedule_max_minutes = int(self.schedule_max.value())
+        s.desktop_blocked_keys = [k.strip() for k in self.desktop_blocked.text().split(",") if k.strip()]
         self.mcp_card.collect(s)
 
     def changed_fields(self) -> list[str]:

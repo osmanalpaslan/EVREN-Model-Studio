@@ -425,17 +425,29 @@ def install_playwright(data_dir: Path, log: Callable[[str], None] | None = None,
 # ayrı Python 3.14 ortamı (bilgisayara program kurulmaz, yönetici izni gerekmez).
 # Güvenlik: tam sistem erişimli araçları (PowerShell, FileSystem, Registry, Process, Clipboard) VERİLMEZ — ajanın kendi
 # run_command/write_file araçları izin denetiminden, gizli dosya korumasından ve Değişiklikler panelinden geçer, MCP'ninkiler
-# geçmez. Anonim telemetri kapatılır. "balanced" masaüstü kontrolü: ajan kontrol ederken ekran kenarında "AI" ışığı;
-# kullanıcı fareyi belirgin oynatınca veya Ctrl+Alt+Shift+Backspace ile kontrol kullanıcıya döner.
+# geçmez. Anonim telemetri kapatılır. Masaüstü kontrolü 0.8.8'de her zaman açık (kod incelendi 2026-11-05: control.py,
+# control_hooks.py): ajan kontrol ederken ekranda uyarı ışığı; kullanıcı fareyi belirgin oynatınca veya
+# Ctrl+Alt+Shift+Backspace ile kontrol kullanıcıya döner.
+# DİKKAT (2026-11-05 gerçek deneme): GitHub README'si yayınlanmamış ana dalı anlatıyor; orada yazan `--control-policy`
+# 0.8.8'de YOK ve sunucu açılışta "No such option" ile kapanıyordu. Kurulum sonunda kullanılan her seçenek kurulu sürümün
+# `serve --help` çıktısıyla denetlenir (`check_windows_flags`).
 WINDOWS_MCP_VERSION = "0.8.8"
 WINDOWS_MCP_PACKAGE = f"windows-mcp=={WINDOWS_MCP_VERSION}"
 WINDOWS_MCP_PYTHON = "3.14"
-WINDOWS_TOOLS = ["Snapshot", "Screenshot", "Click", "Type", "Scroll", "Move", "Shortcut", "Wait", "WaitFor", "App",
+# "Screenshot" ajana SUNULMAZ: metin modeli görseli göremez ve sonuç uydurur (2026-11-05 gerçek deneme); görünüm denetimi
+# QA'da visual_check ile (görüntü görsel modele sorulur, DesktopQaTools sunucuyu doğrudan çağırır).
+WINDOWS_TOOLS = ["Snapshot", "Click", "Type", "Scroll", "Move", "Shortcut", "Wait", "WaitFor", "App",
                  "MultiSelect", "MultiEdit", "DisplayInventory", "ControlStatus"]
 WINDOWS_EXCLUDED = ["PowerShell", "FileSystem", "Registry", "Process", "Clipboard", "Scrape", "Notification"]
 # Ekranı yalnız OKUYANLAR sorulmadan çalışır; tıklama/yazma/uygulama açma çalışma moduna göre onaya tabidir
-WINDOWS_READ_ONLY = ["Snapshot", "Screenshot", "Wait", "WaitFor", "DisplayInventory", "ControlStatus"]
+WINDOWS_READ_ONLY = ["Snapshot", "Wait", "WaitFor", "DisplayInventory", "ControlStatus"]
 
+
+# MCP sonucundaki görsel modele METİN olarak gitmez. 2026-11-05 gerçek deneme: model aldığı ekran görüntüsünü göremediği
+# hâlde "ekranda Sonuç: 5 görünüyor" diye UYDURDU (uygulama hesaplamayı hiç yapmamıştı). Yer tutucu bunu açıkça söyler.
+IMAGE_PLACEHOLDER = ("[görsel: {mime} — bu görseli GÖREMEZSİN, içeriği sana aktarılmadı. Ekranda ne yazdığını bu görselden "
+                     "ÇIKARAMAZSIN; metin özetini (Snapshot / browser_snapshot) ya da varsa visual_check'i kullan. "
+                     "Doğrulayamadığın sonucu kullanıcıya 'gördüm' diye yazma.]")
 
 # Kullanıcıya (sohbette, sunucu o turda sunulunca) ve modele (sistem istemi) verilen metinler
 DESKTOP_NOTE = ("Masaüstü kontrolü açık: ajan bu turda fareyi ve klavyeyi kullanabilir (ekran kenarında “AI” ışığı "
@@ -443,12 +455,44 @@ DESKTOP_NOTE = ("Masaüstü kontrolü açık: ajan bu turda fareyi ve klavyeyi k
                 "durdurmak için EVREN Studio'da Durdur.")
 DESKTOP_PROMPT = (
     "- `mcp__masaustu__*` Windows masaüstünü kullanır (gerçek fare ve klavye). Önce `Snapshot` ile ekrandaki "
-    "pencereleri ve etkileşimli öğeleri (adı, türü, koordinatı) oku; tıklama/yazmayı bu koordinatlarla yap ve her "
-    "önemli adımdan sonra yeniden `Snapshot` ile sonucu DENETLE. Uygulama açmak için `App` (Başlat menüsü adı veya "
+    "pencereleri ve etkileşimli öğeleri (adı, türü, koordinatı) oku; tıklama/yazmayı YALNIZ Snapshot'ta gördüğün "
+    "koordinatlarla yap — koordinatı koddan, pencere boyutundan ya da tahminle UYDURMA. Her önemli adımdan sonra yeniden "
+    "`Snapshot` ile sonucu DENETLE. Snapshot pencerenin içini göstermiyorsa (öğe yok) bunu kullanıcıya söyle; ekranda "
+    "yazanı göremediysen sonucu 'gördüm' diye bildirme, 'doğrulayamadım' de. Bir kutuya yazmak için önce kutuya tıkla, "
+    "sonra Type (caret_position'ı değiştirme); bazı tuşlar bu bilgisayarda engelli olabilir (ör. End). "
+    "Uygulama açmak için `App` (Başlat menüsü adı veya "
     ".exe yolu). Yalnız görevle ilgili pencerede işlem yap; kullanıcının diğer pencerelerine, tarayıcı sekmelerine, "
     "e-postasına dokunma. Parola, kart veya kişisel bilgi YAZMA; giriş/ödeme ekranı çıkarsa dur ve kullanıcıya söyle. "
     "Dosya/komut işi için masaüstünü değil kendi araçlarını (read_file, write_file, run_command) kullan. Kendi "
     "açtığın test penceresini iş bitince kapat; kaydetmek istenmediyse 'Kaydetme' de.")
+
+
+DEFAULT_BLOCKED_KEYS = ["End"]
+_CARET_KEY = {"end": "end", "start": "home"}       # Type caret_position → gönderdiği tuş (0.8.8 desktop/service.py)
+
+
+def desktop_guard(tool: str, arguments: dict[str, Any] | None, blocked: list[str]) -> tuple[dict[str, Any], str]:
+    """Masaüstü aracı çağrılmadan önce: (düzeltilmiş argümanlar, ret metni — boşsa çağrı yapılır).
+
+    - Snapshot: `use_vision` hep KAPALI — metin modeli görseli göremez (uydurma riski) ve 2026-11-05 gerçek denemede
+      görselli Snapshot sunucuyu 90 sn kilitledi.
+    - Type: `caret_position` engelli tuşu gönderecekse (end → End, start → Home) "idle" yapılır (tıklanan yere yazar).
+    - Shortcut: engelli tuşu içeren kısayol çalıştırılmaz, model nedeni öğrenir."""
+    args = dict(arguments or {})
+    keys = {k.strip().lower() for k in (blocked or []) if str(k).strip()}
+    if tool == "Snapshot":
+        args["use_vision"] = False
+    elif tool == "Type":
+        caret = str(args.get("caret_position") or "").lower()
+        if _CARET_KEY.get(caret) in keys:
+            args["caret_position"] = "idle"
+    elif tool == "Shortcut":
+        parts = {p.strip().lower() for p in re.split(r"[+\s]+", str(args.get("shortcut") or "")) if p.strip()}
+        hit = sorted(parts & keys)
+        if hit:
+            return args, (f"Bu kısayol çalıştırılmadı: '{', '.join(hit)}' tuşu bu bilgisayarda engelli (kullanıcı ayarı: "
+                          "Ayarlar > Bu bilgisayar > Masaüstü kontrolü). Başka bir yol dene (ör. tıklama ya da başka tuş).")
+    return args, ""
 
 
 def windows_dir(data_dir: Path) -> Path:
@@ -467,7 +511,7 @@ def windows_config() -> "McpServerConfig":
     return McpServerConfig(
         name="masaustu",
         command="{windows_mcp}",
-        args=["serve", "--exclude-tools", ",".join(WINDOWS_EXCLUDED), "--control-policy", "balanced"],
+        args=["serve", "--exclude-tools", ",".join(WINDOWS_EXCLUDED)],
         env={"ANONYMIZED_TELEMETRY": "false", "PYTHONIOENCODING": "utf-8"},
         allowed_tools=list(WINDOWS_TOOLS),
         read_only_tools=list(WINDOWS_READ_ONLY),
@@ -475,8 +519,24 @@ def windows_config() -> "McpServerConfig":
         call_timeout=90.0,
         description="Windows masaüstünde uygulama açar, ekrandaki öğeleri okur (UI Automation), tıklar, yazar.",
         when="masaustu",
+        blocked_keys=list(DEFAULT_BLOCKED_KEYS),
         idle_seconds=300.0,
     )
+
+
+def windows_flags(cfg: "McpServerConfig | None" = None) -> list[str]:
+    """Yapılandırmanın kullandığı komut satırı seçenekleri (--x)."""
+    return [a for a in (cfg or windows_config()).args if a.startswith("--")]
+
+
+def check_windows_flags(exe: Path, help_text: str | None = None) -> list[str]:
+    """Kurulu sürümün `serve --help` çıktısında OLMAYAN seçenekler (boş → uyumlu)."""
+    if help_text is None:
+        proc = subprocess.run([str(exe), "serve", "--help"], capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=60, creationflags=_no_window(),
+                              env={**os.environ, "ANONYMIZED_TELEMETRY": "false", "PYTHONIOENCODING": "utf-8"})
+        help_text = (proc.stdout or "") + (proc.stderr or "")
+    return [f for f in windows_flags() if f not in help_text]
 
 
 def install_windows_mcp(data_dir: Path, log: Callable[[str], None] | None = None, timeout: float = 900) -> Path:
@@ -519,6 +579,9 @@ def install_windows_mcp(data_dir: Path, log: Callable[[str], None] | None = None
             raise McpError("Windows-MCP kurulamadı:\n" + (proc.stderr or proc.stdout or "").strip()[-800:])
     if not exe.exists():
         raise McpError(f"Kurulum bitti ama {exe} bulunamadı.")
+    missing = check_windows_flags(exe)
+    if missing:
+        raise McpError("Kurulu Windows-MCP bu seçenekleri desteklemiyor: " + ", ".join(missing))
     (target / "hazir.txt").write_text(f"windows-mcp {WINDOWS_MCP_VERSION}\n", encoding="utf-8")
     log("Windows-MCP kuruldu.")
     return exe
@@ -642,6 +705,9 @@ class McpServerConfig:
     # Hata bekçisi: düzenlemeden sonra çağrılacak, ajana SUNULMAYAN teşhis aracı (Serena:
     # get_diagnostics_for_file). Boş → bu sunucu teşhis vermez.
     diagnostics_tool: str = ""
+    # Masaüstü kontrolü (Madde 13): ajanın BASMAYACAĞI tuşlar (kullanıcı 2026-11-05: "End tuşu ekran yakalamayı açıyor").
+    # Uygulama ayarı `desktop_blocked_keys` ile doldurulur; desktop_guard uygular.
+    blocked_keys: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "McpServerConfig":
@@ -653,6 +719,7 @@ class McpServerConfig:
         cfg.env = {str(k): str(v) for k, v in (cfg.env or {}).items()}
         cfg.allowed_tools = [str(t) for t in (cfg.allowed_tools or [])]
         cfg.read_only_tools = [str(t) for t in (cfg.read_only_tools or [])]
+        cfg.blocked_keys = [str(t) for t in (cfg.blocked_keys or [])]
         return cfg
 
     def to_dict(self) -> dict[str, Any]:
@@ -947,7 +1014,7 @@ def result_text(result: dict[str, Any]) -> tuple[str, bool]:
         if kind == "text":
             parts.append(str(item.get("text") or ""))
         elif kind == "image":
-            parts.append(f"[görsel: {item.get('mimeType') or 'image'} — metin olarak aktarılmadı]")
+            parts.append(IMAGE_PLACEHOLDER.format(mime=item.get('mimeType') or 'image'))
         elif kind == "resource":
             res = item.get("resource") or {}
             parts.append(str(res.get("text") or f"[kaynak: {res.get('uri', '?')}]"))
@@ -1043,6 +1110,10 @@ class McpToolset:
         if tool is None or self.manager is None:
             raise McpError(f"Bilinmeyen MCP aracı: {name}")
         cfg = self.configs[tool.server]
+        if cfg.when == "masaustu":
+            arguments, refused = desktop_guard(tool.name, arguments, cfg.blocked_keys)
+            if refused:
+                return refused, True
         if self.manager.running(cfg.name, self.project_root) is None and self.status:
             self.status(f"MCP sunucusu açılıyor: {cfg.name}")
         res = self.manager.call(cfg, self.project_root, tool.name, arguments)
@@ -1471,7 +1542,10 @@ PRESETS: dict[str, dict[str, Any]] = {
                    "DİKKAT: Etkinleştirince ajan masaüstü işi istenen turlarda GERÇEK fareyi ve klavyeyi "
                    "kullanabilir. Otomatik modda bunu sormadan yapar; diğer modlarda her tıklama/yazma sorulur. "
                    "Kontrolü her an geri almak için fareyi belirgin oynatın ya da Ctrl+Alt+Shift+Backspace'e basın. "
-                   "Komut, dosya ve Kayıt Defteri araçları kapalıdır; anonim kullanım istatistiği kapatılır.",
+                   "Komut, dosya ve Kayıt Defteri araçları kapalıdır; anonim kullanım istatistiği kapatılır.\n\n"
+                   "GİZLİLİK: ajan ekranı okurken açık pencerelerin ve öğelerin adları (ör. görev çubuğundaki uygulamalar, "
+                   "pencere başlıkları) EVREN API'sine gönderilir. Masaüstü işinden önce gizli bilgi içeren pencereleri "
+                   "kapatın.",
         "config": windows_config, "install": install_windows_mcp, "ready": windows_ready, "dir": windows_dir,
         "needs_node": False,
     },

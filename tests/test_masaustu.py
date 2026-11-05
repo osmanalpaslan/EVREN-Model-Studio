@@ -36,16 +36,84 @@ def test_masaustu_isi_yokken_sunulmaz(mesaj):
 
 # ---- güvenlik yapılandırması ------------------------------------------------------------------------
 
-def test_tam_yetkili_araclar_verilmez_telemetri_kapali_kontrol_dengeli():
+def test_tam_yetkili_araclar_verilmez_telemetri_kapali():
     cfg = mcp.windows_config()
     for t in ("PowerShell", "FileSystem", "Registry", "Process", "Clipboard"):
         assert t not in cfg.allowed_tools and t in cfg.args[cfg.args.index("--exclude-tools") + 1].split(",")
     assert cfg.env["ANONYMIZED_TELEMETRY"] == "false"
-    assert cfg.args[cfg.args.index("--control-policy") + 1] == "balanced"
+    assert "--control-policy" not in cfg.args                         # 0.8.8'de yok (gerçek deneme 2026-11-05)
     assert set(cfg.read_only_tools) <= set(cfg.allowed_tools)
     for t in ("Click", "Type", "App", "Shortcut", "Move", "MultiEdit"):
         assert t not in cfg.read_only_tools, f"{t} sorulmadan çalışmamalı"
     assert mcp.WINDOWS_MCP_PACKAGE == "windows-mcp==0.8.8"        # sabit sürüm (tedarik zinciri)
+    assert cfg.blocked_keys == ["End"]                             # ayarsız kullanımda da End engelli (kullanıcı)
+
+
+def test_ekran_goruntusu_metin_modeline_sunulmaz_talimat_uydurmayi_yasaklar():
+    """2026-11-05 gerçek deneme: model göremediği ekran görüntüsünden "Sonuç: 5 görünüyor" diye uydurdu."""
+    cfg = mcp.windows_config()
+    assert "Screenshot" not in cfg.allowed_tools and "Screenshot" not in cfg.read_only_tools
+    assert "UYDURMA" in mcp.DESKTOP_PROMPT and "doğrulayamadım" in mcp.DESKTOP_PROMPT
+    text, _err = mcp.result_text({"content": [{"type": "image", "data": "x", "mimeType": "image/png"}]})
+    assert "GÖREMEZSİN" in text and "gördüm" in text
+    assert "GİZLİLİK" in mcp.PRESETS["masaustu"]["confirm"] and "EVREN API" in mcp.PRESETS["masaustu"]["confirm"]
+
+
+@pytest.mark.parametrize("kisayol", ["End", "ctrl+end", "Ctrl + End", "shift+END"])
+def test_engelli_tus_kisayolda_calistirilmaz(kisayol):
+    """Kullanıcı 2026-11-05: 'End tuşu ekran yakalamayı açıyor, test yarıda kalır'."""
+    _args, ret = mcp.desktop_guard("Shortcut", {"shortcut": kisayol}, ["End"])
+    assert ret and "engelli" in ret
+
+
+@pytest.mark.parametrize("kisayol", ["ctrl+c", "alt+tab", "enter", "ctrl+shift+s"])
+def test_engelli_olmayan_kisayol_gecer(kisayol):
+    args, ret = mcp.desktop_guard("Shortcut", {"shortcut": kisayol}, ["End"])
+    assert ret == "" and args["shortcut"] == kisayol
+
+
+def test_yazarken_end_gonderilmez_ama_engel_yoksa_dokunulmaz():
+    assert mcp.desktop_guard("Type", {"text": "2", "caret_position": "end"}, ["End"])[0]["caret_position"] == "idle"
+    assert mcp.desktop_guard("Type", {"text": "2", "caret_position": "end"}, [])[0]["caret_position"] == "end"
+    assert mcp.desktop_guard("Type", {"text": "2", "caret_position": "start"}, ["End"])[0]["caret_position"] == "start"
+    assert mcp.desktop_guard("Type", {"text": "2", "caret_position": "start"}, ["Home"])[0]["caret_position"] == "idle"
+    assert mcp.desktop_guard("Type", {"text": "{End}"}, ["End"])[0]["text"] == "{End}"   # metin kaçışlı yazılır
+
+
+def test_snapshotta_gorsel_hep_kapali():
+    assert mcp.desktop_guard("Snapshot", {"use_vision": True, "use_dom": True}, [])[0] == {"use_vision": False,
+                                                                                            "use_dom": True}
+
+
+def test_bekci_tur_yolunda_uygulanir_ve_reddedilen_cagri_sunucuya_gitmez():
+    class Mgr:
+        def __init__(self):
+            self.calls = []
+
+        def running(self, *_a):
+            return object()
+
+        def call(self, cfg, root, tool, args):
+            self.calls.append((tool, args))
+            return {"content": [{"type": "text", "text": "tamam"}]}
+
+    cfg = mcp.windows_config()
+    cfg.blocked_keys = ["End"]
+    mgr = Mgr()
+    tools = [mcp.McpTool("masaustu", n, mcp.tool_spec("masaustu", {"name": n}, False), False)
+             for n in ("Shortcut", "Type", "Snapshot")]
+    ts = mcp.McpToolset(tools, mgr, {"masaustu": cfg}, None)
+    text, err = ts.call("mcp__masaustu__Shortcut", {"shortcut": "ctrl+end"})
+    assert err and "engelli" in text and mgr.calls == []
+    ts.call("mcp__masaustu__Type", {"text": "2", "caret_position": "end"})
+    ts.call("mcp__masaustu__Snapshot", {"use_vision": True})
+    assert mgr.calls == [("Type", {"text": "2", "caret_position": "idle"}), ("Snapshot", {"use_vision": False})]
+    # masaüstü olmayan sunucuya bekçi karışmaz (R-22)
+    other = mcp.McpServerConfig(name="baska", command="x")
+    ts2 = mcp.McpToolset([mcp.McpTool("baska", "Shortcut", mcp.tool_spec("baska", {"name": "Shortcut"}, False), False)],
+                         mgr, {"baska": other}, None)
+    ts2.call("mcp__baska__Shortcut", {"shortcut": "ctrl+end"})
+    assert mgr.calls[-1] == ("Shortcut", {"shortcut": "ctrl+end"})
 
 
 def test_tiklama_izin_sisteminde_komut_okuma_sorulmaz():
@@ -87,6 +155,7 @@ def test_kurulum_uv_ile_python_314_ve_sabit_surum(tmp_path, monkeypatch):
         return R()
 
     monkeypatch.setattr(mcp, "_run", fake_run)
+    monkeypatch.setattr(mcp, "check_windows_flags", lambda exe, help_text=None: [])
     monkeypatch.setattr(mcp.subprocess, "run", fake_sub)
     monkeypatch.setattr(mcp.os, "name", "nt")
     exe = mcp.install_windows_mcp(tmp_path)
@@ -95,6 +164,43 @@ def test_kurulum_uv_ile_python_314_ve_sabit_surum(tmp_path, monkeypatch):
     assert any("pip install" in c and "windows-mcp==0.8.8" in c for c in flat)
     assert any("uv==" in c for c in flat)
     assert exe.exists() and mcp.windows_ready(tmp_path)
+
+
+# 0.8.8 `windows-mcp serve --help` çıktısından (2026-11-05, gerçek kurulum) kısaltılmış seçenekler
+HELP_088 = ("Usage: windows-mcp serve [OPTIONS]\n  --transport [stdio|sse|streamable-http]\n  --host TEXT\n  --port INTEGER\n"
+            "  --debug\n  --config FILE\n  --auth-key TEXT\n  --tools TEXT\n  --exclude-tools TEXT\n  --cors-origins TEXT\n")
+
+
+def test_secenekler_kurulu_surumle_uyumlu():
+    assert mcp.check_windows_flags(Path("x"), HELP_088) == []
+    assert mcp.check_windows_flags(Path("x"), HELP_088.replace("--exclude-tools", "--baska")) == ["--exclude-tools"]
+
+
+def test_uyumsuz_secenekte_kurulum_hazir_sayilmaz(tmp_path, monkeypatch):
+    """Belge ile kurulu sürüm ayrışırsa (README'deki --control-policy) kurulum başarılı görünmesin."""
+    def fake_run(argv, timeout, flags):
+        boot = tmp_path / "mcp" / "windows" / "boot" / "Scripts"
+        boot.mkdir(parents=True, exist_ok=True)
+        (boot / ("uv.exe" if "pip" in argv else "python.exe")).write_text("", encoding="utf-8")
+
+    class R:
+        returncode = 0
+        stdout = stderr = ""
+
+    def fake_sub(argv, **kw):
+        venv = tmp_path / "mcp" / "windows" / "venv" / "Scripts"
+        venv.mkdir(parents=True, exist_ok=True)
+        for n in ("python.exe", "windows-mcp.exe"):
+            (venv / n).write_text("", encoding="utf-8")
+        return R()
+
+    monkeypatch.setattr(mcp, "_run", fake_run)
+    monkeypatch.setattr(mcp.subprocess, "run", fake_sub)
+    monkeypatch.setattr(mcp.os, "name", "nt")
+    monkeypatch.setattr(mcp, "check_windows_flags", lambda exe, help_text=None: ["--control-policy"])
+    with pytest.raises(mcp.McpError, match="--control-policy"):
+        mcp.install_windows_mcp(tmp_path)
+    assert not mcp.windows_ready(tmp_path)
 
 
 def test_kurulum_windows_disinda_reddedilir(tmp_path, monkeypatch):
@@ -209,6 +315,8 @@ def win(tmp_path, monkeypatch, fake_keyring):
     from PySide6.QtWidgets import QApplication, QMessageBox
 
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
+    # Ayarlar'ı kaydeden test "Kaydedildi" kutusu açar; kapatılmazsa görünmez pencerede sonsuza kadar bekler
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: QMessageBox.Ok)
     monkeypatch.setenv("EVREN_STUDIO_DATA_DIR", str(tmp_path / "data"))
     app = QApplication.instance() or QApplication([])
     from evren_studio.ui.main_window import MainWindow
@@ -232,6 +340,22 @@ def test_masaustu_qa_on_kosullari(win, tmp_path):
     w.ctx.settings.mcp_servers = [mcp.windows_config().to_dict()]
     assert qc.precheck("masaustu") == ""
     assert "Playwright" in qc.precheck("web")                      # web QA için masaüstü yetmez
+
+
+def test_engelli_tuslar_ayardan_gelir_kaydedilir_ve_acilista_okunur(win):
+    app, w = win
+    s = w.ctx.settings
+    assert s.desktop_blocked_keys == ["End"]                            # varsayılan (kullanıcının bilgisayarı)
+    page = w.pages["settings"]
+    page.desktop_blocked.setText("End, PrintScreen")
+    page.save_all()
+    from evren_studio.config import ConfigStore
+
+    assert ConfigStore(w.ctx.store.data_dir).load().desktop_blocked_keys == ["End", "PrintScreen"]   # R-03
+    s.mcp_enabled = True
+    s.mcp_servers = [mcp.windows_config().to_dict()]
+    cfg = next(c for c in w.ctx.mcp_configs() if c.name == "masaustu")
+    assert cfg.blocked_keys == ["End", "PrintScreen"]
 
 
 def test_ayarlarda_masaustu_satiri_ve_komut_listesi(win):

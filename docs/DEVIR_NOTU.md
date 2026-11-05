@@ -12,12 +12,13 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-05 19:05 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 13 SÜRÜYOR.
-- **Aktif dal:** `feat/masaustu-kontrol` (master 291f960 üstünde). Masaüstü kontrolü (Windows-MCP hazır ayarı) ve
-  masaüstü QA kodu + testleri YAPILDI (tam takım 895/895). YARIM: gerçek masaüstü denemesi — Claude Code otomatik
-  denetimi fare/klavye kontrol sunucusunu başlatmayı engelledi. Kullanıcı izin verince:
-  `.\.venv\Scripts\python.exe -u tests\e2e_masaustu_real_api.py hepsi` (çalışırken bilgisayara dokunulmaz), sonuç
-  CHALLENGE_RESULTS'a; geçerse PR + birleştirme. Deneme kurulumu: build/masaustu_deneme (windows-mcp 0.8.8, 40 sn).
+- **Güncelleme:** 2026-11-05 20:35 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 13 SÜRÜYOR.
+- **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı izniyle 3 gerçek masaüstü denemesi yapıldı, 3 sorun bulunup düzeltildi
+  (README/sürüm uyumsuzluğu, ajanın göremediği ekrandan sonuç uydurması + Tk'nin UIA'da boş görünmesi, End tuşunun
+  kullanıcının ekran yakalamasını açması / görselli Snapshot takılması) — ayrıntı oturum günlüğü 2026-11-05-…-madde-13.
+  YARIM: düzeltmelerden sonraki gerçek deneme — kullanıcı "fareyi kullanmam gerek, işim bitince devam et yazarım" dedi;
+  "devam et" gelince: `.\.venv\Scripts\python.exe -u tests\e2e_masaustu_real_api.py ajan --kur` (geçerse `qa`),
+  çalışırken bilgisayara dokunulmaz. Sonra tam takım → PR.
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı
   eklemesini anlat ya da PR'ları GitHub'dan ters sırayla (en üstteki önce) 'Merge pull request' ile birleştirt.

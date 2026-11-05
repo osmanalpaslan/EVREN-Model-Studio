@@ -184,6 +184,8 @@ class Settings:
     schedule_keep_awake: bool = False      # etkin görev varken bilgisayarın boşta uykuya geçmesini engelle
     schedule_notify: bool = True           # çalıştırma bitince / telafi başlayınca Windows bildirimi
     schedule_max_minutes: int = 120        # tek çalıştırmanın üst süresi; aşılırsa durdurulur
+    # Masaüstü kontrolü (Madde 13): ajanın basmayacağı tuşlar (kullanıcı 2026-11-05: End ekran yakalamayı açıyor)
+    desktop_blocked_keys: list = field(default_factory=lambda: ["End"])
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
     # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).
     settings_version: int = SETTINGS_VERSION

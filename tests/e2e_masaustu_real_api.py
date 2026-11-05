@@ -5,7 +5,7 @@ GERÇEK FARE VE KLAVYE KULLANILIR: çalışırken bilgisayara dokunmayın (dokun
 
     .\\.venv\\Scripts\\python.exe -u tests\\e2e_masaustu_real_api.py [ajan|qa|hepsi] [--kur]
 
-ajan: küçük Tk hesap uygulaması; ajan "2 + 3"ü fareyle/klavyeyle yapar. Kabul (modelin görmediği): uygulamanın yazdığı
+ajan: küçük Qt hesap uygulaması; ajan "2 + 3"ü fareyle/klavyeyle yapar. Kabul (modelin görmediği): uygulamanın yazdığı
       sonuc.txt = 5 (ajan gerçekten tıkladı), mcp__masaustu__ araçları çağrıldı, yanıtta 5, uygulama penceresi kapandı.
 qa:   /qa-masaustu — bilerek HATALI sürüm (Topla çıkarma yapar) en az bir senaryoda "kaldi" bulmalı; DOĞRU sürüm
       hata bulmamalı (bilinen doğru/yanlış, R-25).
@@ -20,37 +20,50 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+PY = sys.executable                     # uygulamanın Python'u (PySide6 kurulu)
 sys.path.insert(0, str(ROOT / "src"))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")
 
-APP = '''import tkinter as tk
+# Qt penceresi: kutular, düğme ve sonuç etiketi Windows UI Automation'a ADLARIYLA görünür. İlk deneme (2026-11-05) Tk ile
+# yapıldı: Tk pencere içini UIA'ya bildirmiyor (yalnız başlık çubuğu), ajan koordinat tahmin etti → Qt'ye geçildi.
+APP = '''import sys
 from pathlib import Path
 
+from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
+
 HATALI = {hatali}
-k = tk.Tk()
-k.title("EVREN Hesap Deneme")
-k.geometry("360x200+200+200")
-a, b = tk.Entry(k, name="birinci"), tk.Entry(k, name="ikinci")
-a.pack(pady=6); b.pack(pady=6)
-sonuc = tk.Label(k, text="Sonuç: -", name="sonuc")
+app = QApplication(sys.argv)
+w = QWidget()
+w.setWindowTitle("EVREN Hesap Deneme")
+w.setGeometry(200, 200, 360, 220)
+lay = QVBoxLayout(w)
+a, b = QLineEdit(), QLineEdit()
+a.setAccessibleName("Birinci sayı")
+b.setAccessibleName("İkinci sayı")
+sonuc = QLabel("Sonuç: -")
+sonuc.setAccessibleName("Sonuç")
 
 
 def topla():
     try:
-        x, y = float(a.get()), float(b.get())
+        x, y = float(a.text()), float(b.text())
     except ValueError:
-        sonuc.config(text="Hata: sayı girin")
+        sonuc.setText("Hata: sayı girin")
         return
     r = x - y if HATALI else x + y
     r = int(r) if r == int(r) else r
-    sonuc.config(text=f"Sonuç: {{r}}")
+    sonuc.setText(f"Sonuç: {{r}}")
+    sonuc.setAccessibleName(f"Sonuç: {{r}}")
     Path(__file__).with_name("sonuc.txt").write_text(str(r), encoding="utf-8")
 
 
-tk.Button(k, text="Topla", command=topla).pack(pady=6)
-sonuc.pack()
-k.mainloop()
+btn = QPushButton("Topla")
+btn.clicked.connect(topla)
+for x in (a, b, btn, sonuc):
+    lay.addWidget(x)
+w.show()
+sys.exit(app.exec())
 '''
 
 
@@ -110,7 +123,7 @@ def run_agent(app, w) -> int:
     w.session.set_model("auto-pro")
     w.session.composer.set_model("auto-pro")
     w.session.set_mode("auto")
-    msg = (f"Masaüstünde şu uygulamayı aç: python \"{proj / 'hesap.py'}\" (pencere başlığı: EVREN Hesap Deneme). "
+    msg = (f"Masaüstünde şu uygulamayı aç: \"{PY}\" \"{proj / 'hesap.py'}\" (pencere başlığı: EVREN Hesap Deneme). "
            "İlk kutuya 2, ikinci kutuya 3 yaz, Topla düğmesine bas ve ekranda yazan sonucu söyle. Sonra uygulama "
            "penceresini kapat.")
     t0 = time.monotonic()
@@ -139,7 +152,8 @@ def run_agent(app, w) -> int:
 def run_qa(app, w, hatali: bool) -> tuple[bool, dict]:
     proj = Path(tempfile.mkdtemp(prefix=f"masaustu-qa-{'hatali' if hatali else 'dogru'}-"))
     (proj / "hesap.py").write_text(APP.format(hatali=hatali), encoding="utf-8")
-    (proj / "README.md").write_text("# Hesap\nÇalıştırma: `python hesap.py`. İki sayıyı toplar (Topla düğmesi).\n",
+    (proj / "README.md").write_text(f"# Hesap\nÇalıştırma: `\"{PY}\" hesap.py` (Qt penceresi). İki sayıyı toplar "
+                                    "(Topla düğmesi).\n",
                                     encoding="utf-8")
     w.new_session()
     w.session.welcome._choose(str(proj))

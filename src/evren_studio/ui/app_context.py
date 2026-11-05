@@ -667,7 +667,11 @@ class AppContext:
 
         if not self.settings.mcp_enabled:
             return []
-        return [c for c in configs_from_settings(self.settings.mcp_servers) if c.enabled]
+        out = [c for c in configs_from_settings(self.settings.mcp_servers) if c.enabled]
+        for c in out:
+            if c.when == "masaustu":                       # kullanıcının engelli tuş listesi (Ayarlar > Bu bilgisayar)
+                c.blocked_keys = [str(k) for k in (self.settings.desktop_blocked_keys or [])]
+        return out
 
     def mcp_toolset(self, project_root, message: str = "", provider: str = "evren", status=None):
         """Ajan turu için tembel araç kümesi; gerekmiyorsa None (davranış değişmez).

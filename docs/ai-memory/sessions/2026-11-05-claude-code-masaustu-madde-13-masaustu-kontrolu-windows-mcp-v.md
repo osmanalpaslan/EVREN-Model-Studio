@@ -5,7 +5,7 @@ motor: Claude Code (masaüstü)
 model: claude-opus-5-5
 ortam: Windows 11, Python 3.12.10
 dal: feat/masaustu-kontrol
-sonuc: kismi        # tamamlandi | kismi | basarisiz | devam-ediyor
+sonuc: devam-ediyor        # tamamlandi | kismi | basarisiz | devam-ediyor
 ---
 
 # Madde 13 masaüstü kontrolü (Windows-MCP) ve masaüstü QA
@@ -38,6 +38,22 @@ ekleyebilir miyiz? Benzer ücretsiz repolardan destek al; en iyisini, en başar�
 - DOĞRULANMADI: sunucunun gerçekten başlatılması ve masaüstünde çalışması. Claude Code otomatik denetimi, fare/klavyeyi
   yönetebilen sunucuyu başlatan yoklamayı (yalnız okuyan araçlar dahil) engelledi; atlatılmadı. Kullanıcı izniyle
   `tests/e2e_masaustu_real_api.py hepsi` koşulmalı.
+
+## Gerçek masaüstü denemeleri (kullanıcı izniyle, 2026-11-05 akşam)
+1. 19:07 — masaüstü araçları HİÇ sunulmadı: README'deki `--control-policy` 0.8.8'de yok, sunucu "No such option" ile
+   kapanıyordu; ajan araçsız kendi PowerShell UIA betiklerini yazdı. Düzeltme: seçenek kaldırıldı + kurulumda
+   `check_windows_flags` (kullanılan her seçenek kurulu sürümün `serve --help`'inde olmalı).
+2. 19:21 — araçlar sunuldu (14), ajan 4/5: "Sonuç: 5" dedi ama uygulama HİÇ hesaplamadı (sonuc.txt yok). Kök neden:
+   (a) Tk penceresi iç öğeleri UIA'ya bildirmiyor (yalnız başlık çubuğu) → ajan koordinatı koddan TAHMİN etti;
+   (b) göremediği ekran görüntüsünden sonuç UYDURDU. Düzeltme: Screenshot ajana sunulmaz (QA visual_check görsel modele
+   sorar), görsel yer tutucusu "GÖREMEZSİN" der, DESKTOP_PROMPT koordinat tahmini ve doğrulanmamış sonucu yasaklar,
+   test uygulaması Qt'ye geçti (öğeler adlarıyla UIA'da). Ayrıca Type `caret_position:"end"` iki kez End bastı.
+3. 19:31 — Snapshot `use_vision:true` ile sunucu 90 sn'de yanıt vermedi (3 kez); durduruldu. Kullanıcı: "End tuşu
+   ekran yakalamayı açıyor, test yarıda kalır" → End basımı ekran yakalamayı açmış olabilir. Düzeltme: `desktop_guard`
+   (Snapshot'ta görsel hep kapalı; engelli tuşlar — varsayılan End, Ayarlar > Bu bilgisayar — Type caret ve Shortcut'ta
+   uygulanır), `desktop_blocked_keys` ayarı.
+- Birim testinde takılma: Ayarlar'ı kaydeden test "Kaydedildi" kutusunu kapatmadığı için görünmez pencerede bekledi
+  (20 dk); düzenek düzeltildi, 87/87. Mutasyon toplam 22/22.
 
 ## Sorunlar ve kayıtlar
 - Engel (kayıt gerektirmez): motorun ortamında masaüstü kontrol sunucusunu başlatmak kullanıcı izni ister.

@@ -28,7 +28,7 @@ BEKLENEN = {
     "untrusted_list": "bilgisayar",
     "base_url": "ag", "announcement_url": "ag", "timeout": "ag", "stall": "ag", "retries": "ag",
     "streaming": "ag",
-    "retention": "gizlilik", "gozlem_card": "gizlilik",
+    "retention": "gizlilik", "gozlem_card": "gizlilik", "desktop_blocked": "bilgisayar",
 }
 
 
