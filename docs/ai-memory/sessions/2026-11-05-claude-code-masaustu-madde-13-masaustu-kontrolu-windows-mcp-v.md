@@ -70,6 +70,11 @@ ekleyebilir miyiz? Benzer ücretsiz repolardan destek al; en iyisini, en başar�
   her masaüstü çağrısından önce askıdaki programlar `WINDOWS_MCP_EXCLUDE_PROCESSES`'e eklenip sunucu yenilenir; zaman
   aşımında bir kez yenileyip yeniden denenir (`hung_window_processes`, `McpManager.restart`). Testler gerçek masaüstüne
   bakmasın diye conftest taramayı kapatır.
+- 5. deneme (21:20): ajan `test_araci_ac {"tur":"masaustu"}` ile aracı KENDİSİ açtı (doğrulandı), App ile Qt uygulamasını
+  başlattı; Snapshot yine takıldı. Askıdaki iki pencere: Code.exe (atlanıyordu) ve "(Yanıt Vermiyor)" hayalet penceresi —
+  sahibi korumalı `dwm.exe`; OpenProcess reddettiği için adı okunamadı, atlanmadı. Düzeltme: `_process_name` süreç
+  açılamazsa adı Toolhelp32 süreç listesinden alır (`_name_from_snapshot`); test (System pid 4 açılamaz → "System"),
+  mutasyon 4/4.
 
 ## Sorunlar ve kayıtlar
 - Engel (kayıt gerektirmez): motorun ortamında masaüstü kontrol sunucusunu başlatmak kullanıcı izni ister.

@@ -90,6 +90,18 @@ def test_askidaki_pencerenin_programi_atlanir_ve_sunucu_yenilenir():
     assert mgr.restarts == 1
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows süreç listesi")
+def test_korumali_surecin_adi_sureci_acmadan_okunur():
+    """2026-11-05 gerçek deneme: "Yanıt Vermiyor" hayalet penceresi korumalı dwm.exe'ye aitti; OpenProcess reddettiği için
+    adı okunamadı, atlanmadı ve tarama yine takıldı. System (pid 4) da açılamaz: ad süreç listesinden gelmeli."""
+    import sys
+
+    assert mcp._process_name(4) == "System"
+    assert mcp._name_from_snapshot(os.getpid()).lower() == os.path.basename(sys.executable).lower()
+    assert mcp._process_name(os.getpid()).lower() == os.path.basename(sys.executable).lower()
+    assert mcp._process_name(0x7FFFFFF0) == ""          # olmayan süreç: boş, hata yok
+
+
 def test_askida_pencere_yoksa_sunucuya_dokunulmaz():
     mgr = Mgr({"Snapshot": [ok_text("ağaç")]})
     ts, notes, _c = toolset(mgr, names=("Snapshot",))

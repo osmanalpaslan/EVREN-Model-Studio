@@ -506,7 +506,7 @@ def hung_window_processes() -> set[str]:
     import ctypes.wintypes as wt
 
     user32, k32 = ctypes.windll.user32, ctypes.windll.kernel32
-    found: set[str] = set()
+    pids: set[int] = set()
 
     @ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
     def cb(hwnd, _):
@@ -514,13 +514,7 @@ def hung_window_processes() -> set[str]:
             if user32.IsWindowVisible(hwnd) and user32.IsHungAppWindow(hwnd):
                 pid = wt.DWORD()
                 user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-                h = k32.OpenProcess(0x1000, False, pid.value)
-                if h:
-                    buf = ctypes.create_unicode_buffer(260)
-                    size = wt.DWORD(260)
-                    if k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
-                        found.add(buf.value.rsplit("\\", 1)[-1])
-                    k32.CloseHandle(h)
+                pids.add(pid.value)
         except Exception:
             pass
         return True
@@ -529,7 +523,56 @@ def hung_window_processes() -> set[str]:
         user32.EnumWindows(cb, 0)
     except Exception:
         return set()
-    return found
+    return {n for n in (_process_name(pid) for pid in pids) if n}
+
+
+def _process_name(pid: int) -> str:
+    """Süreç adı. Korumalı süreçler (ör. "Yanıt Vermiyor" hayalet penceresinin sahibi dwm.exe) açılamaz: o zaman süreç
+    listesinin anlık görüntüsünden (Toolhelp32, süreci açmadan) okunur. 2026-11-05 gerçek deneme: hayalet pencere dwm.exe'ye
+    aitti, adı okunamadığı için atlanmadı ve tarama yine takıldı."""
+    import ctypes
+    import ctypes.wintypes as wt
+
+    k32 = ctypes.windll.kernel32
+    h = k32.OpenProcess(0x1000, False, pid)
+    if h:
+        try:
+            buf = ctypes.create_unicode_buffer(260)
+            size = wt.DWORD(260)
+            if k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+                return buf.value.rsplit("\\", 1)[-1]
+        finally:
+            k32.CloseHandle(h)
+    return _name_from_snapshot(pid)
+
+
+def _name_from_snapshot(pid: int) -> str:
+    """Süreç adını süreç listesinin anlık görüntüsünden okur (süreci açmaz; korumalı süreçte de çalışır)."""
+    import ctypes
+    import ctypes.wintypes as wt
+
+    k32 = ctypes.windll.kernel32
+
+    class ENTRY(ctypes.Structure):
+        _fields_ = [("dwSize", wt.DWORD), ("cntUsage", wt.DWORD), ("th32ProcessID", wt.DWORD),
+                    ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wt.DWORD), ("cntThreads", wt.DWORD),
+                    ("th32ParentProcessID", wt.DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", wt.DWORD),
+                    ("szExeFile", ctypes.c_wchar * 260)]
+
+    snap = k32.CreateToolhelp32Snapshot(0x2, 0)          # TH32CS_SNAPPROCESS
+    if snap in (0, -1, ctypes.c_void_p(-1).value):
+        return ""
+    try:
+        e = ENTRY()
+        e.dwSize = ctypes.sizeof(ENTRY)
+        ok = k32.Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            if e.th32ProcessID == pid:
+                return e.szExeFile
+            ok = k32.Process32NextW(snap, ctypes.byref(e))
+    finally:
+        k32.CloseHandle(snap)
+    return ""
 
 
 def parse_control_block(text: str) -> tuple[str, float, int] | None:
