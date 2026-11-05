@@ -48,6 +48,11 @@ AGENT_RULES = """\
 - Yanıtlarını Türkçe, kısa ve net yaz; araç çağrısından önceki kısa ara cümleler ("Önce klasöre bakıyorum." gibi) dahil kullanıcıya görünen HER metin Türkçe olsun, İngilizce cümle kurma (kod, komut, dosya ve paket adları olduğu gibi kalır). İş bittiğinde ne yaptığını, neyi test ettiğini ve neyin doğrulanmadığını özetle.
 """
 
+# Masaüstü işi kullanıcı araya girdiği için duraklatıldıysa "Devam et" ile gönderilir (Madde 13)
+DESKTOP_RESUME_PROMPT = ("Kullanıcı masaüstünü bıraktı. Önce Snapshot ile ekranı yeniden oku (pencereler yer değiştirmiş, "
+                         "bir kutuda yarım yazı kalmış olabilir), sonra işi kaldığın yerden sürdür. Biten adımları "
+                         "tekrarlama.")
+
 PLAN_RULES = """\
 # Plan modu
 Şu an PLAN modundasın: yalnızca okuma araçlarını kullanabilirsin. Dosya değiştirme ve komut çalıştırma. Projeyi inceledikten sonra; amacı, değiştirilecek dosyaları, adımları ve riskleri içeren uygulanabilir bir plan sun. Kullanıcı onaylayıp modu değiştirdiğinde uygulayacaksın.

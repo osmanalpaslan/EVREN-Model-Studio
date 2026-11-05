@@ -12,13 +12,15 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-05 20:35 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 13 SÜRÜYOR.
-- **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı izniyle 3 gerçek masaüstü denemesi yapıldı, 3 sorun bulunup düzeltildi
-  (README/sürüm uyumsuzluğu, ajanın göremediği ekrandan sonuç uydurması + Tk'nin UIA'da boş görünmesi, End tuşunun
-  kullanıcının ekran yakalamasını açması / görselli Snapshot takılması) — ayrıntı oturum günlüğü 2026-11-05-…-madde-13.
-  YARIM: düzeltmelerden sonraki gerçek deneme — kullanıcı "fareyi kullanmam gerek, işim bitince devam et yazarım" dedi;
-  "devam et" gelince: `.\.venv\Scripts\python.exe -u tests\e2e_masaustu_real_api.py ajan --kur` (geçerse `qa`),
-  çalışırken bilgisayara dokunulmaz. Sonra tam takım → PR.
+- **Güncelleme:** 2026-11-05 21:20 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 13 SÜRÜYOR.
+- **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
+  ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
+  güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi
+  kurup açar (Ayarlar > Kod ajanı `auto_test_tools`; kullanıcı Bağlayıcılar'da kapattıysa açmaz); `/qa`, `/qa-masaustu`
+  eksik aracı kendisi kurar; (3) askıdaki pencere (VS Code "Yanıt Vermiyor") Snapshot'ı sonsuza kadar kilitliyordu →
+  her çağrıdan önce askıdaki programlar `WINDOWS_MCP_EXCLUDE_PROCESSES` ile atlanır, zaman aşımında sunucu yenilenip
+  bir kez daha denenir. Testler: test_masaustu_otomatik 24, mutasyon 21/21. YARIM: gerçek ajan + QA denemesi
+  (`tests\e2e_masaustu_real_api.py ajan --kur`, sonra `qa`), tam takım, zorluk paketi (yeni ajan aracı, R-21/R-25), PR.
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı
   eklemesini anlat ya da PR'ları GitHub'dan ters sırayla (en üstteki önce) 'Merge pull request' ile birleştirt.

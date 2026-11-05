@@ -186,6 +186,9 @@ class Settings:
     schedule_max_minutes: int = 120        # tek çalıştırmanın üst süresi; aşılırsa durdurulur
     # Masaüstü kontrolü (Madde 13): ajanın basmayacağı tuşlar (kullanıcı 2026-11-05: End ekran yakalamayı açıyor)
     desktop_blocked_keys: list = field(default_factory=lambda: ["End"])
+    # Ajan gerektiğinde test araçlarını (tarayıcı, masaüstü) kendisi kurup açsın (kullanıcı 2026-11-05: "elle açıp kapatmak
+    # gözden kaçabilir; ilk başta ajan gerektiğinde kullansın, kullanıcı kapattıysa çalışmasın")
+    auto_test_tools: bool = True
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
     # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).
     settings_version: int = SETTINGS_VERSION

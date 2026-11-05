@@ -75,6 +75,73 @@ def apply_measured(m: ModelInfo) -> ModelInfo:
     return m
 
 
+class TestTools:
+    """AgentRunner.test_tools: tür (web | masaustu) → MCP hazır ayarı. Kullanıcının kapattığı (Ayarlar > Bağlayıcılar'da
+    kayıtlı ama kapalı) araç ya da kapalı özellik AÇILMAZ; hiç yapılandırılmamış araç gerektiğinde kurulup açılır.
+    enable() koşucunun arka plan iş parçacığında çalışır (R-04): yalnız dosyaya kayıt yapar, Qt'ye dokunmaz."""
+    KIND = {"web": "playwright", "masaustu": "masaustu"}
+
+    def __init__(self, ctx, project_root: Path, message: str, status=None):
+        self.ctx, self.root, self.message, self.status = ctx, project_root, message, status
+
+    def _entry(self, name: str) -> dict | None:
+        return next((d for d in (self.ctx.settings.mcp_servers or [])
+                     if isinstance(d, dict) and d.get("name") == name), None)
+
+    def available(self, kind: str) -> tuple[bool, str]:
+        from ..agent import mcp as mcpmod
+
+        s = self.ctx.settings
+        name = self.KIND.get(kind)
+        if name is None:
+            return False, f"bilinmeyen tür: {kind}"
+        short = mcpmod.PRESETS[name]["short"]
+        if not s.auto_test_tools:
+            return False, "kullanıcı 'Ajan gerektiğinde test araçlarını kendisi açsın' ayarını kapatmış (Ayarlar > Kod ajanı)"
+        if not s.mcp_enabled:
+            return False, "kullanıcı MCP sunucularını kapatmış (Ayarlar > Bağlayıcılar)"
+        e = self._entry(name)
+        if e is not None and not e.get("enabled", True):
+            return False, f"kullanıcı {short} aracını kapatmış (Ayarlar > Bağlayıcılar)"
+        if kind == "masaustu" and os.name != "nt":
+            return False, "masaüstü kontrolü yalnız Windows'ta çalışır"
+        if mcpmod.PRESETS[name].get("needs_node") and not mcpmod.find_node() and s.install_mode != "otomatik":
+            return False, "Node.js kurulu değil (Ayarlar > Bağlayıcılar'daki düğmeyle kurulabilir)"
+        return True, ""
+
+    def installed(self, kind: str) -> bool:
+        from ..agent import mcp as mcpmod
+
+        name = self.KIND.get(kind)
+        return bool(name and mcpmod.PRESETS[name]["ready"](self.ctx.settings.resolved_data_dir()))
+
+    def enable(self, kind: str, log=None):
+        from ..agent import mcp as mcpmod
+
+        ok, why = self.available(kind)
+        if not ok:
+            return False, why, None
+        name = self.KIND[kind]
+        preset = mcpmod.PRESETS[name]
+        data = self.ctx.settings.resolved_data_dir()
+        if not preset["ready"](data):
+            if preset.get("needs_node") and not mcpmod.find_node():
+                from ..agent import environment
+
+                res = environment.install("node")
+                if not res.ok:
+                    return False, "Node.js kurulamadı (Playwright için gerekli).", None
+            preset["install"](data, log=log)
+        if self._entry(name) is None:
+            self.ctx.settings.mcp_servers = list(self.ctx.settings.mcp_servers or []) + [preset["config"]().to_dict()]
+            self.ctx.store.save(self.ctx.settings)          # kalıcı: kullanıcı Ayarlar'da görür ve kapatabilir (R-03)
+        configs = self.ctx.mcp_configs()
+        ts = self.ctx.mcp.toolset(configs, self.root, self.message, self.status, force={name})
+        note = ("Ajan bu aracı ilk kez açtı; Ayarlar > Bağlayıcılar'dan kapatabilirsiniz."
+                if kind == "masaustu" else "")
+        return True, note, ts
+
+
 class AppContext:
     def __init__(self, settings: Settings | None = None):
         # config.json her zaman varsayılan veri klasöründe durur; böylece
@@ -672,6 +739,13 @@ class AppContext:
             if c.when == "masaustu":                       # kullanıcının engelli tuş listesi (Ayarlar > Bu bilgisayar)
                 c.blocked_keys = [str(k) for k in (self.settings.desktop_blocked_keys or [])]
         return out
+
+    def test_tools(self, project_root, message: str = "", provider: str = "evren", status=None):
+        """Ajanın gerektiğinde test aracını kendisinin açması (Madde 13, kullanıcı 2026-11-05). None → araç sunulmaz:
+        özellik kapalı, proje klasörü yok ya da ücretli sağlayıcı (MCP yalnız EVREN'de)."""
+        if provider != "evren" or project_root is None or not self.settings.auto_test_tools:
+            return None
+        return TestTools(self, Path(project_root), message, status)
 
     def mcp_toolset(self, project_root, message: str = "", provider: str = "evren", status=None):
         """Ajan turu için tembel araç kümesi; gerekmiyorsa None (davranış değişmez).

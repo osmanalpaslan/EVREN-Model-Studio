@@ -49,6 +49,7 @@ from .tools import (
     FileChange,
     ToolBox,
     ToolError,
+    ToolSpec,
     Workspace,
     find_project_venv,
     truncate_middle,
@@ -357,7 +358,7 @@ class SessionStore(Protocol):
 
 @dataclass
 class TurnOutcome:
-    stopped: str = "done"            # done | cancelled | max_steps | loop | error | context_limit | budget | quota_daily
+    stopped: str = "done"            # done | cancelled | max_steps | loop | error | context_limit | budget | quota_daily | user_control
     steps: int = 0
     protocol: str = "native"
     last_text: str = ""
@@ -475,6 +476,22 @@ def trim_for_context(history: list[dict], context_tokens: int | None,
     return trimmed
 
 
+# Madde 13 (kullanıcı 2026-11-05): "ajan QA testlerini gerektiği zaman kendi açabilmeli; kullanıcı kapatmışsa çalışmasın".
+TEST_TOOL_NAME = "test_araci_ac"
+TEST_TOOL_SPEC = ToolSpec(
+    TEST_TOOL_NAME, READ,
+    "Arayüzü GERÇEKTEN denemen gerektiğinde test aracını açar: tur='web' → gerçek tarayıcı (Playwright: sayfayı açar, "
+    "tıklar, form doldurur, konsol hatalarını gösterir); tur='masaustu' → Windows masaüstü (uygulamayı açar, ekrandaki "
+    "öğeleri okur, fare ve klavyeyle dener). Ne zaman: bir web sayfasında ya da masaüstü uygulamasında düğme/form/pencere/"
+    "görünüm yaptıysan veya düzelttiysen ve 'bitti' demeden çalıştığını görmen gerekiyorsa; ya da kullanıcı arayüzün "
+    "test edilmesini istediyse. Metin, belge, kod mantığı ya da birim testiyle doğrulanabilen işte ÇAĞIRMA. İlk "
+    "kullanımda araç kurulabilir (~1 dk). Açılınca bu turda mcp__playwright__* / mcp__masaustu__* araçları gelir.",
+    {"type": "object", "properties": {
+        "tur": {"type": "string", "enum": ["web", "masaustu"], "description": "web | masaustu"},
+        "neden": {"type": "string", "description": "Neyi denemek istediğin (kısa)"}},
+     "required": ["tur"]})
+
+
 # ---- koşucu ------------------------------------------------------------------------------
 
 
@@ -501,13 +518,19 @@ class AgentRunner:
                  slow_factor: float = modelstats.FACTOR_TURN, route_role: str = "",
                  base_body: dict[str, Any] | None = None, extra_hint: str = "",
                  project_map: bool = False, skills: list | None = None, untrusted: list[str] | None = None,
-                 user_rules: Any = None, game_tools: bool = False):
+                 user_rules: Any = None, game_tools: bool = False, test_tools: Any = None):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
         # Yalnız proje klasörlü oturumda kullanılır; okuma dışındaki araçlar izinden geçer.
         self.mcp = mcp
         self._mcp_noted = False
+        if mcp is not None:
+            mcp.cancelled = self._cancelled          # masaüstü beklemesi Durdur ile kesilsin
+        # Ajanın gerektiğinde test aracını kendisinin açması (TEST_TOOL_SPEC). None → araç sunulmaz (kullanıcı kapattı,
+        # ücretli sağlayıcı veya proje klasörü yok). Nesne: available(tur) → (bool, neden), installed(tur) → bool,
+        # enable(tur, log) → (ok, mesaj, yeni_mcp_kümesi).
+        self.test_tools = test_tools
         # Hata bekçisi (agent/diagnostics.py): düzenlemeden sonra kesin hataları sonuca ekler
         self.edit_check = edit_check
         # Arka plan servisleri (agent/services.py: start_service/service_logs/stop_service); None → yok
@@ -619,6 +642,8 @@ class AgentRunner:
                 and not (self.no_writes and s.kind == WRITE)]
         if self.extra_tools is not None:
             base = base + [s for s in self.extra_tools.specs(read_only_only=plan) if s.name not in SPEC_BY_NAME]
+        if self.test_tools is not None and not plan and not self.no_writes:
+            base = base + [TEST_TOOL_SPEC]
         if self.mcp is None:
             return base
         extra = self.mcp.specs(read_only_only=plan)
@@ -629,6 +654,8 @@ class AgentRunner:
         return list(base) + [s for s in extra if s.name not in SPEC_BY_NAME]
 
     def _spec(self, name: str):
+        if name == TEST_TOOL_NAME and self.test_tools is not None:
+            return TEST_TOOL_SPEC
         spec = SPEC_BY_NAME.get(name)
         if spec is None and self.extra_tools is not None:
             spec = next((s for s in self.extra_tools.specs() if s.name == name), None)
@@ -1180,6 +1207,10 @@ class AgentRunner:
                     f"Döngü algılandı: {loop_reason}. Model aynı işi sonuç almadan tekrarlıyor; "
                     "tur durduruldu. Yeni bir yönlendirme yazın ya da başka bir model deneyin.")
                 break
+            if self.mcp is not None and getattr(self.mcp, "user_paused", False):
+                outcome.stopped = "user_control"
+                self.events.status("Masaüstünü uzun süre siz kullandınız; ajan işi güvenli noktada duraklattı.")
+                break
             # Sert sınır, modele GERÇEKTEN gidecek (eski çıktıları kısaltılmış) geçmişe bakar; kısaltma yetmezse durur
             if self.hard_context_limit and self._history_tokens(self._visible(history)) >= self.hard_context_limit:
                 outcome.stopped = "context_limit"
@@ -1277,6 +1308,8 @@ class AgentRunner:
         try:
             if call.name.startswith("mcp__") and call.name not in SPEC_BY_NAME:
                 res = self._run_mcp(call, spec)
+            elif call.name == TEST_TOOL_NAME and self.test_tools is not None:
+                res = self._run_test_tools(call)
             elif call.name in SERVICE_TOOLS:
                 res = self._run_service(call)
             elif call.name in JOB_TOOLS:
@@ -1859,6 +1892,43 @@ class AgentRunner:
         except Exception:
             return ""
         return diagnostics.note(rel_path, problems)
+
+    def _run_test_tools(self, call: ToolCall) -> ToolResult:
+        """Ajan isteğiyle test aracını (Playwright / Windows-MCP) açar; gerekirse kurar. Kullanıcı aracı veya özelliği
+        kapattıysa açmaz. Kurulum, "Eksik program kurulumu" ayarına uyar (Manuel → sorulur)."""
+        kind = str((call.arguments or {}).get("tur") or "").strip()
+        if kind not in ("web", "masaustu"):
+            return ToolResult(False, "tur 'web' ya da 'masaustu' olmalı.", "Test aracı: geçersiz tür")
+        label = "tarayıcı (Playwright)" if kind == "web" else "masaüstü kontrolü (Windows-MCP)"
+        ok, why = self.test_tools.available(kind)
+        if not ok:
+            return ToolResult(False, f"Test aracı açılamaz: {why}. Bu turu aracı kullanmadan bitir ve kullanıcıya neyi "
+                              "elle denemesi gerektiğini yaz.", f"Test aracı kapalı: {label}")
+        if not self.test_tools.installed(kind) and self.install_mode != "otomatik" and not self.perms.allow_installs:
+            ok, feedback = self._approve(call, "install", f"Test aracı kurulsun mu? {label}",
+                                         f"{label} uygulamanın veri klasörüne kurulacak (~1 dk).",
+                                         reason=str((call.arguments or {}).get("neden") or "Arayüzü denemek için"))
+            if not ok:
+                return ToolResult(False, "Kullanıcı test aracının kurulmasına izin vermedi; aracı kullanmadan devam et."
+                                  + (f" Not: {feedback}" if feedback else ""), f"Reddedildi: {label}", {"denied": True})
+        self.events.status(f"Test aracı açılıyor: {label}" + ("" if self.test_tools.installed(kind)
+                                                             else " (ilk kez kuruluyor, ~1 dk)"))
+        try:
+            ok, msg, new_mcp = self.test_tools.enable(kind, lambda m: self.events.tool_output(call, m + "\n"))
+        except Exception as exc:  # kurulum hatası turu düşürmesin
+            ok, msg, new_mcp = False, f"{type(exc).__name__}: {exc}", None
+        if not ok:
+            return ToolResult(False, f"Test aracı açılamadı: {msg}", f"Test aracı açılamadı: {label}")
+        if new_mcp is not None:
+            new_mcp.cancelled = self._cancelled
+            self.mcp = new_mcp
+            self._mcp_noted = False
+        prefix = "mcp__playwright__" if kind == "web" else "mcp__masaustu__"
+        names = [s.name for s in self._specs() if s.name.startswith(prefix)]
+        if not names:
+            return ToolResult(False, f"Test aracı açıldı ama araçları gelmedi: {msg}", f"Test aracı: araç yok ({label})")
+        return ToolResult(True, f"{label} açıldı. Bu turda kullanabileceğin araçlar: {', '.join(names)}. {msg}".strip(),
+                          f"Test aracı açıldı: {label}")
 
     def _run_install(self, call: ToolCall) -> ToolResult:
         """Ortam denetimi: bilinen listedeki eksik programı ayara göre sorarak/sormadan kurar."""

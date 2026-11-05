@@ -55,6 +55,22 @@ ekleyebilir miyiz? Benzer ücretsiz repolardan destek al; en iyisini, en başar�
 - Birim testinde takılma: Ayarlar'ı kaydeden test "Kaydedildi" kutusunu kapatmadığı için görünmez pencerede bekledi
   (20 dk); düzenek düzeltildi, 87/87. Mutasyon toplam 22/22.
 
+## Kullanıcı istekleri (2026-11-05 gece) ve 4. deneme
+- "Kullanıcı test sırasında fareyi/klavyeyi yanlışlıkla kullanabilir; test durmamalı, kaldığı yerden sürmeli" → 0.8.8
+  kodu okundu (tools/control_notifications.py, desktop/control.py): kontrol kullanıcıdayken çağrı hiçbir şey yapmadan
+  USER_CONTROL/TAKEOVER_PENDING ile reddediliyor, son girdiden 10 sn sonra kontrol döner; yarıda kesilen CONTROL_PREEMPTED
+  + executed_steps. `McpToolset._call_desktop`: bekle → aynı adımı tekrarla; yarıda kesilende ekranı yeniden okut; 5 dk →
+  `user_paused` → koşucu `user_control` ile durur → "Devam et" kartı (DESKTOP_RESUME_PROMPT).
+- "Ajan QA testlerini gerektiğinde kendi açabilmeli; kullanıcı kapatmışsa çalışmasın" → `test_araci_ac` aracı
+  (runner.TEST_TOOL_SPEC, app_context.TestTools), `auto_test_tools` ayarı (varsayılan açık), /qa ve /qa-masaustu eksik aracı
+  kendisi kurar. Kullanıcının Bağlayıcılar'da kapattığı araç (kayıtlı + enabled=false) açılmaz.
+- 4. deneme (21:02): App ile açılan Qt uygulamasından sonra Snapshot/WaitFor 90 sn yanıtsız. Teşhis: ControlStatus ve
+  DisplayInventory anında yanıt veriyor, takılan yalnız Snapshot; IsHungAppWindow → bu oturumun çalıştığı VS Code
+  penceresi ASKIDA ("Yanıt Vermiyor"). 0.8.8 öğe ağacını tararken askıdaki pencerede sonsuza kadar bekliyor. Düzeltme:
+  her masaüstü çağrısından önce askıdaki programlar `WINDOWS_MCP_EXCLUDE_PROCESSES`'e eklenip sunucu yenilenir; zaman
+  aşımında bir kez yenileyip yeniden denenir (`hung_window_processes`, `McpManager.restart`). Testler gerçek masaüstüne
+  bakmasın diye conftest taramayı kapatır.
+
 ## Sorunlar ve kayıtlar
 - Engel (kayıt gerektirmez): motorun ortamında masaüstü kontrol sunucusunu başlatmak kullanıcı izni ister.
 

@@ -468,6 +468,78 @@ DESKTOP_PROMPT = (
 
 
 DEFAULT_BLOCKED_KEYS = ["End"]
+
+# Kullanıcı araya girince (kullanıcı 2026-11-05: "fareyi/klavyeyi yanlışlıkla kullanabilir; test durmamalı, bir süre sonra
+# kaldığı yerden devam etmeli"). 0.8.8 kodu (tools/control_notifications.py): kontrol kullanıcıdayken çağrı HİÇBİR ŞEY
+# yapmadan {"code": "USER_CONTROL"|"TAKEOVER_PENDING", "status": {"wait_seconds": …}} ile reddedilir; son fiziksel
+# girdiden 10 sn sonra kontrol ajana döner. İşlem YARIDAYKEN araya girilirse "CONTROL_PREEMPTED" + executed_steps.
+CONTROL_RETRY_CODES = {"USER_CONTROL", "TAKEOVER_PENDING"}
+CONTROL_PREEMPTED = "CONTROL_PREEMPTED"
+TAKEOVER_WAIT_LIMIT = 300.0          # bu kadar sn kullanıcı bırakmazsa tur güvenli noktada duraklar
+TAKEOVER_POLL = 1.0
+TAKEOVER_NOTE = ("Fareyi/klavyeyi kullandınız: ajan bekliyor. Bıraktığınızda (yaklaşık 10 sn sonra) kaldığı yerden "
+                 "devam edecek.")
+TAKEOVER_PAUSE_TEXT = ("Kullanıcı {sec} sn boyunca masaüstünü kullandı; masaüstü işi DURAKLATILDI. Bu araç çağrısı "
+                       "yapılmadı. Turu burada bitir; kullanıcı 'Devam et' deyince ekranı yeniden okuyup sürdüreceksin.")
+TAKEOVER_PREEMPT_TEXT = ("Kullanıcı bu işlem sürerken fareyi/klavyeyi kullandı; işlem YARIDA kaldı ({steps} adım "
+                         "yapıldı). Aynı çağrıyı körü körüne tekrarlama: önce Snapshot ile ekranı yeniden oku (kutuda "
+                         "yarım yazı kalmış olabilir), sonra kaldığın yerden sürdür.")
+_CODE_RE = re.compile(r'"code"\s*:\s*"([A-Z_]+)"')
+_WAIT_RE = re.compile(r'"wait_seconds"\s*:\s*([0-9.]+)')
+_STEPS_RE = re.compile(r'"executed_steps"\s*:\s*([0-9]+)')
+_STATE_RE = re.compile(r'"state"\s*:\s*"([a-z_]+)"')
+
+
+# Askıdaki pencere (2026-11-05 gerçek deneme): VS Code "Yanıt Vermiyor" iken Windows-MCP 0.8.8'in Snapshot'ı tüm pencerelerin
+# öğe ağacını tararken o pencerede SONSUZA kadar bekledi (ControlStatus/DisplayInventory hemen yanıt veriyordu). 0.8.8
+# `WINDOWS_MCP_EXCLUDE_PROCESSES` ile bir programın pencerelerini UIA'ya hiç girmeden atlar; askıdaki pencereler değişebildiği
+# için her masaüstü çağrısından önce denetlenir ve gerekirse sunucu o programları atlayacak şekilde yeniden başlatılır.
+EXCLUDE_ENV = "WINDOWS_MCP_EXCLUDE_PROCESSES"
+HUNG_NOTE = ("Yanıt vermeyen bir pencere var ({names}); masaüstü taranırken atlanıyor (o pencereye ajan dokunamaz).")
+
+
+def hung_window_processes() -> set[str]:
+    """Görünür ve askıda (IsHungAppWindow) üst düzey pencerelerin program adları (ör. {"Code.exe"}). Yalnız okur, ms sürer."""
+    if os.name != "nt":
+        return set()
+    import ctypes
+    import ctypes.wintypes as wt
+
+    user32, k32 = ctypes.windll.user32, ctypes.windll.kernel32
+    found: set[str] = set()
+
+    @ctypes.WINFUNCTYPE(wt.BOOL, wt.HWND, wt.LPARAM)
+    def cb(hwnd, _):
+        try:
+            if user32.IsWindowVisible(hwnd) and user32.IsHungAppWindow(hwnd):
+                pid = wt.DWORD()
+                user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                h = k32.OpenProcess(0x1000, False, pid.value)
+                if h:
+                    buf = ctypes.create_unicode_buffer(260)
+                    size = wt.DWORD(260)
+                    if k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+                        found.add(buf.value.rsplit("\\", 1)[-1])
+                    k32.CloseHandle(h)
+        except Exception:
+            pass
+        return True
+
+    try:
+        user32.EnumWindows(cb, 0)
+    except Exception:
+        return set()
+    return found
+
+
+def parse_control_block(text: str) -> tuple[str, float, int] | None:
+    """Masaüstü kontrolü reddi → (kod, bekleme sn, yapılan adım); başka hata/yanıt → None."""
+    m = _CODE_RE.search(text or "")
+    if not m or m.group(1) not in CONTROL_RETRY_CODES | {CONTROL_PREEMPTED, "CONTROL_UNAVAILABLE"}:
+        return None
+    w = _WAIT_RE.search(text)
+    s = _STEPS_RE.search(text)
+    return m.group(1), float(w.group(1)) if w else 0.0, int(s.group(1)) if s else 0
 _CARET_KEY = {"end": "end", "start": "home"}       # Type caret_position → gönderdiği tuş (0.8.8 desktop/service.py)
 
 
@@ -1066,6 +1138,7 @@ class McpToolset:
         self.configs = configs or {}
         self.project_root = project_root
         self.notes = notes or []
+        self.user_paused = False             # masaüstü: kullanıcı uzun süre bırakmadı → koşucu turu duraklatır
         self.skipped = skipped or []         # gerekmediği için sunulmayanlar (bilgi; arayüze gitmez)
         self.status = status
         self.hints = hints or []             # sistem istemine eklenecek tur bilgisi (ör. yerel adres)
@@ -1105,6 +1178,33 @@ class McpToolset:
                 out += serena_problems(text)
         return out
 
+    # Masaüstü: kullanıcı araya girince bekleme (testler küçültür / sahte saat verir)
+    takeover_limit = TAKEOVER_WAIT_LIMIT
+    takeover_poll = TAKEOVER_POLL
+    _sleep = staticmethod(time.sleep)
+    _clock = staticmethod(time.monotonic)
+
+    def cancelled(self) -> bool:                       # koşucu kendi iptal denetimini atar
+        return False
+
+    _hung = staticmethod(hung_window_processes)        # testler sahte verir
+
+    def _skip_hung(self, cfg: McpServerConfig) -> None:
+        """Askıda pencere varsa sunucuyu o programları atlayacak şekilde (yeniden) başlatır."""
+        try:
+            hung = set(self._hung())
+        except Exception:
+            hung = set()
+        current = {x for x in (cfg.env.get(EXCLUDE_ENV) or "").split(",") if x}
+        new = hung - current
+        if not new:
+            return
+        cfg.env[EXCLUDE_ENV] = ",".join(sorted(current | hung))
+        if self.status:
+            self.status(HUNG_NOTE.format(names=", ".join(sorted(new))))
+        if self.manager.running(cfg.name, self.project_root) is not None:
+            self.manager.restart(cfg.name, self.project_root)
+
     def call(self, name: str, arguments: dict[str, Any]) -> tuple[str, bool]:
         tool = self.tools.get(name)
         if tool is None or self.manager is None:
@@ -1116,8 +1216,63 @@ class McpToolset:
                 return refused, True
         if self.manager.running(cfg.name, self.project_root) is None and self.status:
             self.status(f"MCP sunucusu açılıyor: {cfg.name}")
-        res = self.manager.call(cfg, self.project_root, tool.name, arguments)
-        return result_text(res)
+        if cfg.when != "masaustu":
+            return result_text(self.manager.call(cfg, self.project_root, tool.name, arguments))
+        return self._call_desktop(cfg, tool.name, arguments)
+
+    def _call_desktop(self, cfg: McpServerConfig, tool: str, arguments: dict[str, Any]) -> tuple[str, bool]:
+        """Kullanıcı fareyi/klavyeyi kullanırken: modele hata göstermeden bekle, kontrol dönünce AYNI çağrıyı
+        tekrarla (reddedilen çağrı hiçbir şey yapmamıştır). Yarıda kesilen işlem tekrarlanmaz: model ekranı yeniden
+        okur. TAKEOVER_WAIT_LIMIT aşılırsa `user_paused` → koşucu turu güvenli noktada duraklatır."""
+        t0 = self._clock()
+        noted = False
+        retried = False
+        while True:
+            self._skip_hung(cfg)
+            try:
+                text, err = result_text(self.manager.call(cfg, self.project_root, tool, arguments))
+            except McpError:
+                # Zaman aşımı: sunucu bir pencerede takılmış olabilir → yeniden başlat, BİR kez daha dene
+                if retried:
+                    raise
+                retried = True
+                self.manager.restart(cfg.name, self.project_root)
+                continue
+            blk = parse_control_block(text) if err else None
+            if blk is None:
+                waited = self._clock() - t0
+                if noted and waited >= 1:
+                    text = f"(Kullanıcı ~{waited:.0f} sn masaüstünü kullandı; ajan bekleyip sürdürdü.)\n" + text
+                return text, err
+            code, wait, steps = blk
+            if not noted:
+                noted = True
+                if self.status:
+                    self.status(TAKEOVER_NOTE)
+            if code == CONTROL_PREEMPTED and steps > 0:
+                self._wait_control(cfg, t0)
+                return TAKEOVER_PREEMPT_TEXT.format(steps=steps), True
+            if not self._wait_control(cfg, t0, first_wait=wait):
+                if self.cancelled():
+                    return "İşlem kullanıcı tarafından iptal edildi.", True
+                self.user_paused = True
+                return TAKEOVER_PAUSE_TEXT.format(sec=int(self._clock() - t0)), True
+
+    def _wait_control(self, cfg: McpServerConfig, t0: float, first_wait: float = 0.0) -> bool:
+        """Kontrol ajana dönene kadar bekler (ControlStatus kontrolden muaf). False → süre doldu / iptal."""
+        if first_wait > 0:
+            self._sleep(min(first_wait, self.takeover_limit))
+        while True:
+            if self.cancelled() or self._clock() - t0 >= self.takeover_limit:
+                return False
+            try:
+                text, _err = result_text(self.manager.call(cfg, self.project_root, "ControlStatus", {}))
+            except McpError:
+                text = ""
+            m = _STATE_RE.search(text or "")
+            if m and m.group(1) in ("ready", "ai"):
+                return True
+            self._sleep(self.takeover_poll)
 
 
 class LazyToolset:
@@ -1146,7 +1301,16 @@ class LazyToolset:
         return self.resolve().get(name)
 
     def call(self, name: str, arguments: dict[str, Any]) -> tuple[str, bool]:
-        return self.resolve().call(name, arguments)
+        value = self.resolve()
+        value.cancelled = self.cancelled               # koşucunun iptal denetimi (masaüstü beklemesi kesilsin)
+        return value.call(name, arguments)
+
+    def cancelled(self) -> bool:                       # koşucu kendi denetimini atar
+        return False
+
+    @property
+    def user_paused(self) -> bool:
+        return bool(self._value is not None and getattr(self._value, "user_paused", False))
 
     @property
     def notes(self) -> list[str]:
@@ -1367,7 +1531,7 @@ class McpManager:
         return tools
 
     def toolset(self, configs: list[McpServerConfig], project_root: Path | None, message: str = "",
-                status: Callable[[str], None] | None = None) -> McpToolset:
+                status: Callable[[str], None] | None = None, force: set[str] | None = None) -> McpToolset:
         tools: list[McpTool] = []
         used: dict[str, McpServerConfig] = {}
         notes: list[str] = []
@@ -1376,7 +1540,7 @@ class McpManager:
         for cfg in configs:
             if not cfg.enabled:
                 continue
-            ok, why = needed(cfg, prof, message)
+            ok, why = (True, "ajan istedi") if cfg.name in (force or ()) else needed(cfg, prof, message)
             if not ok:
                 skipped.append(f"{cfg.name}: {why}")
                 continue
@@ -1435,6 +1599,17 @@ class McpManager:
     def _reap_loop(self) -> None:
         while not self._stop.wait(self.REAP_EVERY):
             self.reap_idle()
+
+    def restart(self, name: str, project_root: Path | None) -> None:
+        """Sunucu sürecini kapatır; sonraki çağrı güncel yapılandırmayla (ortam değişkenleri) yeniden açar."""
+        key = self._key(name, project_root)
+        with self._lock:
+            c = self._clients.pop(key, None)
+        if c is not None:
+            try:
+                c.close()
+            except Exception:
+                pass
 
     def reap_idle(self, now: float | None = None) -> list[str]:
         """Boşta kalan süreçleri kapatır; kapatılan sunucu adlarını döndürür."""

@@ -210,6 +210,11 @@ class QaController(QObject):
             return
         target = "masaustu" if cmd == "/qa-masaustu" else (self.state.target if cmd == "/qa-duzelt" and self.state
                                                              else "web")
+        need = self._auto_install_kind(target)
+        if need:
+            # Araç kurulu/etkin değil ama kullanıcı kapatmadı: kendisi kurup açar, sonra komutu sürdürür (Madde 13)
+            self._auto_install(need, lambda: self.command(cmd, arg))
+            return
         problem = self.precheck(target)
         if problem:
             sv._note(problem, "alert")
@@ -222,6 +227,37 @@ class QaController(QObject):
                 return
             self.plan(self.state.goal, feedback=arg.strip() or "Senaryoları daha net ve ölçülebilir yaz.",
                       target=self.state.target)
+
+    def _auto_install_kind(self, target: str) -> str:
+        """Gerekli test aracı eksik ve kullanıcı kapatmamışsa → kurulacak tür ("web" | "masaustu"), yoksa ""."""
+        missing = self._desk_config() is None if target == "masaustu" else self._pw_config() is None
+        if not missing or not self._ws() or "evren" not in self.ctx.available_providers():
+            return ""
+        tt = self.ctx.test_tools(self._ws(), "", "evren")
+        return target if tt is not None and tt.available(target)[0] else ""
+
+    def _auto_install(self, kind: str, then) -> None:
+        sv = self.view
+        label = "masaüstü kontrolü" if kind == "masaustu" else "tarayıcı (Playwright)"
+        tt = self.ctx.test_tools(self._ws(), "", "evren")
+        sv._note(f"QA için {label} gerekiyor; ajan kendisi kuruyor (ilk kez ~1 dk). Ayarlar > Bağlayıcılar'dan "
+                 "kapatabilirsiniz.", "spark")
+        self._installing = True
+
+        def done(res):
+            self._installing = False
+            ok, msg, _ts = res
+            if ok:
+                then()
+            else:
+                sv._note(f"{label} açılamadı: {msg}", "alert")
+
+        def fail(exc):
+            self._installing = False
+            sv._note(f"{label} kurulamadı: {exc}", "alert")
+
+        self._install_task = Task(lambda: tt.enable(kind), on_done=done, on_error=fail)
+        self._install_task.start()
 
     def precheck(self, target: str = "web") -> str:
         """Başlamadan önce koşullar; sorun varsa kullanıcıya gösterilecek metin."""
