@@ -425,5 +425,9 @@ def test_masaustu_qa_istemi_adimlari_birlestirir_dogrulugu_korur():
     assert "YALNIZ\n  görünüm sorunu" in p or "YALNIZ görünüm sorunu" in p.replace("\n  ", " ")
     assert "her önemli\n  adımdan sonra yeniden Snapshot" not in p
     assert "Varsayım yapma" in p and "<qa_sonuc>" in p                          # doğruluk ve sonuç bloğu korunur
+    assert "Denemeler ARASINDA Snapshot alma" in p
+    plan = qa.desktop_planning_prompt("Topla işlevini test et")
+    assert "TEK konuyu" in plan and f"en fazla {qa.MAX_TRIES} deneme" in plan
+    assert "TEK konuyu" in qa.planning_prompt("giriş formunu test et")              # web planında da
     assert "TEK yanıtta" in mcp.DESKTOP_PROMPT and "WindowText" in mcp.DESKTOP_PROMPT
     assert "Her önemli adımdan sonra yeniden" not in mcp.DESKTOP_PROMPT

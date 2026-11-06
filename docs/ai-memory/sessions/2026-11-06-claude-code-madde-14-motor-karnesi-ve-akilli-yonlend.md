@@ -79,6 +79,11 @@ gerçek API testi YOK, kullanıcı "başlat" diyene kadar; birlikte deneme 2026-
   DESKTOP_PROMPT: tek yanıtta Type+Type+Click+WindowText, bir Snapshot, dosyaları yeniden okuma, visual_check yalnız
   görünüm. Sabitleyici test. Ölçüm: e2e_masaustu qa (önce: hatalı 40 dk'da 3 senaryo, doğru ~38 dk 4 senaryo).
 
+- 23:00-00:00 Madde 15 ölçüm 1 (69344d1): GEÇTİ — hatalı 4/4 senaryo bitti (hata bulundu) 39,3 dk / 78 model çağrısı;
+  doğru 4/4 geçti 33,6 dk / 75 çağrı. Önce: hatalı 40 dk'da 3 senaryo, doğru ~38 dk. Senaryo 1: 1,6 dk (önce ~10-15).
+  Kalan: plan 3-4. senaryolara çok deneme sıkıştırdı (20 / 32 adım) ve denemeler arası Snapshot sürdü → ek: senaryo TEK
+  konu, en fazla 4 deneme (MAX_TRIES); denemeler arası Snapshot yok. Ölçüm 2 sürüyor.
+
 ## Sorunlar ve kayıtlar
 - Yama betiğinde bash heredoc + `\\b` → kontrol karakteri (R-29 yeniden). Write aracıyla düzeltildi; sonraki yamalar
   yalnız Edit/Write.
