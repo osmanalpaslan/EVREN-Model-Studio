@@ -75,6 +75,24 @@ class ModelsPage(BasePage):
         self.stats_hint.setProperty("role", "dim")
         l3.addWidget(self.stats_hint)
         self.root.addWidget(c3)
+
+        # ---- Madde 14: motor karnesi (gerçek puan, en iyi gün) + bugünkü hafif yoklama ----
+        c4, l4 = card()
+        l4.addWidget(QLabel("<b>Motor karnesi</b> — gerçek puan, motorun en iyi gününde gerçek görevlerle ölçülür; "
+                            "bugünkü durum açılıştaki hafif yoklamadan gelir"))
+        self.karne = QTableWidget(0, 5)
+        self.karne.setHorizontalHeaderLabels(["Motor", "Gerçek puan", "İyi gün / ölçüm", "Son ölçüm", "Bugün"])
+        self.karne.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.karne.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.karne.setMinimumHeight(120)
+        l4.addWidget(self.karne)
+        self.karne_hint = QLabel("Henüz ölçüm yok: motorlar belirlenen ölçüm günlerinde, o gün iyi durumdaysa gerçek "
+                                 "görevlerle ölçülür. O zamana kadar Auto Pro ölçülmüş sırayı ve günlük yoklamayı "
+                                 "kullanır.")
+        self.karne_hint.setProperty("role", "dim")
+        self.karne_hint.setWordWrap(True)
+        l4.addWidget(self.karne_hint)
+        self.root.addWidget(c4)
         self.refresh_stats()
 
         self.refresh_btn = self._make_refresh_btn()
@@ -132,6 +150,7 @@ class ModelsPage(BasePage):
         summ = modelstats.summary(rows)
         qual = modelstats.quality(rows)
         pen = modelstats.penalized(rows)
+        weak = self.ctx.model_weak()
         now = datetime.now(timezone.utc)
         self.stats.setRowCount(0)
         for model, st in sorted(summ.items(), key=lambda kv: -kv[1]["calls"]):
@@ -143,11 +162,12 @@ class ModelsPage(BasePage):
             # A5: puan az örnekte gösterilir ama kural yalnız QUALITY_MIN_CALLS çağrıdan sonra işler
             kalite = "-" if score is None else f"{score:.2f}"
             durum = ("bekleme süresinde (sona alındı)" if cooling else
+                     "bugün zayıf (yoklama) — yedek önde" if model in weak else
                      "kalite nedeniyle geride" if model in pen else "normal")
             vals = [model, st["calls"], f"%{int(st['error_rate'] * 100)}", st["tps"] or "-",
                     st["first_chunk_s"] or "-", st["switches"], kalite, durum]
             tips = {6: ", ".join(f"{k}: {n}" for k, n in sorted((q.get("events") or {}).items())) or "kalite olayı yok",
-                    7: pen.get(model, "")}
+                    7: weak.get(model) or pen.get(model, "")}
             for col, v in enumerate(vals):
                 item = QTableWidgetItem(str(v))
                 if tips.get(col):
@@ -156,12 +176,47 @@ class ModelsPage(BasePage):
                     item.setTextAlignment(Qt.AlignCenter)
                 self.stats.setItem(r, col, item)
         self.stats_hint.setVisible(not summ)
+        self.refresh_karne()
         ch = getattr(self.ctx, "model_list_change", None)
         if ch and (ch[0] or ch[1]):
             self.change_label.setText("⚠ Model listesi değişti — kalkan: " + (", ".join(ch[0]) or "-")
                                       + " · eklenen: " + (", ".join(ch[1]) or "-")
                                       + ". Yeni modeller ölçülmeden Auto Pro sırasına girmez.")
             self.change_label.setVisible(True)
+
+    DAY_LABELS = {"iyi": "iyi", "zayif": "zayıf — yedek önde", "bilinmiyor": "belirsiz"}
+
+    def refresh_karne(self) -> None:
+        """Madde 14: karne (gerçek puan) + bugünkü yoklama durumu. Ağ isteği yok; hata → boş tablo."""
+        from ..agent import karne
+
+        try:
+            card_rows = karne.card(self.ctx.db.model_scores(karne.SCORE_DAYS))
+            calls = self.ctx.db.recent_model_calls(24 * self.ctx.db.MODEL_CALLS_KEEP_DAYS)
+        except Exception:
+            card_rows, calls = [], []
+        probed = sorted({r["model"] for r in calls if r.get("role") == karne.PROBE_ROLE})
+        models = [r["model"] for r in card_rows] + [m for m in probed if m not in {r["model"] for r in card_rows}]
+        by = {r["model"]: r for r in card_rows}
+        self.karne.setRowCount(0)
+        for model in models:
+            r = self.karne.rowCount()
+            self.karne.insertRow(r)
+            c = by.get(model)
+            state, why = karne.day_state(calls, model)
+            vals = [model,
+                    "-" if not c or c["puan"] is None else f"{c['puan']:.1f}",
+                    f"{c['iyi']} / {c['toplam']}" if c else "0 / 0",
+                    (c["son"][:16].replace("T", " ") if c else "ölçülmedi"),
+                    self.DAY_LABELS.get(state, state)]
+            for col, v in enumerate(vals):
+                item = QTableWidgetItem(str(v))
+                if col:
+                    item.setTextAlignment(Qt.AlignCenter)
+                if col == 4:
+                    item.setToolTip(why)
+                self.karne.setItem(r, col, item)
+        self.karne_hint.setVisible(not card_rows)
 
     def show_detail(self, row: int, _col: int) -> None:
         mid = self.table.item(row, 0).text()

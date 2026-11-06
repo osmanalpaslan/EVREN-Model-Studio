@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-06 00:50 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi` (Madde 13 dalının üstünde). Madde 14 kodu + birim testleri BİTTİ (tam takım 974/974); GERÇEK API testi yok — kullanıcı motorlar bakımda dedi. **2026-11-06 19:00-20:00 birlikte**: önce Madde 13 kalanları, sonra `tools\motor_karnesi.py olc ...` ve önce/sonra ölçüm. Ayrıntı: oturum günlüğü 2026-11-06-claude-code-madde-14-….
+- **Güncelleme:** 2026-11-06 18:20 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi` (Madde 13 dalının üstünde). Madde 14 kodu + birim testleri + Modeller ekranı karnesi BİTTİ; GERÇEK API testi yok — kullanıcı "başlat" diyene kadar (plan 19:00-20:00): önce Madde 13 kalanları, sonra karne ölçümü. Bekleyen kullanıcı kararı: gözlem cf3c8b0737b8 (döngü bekçisi, dünkü masaüstü QA denemeleri) kayda dönüştürülsün mü.
 - **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

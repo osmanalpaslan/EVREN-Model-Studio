@@ -50,4 +50,5 @@ gerçek API testi YOK, kullanıcı "başlat" diyene kadar; birlikte deneme 2026-
   sonra Madde 14: `tools\motor_karnesi.py olc qwen3.8-flash-next deepseek-v4.1-flash gemma-4-31b` (motor başına
   ~10-15 dk, iyi gün değilse ertelenir), zorluk auto-pro + QA e2e ile önce/sonra ölç (R-21/R-22).
 - Doğrulanmadı: yoklama eşikleri (3 kat, 8 sn, 30 sn) gerçek dağılımla ayarlanmadı; puan ağırlıkları gerçek
-  raporla sınanmadı. Karne Ayarlar/Modeller ekranında henüz gösterilmiyor (sıradaki küçük iş, R-05).
+  raporla sınanmadı.
+- 18:20 Modeller ekranına "Motor karnesi" kartı (gerçek puan, iyi gün/ölçüm, son ölçüm, bugünkü yoklama) ve "Sıra durumu"na "bugün zayıf" eklendi; test 1 (R-03 kayıt→ekran); ui_denetim iki tema HATA 0 (açık 116 UYARI, hepsi önceden var olan kenar çubuğu yazıları), görüntülere bakıldı.

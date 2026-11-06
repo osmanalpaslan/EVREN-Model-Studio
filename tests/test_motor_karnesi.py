@@ -279,3 +279,25 @@ def test_arac_raporu_puanlar_kaydeder_ve_karneyi_gosterir(tmp_path):
     text = t.goster(db)
     assert "qwen3.8-flash-next" in text and "100.0" in text and "deepseek-v4.1-flash" in text
     assert karne.best_scores(db.model_scores()) == {"qwen3.8-flash-next": 100.0}
+
+
+# ---- 8) Modeller ekranı: karne ve bugünkü durum görünür (R-03: kayıt → ekran) -----------------------------
+
+def test_modeller_ekraninda_karne_ve_bugunku_yoklama(win):
+    _app, w = win
+    page = w.pages["models"]
+    page.refresh()
+    assert page.karne.rowCount() == 0 and not page.karne_hint.isHidden()           # ölçüm yok: ipucu görünür
+    w.ctx.db.add_model_score("qwen3.8-flash-next", "zorluk", 91.5, good_day=True)
+    w.ctx.db.add_model_score("qwen3.8-flash-next", "zorluk", 99.0, good_day=False)  # kötü gün: puana katılmaz
+    _fail_probe(w.ctx, "deepseek-v4.1-flash")                                      # ölçülmemiş ama bugün zayıf
+    w.ctx.record_model_call({"model": "deepseek-v4.1-flash", "ok": True, "duration_s": 5, "first_chunk_s": 1,
+                             "out_tokens": 400})
+    page.refresh()
+    rows = {page.karne.item(r, 0).text(): [page.karne.item(r, c).text() for c in range(5)]
+            for r in range(page.karne.rowCount())}
+    assert rows["qwen3.8-flash-next"][1:3] == ["91.5", "1 / 2"]
+    assert rows["deepseek-v4.1-flash"][1] == "-" and rows["deepseek-v4.1-flash"][4].startswith("zayıf")
+    assert page.karne_hint.isHidden()
+    durum = {page.stats.item(r, 0).text(): page.stats.item(r, 7).text() for r in range(page.stats.rowCount())}
+    assert durum["deepseek-v4.1-flash"].startswith("bugün zayıf")
