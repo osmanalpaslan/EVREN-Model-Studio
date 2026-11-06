@@ -59,6 +59,15 @@ gerçek API testi YOK, kullanıcı "başlat" diyene kadar; birlikte deneme 2026-
   sa askı 0. Yeni yanlış alarm: "Click 6 kez" (farklı sayı yazıp Topla'ya basmak) → başarılı masaüstü eylemi DİĞER tüm
   masaüstü sayaçlarını sıfırlar; aynı eylemin değişikliksiz tekrarı yine yakalanır. Test + mutasyon 4/4.
 
+- 21:40 Zorluk auto-pro (8ae59fe): **12/12 · 973 sn** (önceki 12/12 · 1027) · test_araci_ac 0/59 çağrı (R-22/R-25
+  tetiklenmeme) · mini_proje 5/5 ama 6 dk sınırında "cancelled", bekçi 2. R-13: e2e_ui 15/15 · e2e_agent 4/6 (glm-5.3
+  EVREN 503, deepseek+qwen 4/4) · e2e_real_api glm-5.3 503 (sunucu; önceki koşularla aynı).
+- Kullanıcı: "QA çok uzun; hızlandırma yoksa masaüstünü varsayılan açık bırakmayalım". Ölçüm: Snapshot'ın paket içi
+  taraması 0,48 sn, araç olarak 15 sn → fark sunucunun KENDİ AI ışığı katman pencerelerini aynı süreçten UIA ile
+  okuması. Başlatıcı kendi pencerelerini atlıyor → gerçek sunucuda **Snapshot 15 sn → 0,5 sn**. QA'nın kalan süresi
+  model beklemesi (~30 çağrı/senaryo). Karar: `auto_desktop_tool` varsayılan KAPALI (ajan masaüstünü kendiliğinden
+  açmaz; /qa-masaustu ve Bağlayıcılar'da elle açma açık istek). Testler + mutasyon 3/3 + 1/1; ui_denetim HATA 0.
+
 ## Sorunlar ve kayıtlar
 - Yama betiğinde bash heredoc + `\\b` → kontrol karakteri (R-29 yeniden). Write aracıyla düzeltildi; sonraki yamalar
   yalnız Edit/Write.

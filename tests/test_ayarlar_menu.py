@@ -17,7 +17,7 @@ BEKLENEN = {
     "key_input": "saglayicilar", "budget": "saglayicilar", "budget_enforce": "saglayicilar",
     "gateways": "saglayicilar",
     "plan_first": "ajan", "scope_check": "ajan", "project_map": "ajan", "learnings_suggest": "ajan",
-    "suggest_project": "ajan", "auto_test_tools": "ajan", "edit_diag": "ajan", "test_check": "ajan", "plan_guard": "ajan",
+    "suggest_project": "ajan", "auto_test_tools": "ajan", "auto_desktop_tool": "ajan", "edit_diag": "ajan", "test_check": "ajan", "plan_guard": "ajan",
     "tool_protocol": "ajan", "max_steps": "ajan", "cmd_timeout": "ajan", "output_limit": "ajan",
     "autopro_smart": "autopro", "autopro_probe": "autopro", "autopro_architect": "autopro",
     "auto_switch": "autopro", "quota_guard_turns": "autopro", "auto_resume": "autopro",

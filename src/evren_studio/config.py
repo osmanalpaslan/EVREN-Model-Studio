@@ -194,6 +194,10 @@ class Settings:
     # Ajan gerektiğinde test araçlarını (tarayıcı, masaüstü) kendisi kurup açsın (kullanıcı 2026-11-05: "elle açıp kapatmak
     # gözden kaçabilir; ilk başta ajan gerektiğinde kullansın, kullanıcı kapattıysa çalışmasın")
     auto_test_tools: bool = True
+    # Masaüstü kontrolünü (gerçek fare/klavye) ajan KENDİLİĞİNDEN açmasın; isteyen kullanıcı açar (kullanıcı 2026-11-06:
+    # "QA testleri çok uzun sürüyor… masaüstü kullanımını varsayılan olarak açık bırakmayalım"). /qa-masaustu ve
+    # Bağlayıcılar'da elle etkinleştirme açık istektir, bu ayardan etkilenmez.
+    auto_desktop_tool: bool = False
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
     # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).
     settings_version: int = SETTINGS_VERSION

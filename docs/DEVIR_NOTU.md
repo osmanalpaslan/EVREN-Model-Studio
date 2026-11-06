@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-06 21:25 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi`. Masaüstü QA gerçek denemesi GEÇTİ (hatalı: hata bulundu; doğru: 4/4, uydurma yok); VS Code 2 sa askısız. Bekçi: farklı değer yazıp aynı düğmeye basmak döngü sayılmıyor. Sırada: zorluk auto-pro (R-21) + R-13 üçlüsü, tam takım, PR'lar (13 sonra 14) + birleştirme, karne ölçümü.
+- **Güncelleme:** 2026-11-06 21:55 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi`. Zorluk 12/12, R-13 (glm-5.3 503 dışında) geçti, masaüstü QA geçti. Ekran okuma 15 sn → 0,5 sn; masaüstü kontrolü varsayılan kapalı (auto_desktop_tool). Sırada: tam takım → tek PR (Madde 13+14) → birleştir → karne ölçümü.
 - **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

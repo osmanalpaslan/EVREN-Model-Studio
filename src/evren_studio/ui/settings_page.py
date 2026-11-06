@@ -368,11 +368,16 @@ class SettingsPage(BasePage):
         l.addWidget(self.learnings_suggest)
         self.suggest_project = QCheckBox("Çok aşamalı uzun istemde Proje ajanını öner")
         l.addWidget(self.suggest_project)
-        self.auto_test_tools = QCheckBox("Ajan gerektiğinde test araçlarını (tarayıcı, masaüstü) kendisi kurup açsın (önerilir)")
+        self.auto_test_tools = QCheckBox("Ajan gerektiğinde tarayıcı test aracını kendisi kurup açsın (önerilir)")
         l.addWidget(self.auto_test_tools)
-        l.addWidget(hint("Ajan bir web sayfasında ya da masaüstü uygulamasında yaptığı değişikliği denemesi gerektiğinde "
-                         "aracı kendisi açar (ilk kullanımda ~1 dk kurulum). Bağlayıcılar'da bir aracı kapatırsanız ajan onu "
-                         "açmaz. Masaüstü testinde fareyi/klavyeyi kullanırsanız ajan bekler, bırakınca sürdürür."))
+        l.addWidget(hint("Ajan bir web sayfasında yaptığı değişikliği denemesi gerektiğinde aracı kendisi açar (ilk "
+                         "kullanımda ~1 dk kurulum). Bağlayıcılar'da bir aracı kapatırsanız ajan onu açmaz."))
+        self.auto_desktop_tool = QCheckBox("Ajan gerektiğinde masaüstü kontrolünü de kendisi açabilsin (gerçek fare ve "
+                                           "klavye)")
+        l.addWidget(self.auto_desktop_tool)
+        l.addWidget(hint("Varsayılan kapalı: masaüstü testi uzun sürer ve ajan gerçek fareyi/klavyeyi kullanır. Kapalıyken "
+                         "de /qa-masaustu yazarak masaüstü testini kendiniz başlatabilirsiniz. Testte fareyi/klavyeyi "
+                         "kullanırsanız ajan bekler, bırakınca sürdürür."))
         self._add("ajan", c)
         c, l = card()
         l.addWidget(section("Bekçiler"))
@@ -776,6 +781,7 @@ class SettingsPage(BasePage):
         self.learnings_suggest.setChecked(s.learnings_suggest)
         self.suggest_project.setChecked(s.suggest_project)
         self.auto_test_tools.setChecked(s.auto_test_tools)
+        self.auto_desktop_tool.setChecked(s.auto_desktop_tool)
         self.auto_resume.setChecked(s.auto_resume)
         self.web_tools_chat.setChecked(s.web_tools_chat)
         self.gozlem_card.enabled.setChecked(s.gozlem_enabled)
@@ -836,6 +842,7 @@ class SettingsPage(BasePage):
         s.learnings_suggest = self.learnings_suggest.isChecked()
         s.suggest_project = self.suggest_project.isChecked()
         s.auto_test_tools = self.auto_test_tools.isChecked()
+        s.auto_desktop_tool = self.auto_desktop_tool.isChecked()
         s.auto_resume = self.auto_resume.isChecked()
         s.web_tools_chat = self.web_tools_chat.isChecked()
         s.gozlem_enabled = self.gozlem_card.enabled.isChecked()

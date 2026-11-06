@@ -88,7 +88,8 @@ class TestTools:
         return next((d for d in (self.ctx.settings.mcp_servers or [])
                      if isinstance(d, dict) and d.get("name") == name), None)
 
-    def available(self, kind: str) -> tuple[bool, str]:
+    def available(self, kind: str, explicit: bool = False) -> tuple[bool, str]:
+        """`explicit`: kullanıcı aracı açıkça istedi (ör. /qa-masaustu) — masaüstünün varsayılan kapalı kapısı atlanır."""
         from ..agent import mcp as mcpmod
 
         s = self.ctx.settings
@@ -103,6 +104,9 @@ class TestTools:
         e = self._entry(name)
         if e is not None and not e.get("enabled", True):
             return False, f"kullanıcı {short} aracını kapatmış (Ayarlar > Bağlayıcılar)"
+        if kind == "masaustu" and not explicit and not s.auto_desktop_tool and e is None:
+            return False, ("masaüstü kontrolü (gerçek fare/klavye) varsayılan olarak kapalı; kullanıcı açmak isterse "
+                           "/qa-masaustu yazabilir ya da Ayarlar > Kod ajanı'ndan ajanın açmasına izin verebilir")
         if kind == "masaustu" and os.name != "nt":
             return False, "masaüstü kontrolü yalnız Windows'ta çalışır"
         if mcpmod.PRESETS[name].get("needs_node") and not mcpmod.find_node() and s.install_mode != "otomatik":
@@ -115,10 +119,10 @@ class TestTools:
         name = self.KIND.get(kind)
         return bool(name and mcpmod.PRESETS[name]["ready"](self.ctx.settings.resolved_data_dir()))
 
-    def enable(self, kind: str, log=None):
+    def enable(self, kind: str, log=None, explicit: bool = False):
         from ..agent import mcp as mcpmod
 
-        ok, why = self.available(kind)
+        ok, why = self.available(kind, explicit=explicit)
         if not ok:
             return False, why, None
         name = self.KIND[kind]

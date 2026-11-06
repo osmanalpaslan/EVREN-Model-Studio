@@ -38,6 +38,20 @@ def make_skip(is_hung: Callable[[int], bool], excluded: Callable[[], set[str]],
     return skip
 
 
+def own_or_hung(pid_of: Callable[[int], int], is_hung: Callable[[int], bool], own_pid: int) -> Callable[[int], bool]:
+    """Sunucunun KENDİ pencereleri (AI ışığı / parlama katmanları, "windows-mcp-flash") ya da askıdaki pencere.
+    Kendi pencerelerini aynı süreçten UI Automation ile okumak her Snapshot'ı ~15 sn bekletiyordu (2026-11-06 ölçümü:
+    aynı tarama dışarıdan 0,5 sn; atlayınca sunucu üzerinden de 0,5 sn)."""
+    def check(h: int) -> bool:
+        try:
+            if pid_of(h) == own_pid:
+                return True
+        except Exception:
+            pass
+        return bool(is_hung(h))
+    return check
+
+
 def patch(desktop_cls: Any, uia: Any, skip: Callable[[int], bool]) -> bool:
     """Desktop'un pencere listesi ve ön plan okumasından atlanacak pencereleri çıkarır. Yamalandıysa True."""
     orig_handles = getattr(desktop_cls, "get_controls_handles", None)
@@ -168,11 +182,19 @@ def _install() -> bool:
     except Exception as exc:                    # başka sürüm/eksik modül: dokunmadan çalıştır
         print(f"[EVREN başlatıcı] yama atlandı: {exc}", file=sys.stderr)
         return False
+    import ctypes.wintypes as wt
+    import os
+
     user32 = ctypes.windll.user32
     excluded = getattr(ts, "_excluded_process_names", lambda: set())
     name_of = getattr(ts, "_window_process_name", lambda _h: None)
-    ok = patch(getattr(ds, "Desktop", None), getattr(ds, "uia", None),
-               make_skip(lambda h: bool(user32.IsHungAppWindow(h)), excluded, name_of))
+    def pid_of(h: int) -> int:
+        pid = wt.DWORD()
+        user32.GetWindowThreadProcessId(h, ctypes.byref(pid))
+        return pid.value
+
+    is_skip = own_or_hung(pid_of, lambda h: bool(user32.IsHungAppWindow(h)), os.getpid())
+    ok = patch(getattr(ds, "Desktop", None), getattr(ds, "uia", None), make_skip(is_skip, excluded, name_of))
     print(f"[EVREN başlatıcı] askıdaki pencere koruması {'açık' if ok else 'UYGULANAMADI (beklenmeyen sürüm)'}",
           file=sys.stderr)
     try:

@@ -223,3 +223,15 @@ def test_uygulama_araci_sorulmadan_sunar_ve_ajana_anlatir():
     assert wb.TEXT_TOOL in cfg.allowed_tools and wb.TEXT_TOOL in cfg.read_only_tools
     assert wb.TEXT_TOOL not in mcp.WINDOWS_EXCLUDED
     assert "WindowText" in mcp.DESKTOP_PROMPT and "etiket" in mcp.DESKTOP_PROMPT
+
+
+def test_sunucunun_kendi_pencereleri_taranmaz_digerleri_taranir():
+    """2026-11-06: sunucunun AI ışığı katmanlarını kendi içinden okumak Snapshot'ı 15 sn yapıyordu (atlayınca 0,5 sn)."""
+    pids = {1: 500, 2: 777, 3: 777, 4: 900}
+    check = wb.own_or_hung(pids.get, lambda h: h == 4, 777)
+    assert [check(h) for h in (1, 2, 3, 4)] == [False, True, True, True]
+
+    def boom(_h):
+        raise OSError("erişim yok")
+
+    assert wb.own_or_hung(boom, lambda h: False, 777)(1) is False        # pid okunamazsa: askı denetimine kalır

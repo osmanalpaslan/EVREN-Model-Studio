@@ -257,7 +257,7 @@ class QaController(QObject):
         if not missing or not self._ws() or "evren" not in self.ctx.available_providers():
             return ""
         tt = self.ctx.test_tools(self._ws(), "", "evren")
-        return target if tt is not None and tt.available(target)[0] else ""
+        return target if tt is not None and tt.available(target, explicit=True)[0] else ""   # /qa-masaustu = açık istek
 
     def _auto_install(self, kind: str, then) -> None:
         sv = self.view
@@ -279,7 +279,7 @@ class QaController(QObject):
             self._installing = False
             sv._note(f"{label} kurulamadı: {exc}", "alert")
 
-        self._install_task = Task(lambda: tt.enable(kind), on_done=done, on_error=fail)
+        self._install_task = Task(lambda: tt.enable(kind, explicit=True), on_done=done, on_error=fail)
         self._install_task.start()
 
     def precheck(self, target: str = "web") -> str:

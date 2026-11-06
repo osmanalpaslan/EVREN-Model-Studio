@@ -396,7 +396,13 @@ def test_kapi_kullanici_kapattiysa_acmaz(win, tmp_path):
     app, w = win
     s = w.ctx.settings
     tt = w.ctx.test_tools(tmp_path, "", "evren")
-    assert tt.available("masaustu")[0]                                 # hiç yapılandırılmamış → açabilir
+    # Kullanıcı 2026-11-06: masaüstü kontrolü varsayılan KAPALI — ajan kendiliğinden açmaz, isteyen açar
+    assert s.auto_desktop_tool is False
+    ok, why = tt.available("masaustu")
+    assert not ok and "varsayılan olarak kapalı" in why and "/qa-masaustu" in why
+    assert tt.available("masaustu", explicit=True)[0]                  # /qa-masaustu: kullanıcı açıkça istedi
+    s.auto_desktop_tool = True
+    assert tt.available("masaustu")[0]                                 # kullanıcı izin verdi → açabilir
     s.mcp_servers = [{**mcp.windows_config().to_dict(), "enabled": False}]
     assert not tt.available("masaustu")[0] and "kapatmış" in tt.available("masaustu")[1]
     assert tt.available("web")[0] or "Node" in tt.available("web")[1]
@@ -423,6 +429,9 @@ def test_kapi_kurar_kaydeder_ve_zorla_sunar(win, tmp_path, monkeypatch):
                         lambda configs, root, message, status=None, force=None: seen.update(force=force,
                                                                                             names=[c.name for c in configs]) or "KUME")
     tt = w.ctx.test_tools(tmp_path, "README'yi güncelle", "evren")
+    ok, msg, _ts = tt.enable("masaustu")                               # varsayılan kapalı: kurmaz
+    assert not ok and installed == [] and "kapalı" in msg
+    w.ctx.settings.auto_desktop_tool = True
     ok, _msg, ts = tt.enable("masaustu")
     assert ok and ts == "KUME" and installed
     assert seen["force"] == {"masaustu"} and "masaustu" in seen["names"]   # mesajda masaüstü sözcüğü olmasa da
@@ -564,3 +573,14 @@ def test_basarisiz_tiklama_ekrani_degistirmez_okuma_yine_dongu(env):
                     + [ChatResult(content="Bitti.")])
     r, db, sid = make(env, client, mcp=FailClick())
     assert r.run(db.get_session_messages(sid)).stopped == "loop"
+
+
+def test_masaustu_izni_kaydedilir_ve_acilista_okunur(win):
+    app, w = win
+    page = w.pages["settings"]
+    assert page.auto_desktop_tool.isChecked() is False
+    page.auto_desktop_tool.setChecked(True)
+    page.save_all()
+    from evren_studio.config import ConfigStore
+
+    assert ConfigStore(w.ctx.store.data_dir).load().auto_desktop_tool is True          # R-03

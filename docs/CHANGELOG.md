@@ -23,8 +23,10 @@
   Ctrl+Alt+Shift+Backspace ile kontrolü her an geri alırsınız. Komut, dosya ve Kayıt Defteri araçları kapalıdır.
 - **Masaüstü QA**: `/qa-masaustu <neyi test etsin>` — QA ajanı Windows uygulamanızı test uzmanı gibi dener (senaryo
   planı → onayınız → fare/klavyeyle deneme, gerekirse ekran görüntüsünü görsel modele sorma → rapor).
-- **Ajan test aracını kendisi açar**: bir işi denemek için tarayıcı ya da masaüstü test aracı gerekiyorsa ajan onu
-  kendisi kurup açar (elle açmayı unutmanız gerekmez). Ayarlar > Kod ajanı > "Ajan gerektiğinde test araçlarını
+- **Ajan test aracını kendisi açar**: bir web işini denemek için tarayıcı test aracı gerekiyorsa ajan onu kendisi
+  kurup açar. **Masaüstü kontrolünü (gerçek fare/klavye) ise varsayılan olarak açmaz**: Ayarlar > Kod ajanı'ndan izin
+  verebilir ya da `/qa-masaustu` ile kendiniz başlatabilirsiniz.
+- **Ekran okuma ~30 kat hızlı**: 15 sn → 0,5 sn. Ayarlar > Kod ajanı > "Ajan gerektiğinde test araçlarını
   (tarayıcı, masaüstü) kendisi kurup açsın" ile kapatılabilir; bir aracı Bağlayıcılar'da kapattıysanız ajan onu açmaz. `/qa` ve `/qa-masaustu` eksik aracı
   kendisi kurar (kurulum onay modunu "manuel" seçtiyseniz önce sorar).
 - **Test sırasında fareye/klavyeye dokunursanız test durmaz**: ajan siz bırakana kadar bekler, sonra aynı adımı
