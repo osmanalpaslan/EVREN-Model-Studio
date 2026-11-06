@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-06 18:20 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi` (Madde 13 dalının üstünde). Madde 14 kodu + birim testleri + Modeller ekranı karnesi BİTTİ; GERÇEK API testi yok — kullanıcı "başlat" diyene kadar (plan 19:00-20:00): önce Madde 13 kalanları, sonra karne ölçümü. Bekleyen kullanıcı kararı: gözlem cf3c8b0737b8 (döngü bekçisi, dünkü masaüstü QA denemeleri) kayda dönüştürülsün mü.
+- **Güncelleme:** 2026-11-06 19:25 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi`. Kullanıcı: masaüstü testinde birkaç dk sonra VS Code donuyor → kök neden bizim ekran okumamız (olay kaydı 5/5), düzeltildi (desktop_skip_processes, gerçek doğrulama: VS Code tepki 0 ms). Sırada: masaüstü QA e2e yeniden, sonra zorluk + R-13 + PR, sonra karne ölçümü.
 - **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

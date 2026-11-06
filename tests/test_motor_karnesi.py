@@ -44,7 +44,8 @@ def test_normalinden_cok_yavas_yoklama_zayif_biraz_yavas_degil():
 def test_iyi_gun_ve_bilinmeyen_gun():
     assert karne.day_state(history("a", 2.0) + [probe("a", 5, 2.1)], "a", NOW)[0] == "iyi"
     assert karne.day_state(history("a", 2.0) + [probe("a", 60 * 5, 2.1)], "a", NOW)[0] == "bilinmiyor"   # eski
-    assert karne.day_state([probe("a", 5, 4.0)], "a", NOW)[0] == "bilinmiyor"                          # geçmiş yok
+    assert karne.day_state([probe("a", 5, 4.0)], "a", NOW)[0] == "ilk"                                 # geçmiş yok
+    assert karne.day_state([probe("a", 5, 4.0, ok=False)], "a", NOW)[0] == "zayif"                    # geçmişsiz hata
     assert karne.day_state([probe("a", 5, 45.0)], "a", NOW)[0] == "zayif"                              # çok yavaş
     assert karne.day_state([], "a", NOW)[0] == "bilinmiyor"
 
@@ -264,7 +265,7 @@ def _tool():
 
 def test_olcum_karari_iyi_gunde_olcer_kotu_gunde_erteler():
     t = _tool()
-    assert t.karar("iyi", False) == (True, True)
+    assert t.karar("iyi", False) == (True, True) and t.karar("ilk", False) == (True, True)
     assert t.karar("zayif", False) == (False, False) and t.karar("bilinmiyor", False) == (False, False)
     assert t.karar("zayif", True) == (True, False)                       # zorla: ölçer ama puana katmaz
 

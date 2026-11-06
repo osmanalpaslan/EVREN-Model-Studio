@@ -521,6 +521,12 @@ class SettingsPage(BasePage):
         l.addWidget(kv_row_widget("Ajanın basmayacağı tuşlar:", self.desktop_blocked, "End"))
         l.addWidget(hint("Masaüstü kontrolü açıkken ajan bu tuşlara basmaz (virgülle ayırın). Bilgisayarınızda bir tuş "
                          "başka bir programı açıyorsa (ör. End ekran yakalamayı) buraya ekleyin."))
+        self.desktop_skip = QLineEdit()
+        self.desktop_skip.setPlaceholderText("ör. Code.exe, Cursor.exe")
+        l.addWidget(kv_row_widget("Ekranda okunmayacak programlar:", self.desktop_skip, "Code.exe, Cursor.exe, Windsurf.exe"))
+        l.addWidget(hint("Ajan ekranı okurken bu programların pencerelerine hiç dokunmaz (virgülle ayırın). VS Code gibi "
+                         "ağır geliştirici programları okunurken yanıt vermez hâle gelebiliyor; ajanın o programda iş "
+                         "yapması gerekiyorsa listeden çıkarın."))
         self._add("bilgisayar", c)
         c, l = card()
         l.addWidget(section("Veri klasörü"))
@@ -794,6 +800,7 @@ class SettingsPage(BasePage):
         self.schedule_notify.setChecked(s.schedule_notify)
         self.schedule_max.setValue(int(s.schedule_max_minutes))
         self.desktop_blocked.setText(", ".join(str(k) for k in (s.desktop_blocked_keys or [])))
+        self.desktop_skip.setText(", ".join(str(k) for k in (s.desktop_skip_processes or [])))
         self._refresh_provider_rows()
         self._refresh_spend(s)
         self.mcp_card.load(s)
@@ -850,6 +857,7 @@ class SettingsPage(BasePage):
         s.schedule_notify = self.schedule_notify.isChecked()
         s.schedule_max_minutes = int(self.schedule_max.value())
         s.desktop_blocked_keys = [k.strip() for k in self.desktop_blocked.text().split(",") if k.strip()]
+        s.desktop_skip_processes = [k.strip() for k in self.desktop_skip.text().split(",") if k.strip()]
         self.mcp_card.collect(s)
 
     def changed_fields(self) -> list[str]:

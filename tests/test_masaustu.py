@@ -384,3 +384,32 @@ def test_ayarlarda_masaustu_satiri_ve_komut_listesi(win):
     from evren_studio.ui.composer import SLASH_COMMANDS
 
     assert "/qa-masaustu" in SLASH_COMMANDS
+
+
+def test_ekranda_okunmayacak_programlar_varsayilan_kayit_ve_sunucuya_gecer(win):
+    """Kullanıcı 2026-11-06: ekran kullanımı başlayınca birkaç dakika sonra VS Code yanıt vermiyor, tıklayınca
+    kapanıyor (olay kaydı: 5 askı, hepsi masaüstü testlerinde). VS Code taramada hiç okunmaz."""
+    app, w = win
+    s = w.ctx.settings
+    assert s.desktop_skip_processes == ["Code.exe", "Cursor.exe", "Windsurf.exe"]
+    s.mcp_enabled = True
+    s.mcp_servers = [mcp.windows_config().to_dict()]
+    cfg = next(c for c in w.ctx.mcp_configs() if c.name == "masaustu")
+    assert cfg.env[mcp.EXCLUDE_ENV] == "Code.exe,Cursor.exe,Windsurf.exe"
+    assert mcp.EXCLUDE_ENV not in mcp.windows_config().env                       # hazır ayarın kendisi kirlenmez
+    page = w.pages["settings"]
+    page.desktop_skip.setText("Code.exe, Teams.exe")
+    page.save_all()
+    from evren_studio.config import ConfigStore
+
+    assert ConfigStore(w.ctx.store.data_dir).load().desktop_skip_processes == ["Code.exe", "Teams.exe"]   # R-03
+    s.mcp_enabled, s.mcp_servers = True, [mcp.windows_config().to_dict()]     # save_all MCP listesini de yazar
+    cfg = next(c for c in w.ctx.mcp_configs() if c.name == "masaustu")
+    assert cfg.env[mcp.EXCLUDE_ENV] == "Code.exe,Teams.exe"
+    page.desktop_skip.setText("")                                               # boş: hiçbir program atlanmaz (R-22)
+    page.save_all()
+    s.mcp_enabled, s.mcp_servers = True, [mcp.windows_config().to_dict()]
+    cfg = next(c for c in w.ctx.mcp_configs() if c.name == "masaustu")
+    assert mcp.EXCLUDE_ENV not in cfg.env
+    other = [c for c in w.ctx.mcp_configs() if c.name != "masaustu"]
+    assert all(mcp.EXCLUDE_ENV not in c.env for c in other)

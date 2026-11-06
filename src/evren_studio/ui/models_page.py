@@ -184,7 +184,7 @@ class ModelsPage(BasePage):
                                       + ". Yeni modeller ölçülmeden Auto Pro sırasına girmez.")
             self.change_label.setVisible(True)
 
-    DAY_LABELS = {"iyi": "iyi", "zayif": "zayıf — yedek önde", "bilinmiyor": "belirsiz"}
+    DAY_LABELS = {"iyi": "iyi", "ilk": "sağlıklı (geçmiş yok)", "zayif": "zayıf — yedek önde", "bilinmiyor": "belirsiz"}
 
     def refresh_karne(self) -> None:
         """Madde 14: karne (gerçek puan) + bugünkü yoklama durumu. Ağ isteği yok; hata → boş tablo."""

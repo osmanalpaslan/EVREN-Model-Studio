@@ -777,6 +777,11 @@ class AppContext:
         for c in out:
             if c.when == "masaustu":                       # kullanıcının engelli tuş listesi (Ayarlar > Bu bilgisayar)
                 c.blocked_keys = [str(k) for k in (self.settings.desktop_blocked_keys or [])]
+                skip = [str(p).strip() for p in (self.settings.desktop_skip_processes or []) if str(p).strip()]
+                if skip:                                   # taramada hiç dokunulmayacak programlar (wmcp_baslatici)
+                    from ..agent.mcp import EXCLUDE_ENV
+
+                    c.env[EXCLUDE_ENV] = ",".join(skip)
         return out
 
     def test_tools(self, project_root, message: str = "", provider: str = "evren", status=None):

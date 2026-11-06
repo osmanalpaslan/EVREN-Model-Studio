@@ -186,6 +186,11 @@ class Settings:
     schedule_max_minutes: int = 120        # tek çalıştırmanın üst süresi; aşılırsa durdurulur
     # Masaüstü kontrolü (Madde 13): ajanın basmayacağı tuşlar (kullanıcı 2026-11-05: End ekran yakalamayı açıyor)
     desktop_blocked_keys: list = field(default_factory=lambda: ["End"])
+    # Masaüstü taramasında HİÇ dokunulmayacak programlar (kullanıcı 2026-11-06: "ekran kullanımı başladıktan birkaç
+    # dakika sonra VS Code yanıt vermiyor, tıklayınca kapanıyor"). Windows olay kaydı: 30 günde Code.exe 5 kez askıda
+    # kaldı, beşi de masaüstü testlerinin saatlerinde. Ekran okuma Electron penceresinin erişilebilirlik ağacını
+    # isteyince VS Code onu ana iş parçacığında kurup donuyordu.
+    desktop_skip_processes: list = field(default_factory=lambda: ["Code.exe", "Cursor.exe", "Windsurf.exe"])
     # Ajan gerektiğinde test araçlarını (tarayıcı, masaüstü) kendisi kurup açsın (kullanıcı 2026-11-05: "elle açıp kapatmak
     # gözden kaçabilir; ilk başta ajan gerektiğinde kullansın, kullanıcı kapattıysa çalışmasın")
     auto_test_tools: bool = True

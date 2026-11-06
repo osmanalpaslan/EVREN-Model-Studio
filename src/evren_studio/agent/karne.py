@@ -59,7 +59,11 @@ def _normal(history: list[dict[str, Any]]) -> float | None:
 
 
 def day_state(rows: Iterable[dict[str, Any]], model: str, now: datetime | None = None) -> tuple[str, str]:
-    """("iyi" | "zayif" | "bilinmiyor", gerekçe) — motorun bugünkü son yoklamasına göre."""
+    """("iyi" | "ilk" | "zayif" | "bilinmiyor", gerekçe) — motorun bugünkü son yoklamasına göre.
+
+    "ilk": yoklama başarılı ve aşırı yavaş değil ama karşılaştıracak geçmiş yok (2026-11-06 gerçek yoklama: kullanıcının
+    veritabanında geçmiş yoktu, kural her motoru "bilinmiyor" sayınca karne ölçümü HİÇ yapılamıyordu). Gerçek puan en
+    iyi ölçüm günü olduğu için ilk ölçüm güvenlidir: sonraki iyi gün ölçümü daha yüksekse onun yerine geçer."""
     now = now or datetime.now(timezone.utc)
     ps = _probes(rows).get(model) or []
     if not ps or now - _at(ps[-1]) > PROBE_FRESH:
@@ -77,7 +81,7 @@ def day_state(rows: Iterable[dict[str, Any]], model: str, now: datetime | None =
         return "iyi", f"yoklama {d:.1f} sn (normali ~{normal:.1f} sn)"
     if d > PROBE_VERY_SLOW_S:
         return "zayif", f"yoklama {d:.0f} sn"
-    return "bilinmiyor", "karşılaştırmak için yeterli yoklama geçmişi yok"
+    return "ilk", f"yoklama {d:.1f} sn; karşılaştırmak için geçmiş yok (ilk ölçüm sayılır)"
 
 
 def weak_models(rows: Iterable[dict[str, Any]], now: datetime | None = None) -> dict[str, str]:

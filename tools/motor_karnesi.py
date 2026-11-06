@@ -34,8 +34,8 @@ def _db():
 
 
 def karar(state: str, zorla: bool) -> tuple[bool, bool]:
-    """(ölçülsün mü, iyi gün sayılsın mı)."""
-    if state == "iyi":
+    """(ölçülsün mü, iyi gün sayılsın mı). "ilk": geçmişsiz ama sağlıklı motor — ölçülür ve sayılır (karne.day_state)."""
+    if state in ("iyi", "ilk"):
         return True, True
     return (True, False) if zorla else (False, False)
 

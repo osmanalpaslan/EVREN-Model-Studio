@@ -32,6 +32,8 @@
   "Devam et" kartı gösterir.
 - **Engelli tuşlar**: Ayarlar > Bu bilgisayar > Masaüstü kontrolü — ajanın basmayacağı tuşlar (varsayılan End; bazı
   bilgisayarlarda ekran yakalamayı açıyor).
+- **VS Code donmuyor**: ajan ekranı okurken VS Code, Cursor ve Windsurf pencerelerine hiç dokunmaz (bunlar
+  okunurken yanıt vermez hâle gelip kapanabiliyordu). Liste: Ayarlar > Bu bilgisayar > "Ekranda okunmayacak programlar".
 - **Yanıt vermeyen pencere**: masaüstünde "(Yanıt Vermiyor)" bir pencere varsa ekran taraması o pencereyi atlar
   (önceden tarama orada takılıp 90 sn sonra hata veriyordu); ajan o pencereye dokunamaz, size bir kez söylenir.
 
