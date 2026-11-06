@@ -469,7 +469,9 @@ DESKTOP_PROMPT = (
     ".exe yolu). Yalnız görevle ilgili pencerede işlem yap; kullanıcının diğer pencerelerine, tarayıcı sekmelerine, "
     "e-postasına dokunma. Parola, kart veya kişisel bilgi YAZMA; giriş/ödeme ekranı çıkarsa dur ve kullanıcıya söyle. "
     "Dosya/komut işi için masaüstünü değil kendi araçlarını (read_file, write_file, run_command) kullan. Kendi "
-    "açtığın test penceresini iş bitince kapat; kaydetmek istenmediyse 'Kaydetme' de.")
+    "açtığın test penceresini iş bitince kapat; kaydetmek istenmediyse 'Kaydetme' de. Kapandığını `WindowText` ile "
+    "doğrula ('not found' = kapandı); `use_ui_tree=false` ile alınan Snapshot pencere listesini HİÇ okumaz, hep "
+    "'pencere yok' der — doğrulama için kullanma.")
 
 
 DEFAULT_BLOCKED_KEYS = ["End"]

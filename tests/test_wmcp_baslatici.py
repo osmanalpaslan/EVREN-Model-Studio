@@ -235,3 +235,69 @@ def test_sunucunun_kendi_pencereleri_taranmaz_digerleri_taranir():
         raise OSError("erişim yok")
 
     assert wb.own_or_hung(boom, lambda h: False, 777)(1) is False        # pid okunamazsa: askı denetimine kalır
+
+
+SPECIAL = {"ALT": 0x12, "CTRL": 0x11, "CONTROL": 0x11, "SHIFT": 0x10, "F4": 0x73, "LWIN": 0x5B, "ESCAPE": 0x1B,
+           "DELETE": 0x2E, "TAB": 0x09, "ENTER": 0x0D, "BACK": 0x08}
+
+
+def test_kisayol_degistiriciler_genisletilmis_bayraksiz():
+    """2026-11-07: uia Alt'ı ExtendedKey ile bastı = Türkçe klavyede AltGr → Alt+F4 pencereyi kapatmadı."""
+    char = lambda c: {"c": 0x43, "s": 0x53}.get(c.lower())          # VkKeyScanW büyük-küçük harfte aynı tuş
+    assert wb.shortcut_keys("alt+f4", SPECIAL, char) == [(0x12, False), (0x73, False)]
+    assert wb.shortcut_keys("Ctrl + C", SPECIAL, char) == [(0x11, False), (0x43, False)]
+    assert wb.shortcut_keys("ctrl+shift+esc", SPECIAL, char) == [(0x11, False), (0x10, False), (0x1B, False)]
+    assert wb.shortcut_keys("win+d", SPECIAL, {"d": 0x44}.get) == [(0x5B, True), (0x44, False)]   # Win gerçekten genişletilmiş
+    assert wb.shortcut_keys("ctrl+alt+del", SPECIAL, char)[-1] == (0x2E, True)
+    assert wb.shortcut_keys("alt+bilinmeyen", SPECIAL, char) is None
+    assert wb.shortcut_keys("alt+", SPECIAL, char) is None
+
+
+def test_kisayol_basili_tutar_ve_ters_sirayla_birakir_hata_olsa_da():
+    log = []
+    wb.press_chord([(0x11, False), (0x10, False), (0x1B, False)], lambda vk, up, ext: log.append((vk, up)))
+    assert log == [(0x11, False), (0x10, False), (0x1B, False), (0x1B, True), (0x10, True), (0x11, True)]
+
+    log.clear()
+
+    def send(vk, up, ext):
+        log.append((vk, up))
+        if vk == 0x73 and not up:
+            raise OSError("gönderilemedi")
+
+    with pytest.raises(OSError):
+        wb.press_chord([(0x12, False), (0x73, False)], send)
+    assert log[-1] == (0x12, True)                          # Alt asla basılı kalmaz
+
+
+def test_kisayol_yamasi_coklu_tusu_duzeltir_tek_tusu_ozgune_birakir():
+    calls, sent, steps = [], [], []
+
+    class D:
+        def shortcut(self, shortcut):
+            calls.append(shortcut)
+
+    class Owner:
+        def checkpoint_current(self):
+            steps.append("cp")
+
+        def record_step_current(self):
+            steps.append("rec")
+
+    assert wb.patch_shortcut(D, SPECIAL, {"c": 0x43}.get, lambda vk, up, ext: sent.append((vk, up, ext)),
+                             lambda: Owner())
+    D().shortcut("alt+f4")
+    assert calls == [] and sent[0] == (0x12, False, False) and sent[-1] == (0x12, True, False)
+    assert steps == ["cp", "rec"]
+    D().shortcut("enter")
+    D().shortcut("alt+bilinmeyen")
+    assert calls == ["enter", "alt+bilinmeyen"]                 # tek tuş / çözülemeyen: özgün davranış
+
+    class Eski:
+        pass
+
+    assert wb.patch_shortcut(Eski, SPECIAL, {}.get, lambda *a: None, None) is False
+
+
+def test_ajan_kapanmayi_hizli_snapshot_ile_dogrulamaz():
+    assert "use_ui_tree=false" in mcp.DESKTOP_PROMPT and "WindowText` ile" in mcp.DESKTOP_PROMPT
