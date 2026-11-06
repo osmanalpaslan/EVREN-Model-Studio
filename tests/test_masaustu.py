@@ -413,3 +413,21 @@ def test_ekranda_okunmayacak_programlar_varsayilan_kayit_ve_sunucuya_gecer(win):
     assert mcp.EXCLUDE_ENV not in cfg.env
     other = [c for c in w.ctx.mcp_configs() if c.name != "masaustu"]
     assert all(mcp.EXCLUDE_ENV not in c.env for c in other)
+
+
+def test_masaustu_qa_istemi_adimlari_birlestirir_dogrulugu_korur():
+    """Gerçek QA 2026-11-06: senaryo başına 16-21 adım — her senaryo dosyaları yeniden okuyor, her yazmadan sonra ayrı
+    Snapshot alıyor, yazıyı görsel modele soruyordu. Hız kuralları; doğruluk kuralları (okuduğunu yaz) korunur."""
+    st = qa.QaState(goal="Topla", run_hint="python hesap.py", target="masaustu",
+                    scenarios=[qa.Scenario(idx=1, title="2+3", steps=["2 yaz", "3 yaz", "Topla"], expected="5")])
+    p = qa.desktop_scenario_prompt(st, st.scenarios[0], [])
+    assert "TEK yanıtta" in p and "WindowText" in p and "yeniden OKUMA" in p
+    assert "YALNIZ\n  görünüm sorunu" in p or "YALNIZ görünüm sorunu" in p.replace("\n  ", " ")
+    assert "her önemli\n  adımdan sonra yeniden Snapshot" not in p
+    assert "Varsayım yapma" in p and "<qa_sonuc>" in p                          # doğruluk ve sonuç bloğu korunur
+    assert "Denemeler ARASINDA Snapshot alma" in p
+    plan = qa.desktop_planning_prompt("Topla işlevini test et")
+    assert "TEK konuyu" in plan and f"en fazla {qa.MAX_TRIES} deneme" in plan
+    assert "TEK konuyu" in qa.planning_prompt("giriş formunu test et")              # web planında da
+    assert "TEK yanıtta" in mcp.DESKTOP_PROMPT and "WindowText" in mcp.DESKTOP_PROMPT
+    assert "Her önemli adımdan sonra yeniden" not in mcp.DESKTOP_PROMPT

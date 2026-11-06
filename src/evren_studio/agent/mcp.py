@@ -458,16 +458,20 @@ DESKTOP_NOTE = ("Masaüstü kontrolü açık: ajan bu turda fareyi ve klavyeyi k
 DESKTOP_PROMPT = (
     "- `mcp__masaustu__*` Windows masaüstünü kullanır (gerçek fare ve klavye). Önce `Snapshot` ile ekrandaki "
     "pencereleri ve etkileşimli öğeleri (adı, türü, koordinatı) oku; tıklama/yazmayı YALNIZ Snapshot'ta gördüğün "
-    "koordinatlarla yap — koordinatı koddan, pencere boyutundan ya da tahminle UYDURMA. Her önemli adımdan sonra yeniden "
-    "`Snapshot` ile sonucu DENETLE. Snapshot düz yazıları (etiket, sonuç metni, durum çubuğu, mesaj) GÖSTERMEZ: "
-    "bunları okumak için `WindowText` (window_name: pencere başlığı) kullan. Snapshot pencerenin içini göstermiyorsa (öğe yok) bunu kullanıcıya söyle; ekranda "
+    "koordinatlarla yap — koordinatı koddan, pencere boyutundan ya da tahminle UYDURMA. Sonucu mutlaka DENETLE: "
+    "Snapshot düz yazıları (etiket, sonuç metni, durum çubuğu, mesaj) GÖSTERMEZ, bunları `WindowText` (window_name: "
+    "pencere başlığı) ile oku; yeniden Snapshot'ı yalnız pencere değiştiyse (yeni pencere/iletişim kutusu) al. Hız için "
+    "bir denemenin eylemlerini ve sonucunu okumayı TEK yanıtta birlikte çağır (ör. Type + Type + Click + WindowText; "
+    "sırayla çalışırlar). Snapshot pencerenin içini göstermiyorsa (öğe yok) bunu kullanıcıya söyle; ekranda "
     "yazanı göremediysen sonucu 'gördüm' diye bildirme, 'doğrulayamadım' de. Bir kutuya yazmak için önce kutuya tıkla, "
     "sonra Type (caret_position'ı değiştirme); bazı tuşlar bu bilgisayarda engelli olabilir (ör. End). "
     "Uygulama açmak için `App` (Başlat menüsü adı veya "
     ".exe yolu). Yalnız görevle ilgili pencerede işlem yap; kullanıcının diğer pencerelerine, tarayıcı sekmelerine, "
     "e-postasına dokunma. Parola, kart veya kişisel bilgi YAZMA; giriş/ödeme ekranı çıkarsa dur ve kullanıcıya söyle. "
     "Dosya/komut işi için masaüstünü değil kendi araçlarını (read_file, write_file, run_command) kullan. Kendi "
-    "açtığın test penceresini iş bitince kapat; kaydetmek istenmediyse 'Kaydetme' de.")
+    "açtığın test penceresini iş bitince kapat; kaydetmek istenmediyse 'Kaydetme' de. Kapandığını `WindowText` ile "
+    "doğrula ('not found' = kapandı); `use_ui_tree=false` ile alınan Snapshot pencere listesini HİÇ okumaz, hep "
+    "'pencere yok' der — doğrulama için kullanma.")
 
 
 DEFAULT_BLOCKED_KEYS = ["End"]

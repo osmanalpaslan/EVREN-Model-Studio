@@ -28,11 +28,13 @@ os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")
 # Qt penceresi: kutular, düğme ve sonuç etiketi Windows UI Automation'a ADLARIYLA görünür. İlk deneme (2026-11-05) Tk ile
 # yapıldı: Tk pencere içini UIA'ya bildirmiyor (yalnız başlık çubuğu), ajan koordinat tahmin etti → Qt'ye geçildi.
 APP = '''import sys
+from decimal import Decimal, InvalidOperation, getcontext
 from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 HATALI = {hatali}
+getcontext().prec = 80                  # 30 haneye kadar kesin toplama
 app = QApplication(sys.argv)
 w = QWidget()
 w.setWindowTitle("EVREN Hesap Deneme")
@@ -45,14 +47,28 @@ sonuc = QLabel("Sonuç: -")
 sonuc.setAccessibleName("Sonuç")
 
 
+def hata(metin):
+    sonuc.setText(metin)
+    sonuc.setAccessibleName(metin)
+
+
+# Gerçek QA 2026-11-07: "doğru" sürümün iki gerçek kusurunu buldu (0.1+0.2 → 0.30000000000000004; 400 haneli sayıda
+# yakalanmayan OverflowError, etiket eski kaldı) — doğru sürüm gerçekten kusursuz olmalı ki ölçüm anlamlı olsun.
 def topla():
     try:
-        x, y = float(a.text()), float(b.text())
-    except ValueError:
-        sonuc.setText("Hata: sayı girin")
+        x, y = Decimal(a.text().strip()), Decimal(b.text().strip())
+    except InvalidOperation:
+        hata("Hata: sayı girin")
+        return
+    if not x.is_finite() or not y.is_finite():
+        hata("Hata: sayı girin")
+        return
+    if max(len(x.as_tuple().digits) + max(x.as_tuple().exponent, 0),
+           len(y.as_tuple().digits) + max(y.as_tuple().exponent, 0)) > 30:
+        hata("Hata: sayı çok büyük (en fazla 30 hane)")
         return
     r = x - y if HATALI else x + y
-    r = int(r) if r == int(r) else r
+    r = format(r.quantize(1) if r == r.to_integral_value() else r.normalize(), "f")
     sonuc.setText(f"Sonuç: {{r}}")
     sonuc.setAccessibleName(f"Sonuç: {{r}}")
     Path(__file__).with_name("sonuc.txt").write_text(str(r), encoding="utf-8")
@@ -194,12 +210,14 @@ def main() -> int:
     try:
         if what in ("ajan", "hepsi"):
             ok &= bool(run_agent(app, w))
-        if what in ("qa", "hepsi"):
+        if what in ("qa", "hepsi", "qa-hatali"):
             bad, _c1 = run_qa(app, w, hatali=True)
-            good, _c2 = run_qa(app, w, hatali=False)
             print(f"{'GEÇTİ' if bad else 'KALDI'} | QA hatalı sürümde hatayı buldu")
+            ok &= bad
+        if what in ("qa", "hepsi", "qa-dogru"):
+            good, _c2 = run_qa(app, w, hatali=False)
             print(f"{'GEÇTİ' if good else 'KALDI'} | QA doğru sürümde hata uydurmadı")
-            ok &= bad and good
+            ok &= good
     finally:
         w.close()
     return 0 if ok else 2

@@ -74,6 +74,34 @@ gerçek API testi YOK, kullanıcı "başlat" diyene kadar; birlikte deneme 2026-
   yeniden dener (gemma haksız ertelendi). Puanlar aynı raporlardan yeniden hesaplandı (yalnız bu 3 kayıt). Testler +
   mutasyon 4/4. Sonuç: puanlı rollerde Auto Pro sırası qwen → deepseek → gemma.
 
+- 22:58 Madde 15 (kullanıcı: QA'yı daha da hızlandır): bugünkü QA kaydı senaryo başına 16-21 adım — her senaryo
+  dosyaları yeniden okuyor, her Type'tan sonra ayrı Snapshot, yazıyı visual_check'e soruyor. desktop_scenario_prompt +
+  DESKTOP_PROMPT: tek yanıtta Type+Type+Click+WindowText, bir Snapshot, dosyaları yeniden okuma, visual_check yalnız
+  görünüm. Sabitleyici test. Ölçüm: e2e_masaustu qa (önce: hatalı 40 dk'da 3 senaryo, doğru ~38 dk 4 senaryo).
+
+- 23:00-00:00 Madde 15 ölçüm 1 (69344d1): GEÇTİ — hatalı 4/4 senaryo bitti (hata bulundu) 39,3 dk / 78 model çağrısı;
+  doğru 4/4 geçti 33,6 dk / 75 çağrı. Önce: hatalı 40 dk'da 3 senaryo, doğru ~38 dk. Senaryo 1: 1,6 dk (önce ~10-15).
+  Kalan: plan 3-4. senaryolara çok deneme sıkıştırdı (20 / 32 adım) ve denemeler arası Snapshot sürdü → ek: senaryo TEK
+  konu, en fazla 4 deneme (MAX_TRIES); denemeler arası Snapshot yok. Ölçüm 2 sürüyor.
+
+- 00:13-01:14 Madde 15 ölçüm 2 (baf9986): toplam 61 dk (ölçüm 1: 73 dk), 120 model çağrısı (ölçüm 1: 153). Hatalı
+  sürüm 4/4 senaryo ~24 dk (ölçüm 1: 39,3), hata bulundu (3 kaldı). Doğru sürüm ~37 dk, 2/4 "kaldı" — İNCELENDİ, ikisi
+  de deneme uygulamasının GERÇEK kusuru (QA kanıtıyla): 0.1+0.2 → "0.30000000000000004" ve 400 haneli sayıda
+  yakalanmayan OverflowError (etiket eski kaldı, hata mesajı yok); ayrıca hata durumunda erişilebilir ad güncellenmiyordu
+  (WindowText bayat). Düzeltme yalnız tests/e2e_masaustu_real_api.py deneme uygulamasında: Decimal ile kesin toplama,
+  inf/nan reddi, 30 hane sınırı ("Hata: sayı çok büyük"), hata metni erişilebilir ada da yazılır; e2e'ye `qa-dogru` /
+  `qa-hatali` kipleri (yarıyı yeniden koşmak için). Elle 19 uç değerle sınandı (hatalı sürüm hâlâ çıkarma yapar).
+  Kabul ölçütü gevşetilmedi (doğru sürümde 0 kaldı).
+
+- 01:20-01:47 Madde 15 ölçüm 3 (düzeltilmiş deneme uygulaması): doğru sürüm 4/4 geçti 871 sn (kurulum dahil, önce ~38
+  dk); hatalı sürüm 747 sn, 3/4 kaldı (hata bulundu; önce 40 dk'da 3 senaryo). Masaüstü ajanı 4/5: "pencere kapandı"
+  KALDI. Kök neden (elle üretildi): Windows-MCP 0.8.8 `Desktop.shortcut` → uia.SendKeys("{Alt}{F4}") her tuşu
+  ExtendedKey ile basıyor → Alt = sağ Alt = Türkçe klavyede AltGr → pencere kapanmıyor; aynı tuşlar bayraksız
+  keybd_event ile → kapandı. Ajan da kapanmayı `use_ui_tree=false` Snapshot ile "doğruladı" (bu kip pencere listesini
+  hiç okumaz, hep "No windows found"). Düzeltme: wmcp_baslatici.patch_shortcut (değiştiriciler bayraksız basılı tutulur,
+  bırakma finally'de; tek tuş/çözülemeyen tuş özgün yola), DESKTOP_PROMPT: kapanmayı WindowText ile doğrula. Testler +4,
+  hedefli 97 geçti, mutasyon 5/5. Gerçek ajan yeniden: 5/5, 75 sn (önce 153 sn), Shortcut alt+F4 + WindowText doğrulama.
+
 ## Sorunlar ve kayıtlar
 - Yama betiğinde bash heredoc + `\\b` → kontrol karakteri (R-29 yeniden). Write aracıyla düzeltildi; sonraki yamalar
   yalnız Edit/Write.

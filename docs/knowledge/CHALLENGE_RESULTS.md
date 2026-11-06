@@ -84,6 +84,22 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Masaüstü QA hızlandırma (Madde 15, 2026-11-06/07, `tests/e2e_masaustu_real_api.py qa`, Auto Pro QA rolü)
+
+| Ölçüm | Kod | Hatalı sürüm | Doğru sürüm | Model çağrısı |
+|---|---|---|---|---|
+| Önce | master c4a75a9 | 40 dk'da ancak 3 senaryo | ~38 dk, 4/4 | ~30/senaryo |
+| 1 | 69344d1 (adım birleştirme) | 4/4 senaryo 39,3 dk, hata bulundu | 33,6 dk, 4/4 | 78 + 75 |
+| 2 | baf9986 (tek konu, ≤4 deneme, denemeler arası Snapshot yok) | 4/4 ~24 dk, hata bulundu | ~37 dk, 2/4 kaldı* | 120 toplam |
+| 3 | deneme uygulaması düzeltildi | **12,5 dk**, 3/4 kaldı = hata bulundu | **14,5 dk, 4/4** (kurulum dahil) | — |
+
+\* İki "kaldı" deneme uygulamasının GERÇEK kusuruydu (QA kanıtıyla): 0.1+0.2 → `0.30000000000000004`, 400 haneli
+sayıda yakalanmayan `OverflowError` (etiket eski kaldı). Deneme uygulaması kesin ondalık (Decimal), inf/nan reddi ve
+30 hane sınırıyla düzeltildi; kabul ölçütü (doğru sürümde 0 kaldı) gevşetilmedi.
+
+Masaüstü ajanı (`ajan`): 4/5 → pencere kapanmadı. Windows-MCP 0.8.8 Alt+F4'ü genişletilmiş Alt (= Türkçe
+klavyede AltGr) ile gönderiyordu; başlatıcı kısayolu düzeltince **5/5, 75 sn** (önce 5/5 153 sn).
+
 ## Motor karnesi — ilk gerçek ölçüm (2026-11-06 22:00-22:41, `tools/motor_karnesi.py olc`, zorluk paketi motor başına)
 
 | Motor | Yoklama | Sonuç | Süre (ortanca görev) | Puan |

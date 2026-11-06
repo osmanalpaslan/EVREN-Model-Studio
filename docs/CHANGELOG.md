@@ -1,5 +1,14 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Masaüstü QA daha hızlı (Madde 15)
+
+- **Masaüstü QA adımları birleştirildi**: QA ajanı bir denemede yazma + tıklama + sonucu okumayı tek yanıtta yapar,
+  proje dosyalarını her senaryoda yeniden okumaz, ekranı denemeler arasında yeniden taramaz, yazıyı görsel modele
+  sormadan pencere metninden okur. Her senaryo tek konuyu dener (en fazla 4 deneme).
+- Gerçek ölçüm: doğru sürüm testi ~38 dk → 14,5 dk; hatalı sürümde hata yine bulunuyor.
+- **Düzeltme — masaüstü kısayolları**: Alt+F4, Ctrl+C gibi tuş birleşimleri Türkçe klavyede çalışmıyordu (Alt tuşu
+  AltGr olarak gidiyordu); artık doğru gönderilir, ajan açtığı pencereyi gerçekten kapatır.
+
 ## Yayınlanmamış — Motor karnesi ve akıllı yönlendirme (Madde 14)
 
 - **Motor karnesi**: motorlara gerçek görev paketiyle 0-100 puan verilir (doğruluk önce, sonra hız). Ölçüm yalnız

@@ -15,6 +15,7 @@ hiçbir şeye dokunmadan çalıştırır.
 from __future__ import annotations
 
 import sys
+import time
 from typing import Any, Callable
 
 
@@ -173,6 +174,72 @@ def add_text_tool(tools_pkg: Any, uia: Any) -> bool:
     return True
 
 
+# Kısayol (Shortcut) düzeltmesi. 0.8.8 `Desktop.shortcut` "alt+f4"ü uia.SendKeys("{Alt}{F4}") ile gönderir; uia her
+# tuşu ExtendedKey bayrağıyla basar → Alt = SAĞ Alt = Türkçe klavyede AltGr (Ctrl+Alt) → Alt+F4 pencereyi kapatmadı
+# (gerçek ajan denemesi 2026-11-07: "Pressed alt+f4." dedi, pencere açık kaldı; aynı tuşlar bayraksız → kapandı).
+# Değiştirici tuşlar bayraksız basılı tutulur, asıl tuş basılıp bırakılır, sonra değiştiriciler ters sırayla bırakılır.
+_SHORTCUT_ALIASES = {"backspace": "BACK", "capslock": "CAPITAL", "scrolllock": "SCROLL", "windows": "LWIN",
+                     "win": "LWIN", "command": "LWIN", "option": "ALT", "esc": "ESCAPE", "del": "DELETE",
+                     "ins": "INSERT", "pgup": "PRIOR", "pageup": "PRIOR", "pgdn": "NEXT", "pagedown": "NEXT",
+                     "control": "CTRL", "return": "ENTER", "printscreen": "SNAPSHOT"}
+# Yalnız bunlar gerçekten "genişletilmiş" tuştur (oklar, gezinme bloğu, sağ değiştiriciler, Win)
+_EXTENDED_VKS = {0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E, 0x5B, 0x5C, 0x5D, 0x90, 0xA3, 0xA5}
+
+
+def shortcut_keys(shortcut: str, special: dict[str, int],
+                  vk_of_char: Callable[[str], int | None]) -> list[tuple[int, bool]] | None:
+    """"alt+f4" → [(VK_MENU, False), (VK_F4, False)]; çözülemeyen tuşta None (özgün davranışa bırakılır)."""
+    out: list[tuple[int, bool]] = []
+    for raw in shortcut.split("+"):
+        key = raw.strip()
+        if not key:
+            return None
+        if len(key) == 1:
+            vk = vk_of_char(key)
+        else:
+            vk = special.get(_SHORTCUT_ALIASES.get(key.casefold(), key).upper())
+        if vk is None:
+            return None
+        out.append((int(vk), int(vk) in _EXTENDED_VKS))
+    return out
+
+
+def press_chord(keys: list[tuple[int, bool]], send: Callable[[int, bool, bool], None]) -> None:
+    """send(vk, up, extended): son tuş dışındakiler basılı tutulur; bırakma her durumda (hata olsa da) yapılır."""
+    held: list[tuple[int, bool]] = []
+    try:
+        for vk, ext in keys[:-1]:
+            send(vk, False, ext)
+            held.append((vk, ext))
+        vk, ext = keys[-1]
+        send(vk, False, ext)
+        send(vk, True, ext)
+    finally:
+        for vk, ext in reversed(held):
+            send(vk, True, ext)
+
+
+def patch_shortcut(desktop_cls: Any, special: dict[str, int], vk_of_char: Callable[[str], int | None],
+                   send: Callable[[int, bool, bool], None], controller: Callable[[], Any] | None) -> bool:
+    orig = getattr(desktop_cls, "shortcut", None)
+    if not callable(orig) or not special:
+        return False
+
+    def shortcut(self, shortcut: str, *a, **k):
+        keys = shortcut_keys(shortcut, special, vk_of_char)
+        if not keys or len(keys) < 2:               # tek tuş zaten doğru çalışıyor
+            return orig(self, shortcut, *a, **k)
+        owner = controller() if controller else None
+        if owner is not None:
+            owner.checkpoint_current()              # kullanıcı araya girdiyse burada durur (özgün davranış)
+        press_chord(keys, send)
+        if owner is not None:
+            owner.record_step_current()
+
+    desktop_cls.shortcut = shortcut
+    return True
+
+
 def _install() -> bool:
     try:
         import ctypes
@@ -197,6 +264,23 @@ def _install() -> bool:
     ok = patch(getattr(ds, "Desktop", None), getattr(ds, "uia", None), make_skip(is_skip, excluded, name_of))
     print(f"[EVREN başlatıcı] askıdaki pencere koruması {'açık' if ok else 'UYGULANAMADI (beklenmeyen sürüm)'}",
           file=sys.stderr)
+    try:
+        uia_mod = getattr(ds, "uia", None)
+
+        def vk_of_char(c: str) -> int | None:
+            r = user32.VkKeyScanW(ord(c))
+            return None if r == -1 or (r & 0xFF) == 0xFF else r & 0xFF
+
+        def send(vk: int, up: bool, ext: bool) -> None:
+            user32.keybd_event(vk, 0, (2 if up else 0) | (1 if ext else 0), 0)
+            time.sleep(0.02)
+
+        sc_ok = patch_shortcut(getattr(ds, "Desktop", None), dict(getattr(uia_mod, "SpecialKeyNames", {}) or {}),
+                               vk_of_char, send, getattr(ds, "get_controller", None))
+    except Exception as exc:
+        sc_ok = False
+        print(f"[EVREN başlatıcı] kısayol düzeltmesi atlandı: {exc}", file=sys.stderr)
+    print(f"[EVREN başlatıcı] kısayol düzeltmesi {'açık' if sc_ok else 'UYGULANAMADI'}", file=sys.stderr)
     try:
         import windows_mcp.tools as tools_pkg
 

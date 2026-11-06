@@ -94,6 +94,9 @@ _BIG_RE = re.compile(r"tüm uygulama|bütün uygulama|tum uygulama|kapsamlı|kap
 _CAP_RE = re.compile(r"en fazla\s+(\d{1,2})\s*senaryo", re.I)
 
 
+MAX_TRIES = 4                       # senaryo başına deneme (gerçek QA: 32 adımlık "her şey bir arada" senaryo 17 dk sürdü)
+
+
 def scenario_range(goal: str) -> tuple[int, int, str]:
     """(en az, en çok, gerekçe) — planlama istemine yazılır."""
     g = (goal or "").strip()
@@ -111,7 +114,8 @@ def scenario_range(goal: str) -> tuple[int, int, str]:
 def _scenario_rule(goal: str) -> str:
     lo, hi, why = scenario_range(goal)
     return (f"- {lo} ile {hi} arasında senaryo ({why}); en önemli işlevden başla, aynı şeyi iki kez deneyen senaryo "
-            "yazma.")
+            f"yazma. Her senaryo TEK konuyu dener ve en fazla {MAX_TRIES} deneme (girdi + sonuç) içerir; farklı konuları "
+            "(ör. hızlı tıklama + pencere boyutu + çok uzun sayı) aynı senaryoya sıkıştırma.")
 
 
 # ---- istemler ---------------------------------------------------------------------------------
@@ -340,13 +344,20 @@ Beklenen: {sc.expected or "uygulama hatasız çalışır"}
 Önceki senaryolar:
 {prev}
 
-Nasıl (masaüstü araçları `mcp__masaustu__*`):
+Nasıl (masaüstü araçları `mcp__masaustu__*`) — HIZLI ve DOĞRU:
+- Uygulamanın kodu plan aşamasında incelendi: proje dosyalarını yeniden OKUMA (yalnız gerçekten gerekirse, bir kez).
 - Uygulama açık değilse aç: .exe/Başlat menüsü adı için mcp__masaustu__App; "python app.py" gibi komutsa
   start_service ile başlat (pencere açılır). Zaten açıksa YENİDEN AÇMA.
-- mcp__masaustu__Snapshot ile pencereyi ve öğeleri (ad, tür, koordinat) oku → Click / Type → her önemli
-  adımdan sonra yeniden Snapshot ile sonucu DENETLE. Yalnız test edilen uygulamanın penceresinde işlem yap.
-- Görünüm önemliyse (kesik yazı, taşma, görünmeyen düğme) visual_check ile sor.
-- Varsayım yapma: ekranda gördüğünü yaz. Adım yapılamıyorsa nedenini yaz.
+- Önce BİR kez mcp__masaustu__Snapshot ile öğelerin adını ve koordinatını al. Denemeler ARASINDA Snapshot alma
+  (koordinatlar değişmez, sonucu WindowText gösterir); yalnız yeni pencere/iletişim kutusu açıldıysa, pencere
+  küçültülüp büyütüldüyse ya da bir öğe bulunamadıysa al.
+- Bir denemenin eylemlerini TEK yanıtta birlikte çağır (sırayla çalışırlar) ve sonucu aynı yanıtta oku. Örnek
+  tek yanıt: Type(birinci kutu) + Type(ikinci kutu) + Click(düğme) + WindowText(pencere başlığı). Her denemeyi
+  böyle tek adımda yap; sonra sonuca bakıp sıradaki denemeye geç.
+- Sonuç yazılarını, etiketleri ve hata mesajlarını mcp__masaustu__WindowText ile oku. visual_check'i YALNIZ
+  görünüm sorunu için (kesik yazı, taşma, görünmeyen düğme) kullan, yazı okumak için değil.
+- Yalnız test edilen uygulamanın penceresinde işlem yap. Varsayım yapma: ekranda okuduğunu yaz. Adım yapılamıyorsa
+  nedenini yaz.
 - Senaryo bitince açtığın iletişim kutularını kapat; sonraki senaryo için uygulama açık kalabilir.
 
 Yanıtının SONUNA tek bir <qa_sonuc> bloğu koy (yalnız JSON):
