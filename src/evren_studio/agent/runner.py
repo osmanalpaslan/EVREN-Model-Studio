@@ -1287,9 +1287,11 @@ class AgentRunner:
         if call.name.startswith(DESKTOP_PREFIX) and spec.kind == EXEC:
             warn, stop = DESKTOP_ACTION_WARN, DESKTOP_ACTION_STOP
             if res.ok:
-                # ekranı değiştiren eylem: masaüstü OKUMALARI yeniden sayılır (eylem tekrarları sayılmaya devam eder)
-                for k in [k for k in repeats if k.startswith(DESKTOP_PREFIX)
-                          and (self._spec(k.split(" ", 1)[0]) or spec).kind != EXEC]:
+                # Ekranı değiştiren eylem: DİĞER tüm masaüstü sayaçları yeniden sayılır (okumalar ve başka eylemler —
+                # gerçek QA 20:3x: farklı sayılar yazıp her seferinde Topla'ya basmak "Click 6 kez" sayılıyordu). Aynı
+                # eylemin arada hiçbir değişiklik olmadan tekrarı sayılmaya devam eder; iki eylem arasında sonsuz gidip
+                # gelme turun adım sınırına takılır.
+                for k in [k for k in repeats if k.startswith(DESKTOP_PREFIX) and k != key]:
                     del repeats[k]
         if n >= stop:
             return "", f"“{describe_call(call)}” {n} kez aynı sonuçla tekrarlandı"

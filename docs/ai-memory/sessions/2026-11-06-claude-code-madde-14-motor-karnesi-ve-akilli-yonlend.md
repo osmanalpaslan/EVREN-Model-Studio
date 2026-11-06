@@ -55,6 +55,10 @@ gerçek API testi YOK, kullanıcı "başlat" diyene kadar; birlikte deneme 2026-
   Snapshot (14-21 sn) boyunca VS Code'a 0,5 sn'de bir WM_NULL: en kötü tepki 0 ms, askı 0; çıktıda yalnız görev
   çubuğu düğmesi. Düzeltmesiz deneme BİLEREK yapılmadı (oturum VS Code içinde, kapanırdı). Test + mutasyon 2/2.
 
+- 19:58-21:20 masaüstü QA gerçek denemesi (d1fd6c6): GEÇTİ — hatalı 3 kaldı (doğru teşhis), doğru 4/4 geçti. VS Code 2
+  sa askı 0. Yeni yanlış alarm: "Click 6 kez" (farklı sayı yazıp Topla'ya basmak) → başarılı masaüstü eylemi DİĞER tüm
+  masaüstü sayaçlarını sıfırlar; aynı eylemin değişikliksiz tekrarı yine yakalanır. Test + mutasyon 4/4.
+
 ## Sorunlar ve kayıtlar
 - Yama betiğinde bash heredoc + `\\b` → kontrol karakteri (R-29 yeniden). Write aracıyla düzeltildi; sonraki yamalar
   yalnız Edit/Write.

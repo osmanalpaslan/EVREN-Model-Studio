@@ -542,6 +542,15 @@ def test_arada_eylem_yoksa_ayni_okuma_yine_dongu(env):
 def test_ayni_yere_sonsuz_tiklama_yakalanir_kasitli_kisa_tekrar_serbest(env):
     assert _loop_run(env, [CLICK] * 3).stopped == "done"                  # art arda hızlı tıklama senaryosu
     assert _loop_run(env, [CLICK, WT] * 6).stopped == "loop"              # okuma arada olsa da eylem sayılır
+    assert _loop_run(env, [CLICK] * 6).stopped == "loop"
+
+
+def test_farkli_deger_yazip_ayni_dugmeye_basmak_dongu_degil(env):
+    """Gerçek QA 20:3x: 2+3, 1.5+2.25, -4+6 … yazıp her seferinde Topla'ya basmak "Click 6 kez" sayılıyordu."""
+    steps = []
+    for i in range(7):
+        steps += [("mcp__masaustu__Type", {"loc": [380, 224], "text": str(i)}), CLICK, WT]
+    assert _loop_run(env, steps).stopped == "done"
 
 
 def test_basarisiz_tiklama_ekrani_degistirmez_okuma_yine_dongu(env):

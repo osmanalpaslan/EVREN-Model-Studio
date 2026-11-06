@@ -101,6 +101,14 @@ Görev: "şu Qt uygulamasını aç, 2 ve 3 yaz, Topla'ya bas, sonucu söyle, pen
 
 Her Snapshot bu bilgisayarda ~16 sn (çok pencere); askıdaki pencere dururken de tamamlanıyor.
 
+**Masaüstü QA (2026-11-06 19:58-21:20, son kod d1fd6c6, `e2e_masaustu_real_api.py qa`): GEÇTİ.** Hatalı sürüm: 3 senaryo
+"kaldı", teşhis doğru ("2+3 → Sonuç: -1"), 40 dk sınırında 4. senaryo bekliyordu. Doğru sürüm: **4/4 geçti, uydurma hata
+yok** (~38 dk, senaryo başına ~9 dk). Önce/sonra (aynı test): 2026-11-05 — 12 senaryo planı, 50 dk'da 3 senaryo, model
+çağrılarının %80'i deepseek (~43 sn); 2026-11-06 — 4 senaryo planı, qwen 109 / deepseek 2 çağrı. Süre hâlâ ~%85 model
+beklemesi (qwen ~19 sn/çağrı, senaryo başına ~30 çağrı) → sıradaki hız kaldıracı: senaryo başına adım sayısı.
+Bu koşuda bulunan iki yanlış alarm düzeltildi: okumanın tekrarı (d1fd6c6) ve farklı değer yazıp aynı düğmeye basma
+("Click 6 kez", bu commit). VS Code izlemesi (0,5 sn'de bir WM_NULL, 2 sa): en kötü 16 ms, askı 0.
+
 ## Zamanlanmış görev gerçek çalıştırma (2026-11-05, Madde 12c, `tests/e2e_zamanlayici_real_api.py`)
 
 Elle görev → "Şimdi çalıştır" → görünmez gözetimsiz oturumda Auto Pro (deepseek-v4.1-flash seçti): **6/6** · 37 sn ·
