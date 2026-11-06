@@ -31,8 +31,12 @@ GOOD_DAY_FACTOR = 1.5               # karne ölçümü için: son yoklama normal
 
 # Puan ağırlıkları (toplam 1): doğruluk önce, sonra hız (kullanıcı: "doğruluk bir tık daha önemli")
 W_CHECKS, W_TASKS, W_SPEED, W_STABLE = 0.55, 0.25, 0.12, 0.08
-REF_TASK_S = 60.0                   # görev başına bu süre ve altı tam hız puanı
-SCORE_DAYS = 60                     # gerçek puan: son 60 günün iyi-gün ölçümlerinin en yükseği
+# Görev başına ortanca bu süre ve altı tam hız puanı. İlk gerçek ölçüm (2026-11-06): qwen ortanca 29 sn, deepseek 55 sn —
+# 60 sn eşiğinde ikisi de 1,0 alıp aynı puanda kaldı (hız ayırt edilmiyordu). 20 sn: 2 kat yavaş motor ~4 puan kaybeder,
+# bu 12 görevden birinde kalmanın bedeline (~3,5 puan) yakın; doğruluk yine önde.
+REF_TASK_S = 20.0
+SPEED_ACCURACY_POWER = 6            # 11/12 → hızın %59'u, 10/12 → %33'ü sayılır
+SCORE_DAYS = 60                    # gerçek puan: son 60 günün iyi-gün ölçümlerinin en yükseği
 
 
 def _at(r: dict[str, Any]) -> datetime | None:
@@ -113,7 +117,11 @@ def score_report(report: dict[str, Any]) -> dict[str, Any]:
     trouble = sum(int(r.get("hata_karti") or 0) + len(r.get("tekrar_3") or {}) +
                   (0 if r.get("zaman_icinde", True) else 1) for r in res)
     stable = max(0.0, 1.0 - trouble / len(res))
-    score = 100.0 * (W_CHECKS * check_ratio + W_TASKS * task_ratio + W_SPEED * speed + W_STABLE * stable)
+    # Hız, görevlerin tamamını geçme oranıyla ölçeklenir (doğruluk önce): ilk gerçek ölçümde gemma 10/12 ama çok hızlı,
+    # düz toplamla 12/12 geçen deepseek'in önüne geçmişti (92,1 > 91,7). Kalan her görev hız avantajını büyük ölçüde
+    # götürür; hız yalnız eşit doğrulukta sırayı belirler.
+    speed_part = speed * task_ratio ** SPEED_ACCURACY_POWER
+    score = 100.0 * (W_CHECKS * check_ratio + W_TASKS * task_ratio + W_SPEED * speed_part + W_STABLE * stable)
     return {"score": round(score, 1), "gorev": len(res), "tam_gecen": full, "kontrol": f"{passed}/{len(checks)}",
             "ortanca_sure_sn": round(med, 1), "hiz": round(speed, 2), "kararlilik": round(stable, 2)}
 

@@ -61,6 +61,22 @@ def goster(db) -> str:
     return "\n".join(lines)
 
 
+PROBE_MSG = [{"role": "user", "content": "Yalnız tek kelime yaz: tamam"}]
+
+
+def probe_chat(client, model: str):
+    """Kısa yoklama isteği: düşünme kapalı; motor bu alanı desteklemiyorsa (400 geçersiz istek) alansız bir kez daha.
+    İlk gerçek ölçüm (2026-11-06): gemma-4-31b `reasoning_effort` alanını reddetti, araç onu haksız yere "zayıf" saydı."""
+    from evren_studio.api.errors import ApiError, ErrorKind
+
+    try:
+        return client.chat(model, PROBE_MSG, max_tokens=32, stream=True, extra_body={"reasoning_effort": "none"})
+    except ApiError as exc:
+        if exc.kind != ErrorKind.VALIDATION:
+            raise
+        return client.chat(model, PROBE_MSG, max_tokens=32, stream=True)
+
+
 def _probe(settings, db, model: str) -> None:
     """Uygulamanın yoklamasıyla aynı kısa istek (agent/app_context._probe_one) — sonucu veritabanına yazar."""
     from evren_studio.api.client import EvrenClient
@@ -71,8 +87,7 @@ def _probe(settings, db, model: str) -> None:
     client = EvrenClient(base_url=settings.base_url, api_key=load_api_key() or "", timeout=30.0, max_retries=0,
                          stream_idle_timeout=20.0)
     try:
-        r = client.chat(model, [{"role": "user", "content": "Yalnız tek kelime yaz: tamam"}], max_tokens=32,
-                        stream=True, extra_body={"reasoning_effort": "none"})
+        r = probe_chat(client, model)
         db.add_model_call(model, role="yoklama", ok=True, duration_s=round(time.monotonic() - t0, 2),
                           first_chunk_s=r.first_chunk_s)
     except ApiError as exc:

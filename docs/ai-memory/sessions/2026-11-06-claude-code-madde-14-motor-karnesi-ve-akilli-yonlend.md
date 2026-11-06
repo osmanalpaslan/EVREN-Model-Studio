@@ -68,6 +68,12 @@ gerçek API testi YOK, kullanıcı "başlat" diyene kadar; birlikte deneme 2026-
   model beklemesi (~30 çağrı/senaryo). Karar: `auto_desktop_tool` varsayılan KAPALI (ajan masaüstünü kendiliğinden
   açmaz; /qa-masaustu ve Bağlayıcılar'da elle açma açık istek). Testler + mutasyon 3/3 + 1/1; ui_denetim HATA 0.
 
+- 22:00-22:41 İLK GERÇEK KARNE ÖLÇÜMÜ (master 5329fcb sonrası, dal fix/karne-ilk-olcum): qwen 12/12 801 sn → 95,5 ·
+  deepseek 12/12 1093 sn → 91,7 · gemma 10/12 450 sn → 84,3. Bulunan 3 hata düzeltildi: hız eşiği 60 → 20 sn (tavan
+  etkisi), hız tam geçme oranıyla ölçeklenir (gemma deepseek'i geçiyordu), yoklama 400'de `reasoning_effort` olmadan
+  yeniden dener (gemma haksız ertelendi). Puanlar aynı raporlardan yeniden hesaplandı (yalnız bu 3 kayıt). Testler +
+  mutasyon 4/4. Sonuç: puanlı rollerde Auto Pro sırası qwen → deepseek → gemma.
+
 ## Sorunlar ve kayıtlar
 - Yama betiğinde bash heredoc + `\\b` → kontrol karakteri (R-29 yeniden). Write aracıyla düzeltildi; sonraki yamalar
   yalnız Edit/Write.
