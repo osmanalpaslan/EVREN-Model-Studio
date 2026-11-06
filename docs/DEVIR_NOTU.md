@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-06 19:26 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi`. VS Code donması düzeltildi (bizim ekran okumamız; desktop_skip_processes). Karne: geçmişsiz sağlıklı motorun ilk ölçümü sayılır (gerçek yoklamada geçmiş yoktu). Sırada: masaüstü QA e2e yeniden, sonra zorluk + R-13 + PR, sonra karne ölçümü (gemma bugün ağ hatası → ertelenir).
+- **Güncelleme:** 2026-11-06 20:00 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi`. VS Code donması düzeltildi (bizim ekran okumamız). Döngü bekçisi masaüstü tıklamasını 'durum değişti' saymıyordu → QA'da yanlış döngü alarmı + yavaş deepseek'e devir (gözlem cf3c8b0737b8 → kayıt 2026-11-06-dongu-bekcisi-turu-durdurdu) → düzeltildi. Çalışan: masaüstü QA e2e (19:18 başladı, bekçi düzeltmesinden ÖNCEKİ kodla). Sırada: QA e2e'yi düzeltilmiş kodla yeniden, zorluk + R-13, PR, karne ölçümü.
 - **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

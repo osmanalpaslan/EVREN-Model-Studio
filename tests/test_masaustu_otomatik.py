@@ -490,3 +490,68 @@ def test_qa_masaustu_araci_kendisi_kurar_kullanici_kapattiysa_kurmaz(win, tmp_pa
     monkeypatch.setattr(w.session, "_note", lambda text, icon="dot": notes.append(text))
     qc.command("/qa-masaustu", "hesap aracını test et")
     assert started == [] and any("Masaüstü kontrolünü kur" in n for n in notes)
+
+
+# ---- döngü bekçisi masaüstünde (gerçek QA 2026-11-06, gözlem cf3c8b0737b8) ------------------------------
+# "sonucu oku → Topla'ya tıkla → yeniden oku" döngü sayılıyordu; bekçi qwen'i yavaş deepseek'e devretti (~19 dk).
+
+class DeskMcp:
+    READ = {"WindowText", "Snapshot"}
+
+    def __init__(self):
+        self.calls = []
+
+    def _spec(self, n):
+        return mcp.tool_spec("masaustu", {"name": n}, n in self.READ)
+
+    def specs(self, read_only_only=False):
+        return [self._spec(n) for n in ("WindowText", "Snapshot", "Click")]
+
+    def get(self, name):
+        n = name.removeprefix("mcp__masaustu__")
+        return mcp.McpTool("masaustu", n, self._spec(n), n in self.READ)
+
+    def call(self, name, arguments):
+        self.calls.append(name)
+        return ("Texts of window 'Hesap': (1,1) Sonuç: -1" if name.endswith("WindowText") else "Single left clicked"), False
+
+    def servers(self):
+        return ["masaustu"]
+
+
+def _loop_run(env, steps):
+    client = Client([call(n, f"c{i}", **a) for i, (n, a) in enumerate(steps)] + [ChatResult(content="Bitti.")])
+    r, db, sid = make(env, client, mcp=DeskMcp())
+    return r.run(db.get_session_messages(sid))
+
+
+WT = ("mcp__masaustu__WindowText", {"window_name": "Hesap"})
+CLICK = ("mcp__masaustu__Click", {"loc": [380, 288]})
+
+
+def test_arada_tiklama_varsa_ayni_okuma_dongu_sayilmaz(env):
+    out = _loop_run(env, [WT, CLICK, WT, CLICK, WT, CLICK, WT])
+    assert out.stopped == "done"
+
+
+def test_arada_eylem_yoksa_ayni_okuma_yine_dongu(env):
+    out = _loop_run(env, [WT, WT, WT])                                    # tetiklenen durum (R-22)
+    assert out.stopped == "loop"
+
+
+def test_ayni_yere_sonsuz_tiklama_yakalanir_kasitli_kisa_tekrar_serbest(env):
+    assert _loop_run(env, [CLICK] * 3).stopped == "done"                  # art arda hızlı tıklama senaryosu
+    assert _loop_run(env, [CLICK, WT] * 6).stopped == "loop"              # okuma arada olsa da eylem sayılır
+
+
+def test_basarisiz_tiklama_ekrani_degistirmez_okuma_yine_dongu(env):
+    class FailClick(DeskMcp):
+        def call(self, name, arguments):
+            if name.endswith("Click"):
+                return "Hata: öğe bulunamadı", True
+            return super().call(name, arguments)
+
+    client = Client([call(n, f"c{i}", **a) for i, (n, a) in enumerate([WT, CLICK, WT, CLICK, WT])]
+                    + [ChatResult(content="Bitti.")])
+    r, db, sid = make(env, client, mcp=FailClick())
+    assert r.run(db.get_session_messages(sid)).stopped == "loop"

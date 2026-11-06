@@ -112,6 +112,14 @@ REPEAT_WARN = 2        # 2. kez → sonuca uyarı eklenir
 REPEAT_STOP = 3        # 3. kez → tur durur ("loop"), kullanıcı karar verir
 # Bir dosya bu tur içinde daha önceki bir hâline geri dönerse (ileri-geri düzenleme):
 FLIPFLOP_STOP = 2      # 1. kez uyarı, 2. kez tur durur
+# Masaüstü (Madde 13/14, gerçek QA 2026-11-06): "sonucu oku → Topla'ya tıkla → yeniden oku" döngü SAYILIYORDU — araya giren
+# tıklama dosya yazımı gibi sayacı sıfırlamıyordu; bekçi qwen'i yavaş deepseek'e devretti, QA ~19 dk 41 sn/çağrı bekledi
+# (gözlem cf3c8b0737b8). Başarılı masaüstü EYLEMİ (ekranı değiştirir) ekran OKUMALARININ sayacını sıfırlar; eylemin
+# kendi tekrarı sayılmaya devam eder (aynı yere sonsuz tıklama yakalanır), kasıtlı tekrar (art arda tıklama) için eşik
+# biraz yüksek.
+DESKTOP_PREFIX = "mcp__masaustu__"
+DESKTOP_ACTION_WARN = 4
+DESKTOP_ACTION_STOP = 6
 # glm-5.3 metin protokolünde tek yanıtta 39 çağrı (çoğu uydurma dosya) üretti:
 MAX_CALLS_PER_STEP = 12
 REPEAT_NOTE = ("\n\n[Döngü uyarısı] Bu çağrıyı bu turda aynı parametrelerle zaten {n} kez yaptın ve "
@@ -1275,9 +1283,17 @@ class AgentRunner:
         key = call_signature(call)
         repeats[key] = repeats.get(key, 0) + 1
         n = repeats[key]
-        if n >= REPEAT_STOP:
+        warn, stop = REPEAT_WARN, REPEAT_STOP
+        if call.name.startswith(DESKTOP_PREFIX) and spec.kind == EXEC:
+            warn, stop = DESKTOP_ACTION_WARN, DESKTOP_ACTION_STOP
+            if res.ok:
+                # ekranı değiştiren eylem: masaüstü OKUMALARI yeniden sayılır (eylem tekrarları sayılmaya devam eder)
+                for k in [k for k in repeats if k.startswith(DESKTOP_PREFIX)
+                          and (self._spec(k.split(" ", 1)[0]) or spec).kind != EXEC]:
+                    del repeats[k]
+        if n >= stop:
             return "", f"“{describe_call(call)}” {n} kez aynı sonuçla tekrarlandı"
-        if n >= REPEAT_WARN:
+        if n >= warn:
             return REPEAT_NOTE.format(n=n - 1), ""
         return "", ""
 

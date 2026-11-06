@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 106 · Açık/izlenen: 7 · Oturum: 42 · Kural: 36
+Kayıt: 107 · Açık/izlenen: 7 · Oturum: 42 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -20,6 +20,7 @@ Kayıt: 106 · Açık/izlenen: 7 · Oturum: 42 · Kural: 36
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-06 | [2026-11-06-dongu-bekcisi-turu-durdurdu](incidents/2026-11-06-dongu-bekcisi-turu-durdurdu.md) | hata | orta | cozuldu | EVREN Studio gözlem ajanı | Döngü bekçisi turu durdurdu |
 | 2026-11-04 | [2026-11-04-zorluk-paketi-gorevi-dustu-mini-proje](incidents/2026-11-04-zorluk-paketi-gorevi-dustu-mini-proje.md) | risk | orta | cozuldu | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: mini_proje |
 | 2026-11-04 | [2026-11-04-tur-baglam-sinirinda-durdu](incidents/2026-11-04-tur-baglam-sinirinda-durdu.md) | risk | orta | cozuldu | EVREN Studio gözlem ajanı | Tur bağlam sınırında durdu |
 | 2026-11-04 | [2026-11-04-gozlem-temizleyici-depo-ev-klasorundeyken-kaynak-yolunu-gizl](incidents/2026-11-04-gozlem-temizleyici-depo-ev-klasorundeyken-kaynak-yolunu-gizl.md) | hata | dusuk | cozuldu | Claude Code | Gözlem temizleyici depo ev klasöründeyken kaynak yolunu gizliyordu |
