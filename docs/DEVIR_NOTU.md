@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-06 19:25 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi`. Kullanıcı: masaüstü testinde birkaç dk sonra VS Code donuyor → kök neden bizim ekran okumamız (olay kaydı 5/5), düzeltildi (desktop_skip_processes, gerçek doğrulama: VS Code tepki 0 ms). Sırada: masaüstü QA e2e yeniden, sonra zorluk + R-13 + PR, sonra karne ölçümü.
+- **Güncelleme:** 2026-11-06 19:26 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi`. VS Code donması düzeltildi (bizim ekran okumamız; desktop_skip_processes). Karne: geçmişsiz sağlıklı motorun ilk ölçümü sayılır (gerçek yoklamada geçmiş yoktu). Sırada: masaüstü QA e2e yeniden, sonra zorluk + R-13 + PR, sonra karne ölçümü (gemma bugün ağ hatası → ertelenir).
 - **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi
