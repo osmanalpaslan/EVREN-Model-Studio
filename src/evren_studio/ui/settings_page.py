@@ -368,6 +368,16 @@ class SettingsPage(BasePage):
         l.addWidget(self.learnings_suggest)
         self.suggest_project = QCheckBox("Çok aşamalı uzun istemde Proje ajanını öner")
         l.addWidget(self.suggest_project)
+        self.auto_test_tools = QCheckBox("Ajan gerektiğinde tarayıcı test aracını kendisi kurup açsın (önerilir)")
+        l.addWidget(self.auto_test_tools)
+        l.addWidget(hint("Ajan bir web sayfasında yaptığı değişikliği denemesi gerektiğinde aracı kendisi açar (ilk "
+                         "kullanımda ~1 dk kurulum). Bağlayıcılar'da bir aracı kapatırsanız ajan onu açmaz."))
+        self.auto_desktop_tool = QCheckBox("Ajan gerektiğinde masaüstü kontrolünü de kendisi açabilsin (gerçek fare ve "
+                                           "klavye)")
+        l.addWidget(self.auto_desktop_tool)
+        l.addWidget(hint("Varsayılan kapalı: masaüstü testi uzun sürer ve ajan gerçek fareyi/klavyeyi kullanır. Kapalıyken "
+                         "de /qa-masaustu yazarak masaüstü testini kendiniz başlatabilirsiniz. Testte fareyi/klavyeyi "
+                         "kullanırsanız ajan bekler, bırakınca sürdürür."))
         self._add("ajan", c)
         c, l = card()
         l.addWidget(section("Bekçiler"))
@@ -508,6 +518,20 @@ class SettingsPage(BasePage):
             "Proje klasörü bağlanınca gereken programlar (Node, pnpm, Python, Git, Go, .NET …) "
             "denetlenir. Otomatik: eksik olan sorulmadan kurulur. Manuel: kurmadan önce sorulur. "
             "Kurulum Windows Paket Yöneticisi (winget) veya npm ile, yalnız bilinen listeden yapılır."))
+        self._add("bilgisayar", c)
+        c, l = card()
+        l.addWidget(section("Masaüstü kontrolü"))
+        self.desktop_blocked = QLineEdit()
+        self.desktop_blocked.setPlaceholderText("ör. End, PrintScreen")
+        l.addWidget(kv_row_widget("Ajanın basmayacağı tuşlar:", self.desktop_blocked, "End"))
+        l.addWidget(hint("Masaüstü kontrolü açıkken ajan bu tuşlara basmaz (virgülle ayırın). Bilgisayarınızda bir tuş "
+                         "başka bir programı açıyorsa (ör. End ekran yakalamayı) buraya ekleyin."))
+        self.desktop_skip = QLineEdit()
+        self.desktop_skip.setPlaceholderText("ör. Code.exe, Cursor.exe")
+        l.addWidget(kv_row_widget("Ekranda okunmayacak programlar:", self.desktop_skip, "Code.exe, Cursor.exe, Windsurf.exe"))
+        l.addWidget(hint("Ajan ekranı okurken bu programların pencerelerine hiç dokunmaz (virgülle ayırın). VS Code gibi "
+                         "ağır geliştirici programları okunurken yanıt vermez hâle gelebiliyor; ajanın o programda iş "
+                         "yapması gerekiyorsa listeden çıkarın."))
         self._add("bilgisayar", c)
         c, l = card()
         l.addWidget(section("Veri klasörü"))
@@ -756,6 +780,8 @@ class SettingsPage(BasePage):
         self.project_map.setChecked(s.project_map)
         self.learnings_suggest.setChecked(s.learnings_suggest)
         self.suggest_project.setChecked(s.suggest_project)
+        self.auto_test_tools.setChecked(s.auto_test_tools)
+        self.auto_desktop_tool.setChecked(s.auto_desktop_tool)
         self.auto_resume.setChecked(s.auto_resume)
         self.web_tools_chat.setChecked(s.web_tools_chat)
         self.gozlem_card.enabled.setChecked(s.gozlem_enabled)
@@ -779,6 +805,8 @@ class SettingsPage(BasePage):
         self.schedule_keep_awake.setChecked(s.schedule_keep_awake)
         self.schedule_notify.setChecked(s.schedule_notify)
         self.schedule_max.setValue(int(s.schedule_max_minutes))
+        self.desktop_blocked.setText(", ".join(str(k) for k in (s.desktop_blocked_keys or [])))
+        self.desktop_skip.setText(", ".join(str(k) for k in (s.desktop_skip_processes or [])))
         self._refresh_provider_rows()
         self._refresh_spend(s)
         self.mcp_card.load(s)
@@ -813,6 +841,8 @@ class SettingsPage(BasePage):
         s.project_map = self.project_map.isChecked()
         s.learnings_suggest = self.learnings_suggest.isChecked()
         s.suggest_project = self.suggest_project.isChecked()
+        s.auto_test_tools = self.auto_test_tools.isChecked()
+        s.auto_desktop_tool = self.auto_desktop_tool.isChecked()
         s.auto_resume = self.auto_resume.isChecked()
         s.web_tools_chat = self.web_tools_chat.isChecked()
         s.gozlem_enabled = self.gozlem_card.enabled.isChecked()
@@ -833,6 +863,8 @@ class SettingsPage(BasePage):
         s.schedule_keep_awake = self.schedule_keep_awake.isChecked()
         s.schedule_notify = self.schedule_notify.isChecked()
         s.schedule_max_minutes = int(self.schedule_max.value())
+        s.desktop_blocked_keys = [k.strip() for k in self.desktop_blocked.text().split(",") if k.strip()]
+        s.desktop_skip_processes = [k.strip() for k in self.desktop_skip.text().split(",") if k.strip()]
         self.mcp_card.collect(s)
 
     def changed_fields(self) -> list[str]:

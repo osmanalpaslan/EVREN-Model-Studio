@@ -84,6 +84,31 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Masaüstü kontrolü gerçek deneme (2026-11-05, Madde 13, `tests/e2e_masaustu_real_api.py`, Auto Pro, Windows-MCP 0.8.8)
+
+Görev: "şu Qt uygulamasını aç, 2 ve 3 yaz, Topla'ya bas, sonucu söyle, pencereyi kapat"; kabul modelden bağımsız
+(uygulamanın yazdığı sonuc.txt = 5, pencere kapandı mı). 9 deneme; her düşüş kök nedeniyle düzeltildi:
+
+| Deneme | Sonuç | Kök neden → düzeltme |
+|---|---|---|
+| 1 | sunucu açılmadı | README'deki `--control-policy` 0.8.8'de yok → seçenek kaldırıldı, kurulumda `--help` denetimi |
+| 2-3 | uydurma "Sonuç: 5" | model göremediği ekran görüntüsünden uydurdu; Tk penceresi UIA'ya içini göstermiyor → Screenshot sunulmuyor, görsel yer tutucu, Qt test uygulaması |
+| 3 | End basıldı | caret_position "end" → End (kullanıcının ekran yakalaması) → engelli tuşlar (varsayılan End) |
+| 4-6 | Snapshot 90 sn yanıtsız | askıdaki VS Code + dwm hayalet penceresi; 0.8.8 atlama listesini pencere listesinde uygulamıyor → `wmcp_baslatici.py` |
+| 7 | pencere oluşmadı | e2e betiğinin `QT_QPA_PLATFORM=offscreen` ayarı açılan uygulamaya geçti → test düzeneği düzeltildi |
+| 8 | 2/5 (uygulama 5 hesapladı) | etiket metni Snapshot'ta yok (0.8.8 yalnız tarayıcıda verir) → salt-okunur `WindowText` aracı; kullanıcı donmada fareyi kullandı → ajan ~63 sn bekleyip sürdü (devralma gerçek doğrulandı) |
+| **9** | **5/5 · 740 sn** | 24 araç (18 masaüstü); `test_araci_ac` YOK (görevde masaüstü sözcüğü vardı, araç baştan sunuldu); sonuç `WindowText` ile "Sonuç: 5" okundu; Alt+F4 pencereyi kapatmadı → ajan kendi başlattığı süreci kimliğini doğrulayıp kapattı |
+
+Her Snapshot bu bilgisayarda ~16 sn (çok pencere); askıdaki pencere dururken de tamamlanıyor.
+
+**Masaüstü QA (2026-11-06 19:58-21:20, son kod d1fd6c6, `e2e_masaustu_real_api.py qa`): GEÇTİ.** Hatalı sürüm: 3 senaryo
+"kaldı", teşhis doğru ("2+3 → Sonuç: -1"), 40 dk sınırında 4. senaryo bekliyordu. Doğru sürüm: **4/4 geçti, uydurma hata
+yok** (~38 dk, senaryo başına ~9 dk). Önce/sonra (aynı test): 2026-11-05 — 12 senaryo planı, 50 dk'da 3 senaryo, model
+çağrılarının %80'i deepseek (~43 sn); 2026-11-06 — 4 senaryo planı, qwen 109 / deepseek 2 çağrı. Süre hâlâ ~%85 model
+beklemesi (qwen ~19 sn/çağrı, senaryo başına ~30 çağrı) → sıradaki hız kaldıracı: senaryo başına adım sayısı.
+Bu koşuda bulunan iki yanlış alarm düzeltildi: okumanın tekrarı (d1fd6c6) ve farklı değer yazıp aynı düğmeye basma
+("Click 6 kez", bu commit). VS Code izlemesi (0,5 sn'de bir WM_NULL, 2 sa): en kötü 16 ms, askı 0.
+
 ## Zamanlanmış görev gerçek çalıştırma (2026-11-05, Madde 12c, `tests/e2e_zamanlayici_real_api.py`)
 
 Elle görev → "Şimdi çalıştır" → görünmez gözetimsiz oturumda Auto Pro (deepseek-v4.1-flash seçti): **6/6** · 37 sn ·

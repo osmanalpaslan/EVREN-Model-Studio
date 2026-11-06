@@ -66,6 +66,16 @@ def _sahte_github_cli(monkeypatch, tmp_path):
 
 
 @pytest.fixture(autouse=True)
+def _askidaki_pencere_taramasi_yok(monkeypatch):
+    """Masaüstü korumasının "askıdaki pencere" taraması (mcp.hung_window_processes) testte gerçek masaüstüne bakmasın:
+    sonuç makinenin o anki durumuna bağlı olurdu. Askı testleri kendi sahte taramasını verir."""
+    from evren_studio.agent import mcp
+
+    monkeypatch.setattr(mcp.McpToolset, "_hung", staticmethod(lambda: set()))
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _token_kalibrasyonu_temiz():
     """runner._CALIB süreç geneli; bir testin sahte `usage` değeri diğerinin bağlam hesabını değiştirmesin."""
     from evren_studio.agent import runner

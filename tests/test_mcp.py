@@ -111,7 +111,9 @@ def test_sonuc_metni_turleri():
     text, err = mcp.result_text({"content": [{"type": "text", "text": "a"},
                                              {"type": "image", "mimeType": "image/png", "data": "xx"},
                                              {"type": "resource", "resource": {"uri": "file:///x", "text": "b"}}]})
-    assert text.splitlines() == ["a", "[görsel: image/png — metin olarak aktarılmadı]", "b"] and not err
+    lines = text.splitlines()
+    assert lines[0] == "a" and lines[-1] == "b" and not err
+    assert "GÖREMEZSİN" in lines[1] and "image/png" in lines[1]          # görmüş gibi uydurmasın (2026-11-05)
     assert mcp.result_text({"structuredContent": {"k": 1}})[0].startswith("{")
     assert mcp.result_text({})[0] == "(boş sonuç)"
 

@@ -184,6 +184,20 @@ class Settings:
     schedule_keep_awake: bool = False      # etkin görev varken bilgisayarın boşta uykuya geçmesini engelle
     schedule_notify: bool = True           # çalıştırma bitince / telafi başlayınca Windows bildirimi
     schedule_max_minutes: int = 120        # tek çalıştırmanın üst süresi; aşılırsa durdurulur
+    # Masaüstü kontrolü (Madde 13): ajanın basmayacağı tuşlar (kullanıcı 2026-11-05: End ekran yakalamayı açıyor)
+    desktop_blocked_keys: list = field(default_factory=lambda: ["End"])
+    # Masaüstü taramasında HİÇ dokunulmayacak programlar (kullanıcı 2026-11-06: "ekran kullanımı başladıktan birkaç
+    # dakika sonra VS Code yanıt vermiyor, tıklayınca kapanıyor"). Windows olay kaydı: 30 günde Code.exe 5 kez askıda
+    # kaldı, beşi de masaüstü testlerinin saatlerinde. Ekran okuma Electron penceresinin erişilebilirlik ağacını
+    # isteyince VS Code onu ana iş parçacığında kurup donuyordu.
+    desktop_skip_processes: list = field(default_factory=lambda: ["Code.exe", "Cursor.exe", "Windsurf.exe"])
+    # Ajan gerektiğinde test araçlarını (tarayıcı, masaüstü) kendisi kurup açsın (kullanıcı 2026-11-05: "elle açıp kapatmak
+    # gözden kaçabilir; ilk başta ajan gerektiğinde kullansın, kullanıcı kapattıysa çalışmasın")
+    auto_test_tools: bool = True
+    # Masaüstü kontrolünü (gerçek fare/klavye) ajan KENDİLİĞİNDEN açmasın; isteyen kullanıcı açar (kullanıcı 2026-11-06:
+    # "QA testleri çok uzun sürüyor… masaüstü kullanımını varsayılan olarak açık bırakmayalım"). /qa-masaustu ve
+    # Bağlayıcılar'da elle etkinleştirme açık istektir, bu ayardan etkilenmez.
+    auto_desktop_tool: bool = False
     # Ayar dosyası sürümü (taşıma için). 2: varsayılan model glm-5.3 → auto.
     # 3: tur başına adım sınırı 40 → 80 (yalnız eski varsayılan).
     settings_version: int = SETTINGS_VERSION

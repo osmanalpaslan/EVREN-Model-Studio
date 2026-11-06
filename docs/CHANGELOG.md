@@ -1,5 +1,44 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Motor karnesi ve akıllı yönlendirme (Madde 14)
+
+- **Motor karnesi**: motorlara gerçek görev paketiyle 0-100 puan verilir (doğruluk önce, sonra hız). Ölçüm yalnız
+  motorun o gün iyi durumda olduğu günlerde gerçek puan sayılır; her motorun puanı en iyi gününün ölçümüdür. Ölçüm:
+  `tools\motor_karnesi.py olc <motor>` (motor bugün iyi değilse ertelenir), görüntüleme: `... goster`.
+- **Auto Pro sırasını puan ve günlük yoklama yönetir**: en az iki motor puanlıysa sıra puana göre kurulur; açılıştaki
+  hafif yoklamada hata veren ya da normalinden çok yavaş kalan motor o gün sıranın arkasına alınır, sıradaki en güçlü
+  yedek öne geçer (gerekçe notta yazar). Kod işinde zayıf ama "hileci" motor (gemma) bu yüzden öne geçmez.
+- **QA daha hızlı**: QA artık kendi motorunu sağlık, hız ve puanla seçer (önceden hep aynı yavaş motoru alıyordu);
+  QA rolünde hızlı ve doğru motor önde. Senaryo sayısı isteğin büyüklüğüne göre (kısa istek 2-4, kapsamlı istek 12'ye
+  kadar; "en fazla N senaryo" yazarsanız ona uyulur). QA motorlarının hepsi o gün zayıfsa test başlamadan söylenir;
+  aynı komutu yeniden gönderirseniz yine de başlar.
+- Henüz gerçek API ile ölçülmedi (motorlar bakımda; ilk ölçüm 2026-11-06 19:00-20:00).
+
+## Yayınlanmamış — Masaüstü kontrolü ve masaüstü uygulaması testi (Madde 13)
+
+- **Masaüstü kontrolü (isteğe bağlı)**: Ayarlar > Bağlayıcılar (MCP) > "Masaüstü kontrolünü kur" ile açık kaynak
+  Windows-MCP (MIT) kurulur. Etkinleştirince ajan, istekte masaüstü işi geçtiğinde (ör. "Not Defteri'ni aç",
+  "masaüstündeki uygulamayı dene", ".exe") uygulama açabilir, ekrandaki öğeleri okuyabilir, fareyle tıklayıp
+  klavyeyle yazabilir. Ajan kontrol ederken ekran kenarında "AI" ışığı yanar; fareyi belirgin oynatarak ya da
+  Ctrl+Alt+Shift+Backspace ile kontrolü her an geri alırsınız. Komut, dosya ve Kayıt Defteri araçları kapalıdır.
+- **Masaüstü QA**: `/qa-masaustu <neyi test etsin>` — QA ajanı Windows uygulamanızı test uzmanı gibi dener (senaryo
+  planı → onayınız → fare/klavyeyle deneme, gerekirse ekran görüntüsünü görsel modele sorma → rapor).
+- **Ajan test aracını kendisi açar**: bir web işini denemek için tarayıcı test aracı gerekiyorsa ajan onu kendisi
+  kurup açar. **Masaüstü kontrolünü (gerçek fare/klavye) ise varsayılan olarak açmaz**: Ayarlar > Kod ajanı'ndan izin
+  verebilir ya da `/qa-masaustu` ile kendiniz başlatabilirsiniz.
+- **Ekran okuma ~30 kat hızlı**: 15 sn → 0,5 sn. Ayarlar > Kod ajanı > "Ajan gerektiğinde test araçlarını
+  (tarayıcı, masaüstü) kendisi kurup açsın" ile kapatılabilir; bir aracı Bağlayıcılar'da kapattıysanız ajan onu açmaz. `/qa` ve `/qa-masaustu` eksik aracı
+  kendisi kurar (kurulum onay modunu "manuel" seçtiyseniz önce sorar).
+- **Test sırasında fareye/klavyeye dokunursanız test durmaz**: ajan siz bırakana kadar bekler, sonra aynı adımı
+  tekrarlar (yarıda kalan işte ekranı yeniden okur). 5 dakika bırakmazsanız güvenli bir noktada durur ve
+  "Devam et" kartı gösterir.
+- **Engelli tuşlar**: Ayarlar > Bu bilgisayar > Masaüstü kontrolü — ajanın basmayacağı tuşlar (varsayılan End; bazı
+  bilgisayarlarda ekran yakalamayı açıyor).
+- **VS Code donmuyor**: ajan ekranı okurken VS Code, Cursor ve Windsurf pencerelerine hiç dokunmaz (bunlar
+  okunurken yanıt vermez hâle gelip kapanabiliyordu). Liste: Ayarlar > Bu bilgisayar > "Ekranda okunmayacak programlar".
+- **Yanıt vermeyen pencere**: masaüstünde "(Yanıt Vermiyor)" bir pencere varsa ekran taraması o pencereyi atlar
+  (önceden tarama orada takılıp 90 sn sonra hata veriyordu); ajan o pencereye dokunamaz, size bir kez söylenir.
+
 ## Yayınlanmamış — Claude Code tarzı arayüz, zamanlanmış görevler, GitHub (Madde 12)
 
 - **Zamanlanmış görevler**: kenar çubuğunda "Zamanlanmış görevler". Bir talimatı, klasörü, modeli ve sıklığı (Saatlik,

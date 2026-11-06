@@ -1148,7 +1148,8 @@ class SessionView(QWidget):
                             mode=("plan" if self._plan_turn else self.mode), has_images=has_images,
                             est_tokens=est, context_of=context_of, available=avail or None, health=health,
                             level=level, level_reason=lreason, kind=kind, kind_reason=kreason,
-                            penalties=self.ctx.model_penalties(), speeds=self.ctx.model_speeds())
+                            penalties=self.ctx.model_penalties(), speeds=self.ctx.model_speeds(),
+                            scores=self.ctx.model_scores(), weak=self.ctx.model_weak())
 
     def _ws_names(self) -> list[str]:
         """İş türü (A7) için proje dosya adları: kök + bir alt düzey, en çok ~600 ad; 60 sn önbellek."""
@@ -1831,6 +1832,9 @@ class SessionView(QWidget):
             mcp=(self.ctx.mcp_toolset(ws.root, self._last_user_text(history), provider,
                                       status=b.sig_status.emit)
                  if ws is not None else None),
+            # Madde 13: ajan gerektiğinde test aracını kendisi açar (kullanıcı kapattıysa None → araç sunulmaz)
+            test_tools=(self.ctx.test_tools(ws.root, self._last_user_text(history), provider, status=b.sig_status.emit)
+                        if ws is not None and not no_writes else None),
             edit_check=s.edit_diagnostics,
             services=self.service_manager(ws.root) if ws is not None else None,
             jobs=self.ctx.jobs if ws is not None else None,
@@ -2452,6 +2456,15 @@ class SessionView(QWidget):
                            "artırabilir veya ücretsiz bir EVREN modeline geçebilirsiniz.", "stop")
         elif outcome.stopped == "quota_daily":
             self._quota_pause("gunluk", "günlük EVREN kotası azaldı")
+        elif outcome.stopped == "user_control":
+            # Kullanıcı masaüstünü uzun süre kullandı: iş güvenli noktada durdu; tek tıkla kaldığı yerden sürer
+            self.transcript.add(ActionCard(
+                "Masaüstü işi duraklatıldı", ["Fareyi/klavyeyi uzun süre siz kullandınız; ajan işi güvenli noktada "
+                                              "durdurdu. Hazır olunca devam edin."],
+                [("Devam et", lambda: self._auto_continue(
+                    note="Masaüstü işi kaldığı yerden sürüyor.", prompt=prompts.DESKTOP_RESUME_PROMPT), "primary")],
+                icon_name="clock"))
+            self.notify.emit("EVREN Studio — masaüstü işi duraklatıldı", "Devam etmek için EVREN Studio'ya dönün.")
         elif outcome.stopped == "context_limit":
             if self._auto_resumes < MAX_AUTO_RESUMES:
                 self._auto_resumes += 1

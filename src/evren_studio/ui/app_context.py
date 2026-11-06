@@ -75,6 +75,77 @@ def apply_measured(m: ModelInfo) -> ModelInfo:
     return m
 
 
+class TestTools:
+    """AgentRunner.test_tools: tür (web | masaustu) → MCP hazır ayarı. Kullanıcının kapattığı (Ayarlar > Bağlayıcılar'da
+    kayıtlı ama kapalı) araç ya da kapalı özellik AÇILMAZ; hiç yapılandırılmamış araç gerektiğinde kurulup açılır.
+    enable() koşucunun arka plan iş parçacığında çalışır (R-04): yalnız dosyaya kayıt yapar, Qt'ye dokunmaz."""
+    KIND = {"web": "playwright", "masaustu": "masaustu"}
+
+    def __init__(self, ctx, project_root: Path, message: str, status=None):
+        self.ctx, self.root, self.message, self.status = ctx, project_root, message, status
+
+    def _entry(self, name: str) -> dict | None:
+        return next((d for d in (self.ctx.settings.mcp_servers or [])
+                     if isinstance(d, dict) and d.get("name") == name), None)
+
+    def available(self, kind: str, explicit: bool = False) -> tuple[bool, str]:
+        """`explicit`: kullanıcı aracı açıkça istedi (ör. /qa-masaustu) — masaüstünün varsayılan kapalı kapısı atlanır."""
+        from ..agent import mcp as mcpmod
+
+        s = self.ctx.settings
+        name = self.KIND.get(kind)
+        if name is None:
+            return False, f"bilinmeyen tür: {kind}"
+        short = mcpmod.PRESETS[name]["short"]
+        if not s.auto_test_tools:
+            return False, "kullanıcı 'Ajan gerektiğinde test araçlarını kendisi açsın' ayarını kapatmış (Ayarlar > Kod ajanı)"
+        if not s.mcp_enabled:
+            return False, "kullanıcı MCP sunucularını kapatmış (Ayarlar > Bağlayıcılar)"
+        e = self._entry(name)
+        if e is not None and not e.get("enabled", True):
+            return False, f"kullanıcı {short} aracını kapatmış (Ayarlar > Bağlayıcılar)"
+        if kind == "masaustu" and not explicit and not s.auto_desktop_tool and e is None:
+            return False, ("masaüstü kontrolü (gerçek fare/klavye) varsayılan olarak kapalı; kullanıcı açmak isterse "
+                           "/qa-masaustu yazabilir ya da Ayarlar > Kod ajanı'ndan ajanın açmasına izin verebilir")
+        if kind == "masaustu" and os.name != "nt":
+            return False, "masaüstü kontrolü yalnız Windows'ta çalışır"
+        if mcpmod.PRESETS[name].get("needs_node") and not mcpmod.find_node() and s.install_mode != "otomatik":
+            return False, "Node.js kurulu değil (Ayarlar > Bağlayıcılar'daki düğmeyle kurulabilir)"
+        return True, ""
+
+    def installed(self, kind: str) -> bool:
+        from ..agent import mcp as mcpmod
+
+        name = self.KIND.get(kind)
+        return bool(name and mcpmod.PRESETS[name]["ready"](self.ctx.settings.resolved_data_dir()))
+
+    def enable(self, kind: str, log=None, explicit: bool = False):
+        from ..agent import mcp as mcpmod
+
+        ok, why = self.available(kind, explicit=explicit)
+        if not ok:
+            return False, why, None
+        name = self.KIND[kind]
+        preset = mcpmod.PRESETS[name]
+        data = self.ctx.settings.resolved_data_dir()
+        if not preset["ready"](data):
+            if preset.get("needs_node") and not mcpmod.find_node():
+                from ..agent import environment
+
+                res = environment.install("node")
+                if not res.ok:
+                    return False, "Node.js kurulamadı (Playwright için gerekli).", None
+            preset["install"](data, log=log)
+        if self._entry(name) is None:
+            self.ctx.settings.mcp_servers = list(self.ctx.settings.mcp_servers or []) + [preset["config"]().to_dict()]
+            self.ctx.store.save(self.ctx.settings)          # kalıcı: kullanıcı Ayarlar'da görür ve kapatabilir (R-03)
+        configs = self.ctx.mcp_configs()
+        ts = self.ctx.mcp.toolset(configs, self.root, self.message, self.status, force={name})
+        note = ("Ajan bu aracı ilk kez açtı; Ayarlar > Bağlayıcılar'dan kapatabilirsiniz."
+                if kind == "masaustu" else "")
+        return True, note, ts
+
+
 class AppContext:
     def __init__(self, settings: Settings | None = None):
         # config.json her zaman varsayılan veri klasöründe durur; böylece
@@ -202,8 +273,9 @@ class AppContext:
         ids |= {m.id for m in self.paid_models if m.provider in provs}
         return ids
 
-    def ai_route(self, role: str, reason: str = ""):
-        """Uygulamanın kendi yapay zekâ işi veya Auto Pro turu için rota (router.choose)."""
+    def ai_route(self, role: str, reason: str = "", evren_only: bool = False):
+        """Uygulamanın kendi yapay zekâ işi veya Auto Pro turu için rota (router.choose). `evren_only`: yalnız EVREN
+        modelleri (ör. QA — oturum ücretli modelde olsa bile)."""
         from ..agent import router
 
         health = {}
@@ -211,8 +283,46 @@ class AppContext:
             health = {r["model"]: dict(r) for r in self.db.all_model_health()}
         except Exception:
             pass
-        return router.choose(role, available=self.available_model_ids() or None, health=health, reason=reason,
-                             penalties=self.model_penalties(), speeds=self.model_speeds())
+        avail = self.available_model_ids()
+        if evren_only:
+            avail = {m for m in avail if self.provider_of(m) == "evren"}
+        return router.choose(role, available=avail or None, health=health, reason=reason,
+                             penalties=self.model_penalties(), speeds=self.model_speeds(),
+                             scores=self.model_scores(), weak=self.model_weak())
+
+    # ---- Madde 14: motor karnesi ---------------------------------------------------------------
+
+    def model_scores(self) -> dict[str, float]:
+        """Motor karnesi: model → gerçek puan (iyi-gün ölçümlerinin en yükseği; hata → boş)."""
+        from ..agent import karne
+
+        try:
+            return karne.best_scores(self.db.model_scores(karne.SCORE_DAYS))
+        except Exception:
+            return {}
+
+    def model_weak(self) -> dict[str, str]:
+        """Bugünkü hafif yoklamada zayıf motorlar → gerekçe (hata → boş)."""
+        from ..agent import karne
+
+        try:
+            return karne.weak_models(self.db.recent_model_calls(24 * self.db.MODEL_CALLS_KEEP_DAYS))
+        except Exception:
+            return {}
+
+    def qa_readiness(self) -> tuple[bool, str]:
+        """QA'dan önce: QA zincirindeki EVREN motorlarının HEPSİ bugün zayıf/sorunluysa (False, açıklama).
+        Kullanıcı 2026-11-06: "motor kötüyse 'şu an QA için uygun değil' diyebiliriz"."""
+        from ..agent import router
+
+        weak = self.model_weak()
+        avail = {m for m in self.available_model_ids() if self.provider_of(m) == "evren"}
+        chain = router.chain_for("qa", avail or None)
+        if not chain or not all(m in weak for m in chain):
+            return True, ""
+        why = "; ".join(f"{m}: {weak[m]}" for m in chain)
+        return False, ("QA motorları şu an yavaş ya da sorunlu görünüyor (son hafif yoklama — " + why + "). Test "
+                       "uzun sürebilir ya da yarıda kalabilir; motorlar düzelince denemeniz önerilir.")
 
     def ai_chat(self, role: str, messages: list[dict], max_tokens: int = 800,
                 session_id: int | None = None, evren_only: bool = False) -> tuple[str, str]:
@@ -667,7 +777,23 @@ class AppContext:
 
         if not self.settings.mcp_enabled:
             return []
-        return [c for c in configs_from_settings(self.settings.mcp_servers) if c.enabled]
+        out = [c for c in configs_from_settings(self.settings.mcp_servers) if c.enabled]
+        for c in out:
+            if c.when == "masaustu":                       # kullanıcının engelli tuş listesi (Ayarlar > Bu bilgisayar)
+                c.blocked_keys = [str(k) for k in (self.settings.desktop_blocked_keys or [])]
+                skip = [str(p).strip() for p in (self.settings.desktop_skip_processes or []) if str(p).strip()]
+                if skip:                                   # taramada hiç dokunulmayacak programlar (wmcp_baslatici)
+                    from ..agent.mcp import EXCLUDE_ENV
+
+                    c.env[EXCLUDE_ENV] = ",".join(skip)
+        return out
+
+    def test_tools(self, project_root, message: str = "", provider: str = "evren", status=None):
+        """Ajanın gerektiğinde test aracını kendisinin açması (Madde 13, kullanıcı 2026-11-05). None → araç sunulmaz:
+        özellik kapalı, proje klasörü yok ya da ücretli sağlayıcı (MCP yalnız EVREN'de)."""
+        if provider != "evren" or project_root is None or not self.settings.auto_test_tools:
+            return None
+        return TestTools(self, Path(project_root), message, status)
 
     def mcp_toolset(self, project_root, message: str = "", provider: str = "evren", status=None):
         """Ajan turu için tembel araç kümesi; gerekmiyorsa None (davranış değişmez).

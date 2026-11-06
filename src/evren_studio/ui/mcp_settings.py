@@ -97,7 +97,8 @@ class McpSettingsCard(QWidget):
             "MCP (Model Context Protocol) sunucuları ajana ek araç verir. Yalnız EVREN modelleriyle ve "
             "proje klasörlü oturumlarda kullanılır (ücretli sağlayıcıda asla). Sunucu yalnız gerektiğinde "
             "açılır: Serena yeterince büyük kod projesinde veya sembol işinde, Playwright tarayıcı/arayüz "
-            "testi istendiğinde; ilk araç çağrısında başlar, boşta kalınca kapanır. Okuma dışındaki "
+            "testi istendiğinde, Masaüstü kontrolü yalnız açıkça masaüstü işi (ör. “Not Defteri'ni aç”, "
+            "“/qa-masaustu”) istendiğinde; ilk araç çağrısında başlar, boşta kalınca kapanır. Okuma dışındaki "
             "araçlar çalışma modunuza göre onay ister; MCP aracının yaptığı dosya değişiklikleri "
             "Değişiklikler paneline düşmez (Serena'da yalnız okuma araçları açık)."))
         self.enabled = QCheckBox("MCP sunucularını ajanda kullan")
@@ -111,7 +112,8 @@ class McpSettingsCard(QWidget):
             toggle.toggled.connect(lambda on, n=name: self._toggle_preset(n, on))
             node_btn = QPushButton("Node.js'i kur (winget)")
             node_btn.clicked.connect(lambda _=None: self.install_node())
-            install = QPushButton(f"{p['short']}'yı kur" if name == "serena" else f"{p['short']}'ı kur")
+            install = QPushButton(p.get("install_label")
+                                  or (f"{p['short']}'yı kur" if name == "serena" else f"{p['short']}'ı kur"))
             install.clicked.connect(lambda _=None, n=name: self.install_preset(n))
             test = QPushButton("Dene")
             test.clicked.connect(lambda _=None, n=name: self.test_server(n))

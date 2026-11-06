@@ -12,13 +12,15 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-05 00:55 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 12 YAPILDI. Yarım iş YOK.
-- **Aktif dal:** master (Madde 12 PR'ı birleştirildi; kullanıcı 2026-11-05: "hiçbir aşamada onay isteme, başarılı dalları
-  birleştir, her şey bitince 3 dk sonra bilgisayarı kapat"). Madde 12: Ayarlar menüleri · kenar çubuğu · zamanlanmış
-  görevler · GitHub (gh, tarayıcıyla). Tam takım 870/870 · R-13 E2E_OK, arayüz 15/15, ajan 5/6 (glm 503) · gerçek
-  zamanlanmış görev 6/6. DOĞRULANMADI: GitHub tarayıcı onayının tamamlanması ve gerçek GitHub'da depo oluşturma/push
-  (kullanıcı/dışa dönük; sahte gh + yerel git ile test edildi, gerçek hesapla yalnız durum/depo listesi okundu).
-  Sıradaki: kullanıcının yeni isteği; açık kalan tek kalem Madde 6'daki kararsız test izlemesi.
+- **Güncelleme:** 2026-11-06 21:55 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Aktif dal `feat/motor-karnesi`. Zorluk 12/12, R-13 (glm-5.3 503 dışında) geçti, masaüstü QA geçti. Ekran okuma 15 sn → 0,5 sn; masaüstü kontrolü varsayılan kapalı (auto_desktop_tool). Sırada: tam takım → tek PR (Madde 13+14) → birleştir → karne ölçümü.
+- **Aktif dal:** `feat/masaustu-kontrol`. Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
+  ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
+  güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi
+  kurup açar (Ayarlar > Kod ajanı `auto_test_tools`; kullanıcı Bağlayıcılar'da kapattıysa açmaz); `/qa`, `/qa-masaustu`
+  eksik aracı kendisi kurar; (3) askıdaki pencere (VS Code "Yanıt Vermiyor") Snapshot'ı sonsuza kadar kilitliyordu →
+  her çağrıdan önce askıdaki programlar `WINDOWS_MCP_EXCLUDE_PROCESSES` ile atlanır, zaman aşımında sunucu yenilenip
+  bir kez daha denenir. Testler: test_masaustu_otomatik 24, mutasyon 21/21. YARIM: gerçek ajan + QA denemesi
+  (`tests\e2e_masaustu_real_api.py ajan --kur`, sonra `qa`), tam takım, zorluk paketi (yeni ajan aracı, R-21/R-25), PR.
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı
   eklemesini anlat ya da PR'ları GitHub'dan ters sırayla (en üstteki önce) 'Merge pull request' ile birleştirt.
@@ -85,6 +87,8 @@ kritikse mutasyon + paket; R-13/R-21 gerçek ölçümler dal sonunda.
 | 11 | Gözlem ajanı (kullanıcı 2026-11-03): uygulama/geliştirme sırasındaki hata ve anormallikleri temizleyip depoya gönder; geliştirme motoru görüp kullanıcıya bildirsin | YAPILDI | `feat/gozlem-ajani` (98c6cf2 +) | `src/evren_studio/gozlem.py`, `gozlem-kayitlari` dalı, `ai_memory.py gozlem …`, baslangic bildirimi, R-36. Ayrıntı: CHANGELOG "Gözlem ajanı" |
 | 9 | Sade sağlayıcı/API anahtarı ekranı | YAPILDI (birleşme bekliyor) | `feat/saglayici-ekle` | OpenRouter/Kilo/OpenAI uyumlu ağ geçitleri tek anahtarla; Sağlayıcı ekle penceresi + Modelleri getir; modeller seçicide, Auto Pro'ya GİRMEZ; gerçek anahtarla doğrulanmadı (R-17); test_saglayici_ekle 7, mutasyon 2, ui_denetim HATA 0 |
 | 12 | Claude Code tarzı arayüz (kullanıcı 2026-11-04 gece): (a) Ayarlar menülere bölünsün (sol menü, ilgili ayar ilgili menüde, yeni ayarlar da oraya) · (b) tasarımın tamamı Claude Code masaüstü gibi (kenar çubuğu düzeni) · (c) GÖREV ZAMANLAYICI: Claude Code masaüstündeki "Scheduled tasks" gibi görülebilen/yönetilebilen yapı · (d) GitHub bağlantısı tarayıcıyla (ücretsiz), entegrasyon | YAPILDI | `feat/claude-tarzi-arayuz` (016185c, 8820a32, 86b098e, ad92072) | Sıra: A Ayarlar → B kenar çubuğu → C zamanlayıcı → D GitHub. Zamanlayıcı başvurusu: code.claude.com/docs/en/desktop-scheduled-tasks (Hourly/Daily/Weekdays/Weekly/Manual/Custom cron ≥1 sa; dakikada bir denetim; uygulama açıkken; kaçırılanlardan son 7 günde TEK telafi; Run now / Active-Paused / Edit / History (atlananlar nedenle) / Delete → oturumlar silinmez). GitHub: `gh auth login --web` (cihaz kodu, tarayıcı) + `gh auth setup-git` |
+| 13 | Masaüstü kontrolü (imleçle) ve masaüstü QA (kullanıcı 2026-11-05: "benzer ücretsiz repolardan en iyisini seç") | SÜRÜYOR (gerçek testler 2026-11-06 19:00-20:00) | `feat/masaustu-kontrol` (68b1999) | Ajan gerçek deneme 5/5 (9. deneme). QA hatalı sürümde hatayı buldu; doğru-sürüm QA denemesi motor bakımı yüzünden durduruldu. KALAN (kullanıcı "başlat" deyince): `e2e_masaustu_real_api.py qa --kur`, tam takım, zorluk auto-pro, R-13 üçlüsü, PR + birleştirme |
+| 14 | Motor karnesi ve akıllı yönlendirme (kullanıcı 2026-11-06 gece): (a) açılışta hafif yoklama; (b) gerçek kalite birkaç belirlenmiş günde, motorun EN İYİ gününde ölçülsün → her motora gerçek puan; (c) günlük yoklamada zayıf motor → daha güçlü yedeğe geçilsin, Auto Pro sırasını ajan yönetsin; (d) QA olabildiğince hızlı: basit iş dakikalarca sürmesin, motor kötüyse "şu an QA için uygun değil" de ya da en hızlı+doğru motora devret | SÜRÜYOR (kod + birim testi YAPILDI, tam takım 974/974; GERÇEK ölçüm 2026-11-06 19:00-20:00) | `feat/motor-karnesi` | Bulgu: QA motoru `qa_ui._evren_model` sağlık/hız/kaliteyi HİÇ kullanmıyor (hep sabit ilk motor deepseek-v4.1-flash; QA süresinin %84'ü model beklemesi). Plan: `model_scores` tablosu (yalnız ekleme), karne ölçümü yalnız yoklama "iyi gün" derse, puan = en iyi günlerin puanı; yoklamada yavaş/hatalı motor o gün geri alınır; QA rolü `qa` + ai_route; senaryo sayısı isteğin büyüklüğüne göre; motorlar kötüyse QA öncesi uyarı |
 
 ### Madde 5 planı — kota bitince otomatik devam
 Bugün: yalnız Proje/QA/Derin akışında (`project_ui.schedule_auto_resume`, Ayarlar'daki gizli `auto_resume`),
