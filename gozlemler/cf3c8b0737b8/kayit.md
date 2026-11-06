@@ -4,11 +4,11 @@ baslik: Döngü bekçisi turu durdurdu
 tur: ajan_anomali
 onem: orta
 alan: ajan
-durum: acik                # acik | cozuldu | kabul-edildi
+durum: cozuldu                # acik | cozuldu | kabul-edildi
 kaynak: e2e
 ilk_gorulme: 2026-11-05T19:07:47+00:00
-cozuldu_tarih:
-cozum_kaydi:
+cozuldu_tarih: 2026-11-06T16:58:35+00:00
+cozum_kaydi: 2026-11-06-dongu-bekcisi-turu-durdurdu
 ---
 
 # Döngü bekçisi turu durdurdu
