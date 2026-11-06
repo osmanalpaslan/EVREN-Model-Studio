@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-06 22:02 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. PR #43 (Madde 13 + 14) BİRLEŞTİ. Aktif dal **master**. Sırada: Madde 14 gerçek karne ölçümü (motor başına ~10-15 dk; o gün iyi değilse ertelenir).
+- **Güncelleme:** 2026-11-06 22:50 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. PR #43 birleşti. İlk gerçek karne ölçümü yapıldı: qwen 95,5 · deepseek 91,7 · gemma 84,3 (puanlama/yoklama düzeltmeleri dal `fix/karne-ilk-olcum`). Sırada: sonraki ölçüm günleri (kullanıcı belirler); QA hızı için senaryo başına model çağrısını azaltma (öneri).
 - **Aktif dal:** `master` (eski not: `feat/masaustu-kontrol` birleşti). Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

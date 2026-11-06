@@ -84,6 +84,21 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Motor karnesi — ilk gerçek ölçüm (2026-11-06 22:00-22:41, `tools/motor_karnesi.py olc`, zorluk paketi motor başına)
+
+| Motor | Yoklama | Sonuç | Süre (ortanca görev) | Puan |
+|---|---|---|---|---|
+| qwen3.8-flash-next | iyi gün (2,8 sn) | 12/12, 40/40 | 801 sn (29 sn) | **95,5** |
+| deepseek-v4.1-flash | ilk ölçüm (8,8 sn) | 12/12, 40/40 | 1093 sn (55 sn) | 91,7 |
+| gemma-4-31b | ilk ölçüm (1,2 sn) | 10/12, 38/40 (girdi; mini_proje kendi testi) | 450 sn (~18 sn) | 84,3 |
+
+İlk sürümün iki hatası bu ölçümde bulundu ve düzeltildi (puanlar aynı raporlardan yeniden hesaplandı): (1) hız
+eşiği 60 sn → ikisi de tavanda, 99,3 = 99,3 (eşik 20 sn); (2) düz toplamda gemma 10/12 ile 12/12 deepseek'in önüne
+geçti (92,1 > 91,7) → hız, tam geçme oranının 6. kuvvetiyle ölçeklenir (doğruluk önce). Ayrıca gemma ilk denemede
+haksız "zayıf" sayılıp ertelendi: araç yoklamada `reasoning_effort` gönderiyordu, gemma 400 verdi → alansız yeniden
+deneme. Sonuç sırası (puanlı rollerde): qwen → deepseek → gemma. Her motor tek ölçüm; "en iyi gün" puanı sonraki iyi
+günlerde yükselebilir.
+
 ## Masaüstü kontrolü gerçek deneme (2026-11-05, Madde 13, `tests/e2e_masaustu_real_api.py`, Auto Pro, Windows-MCP 0.8.8)
 
 Görev: "şu Qt uygulamasını aç, 2 ve 3 yaz, Topla'ya bas, sonucu söyle, pencereyi kapat"; kabul modelden bağımsız

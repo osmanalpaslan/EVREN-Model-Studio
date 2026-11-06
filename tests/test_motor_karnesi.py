@@ -59,7 +59,7 @@ def test_yoklama_disindaki_cagrilar_ve_olaylar_sayilmaz():
 
 # ---- 2) gerçek puan (karne) ---------------------------------------------------------------------------------
 
-def rapor(passes, sure=40.0, hata=0):
+def rapor(passes, sure=15.0, hata=0):
     return {"model": "x", "sonuclar": [
         {"gorev": f"g{i}", "sure": sure, "zaman_icinde": True, "hata_karti": hata, "tekrar_3": {},
          "kontroller": [{"ad": "a", "gecti": True}, {"ad": "b", "gecti": p}]} for i, p in enumerate(passes)]}
@@ -302,3 +302,54 @@ def test_modeller_ekraninda_karne_ve_bugunku_yoklama(win):
     assert page.karne_hint.isHidden()
     durum = {page.stats.item(r, 0).text(): page.stats.item(r, 7).text() for r in range(page.stats.rowCount())}
     assert durum["deepseek-v4.1-flash"].startswith("bugün zayıf")
+
+
+# ---- 9) ilk gerçek ölçümden (2026-11-06) çıkan düzeltmeler ------------------------------------------------
+
+def test_yoklama_dusunme_alanini_desteklemeyen_motorda_alansiz_yeniden_dener():
+    """gemma-4-31b `reasoning_effort` alanını 400 ile reddetti; araç onu haksız yere 'zayıf' sayıp erteledi."""
+    from evren_studio.api.errors import ApiError, ErrorKind
+
+    t = _tool()
+
+    class C:
+        def __init__(self, fail_kind):
+            self.bodies, self.fail_kind = [], fail_kind
+
+        def chat(self, model, messages, max_tokens=32, stream=True, extra_body=None):
+            self.bodies.append(extra_body)
+            if extra_body and self.fail_kind:
+                raise ApiError(kind=self.fail_kind, message="desteklenmiyor")
+            return "tamam"
+
+    c = C(ErrorKind.VALIDATION)
+    assert t.probe_chat(c, "gemma-4-31b") == "tamam" and c.bodies == [{"reasoning_effort": "none"}, None]
+    ok = C(None)
+    assert t.probe_chat(ok, "qwen") == "tamam" and ok.bodies == [{"reasoning_effort": "none"}]   # tek istek
+    down = C(ErrorKind.SERVER_UNAVAILABLE)
+    with pytest.raises(ApiError):
+        t.probe_chat(down, "x")                                               # gerçek arıza yeniden denenmez
+    assert down.bodies == [{"reasoning_effort": "none"}]
+
+
+def test_hiz_ilk_gercek_olcumdeki_iki_motoru_ayirir_dogruluk_yine_once():
+    """qwen ortanca 29 sn, deepseek 55 sn; ikisi de 12/12 — eski 60 sn eşiğinde ikisi 99,3 aldı."""
+    hizli = karne.score_report(rapor([True] * 12, sure=29.0))["score"]
+    yavas = karne.score_report(rapor([True] * 12, sure=55.0))["score"]
+    assert hizli > yavas + 2
+    bir_kalan = karne.score_report(rapor([True] * 11 + [False], sure=29.0))["score"]
+    assert yavas > bir_kalan - 1 and hizli > bir_kalan               # bir görevde kalmak hızdan pahalı
+
+
+def test_gorevde_kalan_hizli_motor_tam_gecen_yavasin_onune_gecemez():
+    """İlk gerçek ölçüm: gemma 10/12 (ortanca ~18 sn) düz toplamla deepseek 12/12'nin (55 sn) önüne geçmişti."""
+    def rap(n_ok, n, sure):
+        # gerçek rapor gibi: görev başına 3 kontrol; kalan görevde yalnız biri düşer (gemma: 38/40 kontrol, 10/12 görev)
+        return {"sonuclar": [{"sure": sure, "zaman_icinde": True, "hata_karti": 0, "tekrar_3": {},
+                              "kontroller": [{"gecti": True}, {"gecti": True}, {"gecti": i < n_ok}]} for i in range(n)]}
+
+    gemma = karne.score_report(rap(10, 12, 18.0))["score"]
+    deepseek = karne.score_report(rap(12, 12, 55.0))["score"]
+    qwen = karne.score_report(rap(12, 12, 29.0))["score"]
+    assert qwen > deepseek > gemma
+    assert karne.score_report(rap(12, 12, 10.0))["score"] == 100.0
