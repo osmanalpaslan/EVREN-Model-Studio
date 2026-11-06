@@ -340,13 +340,19 @@ Beklenen: {sc.expected or "uygulama hatasız çalışır"}
 Önceki senaryolar:
 {prev}
 
-Nasıl (masaüstü araçları `mcp__masaustu__*`):
+Nasıl (masaüstü araçları `mcp__masaustu__*`) — HIZLI ve DOĞRU:
+- Uygulamanın kodu plan aşamasında incelendi: proje dosyalarını yeniden OKUMA (yalnız gerçekten gerekirse, bir kez).
 - Uygulama açık değilse aç: .exe/Başlat menüsü adı için mcp__masaustu__App; "python app.py" gibi komutsa
   start_service ile başlat (pencere açılır). Zaten açıksa YENİDEN AÇMA.
-- mcp__masaustu__Snapshot ile pencereyi ve öğeleri (ad, tür, koordinat) oku → Click / Type → her önemli
-  adımdan sonra yeniden Snapshot ile sonucu DENETLE. Yalnız test edilen uygulamanın penceresinde işlem yap.
-- Görünüm önemliyse (kesik yazı, taşma, görünmeyen düğme) visual_check ile sor.
-- Varsayım yapma: ekranda gördüğünü yaz. Adım yapılamıyorsa nedenini yaz.
+- Önce BİR kez mcp__masaustu__Snapshot ile öğelerin adını ve koordinatını al. Pencere değişmedikçe yeniden
+  Snapshot alma; yalnız yeni pencere/iletişim kutusu açıldıysa ya da bir öğe bulunamadıysa al.
+- Bir denemenin eylemlerini TEK yanıtta birlikte çağır (sırayla çalışırlar) ve sonucu aynı yanıtta oku. Örnek
+  tek yanıt: Type(birinci kutu) + Type(ikinci kutu) + Click(düğme) + WindowText(pencere başlığı). Her denemeyi
+  böyle tek adımda yap; sonra sonuca bakıp sıradaki denemeye geç.
+- Sonuç yazılarını, etiketleri ve hata mesajlarını mcp__masaustu__WindowText ile oku. visual_check'i YALNIZ
+  görünüm sorunu için (kesik yazı, taşma, görünmeyen düğme) kullan, yazı okumak için değil.
+- Yalnız test edilen uygulamanın penceresinde işlem yap. Varsayım yapma: ekranda okuduğunu yaz. Adım yapılamıyorsa
+  nedenini yaz.
 - Senaryo bitince açtığın iletişim kutularını kapat; sonraki senaryo için uygulama açık kalabilir.
 
 Yanıtının SONUNA tek bir <qa_sonuc> bloğu koy (yalnız JSON):

@@ -74,6 +74,11 @@ gerçek API testi YOK, kullanıcı "başlat" diyene kadar; birlikte deneme 2026-
   yeniden dener (gemma haksız ertelendi). Puanlar aynı raporlardan yeniden hesaplandı (yalnız bu 3 kayıt). Testler +
   mutasyon 4/4. Sonuç: puanlı rollerde Auto Pro sırası qwen → deepseek → gemma.
 
+- 22:58 Madde 15 (kullanıcı: QA'yı daha da hızlandır): bugünkü QA kaydı senaryo başına 16-21 adım — her senaryo
+  dosyaları yeniden okuyor, her Type'tan sonra ayrı Snapshot, yazıyı visual_check'e soruyor. desktop_scenario_prompt +
+  DESKTOP_PROMPT: tek yanıtta Type+Type+Click+WindowText, bir Snapshot, dosyaları yeniden okuma, visual_check yalnız
+  görünüm. Sabitleyici test. Ölçüm: e2e_masaustu qa (önce: hatalı 40 dk'da 3 senaryo, doğru ~38 dk 4 senaryo).
+
 ## Sorunlar ve kayıtlar
 - Yama betiğinde bash heredoc + `\\b` → kontrol karakteri (R-29 yeniden). Write aracıyla düzeltildi; sonraki yamalar
   yalnız Edit/Write.
