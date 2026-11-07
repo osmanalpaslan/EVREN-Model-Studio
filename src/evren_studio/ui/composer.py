@@ -409,8 +409,9 @@ class Composer(QWidget):
     def _style_deep(self, on: bool) -> None:
         p = theme.current()
         self.deep_btn.setText("Derin · açık" if on else "Derin")
-        self.deep_btn.setIcon(icons.icon("spark", color=p.accent if on else None, size=15))
-        self.deep_btn.setStyleSheet(f"QToolButton {{ border: 1px solid {p.accent}; color: {p.text}; }}" if on else "")
+        self.deep_btn.setIcon(icons.icon("spark", color="accent" if on else None, size=15))
+        theme.style(self.deep_btn, (lambda pal: f"QToolButton {{ border: 1px solid {pal.accent}; color: {pal.text}; }}")
+                    if on else (lambda _pal: ""))
         self.deep_btn.setToolTip(
             "Derin Mod AÇIK: her iş anla → planla (iki model + yargıç) → uygula (onaylı plan) → çekişmeli doğrula "
             "→ düzelt akışıyla birden çok EVREN ajanıyla yürür. Daha yavaş ve daha çok token harcar; yalnız ücretsiz "
@@ -456,7 +457,7 @@ class Composer(QWidget):
                     "kotasını (5 dk ve günlük) veya ücretli bütçeyi hızla tüketir. "
                     "Ayarlar > Otomatik özet'ten değiştirilebilir. Elle: /compact")
             if ratio >= 0.85:
-                color = theme.current().warning
+                color = "warning"
                 text += "  ·  özet yakında"
         else:
             if limit:
@@ -467,7 +468,7 @@ class Composer(QWidget):
                 " Otomatik özet kapalı (Ayarlar). Elle: /compact"
         self.context_label.setText(text)
         self.context_label.setToolTip(tip)
-        self.context_label.setStyleSheet(f"color: {color};" if color else "")
+        theme.style(self.context_label, lambda pal, r=color: f"color: {getattr(pal, r)};" if r else "")
 
     def _update_send(self) -> None:
         p = theme.current()
@@ -475,12 +476,12 @@ class Composer(QWidget):
         self.send_btn.style().unpolish(self.send_btn)
         self.send_btn.style().polish(self.send_btn)
         if self._running:
-            self.send_btn.setIcon(icons.icon("stop", p.bg, 18))
+            self.send_btn.setIcon(icons.icon("stop", "bg", 18))
             self.send_btn.setToolTip("Durdur (Esc)")
             self.send_btn.setEnabled(True)
         else:
             has_text = bool(self.edit.toPlainText().strip()) or bool(self.attachments.items())
-            self.send_btn.setIcon(icons.icon("send", p.on_accent if has_text else p.muted, 18))
+            self.send_btn.setIcon(icons.icon("send", "on_accent" if has_text else "muted", 18))
             self.send_btn.setToolTip("Gönder (Enter) — yeni satır: Shift+Enter veya Alt+Enter")
             self.send_btn.setEnabled(has_text)
 

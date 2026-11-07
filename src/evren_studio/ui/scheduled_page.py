@@ -240,7 +240,7 @@ class ScheduledPage(BasePage):
         self._runs_shown = 20
         self.new_btn = QPushButton("  Yeni görev")
         self.new_btn.setProperty("variant", "primary")
-        self.new_btn.setIcon(icons.icon("plus", theme.current().on_accent, 15))   # ana düğme zemininde okunur
+        self.new_btn.setIcon(icons.icon("plus", "on_accent", 15))   # ana düğme zemininde okunur
         self.new_btn.clicked.connect(self.new_task)
         self.header_extra.addWidget(self.new_btn)
         self.stack = QStackedWidget()
@@ -261,7 +261,7 @@ class ScheduledPage(BasePage):
         el = QVBoxLayout(self.empty)
         el.addStretch(1)
         ic = QLabel()
-        ic.setPixmap(icons.icon("clock", size=40).pixmap(40, 40))
+        icons.set_pixmap(ic, "clock", None, 40)
         ic.setAlignment(Qt.AlignCenter)
         el.addWidget(ic)
         t = QLabel("Henüz zamanlanmış görev yok")
@@ -302,7 +302,7 @@ class ScheduledPage(BasePage):
         head.addWidget(self.enabled)
         self.run_btn = QPushButton("  Şimdi çalıştır")
         self.run_btn.setProperty("variant", "primary")
-        self.run_btn.setIcon(icons.icon("send", theme.current().on_accent, 14))
+        self.run_btn.setIcon(icons.icon("send", "on_accent", 14))
         self.run_btn.clicked.connect(self._run_or_stop)
         head.addWidget(self.run_btn)
         edit = QPushButton("  Düzenle")
@@ -440,7 +440,7 @@ class ScheduledPage(BasePage):
         self.enabled.blockSignals(False)
         busy = self.host.is_busy(r["id"])
         self.run_btn.setText("  Durdur" if busy else "  Şimdi çalıştır")
-        self.run_btn.setIcon(icons.icon("stop" if busy else "send", theme.current().on_accent, 14))
+        self.run_btn.setIcon(icons.icon("stop" if busy else "send", "on_accent", 14))
         spec = sched.Spec.from_row(r)
         nxt = self.host.next_run(r)
         rows = [

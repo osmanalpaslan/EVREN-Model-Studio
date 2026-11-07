@@ -119,9 +119,11 @@ class DiffView(CodeView):
     def __init__(self, diff: str, max_lines: int = 22, parent=None, auto_height: bool = True):
         super().__init__("", max_lines, parent, auto_height)
         self.setObjectName("DiffView")
-        self.set_diff(diff)
+        self._diff = diff
+        theme.watch(self, lambda w, _p: w.set_diff(w._diff), "diff")      # renkler belgeye yazılı: temada yenile
 
     def set_diff(self, diff: str) -> None:
+        self._diff = diff
         lines = [ln for ln in diff.splitlines() if not ln.startswith(("--- ", "+++ "))]
         self.setPlainText("\n".join(lines) or "(fark yok)")
         p = theme.current()
@@ -586,7 +588,7 @@ class ApprovalWidget(QFrame):
         if reason:
             why = QLabel(f"Neden soruluyor: {reason}")
             why.setWordWrap(True)
-            why.setStyleSheet(f"color: {theme.current().warning};")
+            theme.style(why, lambda pal: f"color: {pal.warning};")
             lay.addWidget(why)
         if request.kind == "write" and request.change is not None:
             lay.addWidget(DiffView(request.detail, max_lines=24))
@@ -606,7 +608,7 @@ class ApprovalWidget(QFrame):
         row.setSpacing(8)
         allow = QPushButton("Kur" if request.kind == "install" else "Onayla")
         allow.setProperty("variant", "primary")
-        allow.setIcon(icons.icon("check", theme.current().on_accent, 16))
+        allow.setIcon(icons.icon("check", "on_accent", 16))
         allow.clicked.connect(lambda: self._decide("allow"))
         if request.kind == "write":
             session_text = "Bu oturumda tüm düzenlemelere izin ver"
@@ -655,7 +657,7 @@ class ToolCallWidget(QFrame):
         head = QHBoxLayout()
         head.setSpacing(8)
         self.icon = QLabel()
-        self.icon.setPixmap(icons.pixmap(TOOL_ICONS.get(name, "dot"), None, 15))
+        icons.set_pixmap(self.icon, TOOL_ICONS.get(name, "dot"), None, 15)
         head.addWidget(self.icon)
         self.title = QLabel(self._initial_title())
         self.title.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -708,13 +710,13 @@ class ToolCallWidget(QFrame):
         labels = {"queued": "sırada", "running": "çalışıyor…", "approval": "onay bekliyor",
                   "ok": "", "error": "hata", "denied": "reddedildi"}
         self.state.setText(text or labels.get(state, ""))
-        color = {"ok": p.success, "error": p.danger, "denied": p.warning}.get(state)
-        if color:
-            self.state.setStyleSheet(f"color: {color};")
+        role = {"ok": "success", "error": "danger", "denied": "warning"}.get(state)
+        if role:
+            theme.style(self.state, lambda pal, r=role: f"color: {getattr(pal, r)};")
             mark = {"ok": "check", "error": "x", "denied": "x"}[state]
-            self.icon.setPixmap(icons.pixmap(mark, color, 15))
+            icons.set_pixmap(self.icon, mark, role, 15)
         else:
-            self.state.setStyleSheet("")
+            theme.style(self.state, lambda _pal: "")
 
     def toggle_details(self, force: bool | None = None) -> None:
         show = (not self.details.isVisible()) if force is None else force
@@ -814,7 +816,7 @@ class NoteWidget(QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.addStretch(1)
         ic = QLabel()
-        ic.setPixmap(icons.pixmap(icon_name, theme.current().text_faint, 14))
+        icons.set_pixmap(ic, icon_name, "text_faint", 14)
         lay.addWidget(ic)
         lab = faint_label(text)
         lab.setWordWrap(True)
@@ -840,7 +842,7 @@ class InstallCard(QFrame):
         lay.setSpacing(6)
         head = QHBoxLayout()
         ic = QLabel()
-        ic.setPixmap(icons.pixmap("spark", theme.current().accent, 16))
+        icons.set_pixmap(ic, "spark", "accent", 16)
         head.addWidget(ic)
         self.title = QLabel(title)
         self.title.setStyleSheet("font-weight: 600;")
@@ -857,7 +859,7 @@ class InstallCard(QFrame):
             row.setSpacing(8)
             self.install_btn = QPushButton("Kur")
             self.install_btn.setProperty("variant", "primary")
-            self.install_btn.setIcon(icons.icon("check", theme.current().on_accent, 16))
+            self.install_btn.setIcon(icons.icon("check", "on_accent", 16))
             self.install_btn.clicked.connect(self._install)
             later = QPushButton("Şimdi değil")
             later.setProperty("variant", "ghost")
@@ -905,7 +907,7 @@ class ActionCard(QFrame):
         head = QHBoxLayout()
         ic = QLabel()
         p = theme.current()
-        ic.setPixmap(icons.pixmap(icon_name, p.warning if warn else p.accent, 16))
+        icons.set_pixmap(ic, icon_name, "warning" if warn else "accent", 16)
         head.addWidget(ic)
         self.title = QLabel(title)
         self.title.setStyleSheet("font-weight: 600;")
@@ -995,14 +997,14 @@ class ChoiceCard(QFrame):
         super().__init__(parent)
         self.setObjectName("PlanCard")
         p = theme.current()
-        self.setStyleSheet(f"QFrame#PlanCard {{ background: {p.surface}; border: 1px solid {p.accent};"
-                           f" border-radius: 12px; }}")
+        theme.style(self, lambda pal: f"QFrame#PlanCard {{ background: {pal.surface}; border: 1px solid {pal.accent};"
+                                      f" border-radius: 12px; }}")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 12, 16, 12)
         lay.setSpacing(6)
         head = QHBoxLayout()
         ic = QLabel()
-        ic.setPixmap(icons.pixmap(icon_name, p.accent, 18))
+        icons.set_pixmap(ic, icon_name, "accent", 18)
         head.addWidget(ic)
         t = QLabel(f"<b>{title}</b>")
         t.setWordWrap(True)
@@ -1047,7 +1049,7 @@ class ErrorCard(QFrame):
         lay.setSpacing(6)
         head = QHBoxLayout()
         ic = QLabel()
-        ic.setPixmap(icons.pixmap("alert", theme.current().danger, 16))
+        icons.set_pixmap(ic, "alert", "danger", 16)
         head.addWidget(ic)
         t = QLabel(title)
         t.setStyleSheet("font-weight: 600;")

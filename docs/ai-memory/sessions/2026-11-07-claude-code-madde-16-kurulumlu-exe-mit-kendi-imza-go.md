@@ -63,6 +63,20 @@ kurulum paketine gerekli program setuplarını ekle."
   QT_QPA_PLATFORM=windows yoksa yazı kutucuk), DisableWelcomePage=no; masaüstüne yalnız .exe. Ekran görüntüsüyle
   doğrulandı. Ders: kullanıcıya verilen klasöre yalnız açacağı dosyayı koy.
 
+- 2026-11-07 17:00-18:15 ANALİZ (kullanıcı: hız, açık mod, Auto Pro silinsin mi): ölçümler CHALLENGE_RESULTS
+  "auto ↔ Auto Pro"; DEVIR maddeleri 17-19 (plan, kullanıcı onayı bekliyor). Yeni: tests/e2e_hiz_auto_karsilastirma_real_api.py,
+  e2e_zorluk `--karne` (gerçek karneyi geçici veriye kopyalar). Açık mod kök nedeni yeniden üretildi (çalışırken tema
+  geçişi), ekran görüntüleri build/acik_mod_denetim/.
+
+- 2026-11-07 18:30-19:25 MADDE 18 AÇIK MOD (dal fix/acik-mod): kök neden — simge (65 kullanım) ve satır içi renkler
+  bileşen oluşturulurken sabitleniyordu; koyu→açık geçişte görünmez (yeni `ui_denetim --gecis` eski kodda 200 HATA).
+  Çözüm: icons._ThemedEngine (rol rengi her çizimde temadan; çağrılar '#hex' yerine rol adı), icons.set_pixmap,
+  theme.watch/style/rich (sahip silinince düşer, anahtarla yerine geçer), MarkdownView/DiffView temada yeniden üretilir,
+  bağlantılarda sabit renk yok + tema değişince bağlantılı etiketler yeniden dizilir; açık temada text_dim/text_faint/
+  muted koyulaştı (uyarı 115 → 1). Testler: test_tema_gecisi 6, test_okunurluk 4 senaryo (gecis dahil), mutasyon 7/7,
+  tam takım 1013/1013. Ekran görüntüleri iki temada bakıldı (R-05). Tuzak: mutasyon geri alındı ama aynı uzunluk + aynı
+  saniye → bayat .pyc; tam koşu bozuk paletle koştu (3 kırmızı) → __pycache__ silinip yeniden (dersler.md).
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama

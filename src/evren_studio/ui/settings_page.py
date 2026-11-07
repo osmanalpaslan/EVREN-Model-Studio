@@ -124,7 +124,9 @@ def link(text: str, url: str) -> str:
     # koyu temada okunmuyordu → tema vurgu rengi (koyu temada beyaz) + alt çizgi açıkça verilir.
     from . import theme
 
-    return f'<a href="{url}" style="color:{theme.current().accent}; text-decoration: underline;">{text}</a>'
+    # Renk YAZILMAZ: QLabel bağlantıyı uygulama paletinin Link rengiyle (= tema vurgusu) çizer; tema değişince
+    # yazılı renk eski temada kalıyordu (2026-11-07 çalışırken tema geçişi denetimi: 1,21 kontrast)
+    return f'<a href="{url}" style="text-decoration: underline;">{text}</a>'
 
 
 def kv_row_with(label: str, widget: QWidget, extra: QWidget) -> QWidget:

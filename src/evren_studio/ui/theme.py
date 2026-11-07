@@ -67,12 +67,14 @@ LIGHT = Palette(
     # Okunurluk (2026-11-01, tools/ui_denetim.py ölçümü): eski text_faint #9095a0 açık zeminlerde
     # 2,4–3,0 kontrasttaydı (WCAG metin alt sınırı 4,5) — ipuçları, "varsayılan: …", boş liste
     # yazıları, alt bilgi neredeyse görünmüyordu. Yeni değerler tüm açık zeminlerde ölçüldü.
-    text="#1d1f23", text_dim="#5b606a", text_faint="#646974",
+    # 2026-11-07 (kullanıcı: "açık modda düğmeler neredeyse görünmez"): ikincil yazı ve simge rengi koyulaştı —
+    # ClearType'lı gerçek çizimde 4,0-4,4 ölçülen ikincil yazılar (115 uyarı) ≥ 4,5; simgeler (text_dim) daha belirgin.
+    text="#1d1f23", text_dim="#464b54", text_faint="#4f545d",
     accent="#3d63dd", accent_hover="#2f53c7", accent_soft="#e6ecfd", on_accent="#ffffff",
     code_bg="#f5f5f2", code_border="#e3e3de",
     success="#13773d", danger="#b93030", warning="#8f5b0a",
     add_bg="#e3f6e9", del_bg="#fbe5e5", hunk="#3d63dd",
-    scrollbar="#c9c9c2", muted="#6f747e",
+    scrollbar="#c9c9c2", muted="#5a5f69",
 )
 
 _current: Palette = DARK
@@ -83,6 +85,74 @@ CODE_FONTS = ["Cascadia Mono", "Cascadia Code", "Consolas", "Courier New"]
 
 def current() -> Palette:
     return _current
+
+
+# ---- tema değişince yenilenecek bileşenler ------------------------------------------------------------------------
+# Kullanıcı 2026-11-07: uygulama açıkken koyu → açık geçişte simgeler ve satır içi renkler eski temada kalıyordu
+# (sağ üst düğmeler, sol menü, öneri kartı başlıkları neredeyse görünmez). Rengi oluşturulurken sabitlenen her
+# bileşen kendini buraya kaydeder; apply_theme her değişimde yeniden boyar. Sahip silinince kayıt kendiliğinden düşer.
+_watchers: list[tuple] = []          # (weakref(sahip), fn(sahip, palet), anahtar)
+
+
+def watch(owner, fn, key: str = "") -> None:
+    """`fn(owner, palette)` şimdi ve her tema değişiminde çağrılır (owner yaşadıkça). fn owner'ı YAKALAMAMALI
+    (yoksa sahip hiç silinmez); ilk parametreden kullanır. Aynı sahip + `key` ile yeniden kaydedilirse eskisinin
+    YERİNE geçer (ör. durum değiştikçe yeniden çizilen simge — kayıtlar birikmesin)."""
+    import weakref
+
+    fn(owner, _current)
+    if key:
+        _watchers[:] = [w for w in _watchers if not (w[2] == key and w[0]() is owner)]
+    _watchers.append((weakref.ref(owner), fn, key))
+    if len(_watchers) % 256 == 0:
+        _prune()
+
+
+def rich(label, fn, key: str = "rich") -> None:
+    """İçinde renk geçen zengin metin, geçerli paletten: `theme.rich(lbl, lambda p: f"<span style='color:{p.text_dim}'>…")`."""
+    watch(label, lambda w, p, f=fn: w.setText(f(p)), key)
+
+
+def style(widget, fn, key: str = "style") -> None:
+    """Satır içi stil, geçerli paletten: `theme.style(lbl, lambda p: f"color: {p.warning};")` — tema değişince yenilenir."""
+    watch(widget, lambda w, p, f=fn: w.setStyleSheet(f(p)), key)
+
+
+def _alive(obj) -> bool:
+    if obj is None:
+        return False
+    try:
+        import shiboken6
+
+        return shiboken6.isValid(obj)
+    except ImportError:          # pragma: no cover
+        return True
+
+
+def _prune() -> None:
+    _watchers[:] = [w for w in _watchers if _alive(w[0]())]
+
+
+def notify_changed() -> int:
+    """Kayıtlı bileşenleri geçerli temayla yeniden boyar; yenilenen sayısı."""
+    done = 0
+    keep = []
+    for item in list(_watchers):
+        obj = item[0]()
+        if not _alive(obj):
+            continue
+        try:
+            item[1](obj, _current)
+            done += 1
+        except RuntimeError:     # C++ nesnesi o an silinmiş
+            continue
+        keep.append(item)
+    _watchers[:] = keep
+    return done
+
+
+def watcher_count() -> int:
+    return len(_watchers)
 
 
 def palette_for(theme: str) -> Palette:
@@ -350,4 +420,14 @@ def apply_theme(app: QApplication, theme: str, font_pt: int = 10, compact: bool 
     qp.setColor(QPalette.Link, QColor(p.accent))
     app.setPalette(qp)
     app.setStyleSheet(build_qss(p, font_pt, compact))
+    notify_changed()
+    from PySide6.QtWidgets import QLabel
+
+    for w in app.allWidgets():   # simgeler (icons._ThemedEngine) her çizimde temayı okur: yeniden çizdir
+        if isinstance(w, QLabel) and "<a " in (w.text() or ""):
+            # bağlantı rengi paletten (Link) ama QLabel metni ilk kurulumda dizer, tema değişince yenilemez
+            t = w.text()
+            w.setText("")
+            w.setText(t)
+        w.update()
     return p

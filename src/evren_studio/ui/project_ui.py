@@ -51,31 +51,33 @@ class PlanCard(QFrame):
         super().__init__(parent)
         self.setObjectName("PlanCard")
         p = theme.current()
-        self.setStyleSheet(f"QFrame#PlanCard {{ background: {p.surface}; border: 1px solid {p.accent};"
-                           f" border-radius: 12px; }}")
+        theme.style(self, lambda pal: f"QFrame#PlanCard {{ background: {pal.surface}; border: 1px solid {pal.accent};"
+                                      f" border-radius: 12px; }}")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 12, 16, 12)
         lay.setSpacing(6)
         head = QHBoxLayout()
         ic = QLabel()
-        ic.setPixmap(icons.pixmap("list", p.accent, 18))
+        icons.set_pixmap(ic, "list", "accent", 18)
         head.addWidget(ic)
         title = QLabel(f"<b>{title}</b> — {len(state.tasks)} görev (EVREN_PLAN.md)")
         head.addWidget(title, 1)
         lay.addLayout(head)
         for t in state.tasks:
-            row = QLabel(f"<b>{t.idx}.</b> {t.title}"
-                         + (f"<br><span style='color:{p.text_dim}'>Bitti ölçütü: {t.criteria}</span>" if t.criteria else "")
-                         + (f"<br><span style='color:{p.text_faint}'>Doğrulama: <code>{t.check}</code></span>" if t.check else "")
-                         + (f"<br><span style='color:{p.text_faint}'>Bağımlı: {', '.join(map(str, t.depends))}</span>"
-                            if t.depends else ""))
+            row = QLabel()
+            theme.rich(row, lambda p, t=t: (
+                f"<b>{t.idx}.</b> {t.title}"
+                + (f"<br><span style='color:{p.text_dim}'>Bitti ölçütü: {t.criteria}</span>" if t.criteria else "")
+                + (f"<br><span style='color:{p.text_faint}'>Doğrulama: <code>{t.check}</code></span>" if t.check else "")
+                + (f"<br><span style='color:{p.text_faint}'>Bağımlı: {', '.join(map(str, t.depends))}</span>"
+                   if t.depends else "")))
             row.setWordWrap(True)
             row.setTextFormat(Qt.RichText)
             lay.addWidget(row)
         for w in warnings:
             lab = QLabel("⚠ " + w)
             lab.setWordWrap(True)
-            lab.setStyleSheet(f"color: {p.warning};")
+            theme.style(lab, lambda pal: f"color: {pal.warning};")
             lay.addWidget(lab)
         if estimate:                            # F5 #5 kaba süre/token tahmini
             est = QLabel("<b>Tahmin:</b> " + estimate)

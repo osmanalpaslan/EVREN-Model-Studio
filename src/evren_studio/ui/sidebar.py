@@ -169,7 +169,7 @@ class Sidebar(QWidget):
 
         self.new_btn = QPushButton("  Yeni oturum")
         self.new_btn.setObjectName("NewSession")
-        self.new_btn.setIcon(icons.icon("plus", theme.current().text, 16))
+        self.new_btn.setIcon(icons.icon("plus", "text", 16))
         self.new_btn.setToolTip("Yeni oturum (Ctrl+N)")
         self.new_btn.setCursor(Qt.PointingHandCursor)
         self.new_btn.clicked.connect(self.new_session.emit)
@@ -206,7 +206,7 @@ class Sidebar(QWidget):
 
         sep = QWidget()
         sep.setFixedHeight(1)
-        sep.setStyleSheet(f"background: {theme.current().border};")
+        theme.style(sep, lambda pal: f"background: {pal.border};")
         lay.addWidget(sep)
         bottom = QHBoxLayout()
         bottom.setSpacing(4)
@@ -352,6 +352,6 @@ class Sidebar(QWidget):
         m.addAction(icons.icon("download", size=15), "Markdown olarak dışa aktar",
                     lambda: self.session_action.emit("export", sid))
         m.addSeparator()
-        m.addAction(icons.icon("trash", theme.current().danger, 15), "Sil",
+        m.addAction(icons.icon("trash", "danger", 15), "Sil",
                     lambda: self.session_action.emit("delete", sid))
         m.exec(self.list.mapToGlobal(pos))

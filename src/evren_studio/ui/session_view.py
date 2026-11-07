@@ -260,7 +260,7 @@ class WelcomeView(QWidget):
         kl = QHBoxLayout(self.key_card)
         kl.setContentsMargins(14, 10, 10, 10)
         ki = QLabel()
-        ki.setPixmap(icons.pixmap("alert", theme.current().warning, 16))
+        icons.set_pixmap(ki, "alert", "warning", 16)
         kl.addWidget(ki)
         kt = QLabel("Henüz API anahtarı yok. Ücretsiz EVREN anahtarınızı (önerilir) veya OpenAI / "
                     "Anthropic anahtarınızı Ayarlar'dan girin; anahtarlar Windows Credential Manager'da saklanır.")
@@ -290,7 +290,7 @@ class WelcomeView(QWidget):
     def set_workspace(self, ws: str | None) -> None:
         self.workspace = ws
         if ws:
-            self.ws_btn.setIcon(icons.icon("folder", theme.current().accent, 16))
+            self.ws_btn.setIcon(icons.icon("folder", "accent", 16))
             self.ws_btn.setText(f"  {Path(ws).name}   ▾")
             self.ws_btn.setToolTip(ws)
             self.subtitle.setText(
@@ -322,7 +322,7 @@ class WelcomeView(QWidget):
             bl.setContentsMargins(14, 10, 14, 10)
             bl.setSpacing(2)
             t = QLabel(head)
-            t.setStyleSheet(f"font-weight: 600; color: {p.text};")
+            theme.style(t, lambda pal: f"font-weight: 600; color: {pal.text};")
             d = QLabel(desc)
             d.setProperty("role", "dim")
             for lab in (t, d):
@@ -544,7 +544,7 @@ class SessionView(QWidget):
         m.addAction(icons.icon("refresh", size=15), "Konuşmayı özetle (/ozet)", lambda: self.send("/ozet"))
         m.addAction(icons.icon("download", size=15), "Markdown olarak dışa aktar", self.export)
         m.addSeparator()
-        m.addAction(icons.icon("trash", theme.current().danger, 15), "Oturumu sil", self.delete_current)
+        m.addAction(icons.icon("trash", "danger", 15), "Oturumu sil", self.delete_current)
         self.more_btn.setMenu(m)
         h.addWidget(self.more_btn)
         self.panel_btn = icon_button("panel-right", "Sağ paneli aç/kapat (Ctrl+J)", 17)
@@ -574,7 +574,7 @@ class SessionView(QWidget):
             self.branch_chip.setText(branch or "")
             self.branch_chip.setVisible(bool(branch))
         else:
-            self.ws_chip.setIcon(icons.icon("folder", theme.current().accent, 15))
+            self.ws_chip.setIcon(icons.icon("folder", "accent", 15))
             if self.session_id:
                 self.ws_chip.setText("Proje klasörü bağla")
                 self.ws_chip.setToolTip("Bu sohbete bir proje klasörü bağlayın: ajan dosyaları "
@@ -1267,10 +1267,9 @@ class SessionView(QWidget):
 
     def _show_drop_hint(self, on: bool) -> None:
         if on:
-            p = theme.current()
-            self._drop_hint.setStyleSheet(
+            theme.style(self._drop_hint, lambda p: (
                 f"#DropHint {{ background: {p.bg}; color: {p.text}; border: 2px dashed {p.accent};"
-                f" border-radius: 14px; font-size: 15px; }}")
+                f" border-radius: 14px; font-size: 15px; }}"))
             self._drop_hint.setGeometry(self.rect().adjusted(16, 16, -16, -16))
             self._drop_hint.raise_()
         self._drop_hint.setVisible(on)

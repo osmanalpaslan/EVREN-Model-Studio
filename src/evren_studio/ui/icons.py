@@ -6,7 +6,7 @@ renkle QIcon döndürür. Simgeler önbelleğe alınır.
 from __future__ import annotations
 
 from PySide6.QtCore import QByteArray, QRectF, Qt
-from PySide6.QtGui import QIcon, QPainter, QPixmap
+from PySide6.QtGui import QIcon, QIconEngine, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 
 from . import theme
@@ -61,6 +61,58 @@ _P = {
 }
 
 _cache: dict[tuple, QIcon] = {}
+_engines: list = []                  # QIcon motorları Python tarafında da yaşasın (PySide sahipliği)
+
+DEFAULT_ROLE = "text_dim"
+
+
+def resolve(color: str | None, p: theme.Palette | None = None) -> str:
+    """Renk: '#rrggbb' sabit renk ya da tema ROLÜ ('accent', 'danger', 'on_accent'…) — rol her çağrıda GEÇERLİ
+    temadan okunur (2026-11-07: rengi oluşturulurken sabitlenen simgeler tema değişince görünmez oluyordu)."""
+    p = p or theme.current()
+    c = color or DEFAULT_ROLE
+    if c.startswith("#"):
+        return c
+    return getattr(p, c, None) or getattr(p, DEFAULT_ROLE)
+
+
+class _ThemedEngine(QIconEngine):
+    """Her çizimde rengi geçerli temadan okuyan SVG simge. Devre dışı durum: temanın `muted` rengi."""
+
+    def __init__(self, name: str, color: str | None, size: int):
+        super().__init__()
+        self.name, self.color, self.size = name, color, size
+
+    def _svg_color(self, mode) -> str:
+        if mode == QIcon.Mode.Disabled:
+            return theme.current().muted
+        return resolve(self.color)
+
+    def paint(self, painter: QPainter, rect, mode, state) -> None:
+        renderer = QSvgRenderer(QByteArray(svg(self.name, self._svg_color(mode)).encode("utf-8")))
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+        renderer.render(painter, QRectF(rect))
+        painter.restore()
+
+    def pixmap(self, size, mode, state) -> QPixmap:
+        return self.scaledPixmap(size, mode, state, 2.0)
+
+    def scaledPixmap(self, size, mode, state, scale) -> QPixmap:
+        scale = max(1.0, float(scale or 1.0))
+        px = QPixmap(max(1, int(size.width() * scale)), max(1, int(size.height() * scale)))
+        px.fill(Qt.transparent)
+        painter = QPainter(px)
+        self.paint(painter, QRectF(0, 0, px.width(), px.height()).toRect(), mode, state)
+        painter.end()
+        px.setDevicePixelRatio(scale)
+        return px
+
+    def actualSize(self, size, mode, state):
+        return size
+
+    def clone(self):
+        return _ThemedEngine(self.name, self.color, self.size)
 
 
 def svg(name: str, color: str, bg: str | None = None) -> str:
@@ -73,7 +125,8 @@ def svg(name: str, color: str, bg: str | None = None) -> str:
 
 
 def pixmap(name: str, color: str | None = None, size: int = 18, ratio: float = 2.0) -> QPixmap:
-    color = color or theme.current().text_dim
+    """Tek seferlik resim (o anki temanın rengiyle). Etikete koyacaksan `set_pixmap` kullan: tema değişince yenilenir."""
+    color = resolve(color)
     renderer = QSvgRenderer(QByteArray(svg(name, color).encode("utf-8")))
     px = QPixmap(int(size * ratio), int(size * ratio))
     px.fill(Qt.transparent)
@@ -86,12 +139,21 @@ def pixmap(name: str, color: str | None = None, size: int = 18, ratio: float = 2
 
 
 def icon(name: str, color: str | None = None, size: int = 18) -> QIcon:
-    color = color or theme.current().text_dim
-    key = (name, color, size, theme.current().name)
+    """`color`: tema rolü ('accent', 'danger'…; varsayılan text_dim) ya da '#rrggbb'. Rol renkleri her çizimde
+    geçerli temadan okunur — tema değişince simge kendiliğinden doğru renge döner."""
+    key = (name, color or DEFAULT_ROLE, size)
     if key not in _cache:
-        _cache[key] = QIcon(pixmap(name, color, size))
+        engine = _ThemedEngine(name, color, size)
+        _engines.append(engine)
+        _cache[key] = QIcon(engine)
     return _cache[key]
 
 
+def set_pixmap(label, name: str, color: str | None = None, size: int = 18) -> None:
+    """QLabel'e simge koyar ve tema değişince yeniden çizer (rol renkleri için)."""
+    theme.watch(label, lambda lab, _p, n=name, c=color, s=size: lab.setPixmap(pixmap(n, c, s)), "pixmap")
+
+
 def clear_cache() -> None:
-    _cache.clear()
+    """Eski API: rol renkli simgeler artık kendiliğinden yenilenir; önbellek temaya bağlı değil."""
+    return None

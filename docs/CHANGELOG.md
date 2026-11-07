@@ -1,5 +1,15 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Açık mod düzeltmesi (Madde 18)
+
+- **Tema değişince her şey anında doğru renge döner**: uygulama açıkken koyu temadan açığa (ya da tersi) geçince
+  sağ üstteki düğmeler (görevler, geri al, dosyalar, terminal, etkinlik, git), sol menü simgeleri, yazı kutusu
+  düğmeleri, öneri kartı başlıkları, plan kartları, bağlantılar ve yazılmış mesajlar eski temanın renginde kalıyor ve
+  neredeyse görünmüyordu. Artık simgeler rengini her çizimde temadan alır; diğer renkli parçalar tema değişince
+  yeniden boyanır.
+- **Açık tema daha okunur**: ikincil yazılar ve simgeler koyulaştı (okunurluk uyarısı 115 → 1).
+- Denetim aracı (`tools/ui_denetim.py --gecis`) temayı çalışırken değiştirerek de ölçer; testlerde de var.
+
 ## Yayınlanmamış — Kurulum dosyası (Madde 16, sürüm 0.3.0)
 
 - **Kurulumlu exe**: `EVREN-Studio-Kurulum-0.3.0.exe` (~184 MB). Türkçe kurulum sihirbazı, MIT lisans sayfası,
