@@ -177,3 +177,12 @@ def test_anahtarlari_sil_secenegi_pencere_acmadan_siler(monkeypatch):
     monkeypatch.setattr(secrets, "delete_all_api_keys", lambda: calls.append(1) or 2)
     monkeypatch.setattr(sys, "argv", ["EVREN Studio.exe", "--anahtarlari-sil"])
     assert app.main() == 0 and calls == [1]
+
+
+def test_sihirbazda_uygulama_logosu_ve_hos_geldiniz_sayfasi():
+    """Kullanıcı 2026-11-07: "setupta neden uygulama logosu yok" — Inno'nun kendi resmi görünüyordu."""
+    assert "WizardImageFile={#WizImage}" in ISS and "WizardSmallImageFile={#WizSmallImage}" in ISS
+    assert "DisableWelcomePage=no" in ISS                      # büyük logo hoş geldiniz sayfasında görünür
+    src = (ROOT / "tools" / "paketle.py").read_text(encoding="utf-8")
+    assert "/DWizImage=" in src and "brand.FLAG_RED" in src     # koyu temada brand_color() beyaz döner
+    assert 'os.environ["QT_QPA_PLATFORM"] = "windows"' in src   # offscreen'de yazı kutucuk (R-05)

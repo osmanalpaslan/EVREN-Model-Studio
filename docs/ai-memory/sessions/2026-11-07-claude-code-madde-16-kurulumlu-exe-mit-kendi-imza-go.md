@@ -56,6 +56,13 @@ kurulum paketine gerekli program setuplarını ekle."
 - CredEnumerateW süzgeci yalnız "önek*" kabul eder ("*ad*" boş döndü) → hepsini al, Python'da süz.
 - cmdkey çıktısı "LegacyGeneric:target=" önekli → kaldırıcıda cmdkey yerine uygulamanın kendi silmesi.
 
+- Kullanıcı (2026-11-07 13:30): "setupta logo yok; çift tıklayınca açılmıyor, uzantısı farklı". Neden: (1) sihirbazda
+  Inno'nun varsayılan resmi vardı, hoş geldiniz sayfası kapalıydı; (2) masaüstüne kurulumun yanına
+  `.exe.sha256` da kopyalanmıştı — adı neredeyse aynı, simgesiz, çift tıklayınca "nasıl açılsın" (kullanıcı onu
+  açtı). Düzeltme: paketle.py logodan sihirbaz resimleri üretir (FLAG_RED; koyu temada brand_color beyaz;
+  QT_QPA_PLATFORM=windows yoksa yazı kutucuk), DisableWelcomePage=no; masaüstüne yalnız .exe. Ekran görüntüsüyle
+  doğrulandı. Ders: kullanıcıya verilen klasöre yalnız açacağı dosyayı koy.
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama

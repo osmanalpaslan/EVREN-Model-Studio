@@ -50,6 +50,12 @@ UninstallDisplayName={#AppName}
 AppMutex=EVREN.Studio
 CloseApplications=yes
 WizardStyle=modern
+DisableWelcomePage=no
+; Sihirbaz resimleri uygulama logosundan (tools/paketle.py üretir); yoksa Inno'nun kendi resmi görünür
+#ifdef WizImage
+WizardImageFile={#WizImage}
+WizardSmallImageFile={#WizSmallImage}
+#endif
 Compression=lzma2/max
 SolidCompression=yes
 OutputDir={#OutDir}

@@ -65,6 +65,59 @@ def version_file(ver: str) -> str:
 """
 
 
+def wizard_images() -> tuple[str, str]:
+    """Kurulum sihirbazının sol (büyük) ve sağ üst (küçük) resimleri — uygulama logosundan (ui/brand.py), %100 ve
+    %200 ölçek. Yoksa sihirbaz Inno Setup'ın kendi resmini gösterir (kullanıcı 2026-11-07: "setupta logo yok")."""
+    os.environ["QT_QPA_PLATFORM"] = "windows"        # offscreen kipte yazılar kutucuk çıkar (R-05)
+    sys.path.insert(0, str(ROOT / "src"))
+    from PySide6.QtCore import QRectF, Qt
+    from PySide6.QtGui import QColor, QFont, QImage, QPainter
+    from PySide6.QtWidgets import QApplication
+
+    from evren_studio.ui import brand
+
+    _app = QApplication.instance() or QApplication([])
+    red = QColor(brand.FLAG_RED)                    # brand_color() koyu temada beyaz döner
+    out_large, out_small = [], []
+    for scale in (1, 2):
+        # Büyük: 164×314 kırmızı zemin, beyaz ay-yıldız + ad
+        w, h = 164 * scale, 314 * scale
+        img = QImage(w, h, QImage.Format_RGB32)
+        img.fill(red)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.Antialiasing)
+        size = 120 * scale
+        p.translate((w - size) / 2, 70 * scale)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor("white"))
+        p.drawPath(brand.crescent_star_path(size))
+        p.resetTransform()
+        p.setPen(QColor("white"))
+        f = QFont("Segoe UI", 15)
+        f.setBold(True)
+        f.setPixelSize(22 * scale)
+        p.setFont(f)
+        p.drawText(QRectF(0, 205 * scale, w, 40 * scale), Qt.AlignCenter, "EVREN Studio")
+        p.end()
+        large = BUILD / f"sihirbaz_buyuk_{scale * 100}.bmp"
+        img.save(str(large), "BMP")
+        out_large.append(str(large))
+        # Küçük: 58×58 beyaz zemin, kırmızı ay-yıldız
+        s = 58 * scale
+        img = QImage(s, s, QImage.Format_RGB32)
+        img.fill(QColor("white"))
+        p = QPainter(img)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(red)
+        p.drawPath(brand.crescent_star_path(s))
+        p.end()
+        small = BUILD / f"sihirbaz_kucuk_{scale * 100}.bmp"
+        img.save(str(small), "BMP")
+        out_small.append(str(small))
+    return ",".join(out_large), ",".join(out_small)
+
+
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -219,8 +272,9 @@ def build(signed: bool) -> Path:
     if problems:
         raise SystemExit("DUMAN TESTİ KALDI: " + "; ".join(problems))
     OUT.mkdir(exist_ok=True)
+    large, small = wizard_images()
     args = [str(iscc()), f"/DAppVersion={ver}", f"/DSourceDir={APP_DIR}", f"/DPrereqDir={PREREQ_DIR}",
-            f"/DOutDir={OUT}", "/Q"]
+            f"/DOutDir={OUT}", f"/DWizImage={large}", f"/DWizSmallImage={small}", "/Q"]
     if signed:
         args += ["/DSignToolName=evrenimza",
                  # Inno'da tırnak = $q (gerçek " subprocess'te \" olur, ISCC yolu böler); $f = imzalanacak dosya
