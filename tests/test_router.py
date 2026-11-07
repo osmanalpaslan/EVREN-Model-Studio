@@ -147,9 +147,7 @@ def test_eski_auto_pro_oturumu_auto_ile_ve_guvenlik_agiyla_surer(win, tmp_path):
     s = w.session
     ids = s.composer.model_ids()
     assert ids[0] == "auto" and "auto-pro" not in ids
-    w.ctx.db.add_model_score("gemma-4-31b", "zorluk", 99.0)          # karne: gemma en iyi (sıralamayı karne belirler)
-    w.ctx.db.add_model_score("qwen3.8-flash-next", "zorluk", 80.0)
-    w.ctx.db.add_model_score("deepseek-v4.1-flash", "zorluk", 70.0)
+    w.ctx.db.add_model_score("gemma-4-31b", "zorluk", 99.0)          # karne RAFTA (2026-11-07): puan sırayı DEĞİŞTİRMEZ
     calls = []
 
     class C:
@@ -169,7 +167,7 @@ def test_eski_auto_pro_oturumu_auto_ile_ve_guvenlik_agiyla_surer(win, tmp_path):
     assert s.model == "auto"
     s.send("merhaba")
     assert _wait(app, lambda: not s.running and len(calls) >= 2)
-    assert calls[0] == "auto" and calls[1] == "gemma-4-31b", calls
+    assert calls[0] == "auto" and calls[1] == router.EVREN_ROUTES["kod"][0], calls          # sabit tablo birincisi
     a = [m for m in w.ctx.db.get_session_messages(s.session_id) if m["role"] == "assistant"][-1]
     assert a["content"] == "tamam"
 

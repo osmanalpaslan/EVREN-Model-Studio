@@ -293,18 +293,22 @@ class AppContext:
     # ---- Madde 14: motor karnesi ---------------------------------------------------------------
 
     def model_scores(self) -> dict[str, float]:
-        """Motor karnesi: model → gerçek puan (iyi-gün ölçümlerinin en yükseği; hata → boş)."""
+        """Motor karnesi: model → gerçek puan (iyi-gün ölçümlerinin en yükseği; hata → boş). Karne RAFTA → boş."""
         from ..agent import karne
 
+        if not getattr(self.settings, "motor_karnesi", False):
+            return {}
         try:
             return karne.best_scores(self.db.model_scores(karne.SCORE_DAYS))
         except Exception:
             return {}
 
     def model_weak(self) -> dict[str, str]:
-        """Bugünkü hafif yoklamada zayıf motorlar → gerekçe (hata → boş)."""
+        """Bugünkü hafif yoklamada zayıf motorlar → gerekçe (hata → boş). Karne RAFTA → boş."""
         from ..agent import karne
 
+        if not getattr(self.settings, "motor_karnesi", False):
+            return {}
         try:
             return karne.weak_models(self.db.recent_model_calls(24 * self.db.MODEL_CALLS_KEEP_DAYS))
         except Exception:

@@ -211,6 +211,7 @@ def win(tmp_path, monkeypatch, fake_keyring):
     w = MainWindow()
     w.show()
     w.ctx._cached_key = "evren_llm_SAHTE_ANAHTAR_123456"
+    w.ctx.settings.motor_karnesi = True        # 2026-11-07 karne RAFTA (varsayılan kapalı); kodu açıkken sınanır
     yield app, w
     w.close()
 
@@ -353,3 +354,30 @@ def test_gorevde_kalan_hizli_motor_tam_gecen_yavasin_onune_gecemez():
     qwen = karne.score_report(rap(12, 12, 29.0))["score"]
     assert qwen > deepseek > gemma
     assert karne.score_report(rap(12, 12, 10.0))["score"] == 100.0
+
+
+def test_karne_rafta_varsayilan_kapali_ve_secime_karismaz(tmp_path, monkeypatch, fake_keyring):
+    """Kullanıcı 2026-11-07: "karne sürecini tamamen rafa kaldıralım". Varsayılan kapalı: puan ve 'bugün zayıf' boş,
+    sıra sabit tablo; Modeller ekranında karne kartı görünmez. Açılınca (yukarıdaki testler) eski davranış."""
+    from evren_studio.config import Settings
+    from evren_studio.ui.app_context import AppContext
+
+    monkeypatch.setenv("EVREN_STUDIO_DATA_DIR", str(tmp_path / "data"))
+    assert Settings().motor_karnesi is False
+    ctx = AppContext(Settings(data_dir=str(tmp_path / "data")))
+    try:
+        ctx.db.add_model_score("gemma-4-31b", "zorluk", 99.0)
+        ctx.db.add_model_score("qwen3.8-flash-next", "zorluk", 98.0)
+        assert ctx.model_scores() == {} and ctx.model_weak() == {}
+        assert ctx.ai_route("kod", evren_only=True).model == router.EVREN_ROUTES["kod"][0]
+    finally:
+        ctx.db.close()
+
+
+def test_modeller_ekraninda_karne_karti_rafta_gizli(win):
+    app, w = win
+    w.ctx.settings.motor_karnesi = False
+    from evren_studio.ui.models_page import ModelsPage
+
+    page = ModelsPage(w.ctx)
+    assert not page.karne_card.isVisibleTo(page)
