@@ -15,8 +15,8 @@
 **Kullanıcı kararı (2026-11-07):** MIT lisans + ÜCRETSİZ imza (kendi sertifikamız; ücretli sertifika yok) +
 eksik programların kurulumları pakete GÖMÜLÜ. Yapılan: `tools/paketle.py`, `installer/` (spec, iss, prereqs.json,
 imza.ps1); 1.4'teki uygulama değişiklikleri (sürüm tek kaynak, `sys.executable`/frozen düzeltmesi, gömülü betik
-dosyaları, AppMutex, duman testi, PATH tazeleme, Store python yer tutucusu). Kalanlar: 1.7 listesinde temiz
-bilgisayar (Windows Sandbox) denemesi, GitHub Releases + Actions (yayın kullanıcı onayıyla), uygulama içi
+dosyaları, AppMutex, duman testi, PATH tazeleme, Store python yer tutucusu). Temiz bilgisayar (Windows Sandbox, internetsiz) denemesi GEÇTİ (0.4.2,
+2026-11-07). Kalanlar: yönetici olmayan kullanıcıda deneme, GitHub Releases + Actions (yayın kullanıcı onayıyla), uygulama içi
 "Güncellemeleri denetle". Ayrıntı: CHANGELOG "Kurulum dosyası".
 
 **Kullanıcı kararı (2026-10-19):** "Uygulamayı yapacağım ama şimdi değil."
