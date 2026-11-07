@@ -103,6 +103,8 @@ kurulum paketine gerekli program setuplarını ekle."
 
 - 21:15 17C/17E ayrı commit (perf: paralellik 3 + gözlem kartı); tests/e2e_derin_real_api.py `--paralel N` (varsayılan ayar).
 
+- 21:35 SÜRÜM 0.4.0 kurulum dosyası (tools/paketle.py, duman testi geçti, 184 MB). Kullanıcının uygulaması açıktı → yükseltme bu bilgisayarda DENENMEDİ (açık işi kapatmamak için); 0.3.0'da aynı yol denenmişti. Masaüstü kopyası 0.4.0 ile değiştirildi. Tam takım 1027/1027; zorluk auto 11/12 (mini_proje 6 dk sınırı — bugün auto ile 3 koşuda da).
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama
