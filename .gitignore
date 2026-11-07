@@ -40,3 +40,5 @@ logs/*.jsonl
 *.swp
 Thumbs.db
 .DS_Store
+# Kurulum paketi ayarı kaynak dosyadır (*.spec kalıbı onu da dışlıyordu, R-02)
+!installer/evren_studio.spec
