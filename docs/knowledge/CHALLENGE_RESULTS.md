@@ -84,6 +84,19 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Madde 17A + 19 sonrası (2026-11-07 20:00-20:16, kısa ve öz sohbet + auto güvenlik ağı)
+
+- **Sohbet (gerçek pencere, `e2e_hiz_auto_karsilastirma` auto):** ortanca 23 → **5,9 sn**, üç soru toplamı 109 → **22 sn**;
+  "3 öneri" uzun cevabı 76 → 13,7 sn (kısa ve öz; sunucu akşam daha az yüklü — kazancın bir kısmı saatten).
+  Ajan iki görev 56 → 47 sn.
+- **R-13:** e2e_real_api E2E_OK · e2e_agent_real_api 6/6 · e2e_ui_real_api 15/15.
+- **Zorluk auto (`--karne`):** 11/12 · 679 sn (öğleden sonra 1319 sn). mini_proje 4/5: 6 dk sınırında durduruldu, kendi
+  testlerinden 2'si kaldı; motor geçişi 0, 55 çağrının hepsi auto (güvenlik ağı tetiklenmedi). Öğleden sonra da iki
+  motorda 6 dk sınırına dayanmıştı (auto 5/5, Auto Pro 4/5) → süreye dayalı kararsız görev, gerileme değil.
+- **Ajan adım analizi (17B için):** zorluk görevleri 3-6 adım; adım süresi = yazılan token / ~16-27 token/sn. Auto Pro
+  (doğrudan qwen) adımlarında düşünme payı %49, auto'da %30 → varsayılan auto ile kendiliğinden azaldı; kalanı dosya
+  yazma (araç argümanı). Adım azaltmadan büyük kazanç beklenmiyor; asıl potansiyel büyük işlerde paralellik (17C).
+
 ## auto ↔ Auto Pro hız ve doğruluk analizi (2026-11-07, kullanıcı: "auto daha hızlı; Auto Pro'yu silelim mi?")
 
 **Zorluk paketi aynı gün art arda** (`e2e_zorluk_real_api.py auto` ve `auto-pro --karne` — Auto Pro kullanıcının gerçek
