@@ -156,6 +156,10 @@ class Settings:
     sidebar_width: int = 264
     panel_width: int = 360
     send_with_enter: bool = True
+    # Motor karnesi (Madde 14) RAFTA (kullanıcı kararı 2026-11-07: "karne sürecini tamamen rafa kaldıralım" — Auto Pro
+    # seçilebilir motor olmaktan çıktı). Kapalıyken gerçek puan ve "bugün zayıf" kararı hiçbir motor seçimine karışmaz;
+    # sıra karne öncesi sabit tablodur (router.EVREN_ROUTES, kullanıcı kararı 2026-10-21). Kod duruyor; açmak için True.
+    motor_karnesi: bool = False
     # Sohbet yanıt uzunluğu: "kisa" (varsayılan; kısa ve öz, ~2 kat hızlı) | "ayrintili" (Madde 17A, 2026-11-07)
     answer_style: str = "kisa"
     # İlk yanıttan sonra oturuma yapay zekâyla kısa başlık (bağlı API; ücretli sağlayıcıda çok küçük maliyet)

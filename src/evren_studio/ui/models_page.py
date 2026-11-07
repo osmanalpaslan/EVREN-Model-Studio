@@ -93,6 +93,8 @@ class ModelsPage(BasePage):
         self.karne_hint.setWordWrap(True)
         l4.addWidget(self.karne_hint)
         self.root.addWidget(c4)
+        self.karne_card = c4
+        c4.setVisible(bool(getattr(self.ctx.settings, "motor_karnesi", False)))     # 2026-11-07: karne rafta
         self.refresh_stats()
 
         self.refresh_btn = self._make_refresh_btn()

@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-07 21:40 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 15-19 TAMAM ve master'da (PR #45-#50); sürüm 0.4.0 kurulum dosyası üretildi (dist/, masaüstü kopyası). Açık kalan: (1) Windows Sandbox'ta temiz bilgisayar kurulum denemesi — kullanıcı onayı (yönetici + yeniden başlatma); (2) mini_proje görevi auto ile 6 dk sınırına dayanıyor (uzun işte auto yavaş — izlenecek); (3) karne ölçüm günleri kullanıcı kararı; (4) iç işlerin (özet/QA/Derin/Proje rolleri) auto ile ölçülüp sadeleştirilmesi.
+- **Güncelleme:** 2026-11-07 22:00 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Karne RAFTA (0.4.1). Windows Sandbox özelliği açıldı, BİLGİSAYAR YENİDEN BAŞLATILIYOR. **Yeniden başlatmadan sonra ilk iş:** `.\.venv\Scripts\python.exe tools\kurulum_sandbox.py dist\EVREN-Studio-Kurulum-0.4.1.exe` → sonucu CHALLENGE_RESULTS ve ILERIDE §1.7'ye yaz, sorun varsa installer/evren_studio.iss düzelt. Kullanıcıya açık soru: kod sırasında qwen öne alınsın mı? (ölçüm: qwen 95,5/29 sn, deepseek 91,7/55 sn; 2026-10-21 kararı deepseek önde).
 - **Aktif dal:** `master` (eski not: `feat/masaustu-kontrol` birleşti). Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

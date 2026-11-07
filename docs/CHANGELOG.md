@@ -1,5 +1,13 @@
 # Değişiklik Günlüğü
 
+## 0.4.1 — 2026-11-07
+
+- **Motor karnesi rafa kaldırıldı** (kullanıcı kararı): puanlar ve "bugün zayıf" kararı artık hiçbir motor seçimine
+  karışmaz; Modeller sayfasındaki karne kartı gizlendi. Sıra, karneden önceki sabit tablodur. Kod duruyor
+  (`motor_karnesi` ayarı), ileride gerekirse açılabilir.
+- Geliştiriciler için: `tools/kurulum_sandbox.py` kurulum dosyasını temiz bir Windows'ta (Windows Sandbox, internetsiz)
+  eksik programlarla birlikte otomatik dener.
+
 ## 0.4.0 — 2026-11-07 (kurulum dosyası `EVREN-Studio-Kurulum-0.4.0.exe`)
 
 Aşağıdaki "Yayınlanmamış" başlıklı Madde 15-19 değişikliklerinin tamamını içerir: açık mod düzeltmesi, kısa ve öz

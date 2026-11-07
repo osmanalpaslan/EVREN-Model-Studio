@@ -105,7 +105,17 @@ kurulum paketine gerekli program setuplarını ekle."
 
 - 21:35 SÜRÜM 0.4.0 kurulum dosyası (tools/paketle.py, duman testi geçti, 184 MB). Kullanıcının uygulaması açıktı → yükseltme bu bilgisayarda DENENMEDİ (açık işi kapatmamak için); 0.3.0'da aynı yol denenmişti. Masaüstü kopyası 0.4.0 ile değiştirildi. Tam takım 1027/1027; zorluk auto 11/12 (mini_proje 6 dk sınırı — bugün auto ile 3 koşuda da).
 
+- 21:50 KULLANICI: "karne sürecini tamamen rafa kaldıralım; sandbox adımına şimdi geçebiliriz". Karne: config
+  `motor_karnesi=False` (varsayılan) → model_scores/model_weak boş, Modeller karne kartı gizli; tablo karne öncesi
+  (kod: deepseek → qwen → gemma, kullanıcı kararı 2026-10-21) — qwen'i öne alma DENENDİ ama 10-21 kararıyla çeliştiği için
+  GERİ ALINDI, kullanıcıya soruldu. Karne testleri karne AÇIK sınanır; yeni rafta testleri. Mutasyon 3/3; tam takım 1029/1029.
+  Sandbox: Containers-DisposableClientVM açıldı (yönetici, -NoRestart) → YENİDEN BAŞLATMA GEREKİYOR. tools/kurulum_sandbox.py
+  (internetsiz Sandbox, sessiz kurulum + tüm dev görevleri, önce/sonra program yolları, duman testi, kısayollar).
+
 ## Sonraki motor için notlar
+- **YENİDEN BAŞLATMADAN SONRA İLK İŞ:** `.\.venv\Scripts\python.exe tools\kurulum_sandbox.py dist\EVREN-Studio-Kurulum-0.4.1.exe`
+  (yoksa önce `tools\paketle.py`). Sonucu CHALLENGE_RESULTS + ILERIDE §1.7'ye yaz; Git /CURRENTUSER veya MSI sorunu
+  çıkarsa iss'i düzelt, yeniden dene. Kullanıcıya sor: kod sırasında qwen öne alınsın mı (ölçüm qwen daha hızlı/puanlı)?
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama
   açılır, `python`/`git`/`node`/`gh` PATH'te. Git per-user başarısızsa: Git'i `/ALLUSERS` (UAC) ile kur ya da
