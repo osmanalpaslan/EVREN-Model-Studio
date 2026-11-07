@@ -1,5 +1,10 @@
 # Değişiklik Günlüğü
 
+## 0.4.0 — 2026-11-07 (kurulum dosyası `EVREN-Studio-Kurulum-0.4.0.exe`)
+
+Aşağıdaki "Yayınlanmamış" başlıklı Madde 15-19 değişikliklerinin tamamını içerir: açık mod düzeltmesi, kısa ve öz
+sohbet, Auto Pro yerine auto + güvenlik ağı, Derin Mod paralellik 3 ve bozuk JSON düzeltmesi, açılış hızı.
+
 ## Yayınlanmamış — Derin Mod daha hızlı ve sağlam, açılış daha hızlı (Madde 17C/17E)
 
 - **Derin Mod aynı anda 3 alt ajan** (önceden 2): "anla" aşamasının üç incelemesi tek seferde biter (gerçek ölçüm: 83 →
