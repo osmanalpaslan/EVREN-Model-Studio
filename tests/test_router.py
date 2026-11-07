@@ -138,11 +138,71 @@ def _wait(app, cond, timeout=6.0):
     return cond()
 
 
-def test_akilli_secicide_ve_api_ye_gercek_model_gider(win, tmp_path):
+def test_eski_auto_pro_oturumu_auto_ile_ve_guvenlik_agiyla_surer(win, tmp_path):
+    """Madde 19: Auto Pro seçicide yok; eski "auto-pro" oturumu auto olarak sürer. auto sunucu hatası verirse
+    (2026-10-19: auto glm-5.3'e yönlendirip 503 aldı) aynı istek karnedeki EN İYİ EVREN motoruyla sürer (R-31)."""
+    from evren_studio.api.errors import ApiError, ErrorKind
+
     app, w = win
     s = w.session
     ids = s.composer.model_ids()
-    assert ids[0] == "auto-pro" and ids[1] == "auto"
+    assert ids[0] == "auto" and "auto-pro" not in ids
+    w.ctx.db.add_model_score("gemma-4-31b", "zorluk", 99.0)          # karne: gemma en iyi (sıralamayı karne belirler)
+    w.ctx.db.add_model_score("qwen3.8-flash-next", "zorluk", 80.0)
+    w.ctx.db.add_model_score("deepseek-v4.1-flash", "zorluk", 70.0)
+    calls = []
+
+    class C:
+        def chat(self, model, messages, **kw):
+            calls.append(model)
+            if model == "auto":
+                raise ApiError(kind=ErrorKind.SERVER_UNAVAILABLE, message="model_capacity_exhausted", status=503)
+            return ChatResult(content="tamam", finish_reason="stop")
+
+        def close(self):
+            pass
+
+    w.ctx.make_client = lambda log_sink=None: C()
+    s.new_session()
+    s.welcome._choose(None)
+    s.composer.set_model("auto-pro", emit=True)                 # eski kayıt / profil
+    assert s.model == "auto"
+    s.send("merhaba")
+    assert _wait(app, lambda: not s.running and len(calls) >= 2)
+    assert calls[0] == "auto" and calls[1] == "gemma-4-31b", calls
+    a = [m for m in w.ctx.db.get_session_messages(s.session_id) if m["role"] == "assistant"][-1]
+    assert a["content"] == "tamam"
+
+
+def test_baska_motor_secilince_guvenlik_agi_eklenmez(win, tmp_path):
+    """Kullanıcı belirli bir motor seçtiyse (auto değil) ona yedek eklenmez (R-22: tetiklenmemesi gereken)."""
+    from evren_studio.api.errors import ApiError, ErrorKind
+
+    app, w = win
+    s = w.session
+    calls = []
+
+    class C:
+        def chat(self, model, messages, **kw):
+            calls.append(model)
+            raise ApiError(kind=ErrorKind.SERVER_UNAVAILABLE, message="dolu", status=503)
+
+        def close(self):
+            pass
+
+    w.ctx.make_client = lambda log_sink=None: C()
+    s.new_session()
+    s.welcome._choose(None)
+    s.composer.set_model("deepseek-v4.1-flash", emit=True)
+    s.send("merhaba")
+    assert _wait(app, lambda: not s.running and calls)
+    assert set(calls) == {"deepseek-v4.1-flash"}, calls
+
+
+def _eski_auto_pro_yonlendirme(win, tmp_path):
+    """(Madde 19 öncesi) Auto Pro seçicide; API'ye gerçek model giderdi. Seçilebilir motor kalktı."""
+    app, w = win
+    s = w.session
     calls = []
 
     class C:

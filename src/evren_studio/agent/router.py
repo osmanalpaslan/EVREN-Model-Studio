@@ -309,6 +309,14 @@ def is_auto_pro(model_id: str | None) -> bool:
 is_akilli = is_auto_pro             # eski ad
 
 
+# Madde 19 (kullanıcı 2026-11-07: "auto'dan daha iyi iş yapamayacaksak Auto Pro'yu silelim"): aynı gün zorluk paketi
+# auto 12/12 1319 sn · Auto Pro 11/12 1182 sn, sohbette aynı motor → Auto Pro artık SEÇİLEBİLİR motor değil; oturum,
+# ayar ve zamanlanmış görevdeki eski "auto-pro"/"akilli" kaydı "auto"ya taşınır. Auto Pro'nun yararlı parçası
+# (karneye göre sıralı yedek motorlar) auto'nun GÜVENLİK AĞI olur (session_view: auto hata verir/takılırsa yedek);
+# uygulamanın iç işleri (özet, inceleme, QA, Derin/Proje rolleri) yönlendiriciyi (ai_route) kullanmaya devam eder.
+USER_DEFAULT_ID = "auto"
+
+
 def normalize_model_id(model_id: str | None) -> str | None:
-    """Eski "akilli" kaydını "auto-pro"ya çevirir."""
-    return AUTO_PRO_ID if model_id in LEGACY_IDS else model_id
+    """Kullanıcının seçebileceği motor: eski "auto-pro"/"akilli" → "auto"."""
+    return USER_DEFAULT_ID if is_auto_pro(model_id) else model_id

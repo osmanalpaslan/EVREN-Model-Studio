@@ -260,7 +260,7 @@ class AppContext:
         evren = [m for m in self.models if m.supports_chat] if ("evren" in provs or not provs) else []
         paid = [m for m in self.paid_models if m.provider in provs]
         gw = [m for m in self.gateway_models if m.provider in provs]
-        return [AUTO_PRO_INFO] + evren + paid + gw
+        return evren + paid + gw            # Madde 19: Auto Pro listede yok (auto + güvenlik ağı)
 
     def evren_chat_models(self) -> list[ModelInfo]:
         """Gerçek EVREN sohbet modelleri (anahtar durumundan bağımsız)."""

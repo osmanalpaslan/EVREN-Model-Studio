@@ -36,7 +36,7 @@ TASK_LABELS = {
 }
 
 
-SETTINGS_VERSION = 4
+SETTINGS_VERSION = 5
 _OLD_FAST_MODEL = "deepseek-v4-flash"
 # Eski sürümün varsayılanı: kullanıcı değiştirmediyse yeni varsayılana taşınır.
 _OLD_DEFAULT_MODEL = "glm-5.3"
@@ -45,8 +45,6 @@ _OLD_DEFAULT_MAX_STEPS = 40
 
 def migrate_raw(raw: dict[str, Any]) -> dict[str, Any]:
     """config.json'u güncel sürüme taşır (yalnız eski VARSAYILAN değerleri değiştirir)."""
-    if raw.get("default_model") == "akilli":          # 2026-10-19: "EVREN Akıllı" → "Auto Pro"
-        raw["default_model"] = "auto-pro"
     version = raw.get("settings_version", 1)
     if not isinstance(version, int):
         version = 1
@@ -65,6 +63,9 @@ def migrate_raw(raw: dict[str, Any]) -> dict[str, Any]:
         for key in ("auto_compact_model", "scope_check_model"):
             if raw.get(key) == _OLD_FAST_MODEL:
                 raw[key] = "auto-pro"
+    if version < 5 and raw.get("default_model") in ("auto-pro", "akilli"):
+        # 2026-11-07 Madde 19: Auto Pro seçilebilir motor olmaktan çıktı (auto + güvenlik ağı)
+        raw["default_model"] = "auto"
     raw["settings_version"] = max(version, SETTINGS_VERSION)
     return raw
 

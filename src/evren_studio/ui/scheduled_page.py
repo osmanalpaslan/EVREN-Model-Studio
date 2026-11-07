@@ -102,7 +102,7 @@ class TaskDialog(QDialog):
         ws_row.addWidget(pick)
         form.addRow("Klasör:", ws_row)
         self.model = QComboBox()
-        ids = [router.AUTO_PRO_ID] + [m.id for m in ctx.chat_models() if m.id != router.AUTO_PRO_ID]
+        ids = [m.id for m in ctx.chat_models()]
         self.model.addItems(ids)
         form.addRow("Model:", self.model)
         self.mode = QComboBox()
@@ -193,7 +193,7 @@ class TaskDialog(QDialog):
             "description": self.description.text().strip(),
             "prompt": self.prompt.toPlainText().strip(),
             "workspace": self.workspace.text().strip(),
-            "model": self.model.currentText().strip() or router.AUTO_PRO_ID,
+            "model": router.normalize_model_id(self.model.currentText().strip()) or router.USER_DEFAULT_ID,
             "mode": self.mode.currentData() or "auto",
             "kind": self.kind.currentData(),
             "time_hm": f"{t.hour():02d}:{t.minute():02d}",

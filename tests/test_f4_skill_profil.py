@@ -209,7 +209,7 @@ def test_profil_filtresi_uygulama_ve_oturumda_kalicilik(win, tmp_path):
     Path(proj).mkdir()
     s.welcome._choose(proj)
     s.apply_profile("Raporcu")
-    assert s.profile == "Raporcu" and s.model == "auto-pro" and s.mode == "plan"
+    assert s.profile == "Raporcu" and s.model == "auto" and s.mode == "plan"     # eski "auto-pro" kaydı → auto
     assert "Sayıları 1.234,50" in s._profile_hint()
     sid = s._ensure_session("ilk")
     assert w.ctx.db.get_session(sid)["profile"] == "Raporcu"

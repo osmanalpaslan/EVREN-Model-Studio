@@ -1,5 +1,13 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Tek motor seçeneği: auto + güvenlik ağı (Madde 19)
+
+- **Auto Pro model listesinden kalktı**: ölçümde `auto`'dan belirgin şekilde iyi değildi (aynı gün 12 zor görev: auto
+  12/12, Auto Pro 11/12; sohbette aynı motor). Eski Auto Pro oturumları, profilleri ve zamanlanmış görevleri
+  kendiliğinden `auto` ile sürer.
+- **auto için güvenlik ağı**: `auto` hata verir, takılır ya da boş yanıt dönerse aynı istek motor karnesindeki en iyi
+  EVREN motoruyla otomatik sürer (önceden iş dururdu). Başka bir motoru kendiniz seçtiyseniz yedek eklenmez.
+
 ## Yayınlanmamış — Kısa ve öz sohbet yanıtları (Madde 17A)
 
 - **Sohbet yanıtları varsayılan olarak kısa ve öz**: önce doğrudan cevap; gereksiz başlık, tablo ve tekrar yok.
