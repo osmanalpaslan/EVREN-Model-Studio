@@ -1,5 +1,13 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Derin Mod daha hızlı ve sağlam, açılış daha hızlı (Madde 17C/17E)
+
+- **Derin Mod aynı anda 3 alt ajan** (önceden 2): "anla" aşamasının üç incelemesi tek seferde biter (gerçek ölçüm: 83 →
+  57 sn; tüm akış 361 → 297 sn). Kota penceresi dolarsa yine kendiliğinden azalır.
+- **Düzeltme — Derin Mod incelemeleri kayboluyordu**: bazı motorlar sonuç bloğunu bozuk biçimde yazınca (karışık
+  tırnak, yarım parantez) incelemeler okunamıyor, plan eksik bilgiyle kuruluyordu. Artık bozuk blok alan alan okunur.
+- **Daha hızlı açılış**: Ayarlar'daki geliştirici gözlemi kartı durumunu yalnız Ayarlar açılınca hesaplar.
+
 ## Yayınlanmamış — Tek motor seçeneği: auto + güvenlik ağı (Madde 19)
 
 - **Auto Pro model listesinden kalktı**: ölçümde `auto`'dan belirgin şekilde iyi değildi (aynı gün 12 zor görev: auto

@@ -93,6 +93,16 @@ kurulum paketine gerekli program setuplarını ekle."
   sıra artık güvenlik ağı zincirini belirler) + Proje/Derin akışında oturum auto iken rol tablosu KORUNDU (yakalanan
   davranış değişikliği: plan aşaması auto'ya gidiyordu). Tam takım 1020/1021 → düzeltme sonrası ilgili paket 70/70.
 
+- 21:00 MADDE 17C/17E (dal perf/acilis-ve-paralel): Derin Mod varsayılan paralellik 2 → 3 (config v6 göçü yalnız eski
+  varsayılan) — gerçek: anla 83 → 57 sn, belirsiz anla 99 → 50 sn, toplam 361 → 297 sn. Proje ajanı ve web QA BİLEREK
+  paralel değil (aynı dosyalar / aynı tarayıcı). Açılış: Ayarlar gözlem kartı git'e ilk gösterilişte sorar (pencere
+  ~1,6 → ~1,3 sn; ağ istemcisi zaten arka planda). 17B atlandı (adım sayısı 3-6, gerekçe CHALLENGE_RESULTS).
+  YAKALANAN ÖNCEKİ HATA: Derin "anla" 0/3-1/3 bulgu — qwen (Madde 14 karnesiyle kod rolünde birinci) <bulgu> JSON'unu
+  karışık tırnak / erken `]},` / uydurma alanla yazıyor; qa._json_block'a genel `loose_object` (R-26) → gerçek koşu 3/3,
+  e2e_derin GEÇTİ. Testler test_acilis_ve_paralel 3, test_bozuk_json_blok 3; mutasyon 4/4 + 3/3.
+
+- 21:15 17C/17E ayrı commit (perf: paralellik 3 + gözlem kartı); tests/e2e_derin_real_api.py `--paralel N` (varsayılan ayar).
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama

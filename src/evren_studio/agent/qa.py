@@ -211,7 +211,56 @@ def _json_block(text: str, rx: re.Pattern) -> dict | None:
         except ValueError:
             pass
         i = s.find("{", i + 1)
-    return None
+    return loose_object(s) if m else None
+
+
+_KEY_RX = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*)"\s*:')
+
+
+def _quoted_items(region: str) -> list[str]:
+    """Liste bölgesindeki tek ya da çift tırnaklı öğeler (karışık tırnak; değer içinde öbür tırnak serbest)."""
+    out: list[str] = []
+    i, n = 0, len(region)
+    while i < n:
+        q = region[i]
+        if q in "\"'":
+            j = i + 1
+            while j < n and not (region[j] == q and region[j - 1] != "\\"):
+                j += 1
+            out.append(region[i + 1:j].replace("\\" + q, q).strip())
+            i = j + 1
+        elif q == "]":
+            break
+        else:
+            i += 1
+    return [x for x in out if x]
+
+
+def loose_object(raw: str) -> dict | None:
+    """Bozuk JSON nesnesini anahtar anahtar okur (R-26, 2026-11-07 gerçek Derin Mod koşusu: qwen <bulgu>'yu karışık
+    tırnak, erken kapanan `]},` ve uydurma ek alanla yazdı → 3 incelemeden 0-1'i okunabiliyordu). Her anahtarın
+    değeri bir sonraki anahtara kadar olan bölgeden çıkarılır: metin, liste (tek/çift tırnaklı öğeler), null/sayı.
+    En az iki alan okunamazsa None."""
+    keys = list(_KEY_RX.finditer(raw or ""))
+    out: dict = {}
+    for k, nxt in zip(keys, keys[1:] + [None]):
+        name = k.group(1)
+        region = raw[k.end(): nxt.start() if nxt else len(raw)].strip().rstrip(",}] \n\t").strip()
+        if not region:
+            continue
+        if region.startswith("["):
+            out.setdefault(name, _quoted_items(region[1:]))
+        elif region[0] in "\"'":
+            q = region[0]
+            end = region.rfind(q)
+            out.setdefault(name, region[1:end if end > 0 else len(region)].replace("\\" + q, q).strip())
+        else:
+            lit = region.split(",")[0].strip()
+            try:
+                out.setdefault(name, json.loads(lit))
+            except ValueError:
+                continue
+    return out if len(out) >= 2 else None
 
 
 _LOOSE_KEYS = ("sonuc", "gerceklesen", "kanit", "ozet")
