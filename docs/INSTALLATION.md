@@ -1,6 +1,35 @@
 # Kurulum ve Kullanım
 
-## En kolay yol (geliştirici olmayanlar için)
+## En kolay yol: kurulum dosyası (önerilen)
+
+1. **`EVREN-Studio-Kurulum-<sürüm>.exe`** dosyasını çalıştırın. Kurulum Türkçedir ve yönetici izni
+   istemez (yalnız sizin hesabınıza, `%LOCALAPPDATA%\Programs\EVREN Studio`). İsteyen "tüm kullanıcılar"
+   seçebilir.
+2. **Gerekli programlar** sayfası yalnız bilgisayarınızda EKSİK olanları gösterir (hepsi işaretli gelir,
+   kurulum dosyasının içinde resmî yükleyicileri vardır, internet gerekmez):
+   - **Python 3.12** — ajanın Python projelerinde çalışması, Serena ve masaüstü kontrolü,
+   - **Git** — sürüm takibi, Proje ajanının kayıt noktaları, GitHub,
+   - **Node.js LTS** — web QA testleri (Playwright), npm projeleri,
+   - **GitHub CLI** — GitHub menüsü.
+   Python ve Git yönetici izni istemez; Node.js ve GitHub CLI yalnız makine geneli kurulabildiği için
+   Windows bir kez yönetici izni sorar. Kurulmazsa uygulama yine çalışır; eksik program sonra
+   Ayarlar > Eksik program kurulumu'ndan da kurulabilir.
+3. Başlat menüsünden ya da masaüstü kısayolundan açın; ilk açılışta EVREN API anahtarınızı girin.
+
+**"Windows bilgisayarınızı korudu" uyarısı:** kurulum dosyası geliştiricinin kendi sertifikasıyla
+imzalıdır (ücretli, Microsoft'un tanıdığı bir sertifika değil). Uyarı çıkarsa **Ek bilgi → Yine de
+çalıştır**. Dosyanın değişmediğini yanındaki `.sha256` ile doğrulayabilirsiniz:
+`Get-FileHash .\EVREN-Studio-Kurulum-<sürüm>.exe` çıktısı dosyadaki değerle aynı olmalı.
+
+**Güncelleme:** yeni sürümün kurulum dosyasını çalıştırın; eskisinin üzerine kurulur, oturumlarınız,
+ayarlarınız ve anahtarınız korunur (veriler `%LOCALAPPDATA%\EVREN-Model-Studio`'da, uygulama klasörünün
+dışında). Uygulama açıksa kurulum kapatmanızı ister.
+
+**Kaldırma:** Ayarlar > Uygulamalar > EVREN Studio > Kaldır. "Kişisel verileriniz de silinsin mi?"
+sorusuna **Hayır** (varsayılan) derseniz oturumlar, ayarlar ve anahtarlar kalır (yeniden kurunca geri
+gelir); **Evet** derseniz veri klasörü ve Credential Manager'daki EVREN Studio anahtarları silinir.
+
+## Kaynaktan çalıştırma (geliştiriciler ve Python kullananlar)
 
 1. https://github.com/osmanalpaslan/EVREN-Model-Studio sayfasında
    **Code → Download ZIP** ile indirin ve bir klasöre çıkarın
@@ -101,6 +130,22 @@ arasında taşınmaz; anahtarı yeni bilgisayarda yeniden girin.
   Geliştirici gözlemi kapalıysa yalnız bu bilgisayarda kalır. Gönderilen alanlar: tür, önem, temizlenmiş
   başlık/ileti, uygulamanın kendi kod konumu (dosya:satır), model adı, HTTP kodu, sayaç, sürüm, geri
   çözülemeyen kısa makine kimliği.
+
+## Kurulum dosyasını üretme (geliştiriciler)
+
+```
+.venv\Scripts\python.exe -m pip install pyinstaller==6.16.0
+winget install --id JRSoftware.InnoSetup -e --scope user
+.venv\Scripts\python.exe tools\paketle.py sertifika    # bir kez: kendi imza sertifikası
+.venv\Scripts\python.exe tools\paketle.py               # → dist\EVREN-Studio-Kurulum-<sürüm>.exe + .sha256
+```
+
+Hat: gömülü yükleyicileri indirir ve SHA256 + yayıncı imzasıyla doğrular (`installer/prereqs.json`) →
+PyInstaller (`installer/evren_studio.spec`, klasörlü, konsolsuz) → exe'yi imzalar → **duman testi**
+(paketli exe boş veri klasörüyle açılır: pencere, masaüstü/Blender betikleri, sistem Python'u,
+Credential Manager, SSL) → Inno Setup (`installer/evren_studio.iss`) → kurulum ve kaldırıcı imzalı.
+Sürüm tek kaynak: `src/evren_studio/__init__.py` `__version__`. Sertifika yedeği: kullanıcının Drive'ı
+`EVREN_Anahtarlar` (PFX + parola); başka bilgisayarda `Import-PfxCertificate` ile geri yüklenir.
 
 ## Sorun giderme
 

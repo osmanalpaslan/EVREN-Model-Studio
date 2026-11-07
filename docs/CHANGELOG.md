@@ -1,5 +1,21 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Kurulum dosyası (Madde 16, sürüm 0.3.0)
+
+- **Kurulumlu exe**: `EVREN-Studio-Kurulum-0.3.0.exe` (~184 MB). Türkçe kurulum sihirbazı, MIT lisans sayfası,
+  yönetici izni gerektirmeyen kullanıcı kurulumu, Başlat menüsü ve masaüstü kısayolu, Ayarlar > Uygulamalar'da
+  kaldırma, eski sürümün üzerine güncelleme (veriler ve anahtar korunur).
+- **Eksik programlar pakette**: Python 3.12, Git, Node.js LTS ve GitHub CLI'nin resmî yükleyicileri kurulumun
+  içinde; yalnız bilgisayarda eksik olanlar listelenir ve kurulur. Dosyalar sabit sürüm, SHA256 ve yayıncı
+  imzasıyla doğrulanır.
+- **İmza**: exe, kurulum ve kaldırıcı geliştiricinin kendi sertifikasıyla imzalı ve zaman damgalı (ücretsiz yol;
+  başka bilgisayarlarda Windows "tanınmayan yayıncı" uyarısı verebilir — Ek bilgi → Yine de çalıştır).
+- **Kaldırırken**: "Kişisel verileriniz de silinsin mi?" (varsayılan Hayır). Evet → veri klasörü ve
+  Credential Manager'daki tüm EVREN Studio anahtarları (ağ geçitleri dahil) silinir.
+- **Düzeltmeler (paketli çalışma)**: Serena ve masaüstü kontrolü kurulumu paketli uygulamada sistem Python'unu
+  kullanır (önceden uygulamanın exe'sini Python sanacaktı); Windows'un Microsoft Store'u açan sahte "python"
+  kısayolu artık "Python kurulu" sayılmaz; kurulumdan hemen sonra açılan uygulama yeni kurulan programları görür.
+
 ## Yayınlanmamış — Masaüstü QA daha hızlı (Madde 15)
 
 - **Masaüstü QA adımları birleştirildi**: QA ajanı bir denemede yazma + tıklama + sonucu okumayı tek yanıtta yapar,
