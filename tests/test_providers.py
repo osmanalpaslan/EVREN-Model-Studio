@@ -483,7 +483,7 @@ def test_gruplu_model_secici_ve_anahtar_kapisi(win, monkeypatch):
     s.refresh_models()
     rows = _popup_texts(s.composer)
     heads = [t for t, f in rows if f == Qt.NoItemFlags]
-    assert "Otomatik yönlendirme" in heads and "EVREN · ücretsiz" in heads
+    assert "Otomatik yönlendirme" not in heads and "EVREN · ücretsiz" in heads    # Madde 19: Auto Pro grubu yok
     assert not any("gpt-6-luna" in t for t, _ in rows)              # anahtar yok → görünmez
     assert not any(h.startswith("OpenAI") for h in heads)
     # anahtar girilince grup ve fiyat ipucu görünür

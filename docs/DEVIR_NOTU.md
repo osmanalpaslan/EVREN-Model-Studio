@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-07 20:00 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Kullanıcı "önerdiğin sırayı uygula" (madde 18 → 17A + 19 → 17B/C). Madde 18 açık mod YAPILDI (`fix/acik-mod`). Sırada: 17A kısa ve öz cevap + 19 Auto Pro'yu seçilebilir motor olarak kaldır (auto + güvenlik ağı), sonra 17B ajan adım azaltma, 17C paralel alt görevler; her biri önce/sonra ölçümüyle.
+- **Güncelleme:** 2026-11-07 20:00 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Kullanıcı "önerdiğin sırayı uygula". Madde 18 açık mod YAPILDI (PR #48). Madde 17A kısa ve öz cevap (commit 0ec74f0) ve Madde 19 Auto Pro → auto + güvenlik ağı (f93f084 + düzeltme) dal `feat/auto-guvenlik-agi`'da; gerçek API ölçümü (e2e_hiz auto, R-13 üçlüsü, zorluk auto) sürüyor, sonra PR. Sırada 17B ajan adım azaltma, 17C paralel alt görevler.
 - **Aktif dal:** `master` (eski not: `feat/masaustu-kontrol` birleşti). Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

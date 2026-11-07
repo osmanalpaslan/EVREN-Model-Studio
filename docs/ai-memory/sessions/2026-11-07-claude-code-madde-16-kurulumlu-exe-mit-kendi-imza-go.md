@@ -89,6 +89,10 @@ kurulum paketine gerekli program setuplarını ekle."
   sürer. Testler: test_router (güvenlik ağı R-31 + başka motor seçilince eklenmez R-22), test_auto_pro/default_auto/
   f4 güncellendi (eski karar testleri), mutasyon 6/6.
 
+- 20:00 Madde 19 tam takım: 4 eski-karar testi uyarlandı (seçicide "Otomatik yönlendirme" grubu yok; uyarlanabilir
+  sıra artık güvenlik ağı zincirini belirler) + Proje/Derin akışında oturum auto iken rol tablosu KORUNDU (yakalanan
+  davranış değişikliği: plan aşaması auto'ya gidiyordu). Tam takım 1020/1021 → düzeltme sonrası ilgili paket 70/70.
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama

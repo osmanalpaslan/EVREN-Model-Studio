@@ -158,7 +158,9 @@ class ProjectController(QObject):
         yedekler rol tablosundan."""
         chain = self.ctx.ai_route(role)
         session_model = self.view.model
-        if router.is_auto_pro(session_model) or not session_model:
+        # Madde 19: Auto Pro seçilebilir motor değil; oturum auto ise Proje/Derin aşamaları rol tablosuyla (karne) sürer —
+        # bu akışlar auto ile ölçülüp sadeleştirilene kadar (kullanıcıya söz, 2026-11-07) davranış değişmez
+        if router.is_auto_pro(session_model) or session_model == router.USER_DEFAULT_ID or not session_model:
             models = [chain.model] + chain.fallbacks
         else:
             models = [session_model] + [m for m in [chain.model] + chain.fallbacks if m != session_model]
