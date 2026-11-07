@@ -84,6 +84,17 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## Kurulum dosyası — temiz Windows denemesi (2026-11-07 22:39-23:00, Windows Sandbox, internet KAPALI, `tools/kurulum_sandbox.py`)
+
+0.4.2, sessiz kurulum + tüm "gerekli programlar" görevleri: **GEÇTİ**. Önce: python/git/node/gh YOK. Sonra: Python 3.12.10
+(kullanıcı kapsamı, `%LOCALAPPDATA%\Programs\Python\Python312`), Git 2.56.0 (`C:\Program Files\Git` — Sandbox kullanıcısı
+yönetici, /CURRENTUSER yerine makine geneli), Node.js 26.13.0, GitHub CLI 2.103.3; Başlat + masaüstü kısayolu; duman
+testi TAMAM (pencere, betikler, sistem Python'u, WinVaultKeyring; tls=ConnectError — internet kapalı, beklenen). Süre
+1265 sn: internetsiz ortamda her MSI bileşeni ~2 dk (imza/iptal listesi denetimi zaman aşımı); Python'un 7 bileşeni ~14 dk.
+İlk deneme (0.4.1) "Python Launcher" adımında 14 dk durdu → yavaşlık sanılmadan önce takılma sanıldı; 0.4.2'de
+Include_launcher=0 (gereksiz bileşen). DOĞRULANMADI: yönetici OLMAYAN kullanıcıda Git /CURRENTUSER ve Node/gh MSI yönetici
+izni penceresi; internetli bilgisayarda süre.
+
 ## Madde 17A + 19 sonrası (2026-11-07 20:00-20:16, kısa ve öz sohbet + auto güvenlik ağı)
 
 - **Sohbet (gerçek pencere, `e2e_hiz_auto_karsilastirma` auto):** ortanca 23 → **5,9 sn**, üç soru toplamı 109 → **22 sn**;

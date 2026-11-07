@@ -83,6 +83,7 @@ def test_kurulum_eksik_olani_sorar_ve_yalniz_onu_kurar():
         assert f"WizardIsTaskSelected('{task}')" in ISS
     assert "WINDOWSAPPS" in ISS                                           # Store yer tutucusu kurulu sayılmaz
     assert "InstallAllUsers=0" in ISS and "/CURRENTUSER" in ISS          # Python ve Git yönetici izni istemez
+    assert "Include_launcher=0" in ISS and "Include_launcher=1" not in ISS  # Sandbox'ta launcher adımı takıldı
 
 
 def test_kurulum_kimligi_kilit_adi_lisans_ve_kapsam():
