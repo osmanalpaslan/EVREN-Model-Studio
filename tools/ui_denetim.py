@@ -97,24 +97,28 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     tema_arg = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else "ikisi"
     goruntu = "--goruntu" in sys.argv
+    # --gecis: pencere KARŞI temada açılır, sonra çalışırken bu temaya geçilir (2026-11-07: koyu → açık geçişte
+    # simgeler/renkler eski temada kalıyordu; her temayı sıfırdan açan ölçüm bunu göremiyordu)
+    gecis = "--gecis" in sys.argv
     temalar = ["açık", "koyu"] if tema_arg == "ikisi" else [tema_arg]
     toplam_hata = 0
     for tema in temalar:
-        bulgular = denetle(tema, out, goruntu)
+        bulgular = denetle(tema, out, goruntu, gecis=gecis)
         hatalar = [b for b in bulgular if b["duzey"] in ("HATA", "KESIK")]
         toplam_hata += len(hatalar)
-        (out / f"denetim_{tema}.json").write_text(json.dumps(bulgular, ensure_ascii=False, indent=1),
+        (out / f"denetim_{tema}{'_gecis' if gecis else ''}.json").write_text(json.dumps(bulgular, ensure_ascii=False, indent=1),
                                                  encoding="utf-8")
-        print(f"[{tema}] HATA {sum(b['duzey'] == 'HATA' for b in bulgular)} · KESIK "
+        print(f"[{tema}{' (çalışırken geçiş)' if gecis else ''}] HATA {sum(b['duzey'] == 'HATA' for b in bulgular)} · KESIK "
               f"{sum(b['duzey'] == 'KESIK' for b in bulgular)} · UYARI {sum(b['duzey'] == 'UYARI' for b in bulgular)}")
         for b in hatalar[:60]:
             print(f"   {b['ekran']:<22} {b['tur']:<12} {b['oran']:>5}  {b['metin'][:50]!r}  ({b['ad']})")
     return 1 if toplam_hata else 0
 
 
-def denetle(tema: str, out: Path, goruntu: bool) -> list[dict]:
+def denetle(tema: str, out: Path, goruntu: bool, gecis: bool = False) -> list[dict]:
     data = Path(tempfile.mkdtemp(prefix="evren-denetim-"))
-    (data / "config.json").write_text(json.dumps({"theme": tema}), encoding="utf-8")
+    acilis = ("koyu" if tema == "açık" else "açık") if gecis else tema
+    (data / "config.json").write_text(json.dumps({"theme": acilis}), encoding="utf-8")
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(data)
 
     from PySide6.QtCore import QPoint, QRect, Qt
@@ -134,6 +138,11 @@ def denetle(tema: str, out: Path, goruntu: bool) -> list[dict]:
     w = MainWindow()
     w.resize(1400, 900)
     w.show()
+    if gecis:                                   # kullanıcının Ayarlar'dan tema değiştirmesiyle aynı yol
+        app.processEvents()
+        w.ctx.settings.theme = tema
+        w.ctx.save_settings()
+        w._settings_saved()
 
     def pump(t: float = 0.3) -> None:
         end = time.monotonic() + t

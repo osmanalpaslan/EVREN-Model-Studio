@@ -31,11 +31,14 @@ def test_kontrast_olcumu_bilinen_renklerle():
     assert m.contrast((0x64, 0x69, 0x74), (0xFB, 0xFB, 0xFA)) > 4.5
 
 
-@pytest.mark.parametrize("tema", ["açık", "koyu"])
-def test_tum_ekranlarda_okunmayan_bilesen_yok(tema, tmp_path, monkeypatch, fake_keyring):
+@pytest.mark.parametrize("tema,gecis", [("açık", False), ("koyu", False), ("açık", True), ("koyu", True)])
+def test_tum_ekranlarda_okunmayan_bilesen_yok(tema, gecis, tmp_path, monkeypatch, fake_keyring):
+    """gecis=True: pencere karşı temada açılır, kullanıcının Ayarlar'dan yaptığı gibi çalışırken bu temaya geçilir.
+    Kullanıcı 2026-11-07: koyu → açık geçişte sağ üst düğmeler, sol menü ve kart başlıkları neredeyse görünmüyordu
+    (bileşen oluşturulurken renk sabitleniyordu; eski kod bu testte 200 HATA verir)."""
     m = _arac()
     monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
-    bulgular = m.denetle(tema, tmp_path, goruntu=False)
+    bulgular = m.denetle(tema, tmp_path, goruntu=False, gecis=gecis)
     hatalar = [f"{b['ekran']} · {b['tur']} · {b['oran']} · {b['metin'][:50]!r} ({b['ad']}, ön {b['on']} / arka {b['arka']})"
                for b in bulgular if b["duzey"] == "HATA"]
     assert not hatalar, "Okunmayan bileşenler:\n" + "\n".join(hatalar)

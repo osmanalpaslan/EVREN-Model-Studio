@@ -301,9 +301,9 @@ class UsagePanel(QFrame):
             name, _desc = LEVEL_TEXT.get(level, (level or "?", ""))
             badge = QLabel(name)
             badge.setObjectName("UsageBadge")
-            col = pal.success if level == "ok" else pal.warning if level in ("warn", "warning") else pal.danger
-            badge.setStyleSheet(f"color: {col}; border: 1px solid {col}; border-radius: 9px; "
-                                f"padding: 1px 8px; font-weight: 600;")
+            role = "success" if level == "ok" else "warning" if level in ("warn", "warning") else "danger"
+            theme.style(badge, lambda p, r=role: f"color: {getattr(p, r)}; border: 1px solid {getattr(p, r)}; "
+                                                 f"border-radius: 9px; padding: 1px 8px; font-weight: 600;")
             head.addWidget(badge)
         self.body_l.addLayout(head)
 

@@ -62,9 +62,9 @@ class TodosTab(QWidget):
         for t in todos:
             status = t.get("status")
             name, color = {
-                "completed": ("circle-check", p.success),
-                "in_progress": ("circle-half", p.accent),
-            }.get(status, ("circle", p.text_faint))
+                "completed": ("circle-check", "success"),
+                "in_progress": ("circle-half", "accent"),
+            }.get(status, ("circle", "text_faint"))
             it = QListWidgetItem(icons.icon(name, color, 16), t.get("content", ""))
             if status == "completed":
                 f = it.font()
@@ -143,7 +143,7 @@ class ChangesTab(QWidget):
                 label += "   (geri alındı)"
             elif r["before_text"] is None:
                 label += "   (yeni)"
-            it = QListWidgetItem(icons.icon("file", p.muted if r["reverted"] else p.text_dim, 15), label)
+            it = QListWidgetItem(icons.icon("file", "muted" if r["reverted"] else "text_dim", 15), label)
             self.list.addItem(it)
             files.add(r["path"])
         active = [r for r in self.rows if not r["reverted"]]
@@ -760,7 +760,7 @@ class GitTab(QWidget):
         self.list.clear()
         p = theme.current()
         for e in st.entries:
-            self.list.addItem(QListWidgetItem(icons.icon("file", p.text_dim, 15), f"{e.path}   ({e.label})"))
+            self.list.addItem(QListWidgetItem(icons.icon("file", "text_dim", 15), f"{e.path}   ({e.label})"))
         self.commit_btn.setEnabled(bool(st.entries))
         self.suggest_btn.setEnabled(bool(st.entries))
         if not st.entries:

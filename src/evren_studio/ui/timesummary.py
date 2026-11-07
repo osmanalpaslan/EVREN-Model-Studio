@@ -59,7 +59,7 @@ class _Bar(QWidget):
         for v, color in self.parts:
             seg = w * v / total
             if seg > 0:
-                p.setBrush(QColor(color))
+                p.setBrush(QColor(getattr(theme.current(), color, color)))     # rol → geçerli tema rengi
                 p.setPen(Qt.NoPen)
                 p.drawRoundedRect(QRectF(x, 0, max(seg - 2, 1), self.height()), 3, 3)
             x += seg
@@ -70,19 +70,19 @@ class TimeSummaryCard(QFrame):
     def __init__(self, data: dict, parent=None):
         super().__init__(parent)
         self.setObjectName("ToolCard")
-        pal = theme.current()
         lay = QVBoxLayout(self)
         lay.setContentsMargins(12, 10, 12, 10)
         lay.setSpacing(6)
         title = QLabel(f"Zaman nereye gitti — toplam {_fmt(data['total'])}, {data['steps']} adım")
         title.setStyleSheet("font-weight: 600;")
         lay.addWidget(title)
-        colors = (pal.accent, pal.success, pal.warning)        # iki temada da ayırt edilir
-        lay.addWidget(_Bar([(data["model"], colors[0]), (data["tools"], colors[1]), (data["wait"], colors[2])]))
-        legend = (f"<span style='color:{colors[0]}'>■</span> model {_fmt(data['model'])}   "
-                  f"<span style='color:{colors[1]}'>■</span> araç/komut {_fmt(data['tools'])}   "
-                  f"<span style='color:{colors[2]}'>■</span> bekleme/diğer {_fmt(data['wait'])}")
-        lab = QLabel(legend)
+        roles = ("accent", "success", "warning")              # iki temada da ayırt edilir; çizimde temadan okunur
+        lay.addWidget(_Bar([(data["model"], roles[0]), (data["tools"], roles[1]), (data["wait"], roles[2])]))
+        lab = QLabel()
+        theme.rich(lab, lambda pl, d=data: (
+            f"<span style='color:{pl.accent}'>■</span> model {_fmt(d['model'])}   "
+            f"<span style='color:{pl.success}'>■</span> araç/komut {_fmt(d['tools'])}   "
+            f"<span style='color:{pl.warning}'>■</span> bekleme/diğer {_fmt(d['wait'])}"))
         lab.setTextFormat(Qt.RichText)
         lay.addWidget(lab)
         extra = []

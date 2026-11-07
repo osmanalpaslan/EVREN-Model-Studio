@@ -134,13 +134,17 @@ class MarkdownView(QTextBrowser):
         self.viewport().setAutoFillBackground(False)
         self.document().contentsChanged.connect(self._fit)
         self._source = ""
+        self._is_md = False
         self.setFixedHeight(20)
+        # Tema değişince renkler (belge CSS'i, kod vurgusu) yeni temayla yeniden üretilir (2026-11-07)
+        theme.watch(self, lambda w, _p: w.set_markdown(w._source) if w._is_md and w._source else None, "md")
 
     def source_text(self) -> str:
         return self._source
 
     def set_markdown(self, text: str) -> None:
         self._source = text or ""
+        self._is_md = True
         p = theme.current()
         self.document().setDefaultStyleSheet(document_css(p, self.font_pt))
         self.setHtml(render_markdown(self._source, p))
@@ -148,6 +152,7 @@ class MarkdownView(QTextBrowser):
 
     def set_plain(self, text: str) -> None:
         self._source = text or ""
+        self._is_md = False
         self.setPlainText(self._source)
         self._fit()
 

@@ -103,7 +103,7 @@ def clipboard_image_attachment(img: QImage, data_dir: Path) -> Attachment | None
 def thumbnail(path: str, size: int = THUMB) -> QPixmap:
     px = QPixmap(path)
     if px.isNull():
-        return icons.pixmap("file", theme.current().text_dim, size // 2)
+        return icons.pixmap("file", "text_dim", size // 2)
     return px.scaled(size * 2, size * 2, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
 
 
@@ -131,7 +131,7 @@ class AttachmentChip(QFrame):
             lay.addWidget(pic)
         else:
             ic = QLabel()
-            ic.setPixmap(icons.pixmap("file", theme.current().accent, 20))
+            icons.set_pixmap(ic, "file", "accent", 20)
             lay.addWidget(ic)
             col = QVBoxLayout()
             col.setSpacing(0)

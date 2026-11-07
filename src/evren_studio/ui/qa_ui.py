@@ -44,26 +44,29 @@ class QaPlanCard(QFrame):
         super().__init__(parent)
         self.setObjectName("PlanCard")
         p = theme.current()
-        self.setStyleSheet(f"QFrame#PlanCard {{ background: {p.surface}; border: 1px solid {p.accent};"
-                           f" border-radius: 12px; }}")
+        theme.style(self, lambda pal: f"QFrame#PlanCard {{ background: {pal.surface}; border: 1px solid {pal.accent};"
+                                      f" border-radius: 12px; }}")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 12, 16, 12)
         lay.setSpacing(6)
         head = QHBoxLayout()
         ic = QLabel()
-        ic.setPixmap(icons.pixmap("check", p.accent, 18))
+        icons.set_pixmap(ic, "check", "accent", 18)
         head.addWidget(ic)
         head.addWidget(QLabel(f"<b>QA planı</b> — {len(state.scenarios)} senaryo"), 1)
         lay.addLayout(head)
         if state.run_hint:
-            hint = QLabel(f"<span style='color:{p.text_dim}'>Çalıştırma: {state.run_hint}</span>")
+            hint = QLabel()
+            theme.rich(hint, lambda p, h=state.run_hint: f"<span style='color:{p.text_dim}'>Çalıştırma: {h}</span>")
             hint.setWordWrap(True)
             lay.addWidget(hint)
         for s in state.scenarios:
             steps = " → ".join(s.steps[:6])
-            row = QLabel(f"<b>{s.idx}.</b> {s.title}"
-                         + (f"<br><span style='color:{p.text_dim}'>{steps}</span>" if steps else "")
-                         + (f"<br><span style='color:{p.text_dim}'>Beklenen: {s.expected}</span>" if s.expected else ""))
+            row = QLabel()
+            theme.rich(row, lambda p, s=s, steps=steps: (
+                f"<b>{s.idx}.</b> {s.title}"
+                + (f"<br><span style='color:{p.text_dim}'>{steps}</span>" if steps else "")
+                + (f"<br><span style='color:{p.text_dim}'>Beklenen: {s.expected}</span>" if s.expected else "")))
             row.setWordWrap(True)
             row.setTextFormat(Qt.RichText)
             lay.addWidget(row)
@@ -108,8 +111,8 @@ class QaDoneCard(QFrame):
         super().__init__(parent)
         self.setObjectName("PlanCard")
         p = theme.current()
-        self.setStyleSheet(f"QFrame#PlanCard {{ background: {p.surface}; border: 1px solid {p.border_strong};"
-                           f" border-radius: 12px; }}")
+        theme.style(self, lambda pal: f"QFrame#PlanCard {{ background: {pal.surface}; border: 1px solid {pal.border_strong};"
+                                      f" border-radius: 12px; }}")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 12, 16, 12)
         c = state.counts()
@@ -117,10 +120,12 @@ class QaDoneCard(QFrame):
                              f"{c.get('engellendi', 0)} engellendi (EVREN_QA_RAPORU.md)"))
         for s in state.scenarios:
             mark = {"gecti": "✓", "kaldi": "✗", "engellendi": "–"}.get(s.status, "·")
-            color = {"gecti": p.success, "kaldi": p.danger}.get(s.status, p.text_dim)
-            row = QLabel(f"<span style='color:{color}'>{mark}</span> {s.idx}. {s.title}"
-                         + (f" — <span style='color:{p.text_dim}'>{s.summary or s.actual[:120]}</span>"
-                            if s.status != "gecti" else ""))
+            role = {"gecti": "success", "kaldi": "danger"}.get(s.status, "text_dim")
+            row = QLabel()
+            theme.rich(row, lambda p, s=s, mark=mark, role=role: (
+                f"<span style='color:{getattr(p, role)}'>{mark}</span> {s.idx}. {s.title}"
+                + (f" — <span style='color:{p.text_dim}'>{s.summary or s.actual[:120]}</span>"
+                   if s.status != "gecti" else "")))
             row.setWordWrap(True)
             row.setTextFormat(Qt.RichText)
             lay.addWidget(row)
