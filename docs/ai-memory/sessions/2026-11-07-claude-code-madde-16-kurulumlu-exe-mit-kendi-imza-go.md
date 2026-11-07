@@ -77,6 +77,11 @@ kurulum paketine gerekli program setuplarını ekle."
   tam takım 1013/1013. Ekran görüntüleri iki temada bakıldı (R-05). Tuzak: mutasyon geri alındı ama aynı uzunluk + aynı
   saniye → bayat .pyc; tam koşu bozuk paletle koştu (3 kırmızı) → __pycache__ silinip yeniden (dersler.md).
 
+- 2026-11-07 19:40 MADDE 17A KISA VE ÖZ CEVAP (dal perf/kisa-cevap): Settings.answer_style "kisa" (varsayılan) |
+  "ayrintili" (Ayarlar > Genel > Sohbet yanıtları); prompts.STYLE_BRIEF/STYLE_DETAILED, build_chat_system(brief=),
+  AgentRunner(brief_answers=) yalnız SOHBETTE (ajan istemi değişmez). test_kisa_cevap 7 (R-22, R-31, R-03), mutasyon 5/5.
+  Mutasyon koşucusu artık PYTHONDONTWRITEBYTECODE + __pycache__ temizliğiyle (bayat .pyc tuzağı).
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama

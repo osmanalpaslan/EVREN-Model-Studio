@@ -9,8 +9,7 @@ from .tools import ToolSpec, Workspace, find_project_venv
 
 CHAT_SYSTEM = (
     "Sen EVREN Studio asistanısın. Kullanıcıya Türkçe, açık ve doğru yanıt "
-    "ver. Gerektiğinde Markdown başlıkları, listeler ve dil belirtilmiş kod "
-    "blokları kullan. Emin olmadığın bilgiyi kesinmiş gibi sunma. "
+    "ver. {style} Kod için dil belirtilmiş kod blokları kullan. Emin olmadığın bilgiyi kesinmiş gibi sunma. "
     "Bu sohbet bir proje klasörüne bağlı değil; dosya okuma/yazma ve komut "
     "çalıştırma araçların YOK. Kullanıcı dosyalar üzerinde çalışmanı isterse, "
     "pencerenin üstündeki “Proje klasörü bağla” düğmesiyle bu oturuma klasör "
@@ -141,8 +140,18 @@ CHAT_WEB_NOTE = (
 )
 
 
-def build_chat_system(today: date | None = None, web: bool = False) -> str:
-    return CHAT_SYSTEM.format(today=(today or date.today()).isoformat()) + (CHAT_WEB_NOTE if web else "")
+# Yanıt uzunluğu (Madde 17A, 2026-11-07 ölçümü: EVREN ~15 token/sn yazar; "kısa ve öz" talimatı aynı sorularda çıktıyı
+# ortalama yarıya indirdi, cevaplar doğru kaldı — sohbet süresi kabaca yarıya iner). Ayarlar > Genel: answer_style.
+STYLE_BRIEF = ("Önce doğrudan cevabı ver. Kısa ve öz yaz: gereksiz başlık, tablo, giriş/kapanış cümlesi ve tekrar "
+               "kullanma; madde işaretini yalnız gerçekten liste gerekiyorsa kullan. Kullanıcı ayrıntı isterse "
+               "genişlet. Kısalık için doğruluktan ve gerekli adımlardan ödün verme.")
+STYLE_DETAILED = "Gerektiğinde Markdown başlıkları ve listeler kullanarak ayrıntılı açıkla."
+
+
+def build_chat_system(today: date | None = None, web: bool = False, brief: bool = True) -> str:
+    return (CHAT_SYSTEM.format(today=(today or date.today()).isoformat(),
+                               style=STYLE_BRIEF if brief else STYLE_DETAILED)
+            + (CHAT_WEB_NOTE if web else ""))
 
 
 INIT_PROMPT = (

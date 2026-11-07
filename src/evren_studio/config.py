@@ -151,6 +151,8 @@ class Settings:
     sidebar_width: int = 264
     panel_width: int = 360
     send_with_enter: bool = True
+    # Sohbet yanıt uzunluğu: "kisa" (varsayılan; kısa ve öz, ~2 kat hızlı) | "ayrintili" (Madde 17A, 2026-11-07)
+    answer_style: str = "kisa"
     # İlk yanıttan sonra oturuma yapay zekâyla kısa başlık (bağlı API; ücretli sağlayıcıda çok küçük maliyet)
     ai_session_titles: bool = True
     # MCP sunucuları (agent/mcp.py; kullanıcı kararı 2026-10-19): ajan turuna ek araç sağlar.

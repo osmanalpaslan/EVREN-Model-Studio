@@ -1,5 +1,12 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Kısa ve öz sohbet yanıtları (Madde 17A)
+
+- **Sohbet yanıtları varsayılan olarak kısa ve öz**: önce doğrudan cevap; gereksiz başlık, tablo ve tekrar yok.
+  EVREN cevabı kelime kelime yazdığı için kısa cevap yaklaşık iki kat çabuk biter (ölçüm: aynı sorularda çıktı
+  ortalama yarıya indi, cevaplar doğru). Ayrıntılı açıklama isteyen Ayarlar > Genel > "Sohbet yanıtları: Ayrıntılı"
+  seçebilir ya da soruda "ayrıntılı anlat" diyebilir. Kod ajanının yanıtları değişmedi.
+
 ## Yayınlanmamış — Açık mod düzeltmesi (Madde 18)
 
 - **Tema değişince her şey anında doğru renge döner**: uygulama açıkken koyu temadan açığa (ya da tersi) geçince
