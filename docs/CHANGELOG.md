@@ -1,5 +1,10 @@
 # Değişiklik Günlüğü
 
+## 0.4.2 — 2026-11-07
+
+- **Kurulum temiz bir Windows'ta denendi (Windows Sandbox, internetsiz)**: Python, Git, Node.js ve GitHub CLI olmayan
+  bilgisayarda dördünü de kurdu, uygulama açıldı. Python'un gereksiz "py başlatıcısı" bileşeni artık kurulmuyor.
+
 ## 0.4.1 — 2026-11-07
 
 - **Motor karnesi rafa kaldırıldı** (kullanıcı kararı): puanlar ve "bugün zayıf" kararı artık hiçbir motor seçimine

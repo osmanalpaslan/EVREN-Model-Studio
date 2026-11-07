@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "build" / "sandbox_deneme"
+OUT_BASE = ROOT / "build" / "sandbox_deneme"     # her deneme kendi zaman damgalı klasöründe (öncekini ezmez)
 SANDBOX = Path(r"C:\Windows\System32\WindowsSandbox.exe")
 TASKS = "desktopicon,dev,dev\\python,dev\\git,dev\\node,dev\\gh"
 
@@ -87,7 +87,8 @@ def main(argv: list[str]) -> int:
         print("Kurulum dosyası yok: önce tools\\paketle.py")
         return 2
     setup = setups[-1].resolve()
-    shutil.rmtree(OUT, ignore_errors=True)
+    # Önceki denemenin klasörü Sandbox kapanana kadar kilitli kalabiliyor (2026-11-07): silmeye çalışma, yenisini aç
+    OUT = OUT_BASE / time.strftime("%Y%m%d-%H%M%S")
     (OUT / "kurulum").mkdir(parents=True)
     (OUT / "sonuc").mkdir()
     shutil.copy2(setup, OUT / "kurulum" / setup.name)       # yalnız bu dosya bağlanır (dist/'in tamamı değil)

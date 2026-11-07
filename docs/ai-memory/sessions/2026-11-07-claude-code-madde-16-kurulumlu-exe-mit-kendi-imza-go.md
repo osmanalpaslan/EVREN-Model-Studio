@@ -112,6 +112,12 @@ kurulum paketine gerekli program setuplarını ekle."
   Sandbox: Containers-DisposableClientVM açıldı (yönetici, -NoRestart) → YENİDEN BAŞLATMA GEREKİYOR. tools/kurulum_sandbox.py
   (internetsiz Sandbox, sessiz kurulum + tüm dev görevleri, önce/sonra program yolları, duman testi, kısayollar).
 
+- 22:17-23:00 (YENİDEN BAŞLATMA SONRASI) SANDBOX DENEMESİ: 0.4.1 "Python Launcher" adımında 14 dk → kapatıldı,
+  Include_launcher=0 (0.4.2). 0.4.2 GEÇTİ (1265 sn): dört program kuruldu, kısayollar, duman TAMAM. Python günlükleri
+  (`wsb exec ... copy %TEMP%\Python*.log C:\sonuc`) gösterdi ki takılma değil YAVAŞLIK: internetsiz Sandbox'ta her MSI
+  bileşeni ~2 dk. Araç düzeltmesi: her deneme zaman damgalı klasör (önceki Sandbox kapanana kadar klasör kilitli).
+  `wsb list/exec` (Windows 11 Sandbox CLI) içeri bakmak için işe yarıyor.
+
 ## Sonraki motor için notlar
 - **YENİDEN BAŞLATMADAN SONRA İLK İŞ:** `.\.venv\Scripts\python.exe tools\kurulum_sandbox.py dist\EVREN-Studio-Kurulum-0.4.1.exe`
   (yoksa önce `tools\paketle.py`). Sonucu CHALLENGE_RESULTS + ILERIDE §1.7'ye yaz; Git /CURRENTUSER veya MSI sorunu

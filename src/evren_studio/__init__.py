@@ -1,4 +1,4 @@
 """EVREN Model Studio — sürüm ve paket künyesi."""
 
-__version__ = "0.4.1"          # TEK KAYNAK: pyproject, exe sürüm bilgisi ve kurulum buradan okur
+__version__ = "0.4.2"          # TEK KAYNAK: pyproject, exe sürüm bilgisi ve kurulum buradan okur
 APP_NAME = "EVREN Studio"

@@ -225,7 +225,9 @@ begin
     kurulabilir → Windows yönetici izni penceresini gösterir }
   if WizardIsTaskSelected('dev\python') then
     RunPrereq('Python 3.12', '{#PyFile}', T + '{#PyFile}',
-      '/passive InstallAllUsers=0 PrependPath=1 Include_test=0 Include_launcher=1 InstallLauncherAllUsers=0 Shortcuts=0');
+      '/passive InstallAllUsers=0 PrependPath=1 Include_test=0 Include_launcher=0 Shortcuts=0');
+  { Include_launcher=0 (2026-11-07 Windows Sandbox temiz kurulum denemesi): "Python Launcher" adımı 14 dk takıldı, kurulum
+    hiç bitmedi. py başlatıcısı gerekmiyor: uygulama Python'u PATH'teki `python` ile bulur (PrependPath=1). }
   if WizardIsTaskSelected('dev\git') then
     RunPrereq('Git', '{#GitFile}', T + '{#GitFile}',
       '/SILENT /NORESTART /NOCANCEL /SP- /SUPPRESSMSGBOXES /CURRENTUSER');
