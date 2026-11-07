@@ -36,7 +36,7 @@ TASK_LABELS = {
 }
 
 
-SETTINGS_VERSION = 5
+SETTINGS_VERSION = 6
 _OLD_FAST_MODEL = "deepseek-v4-flash"
 # Eski sürümün varsayılanı: kullanıcı değiştirmediyse yeni varsayılana taşınır.
 _OLD_DEFAULT_MODEL = "glm-5.3"
@@ -66,6 +66,10 @@ def migrate_raw(raw: dict[str, Any]) -> dict[str, Any]:
     if version < 5 and raw.get("default_model") in ("auto-pro", "akilli"):
         # 2026-11-07 Madde 19: Auto Pro seçilebilir motor olmaktan çıktı (auto + güvenlik ağı)
         raw["default_model"] = "auto"
+    if version < 6 and raw.get("deep_parallel") == 2:
+        # 2026-11-07 Madde 17C: EVREN aynı anahtarla 3 eşzamanlı isteği bekletmiyor (ölçüm); Derin Mod "anla" aşamasının
+        # 3 incelemesi tek turda biter. Yalnız eski VARSAYILAN taşınır.
+        raw["deep_parallel"] = 3
     raw["settings_version"] = max(version, SETTINGS_VERSION)
     return raw
 
@@ -179,8 +183,9 @@ class Settings:
     gozlem_enabled: bool = True
     # Derin Mod (composer "Derin" düğmesi): açıkken her iş anla→planla→uygula→doğrula→düzelt akışıyla
     deep_mode: bool = False
-    # Derin Mod'da aynı anda çalışan alt ajan sayısı (1-3; kota penceresi doluysa kendiliğinden 1'e iner)
-    deep_parallel: int = 2
+    # Derin Mod'da aynı anda çalışan alt ajan sayısı (1-3; kota penceresi doluysa kendiliğinden 1'e iner).
+    # 3 (2026-11-07): 3 eşzamanlı istek EVREN'de birbirini beklemiyor; "anla" aşamasının 3 incelemesi tek turda biter
+    deep_parallel: int = 3
     mcp_servers: list[dict] = field(default_factory=list)
     # Zamanlanmış görevler (Madde 12c, 2026-11-05): yalnız uygulama açıkken çalışır (Claude Code yerel görevleri gibi)
     schedule_enabled: bool = True          # kapalıysa hiçbir görev kendiliğinden başlamaz ("Şimdi çalıştır" çalışır)

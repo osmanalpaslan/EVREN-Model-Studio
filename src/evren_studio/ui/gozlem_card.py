@@ -38,9 +38,20 @@ class GozlemCard(QWidget):
         row.addWidget(open_btn)
         row.addStretch(1)
         l.addLayout(row)
-        self.refresh()
+        # Açılış hızı (Madde 17E, 2026-11-07): durum git'e soruyor (~0,25 sn × 2) ve kart yalnız Ayarlar açılınca
+        # görünür → ilk GÖSTERİLİŞTE doldurulur; açılışı bekletmez
+        self._dirty = True
 
-    def refresh(self) -> None:
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if self._dirty:
+            self.refresh(force=True)
+
+    def refresh(self, force: bool = False) -> None:
+        if not force and not self.isVisible():
+            self._dirty = True
+            return
+        self._dirty = False
         try:
             d = gozlem.durum()
         except Exception:

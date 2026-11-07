@@ -101,6 +101,8 @@ kurulum paketine gerekli program setuplarını ekle."
   karışık tırnak / erken `]},` / uydurma alanla yazıyor; qa._json_block'a genel `loose_object` (R-26) → gerçek koşu 3/3,
   e2e_derin GEÇTİ. Testler test_acilis_ve_paralel 3, test_bozuk_json_blok 3; mutasyon 4/4 + 3/3.
 
+- 21:15 17C/17E ayrı commit (perf: paralellik 3 + gözlem kartı); tests/e2e_derin_real_api.py `--paralel N` (varsayılan ayar).
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama

@@ -90,7 +90,12 @@ def main() -> int:
             return c.get_quota()
         finally:
             c.close()
-    gate = QuotaGate(quota, max_parallel=2)
+    # --paralel N (varsayılan: ayarın varsayılanı; 2026-11-07'den beri 3) — önce/sonra karşılaştırması için
+    from evren_studio.config import Settings
+
+    par = int(sys.argv[sys.argv.index("--paralel") + 1]) if "--paralel" in sys.argv else Settings().deep_parallel
+    print(f"paralellik: {par}")
+    gate = QuotaGate(quota, max_parallel=par)
     tmp = Path(tempfile.mkdtemp(prefix="derin_"))
     (tmp / "calc.py").write_text(BASE_CALC, encoding="utf-8")
     (tmp / "test_calc.py").write_text(BASE_TEST, encoding="utf-8")
@@ -112,7 +117,7 @@ def main() -> int:
     try:
         st = dp.DeepState(goal=GOAL, kind=dp.classify(GOAL))
         t0 = time.monotonic()
-        dp.understand(st, sub_for(chain("kod")), gate, 2, lambda t: print("  ", t, flush=True))
+        dp.understand(st, sub_for(chain("kod")), gate, gate.max_parallel, lambda t: print("  ", t, flush=True))
         got = [f["angle"] for f in st.findings if f.get("data")]
         print(f"1 ANLA: {len(got)}/{len(st.findings)} bulgu ({', '.join(got)}) · {time.monotonic() - t0:.0f} sn "
               f"· durum: {[f['stopped'] for f in st.findings]}", flush=True)
@@ -140,7 +145,7 @@ def main() -> int:
                 finally:
                     c.close()
             t0 = time.monotonic()
-            dp.understand(ast, sub_amb, gate, 2, lambda t: None)
+            dp.understand(ast, sub_amb, gate, gate.max_parallel, lambda t: None)
             print(f"1b ANLA (eksik veri, belirsiz): {len(ast.questions)} soru · {time.monotonic() - t0:.0f} sn",
                   flush=True)
             for q in ast.questions:
@@ -157,7 +162,7 @@ def main() -> int:
             text, model = ctx.ai_chat("inceleme", messages, max_tokens=600, evren_only=True)
             print("   yargıç:", model, text[:160].replace("\n", " "), flush=True)
             return text
-        tasks = dp.plan(st, lambda m, p, k: subs[m](p, k), plan_models, judge, gate, 2,
+        tasks = dp.plan(st, lambda m, p, k: subs[m](p, k), plan_models, judge, gate, gate.max_parallel,
                         lambda t: print("  ", t, flush=True))
         print(f"2 PLANLA: modeller {plan_models}; geçerli plan {len(st.plans)}; seçilen {st.chosen} "
               f"({len(tasks)} görev) · {time.monotonic() - t0:.0f} sn", flush=True)
@@ -178,7 +183,7 @@ def main() -> int:
             (tmp / "calc.py").write_text(files[name][0], encoding="utf-8")
             (tmp / "test_calc.py").write_text(files[name][1], encoding="utf-8")
             vst = dp.DeepState(goal=GOAL)
-            issues = dp.verify(vst, diff, vsub, gate, 2, lambda t: None)
+            issues = dp.verify(vst, diff, vsub, gate, gate.max_parallel, lambda t: None)
             high = [i for i in issues if str(i.get("ciddiyet", "")).lower().startswith(("yuk", "yük"))]
             passed = bool(issues) if expect_issue else not high
             ok &= passed

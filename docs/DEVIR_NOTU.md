@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-07 20:25 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 18 (PR #48), 17A kısa ve öz + 19 auto güvenlik ağı (dal `feat/auto-guvenlik-agi` → PR) YAPILDI; gerçek ölçüm: sohbet ortanca 23 → 5,9 sn, R-13 geçti, zorluk auto 11/12 679 sn. Sırada: 17C büyük işlerde paralel alt görevler (17B analizi: adım sayısı zaten düşük, büyük kazanç yok — kullanıcıya sunuldu).
+- **Güncelleme:** 2026-11-07 21:15 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Kullanıcı "uygun olan her şeyi sırayla yap, geride iş bırakma". Dal `perf/acilis-ve-paralel`: Derin bozuk JSON düzeltmesi (0039677) + paralellik 3 / açılış. Sırada: tam takım + zorluk (R-21) → PR → kurulum dosyası 0.4.0 (masaüstü kopyası güncellenir) → kapanış. Windows Sandbox denemesi kullanıcı onayı bekliyor (yönetici + yeniden başlatma).
 - **Aktif dal:** `master` (eski not: `feat/masaustu-kontrol` birleşti). Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi
