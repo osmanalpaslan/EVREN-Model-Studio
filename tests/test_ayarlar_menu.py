@@ -11,7 +11,7 @@ import pytest
 
 # load_values/_collect'in kullandığı tüm alanlar → beklenen menü
 BEKLENEN = {
-    "default_model": "genel", "agent_mode": "genel", "send_enter": "genel", "ai_titles": "genel",
+    "default_model": "genel", "agent_mode": "genel", "send_enter": "genel", "answer_style": "genel", "ai_titles": "genel",
     "theme": "gorunum", "font_size": "gorunum", "compact_view": "gorunum", "simple_view": "gorunum",
     "show_reasoning": "gorunum",
     "key_input": "saglayicilar", "budget": "saglayicilar", "budget_enforce": "saglayicilar",

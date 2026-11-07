@@ -41,8 +41,12 @@ def test_zincir_yalniz_evren_yalniz_ucretli_ve_dengeli():
 def test_eski_ad_tasinir():
     from evren_studio.config import migrate_raw
 
-    assert migrate_raw({"default_model": "akilli"})["default_model"] == "auto-pro"
-    assert router.normalize_model_id("akilli") == "auto-pro" and router.is_auto_pro("akilli")
+    # Madde 19 (2026-11-07): Auto Pro seçilebilir motor değil — eski kayıtlar auto'ya taşınır
+    assert migrate_raw({"default_model": "akilli"})["default_model"] == "auto"
+    assert migrate_raw({"default_model": "auto-pro", "settings_version": 4})["default_model"] == "auto"
+    assert migrate_raw({"default_model": "gemma-4-31b", "settings_version": 4})["default_model"] == "gemma-4-31b"
+    assert router.normalize_model_id("akilli") == "auto" and router.normalize_model_id("auto-pro") == "auto"
+    assert router.is_auto_pro("akilli")
     assert router.normalize_model_id("glm-5.3") == "glm-5.3"
 
 
@@ -62,10 +66,10 @@ def ctx(tmp_path, monkeypatch, fake_keyring):
 
 def test_liste_anahtara_gore(ctx):
     ids = [m.id for m in ctx.chat_models()]
-    assert "auto-pro" in ids and "auto" in ids                                # hiç anahtar yok: EVREN gösterilir
+    assert "auto-pro" not in ids and "auto" in ids                            # Madde 19: Auto Pro listede yok
     ctx._provider_keys["openai"] = "sk-proj-SAHTE1234567890abcdef"
     ids = [m.id for m in ctx.chat_models()]
-    assert ids[0] == "auto-pro" and "auto" not in ids and "glm-5.3" not in ids  # EVREN motorları çıkmaz
+    assert "auto-pro" not in ids and "auto" not in ids and "glm-5.3" not in ids  # EVREN motorları çıkmaz
     assert "gpt-6-luna" in ids and "claude-haiku-5-5" not in ids
     assert ctx.provider_of("auto-pro") == "openai"
     assert ctx.available_model_ids() <= {c.id for c in ctx.paid_models}
@@ -154,7 +158,7 @@ def test_yalniz_ucretli_anahtarla_evren_ekranlari_gizlenir(win):
     s = w.session
     s.refresh_models()
     ids = s.composer.model_ids()
-    assert ids[0] == "auto-pro" and "auto" not in ids and "claude-sonnet-5-5" in ids
+    assert "auto-pro" not in ids and "auto" not in ids and "claude-sonnet-5-5" in ids
     s.welcome.refresh()
     assert not s.welcome.key_card.isVisibleTo(s.welcome)                     # bir anahtar var → uyarı yok
     s.refresh_usage()

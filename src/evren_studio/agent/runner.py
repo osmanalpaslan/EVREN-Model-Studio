@@ -518,7 +518,7 @@ class AgentRunner:
                  stall_retry_body: dict[str, Any] | None = None,
                  install_mode: str = "otomatik",
                  fallback_models: list[str] | None = None,
-                 chat_tools: bool = False,
+                 chat_tools: bool = False, brief_answers: bool = True,
                  mcp: Any = None, edit_check: bool = True, services: Any = None,
                  test_check: bool = False, no_writes: bool = False, extra_tools: Any = None,
                  final_marker: str | None = None, plan_guard: bool = False, jobs: Any = None,
@@ -563,6 +563,7 @@ class AgentRunner:
         # Klasörsüz sohbette yalnız web araçları (web_search, web_fetch): dosya sistemine dokunmazlar
         # (DEVIR_NOTU Madde 6, 2026-11-04). Klasörlü oturumda anlamsız (orada tüm araçlar zaten var).
         self.chat_tools = bool(chat_tools) and workspace is None
+        self.brief_answers = bool(brief_answers)
         # F2: her çağrıya eklenecek alanlar (A10 tutarlılık: temperature/seed — yalnız seed'i dinleyen modelde;
         # model değişince bırakılır) ve tur ipucuna eklenecek metin (A7 rol talimatı, A13 planlayıcının planı).
         self.base_body = dict(base_body) if base_body else None
@@ -674,7 +675,7 @@ class AgentRunner:
 
     def _system(self) -> str:
         if not self.agentic:
-            system = build_chat_system(web=self.chat_tools)
+            system = build_chat_system(web=self.chat_tools, brief=self.brief_answers)
             hint = getattr(self, "_turn_hint", "")
             return system + "\n\n" + hint if hint else system
         if self._env_section is None:

@@ -121,11 +121,14 @@ def test_tur_akisinda_bugun_yavas_olan_geri_alinir(win):
         w.ctx.db.add_model_call(first, ok=True, duration_s=40.0, first_chunk_s=8.0, out_tokens=300)
         w.ctx.db.add_model_call(alt, ok=True, duration_s=10.0, first_chunk_s=2.0, out_tokens=300)
     _gonder(app, w, used)
-    assert used and used[0] == alt, (first, alt, used)
+    # Madde 19: kullanıcı turu auto ile gider; uyarlanabilir sıra auto'nun GÜVENLİK AĞI zincirini (ai_route) belirler
+    assert used and used[0] == "auto", used
+    assert w.ctx.ai_route("kod", evren_only=True).model == alt, (first, alt)
 
 
 def test_tur_akisinda_olcum_yoksa_kullanici_sirasi(win):
     app, w, tmp = win
     used, route = _hazirla(w, tmp)
     _gonder(app, w, used)
-    assert used and used[0] == route.model
+    assert used and used[0] == "auto"
+    assert w.ctx.ai_route("kod", evren_only=True).model == route.model

@@ -1034,6 +1034,9 @@ class SessionView(QWidget):
             self.ctx.save_settings()
 
     def set_model(self, model: str) -> None:
+        if router.is_auto_pro(model):            # Madde 19: eski kayıt (profil, zamanlanmış görev) → auto
+            model = router.normalize_model_id(model)
+            self.composer.set_model(model)
         provider = self.ctx.provider_of(model)
         if provider != "evren" and not self.ctx.has_provider_key(provider):
             name = PROVIDERS[provider].name
@@ -1749,6 +1752,13 @@ class SessionView(QWidget):
                 self._run_route = router.Route(w_route.model, "kod", f"{r0.reason} · planlayan {p_route.model}, "
                                                f"yazan {w_route.model}", list(w_route.fallbacks), r0.level)
                 api_model, fallbacks = w_route.model, list(w_route.fallbacks)
+        if model_override is None and planner is None and api_model == router.USER_DEFAULT_ID and not fallbacks:
+            # Güvenlik ağı (Madde 19): sunucunun auto'su hata verirse/takılırsa aynı istek karnedeki en iyi EVREN
+            # motorlarıyla yeniden denenir (2026-10-19: auto glm-5.3'e yönlendirip 503 aldı, iş durdu)
+            # Zincir "kod" rolünden: motor karnesi (gerçek ölçülen puan) yalnız puanlı rollerde sıralar; sohbette de
+            # en sağlam motor önce gelsin
+            net = self.ctx.ai_route("kod", evren_only=True)
+            fallbacks = [m for m in [net.model, *net.fallbacks] if m and m != api_model]
         run_role = (model_override[2] if model_override is not None
                     else (self._run_route.role if self._run_route is not None else ""))
         self.composer.run_text.setToolTip(self._route_explain(api_model, fallbacks))
@@ -1827,6 +1837,7 @@ class SessionView(QWidget):
             install_mode=s.install_mode,
             fallback_models=fallbacks,
             chat_tools=bool(ws is None and s.web_tools_chat),
+            brief_answers=(s.answer_style != "ayrintili"),
             # MCP (Ayarlar > MCP Sunucuları): yalnız EVREN turunda ve gerektiğinde; yoksa None
             mcp=(self.ctx.mcp_toolset(ws.root, self._last_user_text(history), provider,
                                       status=b.sig_status.emit)

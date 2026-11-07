@@ -77,6 +77,22 @@ kurulum paketine gerekli program setuplarını ekle."
   tam takım 1013/1013. Ekran görüntüleri iki temada bakıldı (R-05). Tuzak: mutasyon geri alındı ama aynı uzunluk + aynı
   saniye → bayat .pyc; tam koşu bozuk paletle koştu (3 kırmızı) → __pycache__ silinip yeniden (dersler.md).
 
+- 2026-11-07 19:40 MADDE 17A KISA VE ÖZ CEVAP (dal perf/kisa-cevap): Settings.answer_style "kisa" (varsayılan) |
+  "ayrintili" (Ayarlar > Genel > Sohbet yanıtları); prompts.STYLE_BRIEF/STYLE_DETAILED, build_chat_system(brief=),
+  AgentRunner(brief_answers=) yalnız SOHBETTE (ajan istemi değişmez). test_kisa_cevap 7 (R-22, R-31, R-03), mutasyon 5/5.
+  Mutasyon koşucusu artık PYTHONDONTWRITEBYTECODE + __pycache__ temizliğiyle (bayat .pyc tuzağı).
+
+- 2026-11-07 20:05 MADDE 19 (dal feat/auto-guvenlik-agi): Auto Pro seçilebilir motor DEĞİL (chat_models'tan çıktı);
+  eski "auto-pro"/"akilli" → "auto" (normalize_model_id, config v5 göçü, set_model, zamanlanmış görev). auto GÜVENLİK
+  AĞI: kullanıcı auto seçtiyse ve başka yedek yoksa turun yedekleri = ai_route("kod", evren_only) (karneye göre);
+  auto 503/zaman aşımı/boş/yavaş → runner._switch_model. İç işler (özet, inceleme, QA, Derin/Proje rolleri) ai_route ile
+  sürer. Testler: test_router (güvenlik ağı R-31 + başka motor seçilince eklenmez R-22), test_auto_pro/default_auto/
+  f4 güncellendi (eski karar testleri), mutasyon 6/6.
+
+- 20:00 Madde 19 tam takım: 4 eski-karar testi uyarlandı (seçicide "Otomatik yönlendirme" grubu yok; uyarlanabilir
+  sıra artık güvenlik ağı zincirini belirler) + Proje/Derin akışında oturum auto iken rol tablosu KORUNDU (yakalanan
+  davranış değişikliği: plan aşaması auto'ya gidiyordu). Tam takım 1020/1021 → düzeltme sonrası ilgili paket 70/70.
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama

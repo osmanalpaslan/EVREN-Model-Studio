@@ -1,6 +1,9 @@
 """`auto` (sunucunun seçtiği motor) ile Auto Pro (uygulamanın yönlendiricisi) hız karşılaştırması — gerçek pencere yolu.
 
-    .\\.venv\\Scripts\\python.exe -u tests\\e2e_hiz_auto_karsilastirma_real_api.py [tur=1]
+    .\\.venv\\Scripts\\python.exe -u tests\\e2e_hiz_auto_karsilastirma_real_api.py [tur=1] [--motorlar auto,qwen3.8-flash-next]
+
+Madde 19 sonrası (2026-11-07) Auto Pro seçilebilir motor değil ("auto-pro" → auto); varsayılan yalnız `auto` ölçülür
+(önce/sonra karşılaştırması: kısa ve öz yanıt, güvenlik ağı).
 
 Kullanıcı (2026-11-07): "auto motoru auto pro motorundan daha hızlı yanıtlar verebiliyor ... uygulama hiç hızlı
 değil." Aynı istekler, aynı saatte, sıra her turda değiştirilerek iki motorla gönderilir (send → koşucu → tur sonu).
@@ -82,7 +85,13 @@ def main() -> int:
     if not load_api_key():
         print("FAIL: EVREN API anahtarı yok")
         return 1
-    tur = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    args = sys.argv[1:]
+    motorlar = ["auto"]
+    if "--motorlar" in args:
+        i = args.index("--motorlar")
+        motorlar = [m for m in args[i + 1].split(",") if m]
+        del args[i:i + 2]
+    tur = int(args[0]) if args else 1
     os.environ["EVREN_STUDIO_DATA_DIR"] = tempfile.mkdtemp(prefix="evren-hiz-")
     from PySide6.QtWidgets import QApplication
 
@@ -96,7 +105,7 @@ def main() -> int:
     results = []
     for t in range(tur):
         for i, (kind, msg) in enumerate([("sohbet", m) for m in SOHBET] + [("ajan", m) for m in AJAN]):
-            order = ["auto", "auto-pro"] if (i + t) % 2 == 0 else ["auto-pro", "auto"]
+            order = motorlar if (i + t) % 2 == 0 else list(reversed(motorlar))
             for model in order:
                 proj = None
                 if kind == "ajan":
@@ -114,7 +123,7 @@ def main() -> int:
                       flush=True)
     print("\n=== ÖZET (ortanca tur süresi, sn) ===")
     for kind in ("sohbet", "ajan"):
-        for model in ("auto", "auto-pro"):
+        for model in motorlar:
             ds = [r["dur"] for r in results if r["kind"] == kind and r["model"] == model and r["ok"]]
             cs = [len(r["rows"]) for r in results if r["kind"] == kind and r["model"] == model]
             if ds:

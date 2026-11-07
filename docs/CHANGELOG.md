@@ -1,5 +1,20 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — Tek motor seçeneği: auto + güvenlik ağı (Madde 19)
+
+- **Auto Pro model listesinden kalktı**: ölçümde `auto`'dan belirgin şekilde iyi değildi (aynı gün 12 zor görev: auto
+  12/12, Auto Pro 11/12; sohbette aynı motor). Eski Auto Pro oturumları, profilleri ve zamanlanmış görevleri
+  kendiliğinden `auto` ile sürer.
+- **auto için güvenlik ağı**: `auto` hata verir, takılır ya da boş yanıt dönerse aynı istek motor karnesindeki en iyi
+  EVREN motoruyla otomatik sürer (önceden iş dururdu). Başka bir motoru kendiniz seçtiyseniz yedek eklenmez.
+
+## Yayınlanmamış — Kısa ve öz sohbet yanıtları (Madde 17A)
+
+- **Sohbet yanıtları varsayılan olarak kısa ve öz**: önce doğrudan cevap; gereksiz başlık, tablo ve tekrar yok.
+  EVREN cevabı kelime kelime yazdığı için kısa cevap yaklaşık iki kat çabuk biter (ölçüm: aynı sorularda çıktı
+  ortalama yarıya indi, cevaplar doğru). Ayrıntılı açıklama isteyen Ayarlar > Genel > "Sohbet yanıtları: Ayrıntılı"
+  seçebilir ya da soruda "ayrıntılı anlat" diyebilir. Kod ajanının yanıtları değişmedi.
+
 ## Yayınlanmamış — Açık mod düzeltmesi (Madde 18)
 
 - **Tema değişince her şey anında doğru renge döner**: uygulama açıkken koyu temadan açığa (ya da tersi) geçince
