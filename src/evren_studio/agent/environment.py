@@ -134,10 +134,17 @@ class ToolStatus:
         return self.path is not None
 
 
+def is_store_stub(path: str) -> bool:
+    """Windows'un "Uygulama yürütme diğer adı" python.exe'si (Python kurulu değilken Microsoft Store'u açar).
+    Temiz Windows 10/11'de PATH'te HER ZAMAN vardır → "python kurulu" sanılmamalı (kurulum paketi, 2026-11-07)."""
+    p = path.replace("/", "\\").casefold()
+    return "\\microsoft\\windowsapps\\" in p and Path(path).name.casefold().startswith(("python", "py.exe"))
+
+
 def find_exe(tool: KnownTool) -> str | None:
     for exe in tool.exes:
         p = shutil.which(exe)
-        if p:
+        if p and not is_store_stub(p):
             return p
     return None
 

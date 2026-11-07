@@ -1,0 +1,46 @@
+{
+  "_aciklama": "Kurulum paketine GÖMÜLEN resmî yükleyiciler (çevrimdışı kurulum). Kurulum yalnız bilgisayarda EKSİK olanı kurar. Sürüm değişince: adresi, dosya adını ve sha256'yı birlikte güncelle; tools/paketle.py indirirken özeti ve Authenticode imzasını doğrular.",
+  "_tarih": "2026-11-07",
+  "items": [
+    {
+      "key": "python",
+      "title": "Python 3.12",
+      "why": "Ajanın Python projelerinde çalışması; Serena ve masaüstü kontrolünün kurulumu",
+      "file": "python-3.12.10-amd64.exe",
+      "url": "https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe",
+      "sha256": "67b5635e80ea51072b87941312d00ec8927c4db9ba18938f7ad2d27b328b95fb",
+      "signer": "Python Software Foundation",
+      "sha_source": "python.org Authenticode imzası doğrulandı (sayfada SHA256 yok)"
+    },
+    {
+      "key": "git",
+      "title": "Git",
+      "why": "Sürüm takibi, Proje ajanının kayıt noktaları, GitHub",
+      "file": "Git-2.56.0.4-64-bit.exe",
+      "url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.4/Git-2.56.0.4-64-bit.exe",
+      "sha256": "4961a4a8cc778d8b6e00a5819e5fe4d078b754555aff7aedc2d77a5d74c2de80",
+      "signer": "Johannes Schindelin",
+      "sha_source": "GitHub release asset digest"
+    },
+    {
+      "key": "node",
+      "title": "Node.js LTS",
+      "why": "Web QA testleri (Playwright), npm projeleri, Godot aracı",
+      "file": "node-v26.13.0-x64.msi",
+      "url": "https://nodejs.org/dist/v26.13.0/node-v26.13.0-x64.msi",
+      "sha256": "0e5ee99c7cbf922887f04af268e3665990748945336a44956f47cc0df695b6df",
+      "signer": "OpenJS Foundation",
+      "sha_source": "nodejs.org SHASUMS256.txt"
+    },
+    {
+      "key": "gh",
+      "title": "GitHub CLI",
+      "why": "GitHub menüsü (depo, PR işlemleri)",
+      "file": "gh_2.103.3_windows_amd64.msi",
+      "url": "https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_windows_amd64.msi",
+      "sha256": "5073112b7abb5ffbba24b76aee7e89269af531218c0a42751f5f0bfb6440c2cc",
+      "signer": "GitHub",
+      "sha_source": "GitHub release asset digest"
+    }
+  ]
+}

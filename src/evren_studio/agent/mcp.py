@@ -787,7 +787,20 @@ def install_godot_mcp(data_dir: Path, log: Callable[[str], None] | None = None, 
 
 
 def _base_python() -> str:
-    """venv içinden çalışıyorsak bile temel Python (venv'in venv'i olmasın)."""
+    """venv içinden çalışıyorsak bile temel Python (venv'in venv'i olmasın).
+
+    Kurulum paketinden (PyInstaller) çalışırken sys.executable uygulamanın KENDİ exe'sidir — `-m venv` onunla
+    çalışmaz; sistemde kurulu Python aranır (kurulum sihirbazı Python 3.12'yi eksikse kurar)."""
+    if getattr(sys, "frozen", False):
+        from .environment import KNOWN_TOOLS, find_exe, refresh_path
+
+        refresh_path()
+        found = find_exe(KNOWN_TOOLS["python"])
+        if not found:
+            raise McpError("Bu kurulum için bilgisayarda Python 3.11 veya üstü gerekir; bulunamadı. EVREN Studio "
+                           "kurulumunu yeniden çalıştırıp 'Python 3.12' seçeneğini işaretleyin ya da "
+                           "https://www.python.org adresinden kurun.")
+        return found
     base = Path(getattr(sys, "_base_executable", "") or sys.executable)
     if base.name.lower().startswith("pythonw"):
         alt = base.with_name(base.name.lower().replace("pythonw", "python"))

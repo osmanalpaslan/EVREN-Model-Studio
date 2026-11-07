@@ -7,6 +7,7 @@ Kasa kullanılamazsa düz metne SESSİZCE GEÇİLMEZ; hata yukarı iletilir.
 from __future__ import annotations
 
 import re
+import sys
 from typing import Any
 
 SERVICE_NAME = "EVREN-Model-Studio"
@@ -79,6 +80,48 @@ def delete_api_key(provider: str = "evren") -> bool:
     except keyring.errors.PasswordDeleteError:
         return False
     return True
+
+
+def windows_credentials(api: Any = None) -> list[tuple[str, int]]:
+    """Credential Manager'da adı SERVICE_NAME içeren TÜM kayıtlar: [(hedef adı, tür)] (yalnız Windows).
+
+    Kaldırıcı "verileri de sil" denince kullanılır (kurulum paketi, 2026-11-07): sağlayıcı listesi + kullanıcının
+    eklediği ağ geçitleri (gw-*) + keyring'in ek kayıtları — hiçbirini adıyla bilmek gerekmesin."""
+    import ctypes
+    from ctypes import wintypes
+
+    class CREDENTIAL(ctypes.Structure):
+        _fields_ = [("Flags", wintypes.DWORD), ("Type", wintypes.DWORD), ("TargetName", wintypes.LPWSTR),
+                    ("Comment", wintypes.LPWSTR), ("LastWritten", wintypes.FILETIME),
+                    ("CredentialBlobSize", wintypes.DWORD), ("CredentialBlob", ctypes.c_void_p),
+                    ("Persist", wintypes.DWORD), ("AttributeCount", wintypes.DWORD), ("Attributes", ctypes.c_void_p),
+                    ("TargetAlias", wintypes.LPWSTR), ("UserName", wintypes.LPWSTR)]
+
+    advapi = api or ctypes.windll.advapi32
+    count = wintypes.DWORD()
+    creds = ctypes.POINTER(ctypes.POINTER(CREDENTIAL))()
+    # Süzgeç yalnız "önek*" kabul eder; adlar "evren_api_key@EVREN-Model-Studio" gibi → hepsini al, burada süz
+    if not advapi.CredEnumerateW(None, 0, ctypes.byref(count), ctypes.byref(creds)):
+        return []                           # kayıt yok (ERROR_NOT_FOUND) ya da okunamadı
+    try:
+        return [(creds[i].contents.TargetName, int(creds[i].contents.Type)) for i in range(count.value)
+                if SERVICE_NAME.casefold() in (creds[i].contents.TargetName or "").casefold()]
+    finally:
+        advapi.CredFree(creds)
+
+
+def delete_all_api_keys() -> int:
+    """Bu uygulamanın Credential Manager'daki tüm kayıtlarını siler; silinen sayısı. Windows dışında 0."""
+    if sys.platform != "win32":
+        return 0
+    import ctypes
+
+    advapi = ctypes.windll.advapi32
+    removed = 0
+    for target, kind in windows_credentials(advapi):
+        if advapi.CredDeleteW(target, kind, 0):
+            removed += 1
+    return removed
 
 
 def mask_api_key(key: str | None) -> str:

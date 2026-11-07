@@ -80,10 +80,72 @@ def _install_qt_message_handler() -> None:
     qInstallMessageHandler(handler)
 
 
+MUTEX_NAME = "EVREN.Studio"          # kurulum sihirbazı (Inno Setup AppMutex) çalışan uygulamayı bununla tanır
+_mutex = None
+
+
+def _hold_mutex() -> None:
+    global _mutex
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        _mutex = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
+    except (AttributeError, OSError):
+        pass
+
+
+def smoke_report(window) -> list[str]:
+    """Paketli uygulamanın açılış denetimi (`--duman-testi <dosya>`; tools/paketle.py kullanır)."""
+    from pathlib import Path
+
+    from . import __version__
+    from .agent import mcp, runner
+
+    lines = [f"surum={__version__}", f"frozen={bool(getattr(sys, 'frozen', False))}",
+             f"pencere={window.isVisible()}"]
+    for name, p in (("wmcp_baslatici", mcp.WINDOWS_LAUNCHER),
+                    ("blender_donustur", Path(runner.__file__).with_name("blender_donustur.py"))):
+        lines.append(f"{name}={'var' if Path(p).is_file() else 'YOK'}")
+    try:
+        lines.append(f"python={mcp._base_python()}")
+    except mcp.McpError:
+        lines.append("python=YOK")
+    try:                                    # anahtar Credential Manager'da: paketlenince arka uç kaybolabilir
+        import keyring
+
+        lines.append(f"keyring={type(keyring.get_keyring()).__name__}")
+    except Exception as exc:                # noqa: BLE001 — rapor, uygulama değil
+        lines.append(f"keyring=HATA {type(exc).__name__}")
+    try:                                    # SSL sertifika paketi (certifi) pakette mi: anahtarsız istek 401 döner
+        import httpx
+
+        from .config import DEFAULT_BASE_URL
+
+        r = httpx.get(f"{DEFAULT_BASE_URL.rstrip('/')}/models", timeout=15)
+        lines.append(f"tls=tamam {r.status_code}")
+    except Exception as exc:                # noqa: BLE001
+        lines.append(f"tls=HATA {type(exc).__name__}")
+    return lines
+
+
 def main() -> int:
+    if "--anahtarlari-sil" in sys.argv:
+        # Kaldırıcı "kişisel verileri de sil" denince çağırır (installer/evren_studio.iss); pencere açılmaz
+        from .secrets import delete_all_api_keys
+
+        delete_all_api_keys()
+        return 0
     from PySide6.QtWidgets import QApplication
 
     _install_excepthook()
+    _hold_mutex()
+    if getattr(sys, "frozen", False):
+        # Kurulum sihirbazı Python/Git/Node'u yeni kurduysa uygulama eski PATH ile açılır (sihirbazın ortamı)
+        from .agent.environment import refresh_path
+
+        refresh_path()
     _install_qt_message_handler()
     from .ui.main_window import MainWindow
 
@@ -107,6 +169,19 @@ def main() -> int:
     # Canlı EVREN model listesi (yetenek bayrakları, yeni modeller) açılışta arka planda yüklenir;
     # önceden yalnız Modeller sayfası açılınca yükleniyordu.
     QTimer.singleShot(1000, window, window.session.load_live_models)
+    if "--duman-testi" in sys.argv:
+        i = sys.argv.index("--duman-testi")
+        out = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
+
+        def finish() -> None:
+            text = "\n".join(smoke_report(window)) + "\nTAMAM\n"
+            if out:
+                from pathlib import Path
+
+                Path(out).write_text(text, encoding="utf-8")
+            app.quit()
+
+        QTimer.singleShot(4000, window, finish)
     return app.exec()
 
 

@@ -7,7 +7,9 @@ Claude Code masaüstü uygulamasına benzer bir çalışma ortamı sunar; tüm m
 
 ## Hızlı başlangıç
 
-1. GitHub sayfasında **Code → Download ZIP** ile indirip bir klasöre çıkarın
+1. **Kurulum dosyası (önerilen):** `EVREN-Studio-Kurulum-<sürüm>.exe`'yi çalıştırın — yönetici izni
+   istemez, bilgisayarda eksik olan Python, Git, Node.js ve GitHub CLI'yi de kurar (ayrıntı:
+   [docs/INSTALLATION.md](docs/INSTALLATION.md)). **Kaynaktan:** GitHub sayfasında **Code → Download ZIP** ile indirip bir klasöre çıkarın
    (veya `git clone`). **`kurulum.bat`** dosyasına çift tıklayın: Python'u bulur
    (yoksa sorup kurar), gerekli paketleri kurar ve masaüstüne **EVREN Studio**
    kısayolu ekler. Sonraki açılışlar bu kısayoldan (veya `run.bat`) yapılır.
