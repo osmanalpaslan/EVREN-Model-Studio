@@ -84,6 +84,29 @@ betiğin `PYTHONIOENCODING=utf-8` değişkeni alt sürece sızmıştı; normal o
 12/12 test geçiyor. Betik düzeltildi (kabul temiz ortamda) → **5/5**.
 OpenAI/Anthropic ile Auto Pro **ölçülmedi** (anahtar yok).
 
+## auto ↔ Auto Pro hız ve doğruluk analizi (2026-11-07, kullanıcı: "auto daha hızlı; Auto Pro'yu silelim mi?")
+
+**Zorluk paketi aynı gün art arda** (`e2e_zorluk_real_api.py auto` ve `auto-pro --karne` — Auto Pro kullanıcının gerçek
+karnesiyle): auto **12/12 · 1319 sn** · Auto Pro **11/12 · 1182 sn** (mini_proje 4/5: kendi testleri 3 hata, 6 dk
+sınırı). İlk 11 görev: Auto Pro 820 sn, auto 956 sn. Auto Pro karneyle her rolde qwen3.8-flash-next seçti; planlama
+görevinde 13 adım (auto 6). Önceki karşılaştırma (2026-10-19): Auto Pro 12/12 4,3 dk · auto 11/12 8 dk; auto bir kez
+glm-5.3'e yönlendirip 503 aldı.
+
+**Gerçek pencere yolu, sohbet + ajan** (`tests/e2e_hiz_auto_karsilastirma_real_api.py`, tek tur): sohbet ortanca auto 23
+sn / Auto Pro 31 sn (uzun cevapta ikisi de 76 sn, ~13 token/sn — aynı motor); ajan kolay iş Auto Pro 9 sn (gemma) / auto
+32 sn, açıklama işi Auto Pro 35 sn (karnesiz → deepseek, ilk parça 8 sn) / auto 24 sn.
+
+**Yazma hızı (token/sn):** qwen ~13-20, deepseek ~13-22, gemma 60-125 (boşta; yükte ilk parça 0,3 → 34 sn). Saatten
+saate aynı motor 2 kat değişiyor.
+
+**"Kısa ve öz" talimatı** (3 soru, qwen + gemma): çıktı token'ı %20-63 azaldı (ortalama ~yarı), cevaplar doğru (KDV
+1180/1,18 = 1000; liste/demet; 3 öneri).
+
+**Eşzamanlılık:** aynı anahtarla 3 eşzamanlı istek birbirini BEKLETMİYOR (ilk parça 1,3-4,4 sn, tekliyle aynı aralık).
+
+**Auto Pro'nun kendi token maliyeti:** yalnız hafif yoklama (30 dk'da en çok 3 kısa istek, ~3 çıktı token'ı) — ihmal
+edilir. Açılış: 1,9 sn (pencere kurulumu 1,4 sn); tur başına uygulama ek yükü ~1 sn.
+
 ## Masaüstü QA hızlandırma (Madde 15, 2026-11-06/07, `tests/e2e_masaustu_real_api.py qa`, Auto Pro QA rolü)
 
 | Ölçüm | Kod | Hatalı sürüm | Doğru sürüm | Model çağrısı |

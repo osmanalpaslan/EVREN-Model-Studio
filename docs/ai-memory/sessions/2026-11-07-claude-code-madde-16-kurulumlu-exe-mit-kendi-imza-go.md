@@ -63,6 +63,11 @@ kurulum paketine gerekli program setuplarını ekle."
   QT_QPA_PLATFORM=windows yoksa yazı kutucuk), DisableWelcomePage=no; masaüstüne yalnız .exe. Ekran görüntüsüyle
   doğrulandı. Ders: kullanıcıya verilen klasöre yalnız açacağı dosyayı koy.
 
+- 2026-11-07 17:00-18:15 ANALİZ (kullanıcı: hız, açık mod, Auto Pro silinsin mi): ölçümler CHALLENGE_RESULTS
+  "auto ↔ Auto Pro"; DEVIR maddeleri 17-19 (plan, kullanıcı onayı bekliyor). Yeni: tests/e2e_hiz_auto_karsilastirma_real_api.py,
+  e2e_zorluk `--karne` (gerçek karneyi geçici veriye kopyalar). Açık mod kök nedeni yeniden üretildi (çalışırken tema
+  geçişi), ekran görüntüleri build/acik_mod_denetim/.
+
 ## Sonraki motor için notlar
 - Temiz bilgisayar denemesi için Windows Sandbox (Windows 11 Pro'da var, KAPALI; açmak yönetici izni + yeniden
   başlatma ister — kullanıcı onayı). Sandbox'ta: kurulum → gerekli programlar sayfası 4 madde → kur → uygulama

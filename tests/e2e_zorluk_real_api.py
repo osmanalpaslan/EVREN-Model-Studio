@@ -341,6 +341,11 @@ def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi",
         i = args.index("--cikti")
         out = Path(args[i + 1])
         del args[i:i + 2]
+    # --karne: kullanıcının gerçek motor karnesini (model_scores) geçici veri klasörüne kopyala — Auto Pro'yu
+    # kullanıcının bilgisayarındaki gibi koşturmak için (2026-11-07 auto / Auto Pro karşılaştırması)
+    karne = "--karne" in args
+    if karne:
+        args.remove("--karne")
     serena_data = None
     if "--serena" in args:
         i = args.index("--serena")
@@ -354,6 +359,18 @@ def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi",
     shutil.rmtree(base, ignore_errors=True)
     base.mkdir(parents=True)
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(base / "data")
+    if karne:
+        import sqlite3
+
+        from evren_studio.db import Database
+
+        real = Path(os.environ.get("LOCALAPPDATA", "")) / "EVREN-Model-Studio" / "evren.db"
+        rows = sqlite3.connect(real).execute("SELECT model, suite, score, good_day, details FROM model_scores").fetchall()
+        (base / "data").mkdir(parents=True, exist_ok=True)
+        tdb = Database(base / "data" / "evren.db")
+        for m, s, sc, g, d in rows:
+            tdb.add_model_score(m, s, sc, good_day=bool(g), details=d)
+        print(f"karne kopyalandı: {len(rows)} kayıt")
 
     from PySide6.QtWidgets import QApplication, QMessageBox
 
