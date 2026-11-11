@@ -112,6 +112,9 @@ def smoke_report(window) -> list[str]:
         lines.append(f"python={mcp._base_python()}")
     except mcp.McpError:
         lines.append("python=YOK")
+    from .agent import diagnostics
+
+    lines.append(f"ruff={'var' if diagnostics.ruff_bin() else 'YOK'}")   # hata bekçisi (Madde 20 A2)
     try:                                    # bozuk JSON onarımı (agent/jsonfix.py) pakete girdi mi
         import json_repair  # noqa: F401
 

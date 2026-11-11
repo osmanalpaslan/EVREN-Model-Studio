@@ -37,6 +37,12 @@ ağı + iç işler); yetki verildiği için kod tablosunda qwen öne alınacak (
   kullanıp silmeyen betik testi düşürür). Gerçek: ui_denetim çalıştırıldı, klasör sayısı değişmedi. Mevcut eski klasörler
   SİLİNMEDİ (toplu silme kullanıcı onayı ister; disk oturumu yürütüyor).
 
+- A2 ruff (0.17.4, MIT): hata bekçisi Python'da sözdizimi temizken `ruff check --isolated --select E9,F63,F7,F82` (stdin;
+  projenin ayarı karışmaz) → tanımsız ad / yapı hatası; Serena açıksa ikisi birleşir, aynı satır tekrarlanmaz
+  (diagnostics.lint_problems + merge). Stil/kullanılmayan import bilerek yok. Paket: spec ruff.exe'yi `_internal/tools/`
+  altına koyar (pip ikilisi Scripts'te → PyInstaller kendiliğinden almaz); duman `ruff=var`. test_ruff_bekci 6 +
+  test_mcp_akilli güncellendi; mutasyon 5/6 → kaçan "yıldızlı import koruması" GEREKSİZDİ (ruff F405 verir) → kaldırıldı.
+
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2
   kaçtı → iki test eklendi). Bulgu: json_repair TEK BAŞINA daha iyi değil — 2026-10-19 gerçek QA çıktısında (`'""'`)

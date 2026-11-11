@@ -275,11 +275,23 @@ def test_bekci_sozdizimi_temizse_serena_teshisini_ekler(db, proj):
     ])
     runner, history, _ = make_runner(db, client, proj, mode="auto", mcp=ts)
     runner.run(history)
-    assert ts.asked == ["app.py"] and '"c" is not defined' in _tool_msg(client)
+    # Madde 20 A2: sözdizimi temizken ruff + Serena birlikte; AYNI satırı ikisi bildirirse yalnız ruff'ınki (tekrar yok)
+    msg = _tool_msg(client)
+    assert ts.asked == ["app.py"] and "F821" in msg and '"c" is not defined' not in msg
+    # farklı satırdaki Serena bulgusu ruff'ınkine EKLENİR
+    ts3 = _DiagToolset(["satır 9: çağrı hatası [reportCallIssue]"])
+    client3 = FakeClient([
+        ChatResult(tool_calls=[call("edit_file", path="app.py", old_string="return c", new_string="return d")]),
+        ChatResult(content="tamam", finish_reason="stop"),
+    ])
+    r3, h3, _ = make_runner(db, client3, proj, mode="auto", mcp=ts3)
+    r3.run(h3)
+    m3 = _tool_msg(client3)
+    assert "F821" in m3 and "reportCallIssue" in m3
     # sözdizimi hatası varken Serena'ya hiç sorulmaz (önce yerleşik)
     ts2 = _DiagToolset(["olmamalı"])
     client2 = FakeClient([
-        ChatResult(tool_calls=[call("edit_file", path="app.py", old_string="return c", new_string="return (c")]),
+        ChatResult(tool_calls=[call("edit_file", path="app.py", old_string="return d", new_string="return (d")]),
         ChatResult(content="tamam", finish_reason="stop"),
     ])
     r2, h2, _ = make_runner(db, client2, proj, mode="auto", mcp=ts2)

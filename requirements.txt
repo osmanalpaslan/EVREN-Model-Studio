@@ -4,3 +4,4 @@ keyring>=25
 markdown>=3.6
 pygments>=2.17
 json-repair>=0.52
+ruff>=0.17

@@ -1,5 +1,6 @@
 # PyInstaller ayarı — klasörlü (onedir), konsolsuz. Çalıştırma: tools\paketle.py (elle: pyinstaller installer\evren_studio.spec)
 # Karar: docs/ILERIDE_YAPILACAKLAR.md §1.1 (onefile İSTENMİYOR: hızlı açılış, daha az antivirüs yanlış alarmı).
+import sys
 from pathlib import Path
 
 ROOT = Path(SPECPATH).parent                      # depo kökü
@@ -13,6 +14,11 @@ datas = [
     (str(ROOT / "assets" / "evren.ico"), "assets"),
     (str(ROOT / "LICENSE"), "."),
 ]
+# ruff (Madde 20 A2): hata bekçisi Python dosyasında tanımsız ad / yapı hatası arar. pip paketinin ikili dosyası
+# Scripts/ altına kurulur (paket klasörüne değil) → PyInstaller kendiliğinden almaz; elle `tools/` altına konur.
+RUFF = Path(sys.executable).with_name("ruff.exe")
+if RUFF.is_file():
+    datas.append((str(RUFF), "tools"))
 
 # Kullanılmayan Qt modülleri ve ayrı ortamda çalışan betiklerin bağımlılıkları (mcp SDK, windows_mcp, Serena, Blender)
 excludes = [
