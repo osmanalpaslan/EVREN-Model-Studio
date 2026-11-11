@@ -137,6 +137,8 @@ proje klasöründe çalışan, kısa süren, girdi beklemeyen bir komut olabilir
   yanıtının plan dışı kısmında soru olarak yaz.
 - Doğrulama komutu zaten PowerShell içinde çalışır: `powershell -Command "..."` diye SARMALAMA.
   `$` değişkenli uzun komut yerine bir betik dosyası yazdırıp `powershell -File betik.ps1` kullan.
+- Doğrulama TEK satırdır: `python -c` yalnız tek satırlık ifade için; `\\n` yazıp çok satırlı kod (try/except, def)
+  KURMA — o denetimi bir test dosyasına koy ve testi çalıştır (ör. `python -m unittest tests.test_x`).
 - Doğrulama gerçek sonucu ölçsün (dosya var mı, satır sayısı tutuyor mu); bir kelimenin geçme
   sayısını saymak doğrulama değildir.
 - "Bağımlı" satırını DİKKATLE doldur: bağımlılığı olmayan görevler AYNI ANDA (paralel) yapılabilir. Bir görev önceki
@@ -291,12 +293,30 @@ _CHECK_BROKEN = re.compile(
     r"|Missing '\)'|Missing closing", re.I)
 
 
+# `python -c "…"` ile verilen satır içi kodun KENDİ yazım hatası (2026-11-11 e2e_proje: planlayıcı `\n`'i düz metin
+# yazdı → "SyntaxError: unexpected character after line continuation character", görev 3 kez denenip takıldı). Hata
+# satırından önceki SON dosya "<string>" ise hata komut satırındaki koddadır; içe aktarılan modülün kendi yazım hatası
+# (`File "…\sayi.py"`) görevin gerçek başarısızlığıdır.
+_PY_FILE = re.compile(r'File "([^"]+)", line \d+')
+_PY_SYNTAX = re.compile(r"^\s*(?:SyntaxError|IndentationError|TabError)\b", re.M)
+
+
+def _python_inline_broken(text: str) -> bool:
+    m = _PY_SYNTAX.search(text)
+    if not m:
+        return False
+    files = _PY_FILE.findall(text[:m.start()])
+    return bool(files) and files[-1] == "<string>"
+
+
 def check_command_broken(output: str) -> bool:
     """Hata komut SATIRINDA mı (At line:N) ve bir kabuk/sözdizimi hatası mı? Betik dosyasının içindeki
-    hata (`At C:\\...\\x.ps1:15`) gerçek başarısızlıktır, bozuk komut sayılmaz."""
+    hata (`At C:\\...\\x.ps1:15`) gerçek başarısızlıktır, bozuk komut sayılmaz. `python -c` satır içi kodun
+    kendi yazım hatası da bozuk komuttur."""
     text = output or ""
-    return bool(re.search(r"(?:At line|Satır)\s*:\s*\d+\s+(?:char|karakter)\s*:\s*\d+", text, re.I)
-                and _CHECK_BROKEN.search(text))
+    ps = bool(re.search(r"(?:At line|Satır)\s*:\s*\d+\s+(?:char|karakter)\s*:\s*\d+", text, re.I)
+              and _CHECK_BROKEN.search(text))
+    return ps or _python_inline_broken(text)
 
 
 # ---- inceleme --------------------------------------------------------------------------------

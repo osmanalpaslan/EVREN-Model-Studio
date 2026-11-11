@@ -395,3 +395,50 @@ def test_proje_kismen_biterse_derin_bitti_demez_bekler_surdurunce_dogrular(win, 
     assert _wait(app, lambda: st.status == "bitti" and not s.deep.active and not s.deep.waiting_project, 40)
     assert "dogrula" in [k for k, _m in client.calls]
     assert any("rapor.xlsx olsun" in p for p in client.prompts if p.startswith("PROJE GÖREVİ"))
+
+
+# 2026-11-11 e2e_proje (B3 ölçümü): planlayıcının `python -c "…; \nimport traceback;\ntry: …"` doğrulaması (düz metin \n)
+# Python'un komutun KENDİSİNİ okuyamamasıyla 3 denemede takıldı. Gerçek çıktı:
+PY_INLINE_BROKEN = (1, '  File "<string>", line 1\n'
+                       "    import sayi; assert sayi.asal_mi(7) and not sayi.asal_mi(1); \\nimport traceback;\\ntry: x\n"
+                       "                                                                ^\n"
+                       "SyntaxError: unexpected character after line continuation character")
+
+
+@pytest.mark.parametrize("out", [
+    PY_INLINE_BROKEN[1],
+    'Traceback (most recent call last):\n  File "<string>", line 1\n    def f(:\n          ^\nSyntaxError: invalid syntax',
+    '  File "<string>", line 2\n    print(1)\nIndentationError: unexpected indent',
+    # bozuk satır içi kodun ARDINDAN aynı doğrulamadaki başka bir komutun izi gelse de karar hata satırına göre
+    PY_INLINE_BROKEN[1] + '\nTraceback (most recent call last):\n  File "C:\\p\\t.py", line 2, in <module>\nAssertionError',
+])
+def test_python_c_satir_ici_yazim_hatasi_bozuk_komuttur(out):
+    assert pj.check_command_broken(out)
+
+
+@pytest.mark.parametrize("out", [
+    # içe aktarılan MODÜLÜN yazım hatası: görevin gerçek başarısızlığı
+    'Traceback (most recent call last):\n  File "<string>", line 1, in <module>\n'
+    '  File "C:\\p\\sayi.py", line 3\n    def asal_mi(n:\n               ^\nSyntaxError: \'(\' was never closed',
+    # satır içi denetimin kendisi başarısız (assert): gerçek başarısızlık
+    'Traceback (most recent call last):\n  File "<string>", line 1, in <module>\nAssertionError',
+    # unittest: test dosyasında yazım hatası
+    'ImportError: Failed to import test module: test_x\nTraceback (most recent call last):\n'
+    '  File "C:\\p\\tests\\test_x.py", line 5\n    x = = 1\nSyntaxError: invalid syntax\n\nFAILED (errors=1)',
+    # yazım hatası yok
+    "FAILED (failures=2)",
+])
+def test_gercek_basarisizlik_bozuk_komut_sayilmaz(out):
+    assert not pj.check_command_broken(out)
+
+
+def test_python_c_bozuk_dogrulama_gorevi_dusurmez(tmp_path):
+    fake = Fake({}, check=PY_INLINE_BROKEN)
+    st = pj.ProjectState(goal="g", tasks=pj.parse_plan(PLAN))
+    out = pj.ProjectRunner(st, tmp_path, fake.hooks(), use_git=False).run()
+    assert out.status == "bitti" and out.tasks[1].status == "bitti" and out.tasks[1].attempts == 1
+    assert any("KOMUTUNUN yazımından" in m for m in fake.review_msgs)
+
+
+def test_plan_bicimi_cok_satirli_python_c_yazdirmaz():
+    assert "`python -c` yalnız tek satırlık" in pj.PLAN_FORMAT and "`\\n`" in pj.PLAN_FORMAT

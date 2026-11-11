@@ -91,6 +91,9 @@ try: …"` (düz metin `
   hatalarını tanıyordu → ayrı düzeltme (R-28). Karşılaştırma: paralel 630 sn / 8/8 · sıralı 1490 sn / 7/8 (plan
   şekli farklı; adil kıyas paralel bölümde: 3 görev 80 sn ↔ tek tek ~209 sn).
 
+- Düzeltme (B3 ölçümünden): `python -c` satır içi kodun kendi yazım hatası artık bozuk doğrulama komutu sayılır
+  (karar incelemeye; kayıt 2026-11-11-proje-python-c-…); PLAN_FORMAT: doğrulama tek satır. Testler 4+4+2, mutasyon 4/4.
+
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2
   kaçtı → iki test eklendi). Bulgu: json_repair TEK BAŞINA daha iyi değil — 2026-10-19 gerçek QA çıktısında (`'""'`)
