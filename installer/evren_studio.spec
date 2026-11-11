@@ -42,7 +42,11 @@ a = Analysis(
     # Ad ile (dize) yüklenenler — PyInstaller göremez: keyring arka ucu giriş noktasıyla, markdown eklentileri
     # markdown_view.py'de "fenced_code" vb. adla
     hiddenimports=["keyring.backends.Windows", "markdown.extensions.fenced_code", "markdown.extensions.tables",
-                   "markdown.extensions.sane_lists", "markdown.extensions.codehilite"],
+                   "markdown.extensions.sane_lists", "markdown.extensions.codehilite",
+                   # proje haritası dil çözümleyicileri agent/tsmap.py'de importlib ile ADLA yüklenir (Madde 20 C1)
+                   "tree_sitter", "tree_sitter_go", "tree_sitter_rust", "tree_sitter_java", "tree_sitter_c_sharp",
+                   "tree_sitter_javascript", "tree_sitter_typescript", "tree_sitter_php", "tree_sitter_c",
+                   "tree_sitter_cpp", "tree_sitter_ruby", "tree_sitter_kotlin"],
     excludes=excludes,
     noarchive=False,
 )

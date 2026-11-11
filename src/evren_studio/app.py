@@ -131,6 +131,12 @@ def smoke_report(window) -> list[str]:
         lines.append("json_repair=var")
     except ImportError:
         lines.append("json_repair=YOK")
+    try:                                    # proje haritası dil çözümleyicileri (agent/tsmap.py, Madde 20 C1)
+        from .agent import tsmap
+
+        lines.append(f"harita_dilleri={len(tsmap.available())}")
+    except Exception as exc:                # noqa: BLE001
+        lines.append(f"harita_dilleri=HATA {type(exc).__name__}")
     try:                                    # anahtar Credential Manager'da: paketlenince arka uç kaybolabilir
         import keyring
 
