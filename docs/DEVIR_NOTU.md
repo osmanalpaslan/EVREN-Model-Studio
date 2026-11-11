@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-11 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Kullanıcı: Madde 20 (repo taraması) önerilerini SIRAYLA uygula, maddeler arasında onay isteme. A1 json_repair + A2 ruff + A3 belgeler YAPILDI (dal `feat/a1-json-onarim`). Sırada: A sonunda gerçek API (e2e_derin, zorluk, R-13) + PR; ardından B1-B4, C1-C4. Kod tablosunda qwen öne alındı (DECISIONS #128).
+- **Güncelleme:** 2026-11-11 22:20 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 20: A1 json_repair, A2 ruff, A3 belgeler, B1 yeniden üretme testi YAPILDI (dallar feat/a1-json-onarim → feat/a3-belgeler → feat/b1-yeniden-uretme, üst üste). Açık: R-13 ajan 5/6 nedeni, e2e_derin PLANLA tekrar ölçümü; sonra PR, B2 (bulgular dosyaya), B3 (worktree paralel), B4, C1-C4. Kod tablosunda qwen önde (DECISIONS #128).
 - **Aktif dal:** `master` (eski not: `feat/masaustu-kontrol` birleşti). Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

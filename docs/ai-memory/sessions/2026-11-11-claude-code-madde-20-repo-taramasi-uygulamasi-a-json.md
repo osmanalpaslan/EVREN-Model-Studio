@@ -52,6 +52,16 @@ ağı + iç işler); yetki verildiği için kod tablosunda qwen öne alınacak (
 - Tuzak tekrarı (R-29): heredoc içinde Python yaması ters bölü/
 'yi bozdu (iki kez) → Write aracıyla dosya + birleştirme.
 
+- A AŞAMASI KAPANIŞ (21:15-22:10): tam takım 1055/1055; zorluk auto 12/12 1410 sn (sunucu yavaş); R-13: E2E_OK · ajan 5/6
+  (incelenecek) · arayüz 15/15; paket 0.4.2 yeniden: 207 MB, duman ruff/belge/json_repair var. e2e_belge (yeni, gerçek API):
+  Word tablosu sohbet eki 98.500 doğru, ajan PDF'i read_file ile okudu 45.000 TL doğru. e2e_derin KALDI: PLANLA 0 geçerli
+  plan (373 sn; aynı koşuda ilgisiz adımlar 270-310 sn → sunucu yükü şüphesi); hemen ardından plan-yalnız koşu 2 geçerli
+  plan 141 sn → tekrar ölçülecek.
+- B1 yeniden üretme testi (dal feat/b1-yeniden-uretme): project.is_bugfix + REPRO_RULE (planning_prompt; Proje + Derin) +
+  deep.REPRO_VERIFY (doğrulama). GERÇEK önce/sonra (tests/e2e_yeniden_uretme_real_api.py, div sıfır hatası): ÖNCE iki
+  planlayıcının 1. görevi doğrudan düzeltme (0/2) → SONRA ikisinde de "başarısız testi yaz, şu an kalıyor" (2/2), 93 sn.
+  test_yeniden_uretme 13 (tetiklenen 6 + tetiklenmeyen 4…); mutasyon 4/4.
+
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2
   kaçtı → iki test eklendi). Bulgu: json_repair TEK BAŞINA daha iyi değil — 2026-10-19 gerçek QA çıktısında (`'""'`)

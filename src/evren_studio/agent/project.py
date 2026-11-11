@@ -135,11 +135,31 @@ proje klasöründe çalışan, kısa süren, girdi beklemeyen bir komut olabilir
   sayısını saymak doğrulama değildir."""
 
 
+# Madde 20 B1 (2026-11-11; Agentless / SWE-agent yaklaşımı, docs/knowledge/REPO_TARAMASI_2026-11.md): hata düzeltme
+# işinde düzeltmeden ÖNCE hatayı yeniden üreten test yazılır, düzeltme o testle kanıtlanır. "Testler geçiyor" demek
+# hatanın gerçekten giderildiğini göstermez (hatayı hiç sınamayan testler de geçer).
+_BUGFIX_RX = re.compile(
+    r"(hata\b|hatas[ıi]|hatal[ıi]|\bbug|çalışmıyor|calismiyor|çöküyor|cokuyor|çöktü|coktu|patlıyor|patliyor|bozuk|"
+    r"bozul|yanlış (hesap|sonuç|sonuc|değer|deger|çıkı|cikti|veriyor|döndür)|exception|traceback|istisna|crash|"
+    r"\bfix\b|takılıyor|takiliyor|donuyor)", re.I)
+
+REPRO_RULE = """
+- BU BİR HATA DÜZELTME İŞİ: 1. görev, hatayı YENİDEN ÜRETEN otomatik test yazmaktır (düzeltmeden önce).
+  Bitti ölçütü: test yazıldı ve ŞU AN KALIYOR (hata gösteriliyor). Doğrulama komutu bu testi çalıştırsın.
+  Düzeltme görevi(leri) bundan sonra gelir; son görevde AYNI test GEÇMELİ (ve öteki testler de).
+  Testi geçirmek için testi değiştirme, zayıflatma ya da atlama; değiştirilen yalnız ürün kodudur."""
+
+
+def is_bugfix(goal: str) -> bool:
+    return bool(_BUGFIX_RX.search(goal or ""))
+
+
 def planning_prompt(goal: str, feedback: str = "") -> str:
     fb = f"\n\nKullanıcının önceki plana geri bildirimi:\n{feedback}\nPlanı buna göre düzelt." if feedback else ""
     return ("PROJE PLANLAMA (henüz kod yazma, dosya değiştirme).\n\nHedef:\n" + goal.strip() + fb
             + "\n\nÖnce proje klasörünü incele (dosya listesi, varsa README/testler), sonra hedefi "
-            "uygulanabilir görevlere böl.\n\n" + PLAN_FORMAT.format(max=MAX_TASKS))
+            "uygulanabilir görevlere böl.\n\n" + PLAN_FORMAT.format(max=MAX_TASKS)
+            + (REPRO_RULE if is_bugfix(goal) else ""))
 
 
 _TASK_RE = re.compile(r"^\s*-\s*\[[ xX~!\-]\]\s*(?:(\d+)[.)]\s*)?(.+?)\s*$")
