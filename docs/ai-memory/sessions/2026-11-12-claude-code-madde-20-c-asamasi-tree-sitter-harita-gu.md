@@ -57,7 +57,11 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   çok kısa kayıt, karşılama ekranında modal yok); mutasyon 9/9. GERÇEK: temiz klasöre kurulum 139 sn, 752 MB;
   Windows "Tolga" Türkçe sesiyle üretilen 3 cümle: 4,3 / 5,3 / 5,8 sn (model yükleme dahil); doğruluk iyi, küçük
   hatalar ("KDV" → "kat mater vergisi", "şüpheli" → "Şükeli", "Projeklasöründeki") — metin gönderilmeden düzeltilebilir.
-  Gerçek mikrofonla kayıt bu oturumda denenmedi (kullanıcı başında değil); kayıt yolu birim testli.
+  Gerçek mikrofonla kayıt: aşağıdaki C3 DÜZELTME maddesinde (gerçek mikrofon, sessizlik).
+- C4: test_gercek_terminal 6 (GERÇEK kabukla: cd + değişken + Read-Host yanıtı; ping + Ctrl+C keser ve sonraki komut
+  çalışır, boyut değişir; çıkışta açık kabuk kapanır; tuş dizileri; arayüzde Kabuk sekmesine yazılan komut çalışır,
+  proje kapanınca süreç biter; kütüphane yoksa anlaşılır not) + duman denetimi; mutasyon 9/9 (kaçan Ctrl eşlemesi:
+  test Qt metnini dolu veriyordu → boş metinle güçlendirildi).
 - C3 DÜZELTME (C4 paketlemesine bakarken bulundu): kurulum paketi (spec excludes) `PySide6.QtMultimedia`'yı DIŞARIDA
   bırakıyor → QAudioSource ile kayıt kurulu uygulamada ÇALIŞMAZDI (kaynaktan çalışınca görünmüyor). QtMultimedia'yı
   eklemek ~60 MB (FFmpeg). Bunun yerine KAYIT da ses ortamında ayrı süreçte: `sounddevice` (MIT) ile `kaydet.py`
@@ -65,6 +69,15 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   (`kuruldu.json` surum=2): eski kurulumda kaydedici yoksa yeniden kurulur (gerçek: 3,4 sn). Uygulama kapanınca açık
   kayıt süreci öldürülür. GERÇEK MİKROFON: kaydedici 0,78 sn'de hazır, 2,5 sn kayıt, sessizlik → boş metin (uydurma
   yok; arayüz "anlaşılamadı" der), geçici klasör silindi. test_sesle_yazma 15; mutasyon (yeni parçalar) 8/8.
+- C4 gerçek terminal: agent/ptyshell.py (Qt'siz; pywinpty MIT + pyte LGPL-3.0 ekran öykünücüsü) + ui/shell_view.py;
+  Terminal sekmesi iki görünüm: "Günlük" (eski: ajan komutları + tek seferlik komut) / "Kabuk" (proje klasöründe
+  SÜREKLİ PowerShell; cd/değişken kalır, Read-Host gibi soru soran komutlara yanıt; Ctrl+C keser, seçim varken
+  kopyalar; Ctrl+V yapıştırır; ok tuşları/Tab/Home/End). Projenin .venv'i PATH'te (ajanla aynı ortam). ÖLÇÜLDÜ:
+  pywinpty'nin varsayılan ConPTY arka ucunda yazılan Ctrl+C uzun komutu (ping) KESMİYOR, sonraki komut kuyrukta
+  kalıyor; WinPTY arka ucunda kesiyor → önce WinPTY, açılamazsa ConPTY. Kapanış: ShellView aboutToQuit + ptyshell
+  atexit (açık kabuk süreci kalmaz); proje kapanınca kabuk kapanır. Paket: winpty-agent.exe/winpty.dll/conpty.dll/
+  OpenConsole.exe spec datas (`winpty/`; PyInstaller kancası yok), duman `terminal=var` + check_smoke. Ajanın
+  komutları bu kabukta ÇALIŞMAZ (ajan kendi yalıtılmış komutlarını kullanır).
 
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası

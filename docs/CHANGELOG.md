@@ -2,6 +2,9 @@
 
 ## Yayınlanmamış — açık kaynak depolardan gelen geliştirmeler (Madde 20)
 
+- **Gerçek terminal** (C4): Terminal sekmesinde yeni "Kabuk" görünümü — proje klasöründe sürekli açık PowerShell:
+  `cd` ve değişkenler komutlar arasında kalır, soru soran komutlara (onay, ad, şifre değil) yanıt verebilirsiniz,
+  Ctrl+C çalışan komutu keser. Eski "Günlük" görünümü (ajanın komutları) aynen duruyor.
 - **Sesle yazma** (C3): yazı kutusundaki mikrofon düğmesine basıp konuşun, yeniden basınca konuşma yazıya çevrilip
   kutuya eklenir (gönderilmez; düzeltip siz gönderirsiniz). İlk kullanımda ~600 MB'lık konuşma tanıma bileşeni
   onayınızla bir kez indirilir; ses bilgisayarınızdan çıkmaz.

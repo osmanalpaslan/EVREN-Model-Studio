@@ -508,21 +508,51 @@ class FilesTab(QWidget):
 
 
 class TerminalTab(QWidget):
-    """Ajanın çalıştırdığı komutların günlüğü + kullanıcının kendi komutları."""
+    """İki görünüm: "Günlük" — ajanın çalıştırdığı komutlar + kullanıcının tek seferlik komutları; "Kabuk" — proje
+    klasöründe SÜREKLİ, etkileşimli PowerShell (Madde 20 C4: cd/değişken kalır, soru soran komutlara yanıt verilir)."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        from .shell_view import ShellView
+
         self.root: str | None = None
         lay = QVBoxLayout(self)
         lay.setContentsMargins(8, 8, 8, 8)
         lay.setSpacing(6)
+        seg = QHBoxLayout()
+        seg.setSpacing(4)
+        self.mode_group = QButtonGroup(self)
+        self.log_btn = QPushButton("Günlük")
+        self.shell_btn = QPushButton("Kabuk")
+        self.log_btn.setToolTip("Ajanın çalıştırdığı komutlar ve çıktıları")
+        self.shell_btn.setToolTip("Etkileşimli PowerShell: komutlar arası cd ve değişkenler kalır; soru soran "
+                                  "komutlara yanıt verebilirsiniz (Ctrl+C: kes, Ctrl+V: yapıştır)")
+        for i, b in enumerate((self.log_btn, self.shell_btn)):
+            b.setCheckable(True)
+            b.setProperty("variant", "chip")
+            b.setCursor(Qt.PointingHandCursor)
+            self.mode_group.addButton(b, i)
+            seg.addWidget(b)
+        seg.addStretch(1)
+        self.restart_btn = icon_button("refresh", "Kabuğu yeniden başlat", 15)
+        self.restart_btn.clicked.connect(lambda _=None: self.shell.restart())
+        seg.addWidget(self.restart_btn)
+        lay.addLayout(seg)
+        self.stack = QStackedWidget()
         self.view = QPlainTextEdit()
         self.view.setObjectName("TerminalView")
         self.view.setReadOnly(True)
         self.view.setFont(theme.code_font(9))
         self.view.setPlaceholderText("Ajanın ve sizin çalıştırdığınız komutlar ve çıktıları burada görünür.")
-        lay.addWidget(self.view, 1)
-        row = QHBoxLayout()
+        self.stack.addWidget(self.view)
+        self.shell = ShellView()
+        self.stack.addWidget(self.shell)
+        lay.addWidget(self.stack, 1)
+        self.log_btn.setChecked(True)
+        self.mode_group.idClicked.connect(self.set_mode)
+        self.input_row = QWidget()
+        row = QHBoxLayout(self.input_row)
+        row.setContentsMargins(0, 0, 0, 0)
         self.input = QLineEdit()
         self.input.setFont(theme.code_font(9))
         self.input.setPlaceholderText("PS>  proje klasöründe komut çalıştır (Enter)")
@@ -531,12 +561,26 @@ class TerminalTab(QWidget):
         clear = icon_button("trash", "Temizle", 15)
         clear.clicked.connect(self.view.clear)
         row.addWidget(clear)
-        lay.addLayout(row)
+        lay.addWidget(self.input_row)
         self._busy = False
+        self.set_mode(0)
+
+    def set_mode(self, index: int) -> None:
+        """0 = Günlük, 1 = Kabuk. Kabuk ilk kez açılınca başlar (görünür olunca)."""
+        self.stack.setCurrentIndex(index)
+        (self.log_btn if index == 0 else self.shell_btn).setChecked(True)
+        self.input_row.setVisible(index == 0)
+        self.restart_btn.setVisible(index == 1)
+        if index == 1:
+            self.shell.setFocus()
 
     def set_root(self, root: str | None) -> None:
         self.root = root
         self.input.setEnabled(bool(root))
+        self.shell.set_root(root)
+        self.shell_btn.setEnabled(bool(root))
+        if not root and self.stack.currentIndex() == 1:
+            self.set_mode(0)
 
     def log_command(self, command: str, source: str = "ajan") -> None:
         self.view.appendPlainText(f"\n[{source}] PS> {command}")

@@ -19,6 +19,17 @@ datas = [
 RUFF = Path(sys.executable).with_name("ruff.exe")
 if RUFF.is_file():
     datas.append((str(RUFF), "tools"))
+# Etkileşimli terminal (Madde 20 C4): pywinpty'nin yardımcı ikilileri (winpty-agent.exe, winpty.dll, conpty.dll,
+# OpenConsole.exe) paket klasöründe durur ve çalışma anında yanından yüklenir; PyInstaller kancası yok → elle.
+try:
+    import winpty as _winpty
+
+    _WP = Path(_winpty.__file__).parent
+    for _name in ("winpty-agent.exe", "winpty.dll", "conpty.dll", "OpenConsole.exe"):
+        if (_WP / _name).is_file():
+            datas.append((str(_WP / _name), "winpty"))
+except ImportError:
+    pass
 
 # Kullanılmayan Qt modülleri ve ayrı ortamda çalışan betiklerin bağımlılıkları (mcp SDK, windows_mcp, Serena, Blender)
 excludes = [

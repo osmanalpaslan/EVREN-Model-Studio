@@ -137,6 +137,17 @@ def smoke_report(window) -> list[str]:
         lines.append(f"harita_dilleri={len(tsmap.available())}")
     except Exception as exc:                # noqa: BLE001
         lines.append(f"harita_dilleri=HATA {type(exc).__name__}")
+    try:                                    # etkileşimli terminal (agent/ptyshell.py, Madde 20 C4): kütüphane + yardımcı exe
+        from pathlib import Path as _P
+
+        import winpty
+
+        from .agent import ptyshell
+
+        agent_exe = _P(winpty.__file__).parent / "winpty-agent.exe"
+        lines.append("terminal=" + ("var" if ptyshell.available() and agent_exe.is_file() else "EKSIK"))
+    except Exception as exc:                # noqa: BLE001
+        lines.append(f"terminal=HATA {type(exc).__name__}")
     try:                                    # anahtar Credential Manager'da: paketlenince arka uç kaybolabilir
         import keyring
 
