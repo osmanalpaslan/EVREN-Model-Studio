@@ -455,6 +455,7 @@ class TaskRun:
     diff: str = ""                    # git yoksa uygulamanın değişiklik kaydından
     error: ApiError | None = None
     reads: list[str] = field(default_factory=list)   # bu denemede read_file ile okunan dosyalar (proje göreli)
+    critic: list[dict] = field(default_factory=list)  # B4 gözetmen kontrolleri [{adim, puan, neden}] (ölçüm)
 
 
 @dataclass
@@ -662,6 +663,7 @@ class ProjectRunner:
         run = self.hooks.run_task_in(task, task_prompt(st, task, feedback, shared_reads(st, self.root)), wt)
         task.seconds += time.monotonic() - t0
         task.model = run.model or task.model
+        self._log_critic(task, run)
         if run.error is not None or run.stopped in ("cancelled", "error"):
             why = run.error.message[:200] if run.error is not None else f"tur '{run.stopped}' ile bitti"
             return False, why, run
@@ -742,6 +744,13 @@ class ProjectRunner:
             return "pause"
         return "ok"
 
+    def _log_critic(self, task: Task, run: TaskRun) -> None:
+        """B4 ölçümü: gözetmen puanları günlüğe (yanlış alarm oranı R-22 buradan sayılır)."""
+        if run.critic:
+            marks = ", ".join(f"{c.get('adim')}:{c.get('puan')}" for c in run.critic)
+            self._log(f"Görev {task.idx} gözetmen puanları (adım:puan) {marks}"
+                      + (" → ERKEN DURDURDU" if run.stopped == "critic" else ""))
+
     def _cleanup_wt(self, task: Task, wt: Path, branch: str, links: list[Path]) -> None:
         import shutil
 
@@ -794,6 +803,7 @@ class ProjectRunner:
             for rel in dict.fromkeys(run.reads):
                 st.reads[rel] = st.reads.get(rel, 0) + 1
             task.model = run.model or task.model
+            self._log_critic(task, run)
             if run.stopped == "cancelled" or self.hooks.cancelled():
                 task.attempts -= 1
                 self._pause("Kullanıcı durdurdu.")
@@ -864,6 +874,9 @@ class ProjectRunner:
 
     def _verify(self, task: Task, run: TaskRun, cwd: Path | None = None) -> tuple[bool, str]:
         """cwd verilirse (B3 paralel çalışma kopyası) doğrulama komutu orada çalışır."""
+        if run.stopped == "critic":
+            return False, ("gözetmen (ayrı model) görevin raydan çıktığını gördü ve erken durdurdu: "
+                           + (run.summary or "ilerleme yok")[:300] + ". Görevin ölçütüne odaklan; gereksiz işi bırak.")
         if run.stopped not in ("done", "max_steps", "loop", "context_limit"):
             return False, f"tur '{run.stopped}' ile bitti"
         check_out = ""

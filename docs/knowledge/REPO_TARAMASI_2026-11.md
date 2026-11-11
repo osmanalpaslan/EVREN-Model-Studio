@@ -79,6 +79,8 @@ Plandex (MIT) 2025-10'dan beri güncellenmiyor.
 - B3: YAPILDI (dal `feat/b3-paralel-gorev`): Proje ajanı (ve Derin'in uygulama aşaması) bağımsız görevleri ayrı git
   çalışma kopyalarında aynı anda yapar, sırayla birleştirir; çakışan/doğrulanamayan sırayla yeniden yapılır. Gerçek:
   3 bağımsız görev 80 sn (tek tek ~209 sn), kabul 8/8. Toplam süreyi sıralı kalan görevler (toparlama, README) belirler.
+- B4: YAPILDI (dal `feat/b4-gozetmen`): gözetimsiz görevde ayrı hızlı model 8 adımda bir puan; tek düşük → not,
+  iki üst üste düşük → erken durdur + gerekçeyle yeniden dene. Yanlış alarm ölçümü: oturum günlüğü.
 
 ## 5. Kaynaklar
 

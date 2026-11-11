@@ -214,7 +214,8 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
     except Exception as exc:  # alt ajan hatası tüm Derin koşuyu düşürmesin
         return SubResult("", "error", f"{type(exc).__name__}: {exc}", events.tools, time.monotonic() - t0,
                          transcript_of(history), used)
-    return SubResult(last_text(), out.stopped, "", events.tools, time.monotonic() - t0, transcript_of(history), used)
+    text = (getattr(out, "critic_reason", "") or "gözetmen durdurdu") if out.stopped == "critic" else last_text()
+    return SubResult(text, out.stopped, "", events.tools, time.monotonic() - t0, transcript_of(history), used)
 
 
 def _block(text: str, tag: str) -> dict | None:

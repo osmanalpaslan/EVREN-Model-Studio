@@ -94,6 +94,17 @@ try: …"` (düz metin `
 - Düzeltme (B3 ölçümünden): `python -c` satır içi kodun kendi yazım hatası artık bozuk doğrulama komutu sayılır
   (karar incelemeye; kayıt 2026-11-11-proje-python-c-…); PLAN_FORMAT: doğrulama tek satır. Testler 4+4+2, mutasyon 4/4.
 
+- B4 gidiş gözetmeni (dal feat/b4-gozetmen, B3'ün üstünde; OpenHands "verification stack"): agent/critic.py — gözetimsiz
+  Proje GÖREVİ turunda (sıralı oturum turu + paralel arayüzsüz ajan; Derin uygulama aşaması da) her 8 adımda bir ayrı
+  hızlı model (rol `elestirmen`: deepseek-v4-flash → gemma → qwen; kod modeli qwen'den AYRI; yalnız EVREN, ücret yok)
+  son 16 mesajın kısa dökümüyle 0-10 puan verir. ≤3 → ilk sefer yalnız geçici not (nudge), üst üste ikinci ≤3 → tur
+  `critic` ile durur; ProjectRunner gerekçeyi geri bildirim yapıp yeniden dener. Eleştirmen hatası / okunamayan yanıt /
+  "puan" yok → hiçbir şey (iş asla eleştirmen yüzünden durmaz); arada iyi puan sayaçı sıfırlar. Puanlar proje
+  günlüğüne (ölçüm: yanlış alarm = başarılı görevde ≤3). Plan turu ve normal kullanıcı turu gözetmensiz. Ayar
+  `progress_critic` (varsayılan açık). test_gozetmen 16 + test_project_ui 5 (bağlantı: plan turu yok, görev turu var,
+  ayar kapalı yok, koşucuya iletim, puanların günlüğe taşınması); mutasyon 17/17 (ilk turda kaçan: sıralı yolda puan
+  taşıma → test eklendi). Riskli alan paketi (koşucu, router, oturum, proje, derin, güvenlik; 24 dosya) 360 geçti.
+
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2
   kaçtı → iki test eklendi). Bulgu: json_repair TEK BAŞINA daha iyi değil — 2026-10-19 gerçek QA çıktısında (`'""'`)

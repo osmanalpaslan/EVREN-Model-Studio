@@ -216,7 +216,7 @@ def main() -> int:
                          encoding="utf-8").stdout
     checks = kabul_par(proj) if hedef == "paralel" else kabul(proj)
     passed = sum(1 for _n, o, _d in checks if o)
-    paralel_log = [x for x in st.log if "AYNI ANDA" in x or "paralel" in x or "sırayla" in x]
+    paralel_log = [x for x in st.log if "AYNI ANDA" in x or "paralel" in x or "sırayla" in x or "gözetmen" in x]
     rapor = {
         "model": model, "hedef": hedef, "paralel": par, "plan_sn": plan_s,
         "yurutme_sn": round(time.monotonic() - t_run), "paralel_gunluk": paralel_log[:20],

@@ -373,6 +373,7 @@ class TurnOutcome:
     test_edits: list[str] = field(default_factory=list)   # istenmeden değiştirilen var olan test dosyaları
     open_plan_items: list[str] = field(default_factory=list)  # tur bittiğinde plan/görev listesinde açık kalanlar
     model_switches: list[tuple[str, str, str]] = field(default_factory=list)   # (eski, yeni, neden)
+    critic_reason: str = ""          # stopped == "critic": gözetmenin gerekçesi (B4)
 
 
 # ---- geçmiş → API mesajları ----------------------------------------------------------
@@ -526,7 +527,8 @@ class AgentRunner:
                  slow_factor: float = modelstats.FACTOR_TURN, route_role: str = "",
                  base_body: dict[str, Any] | None = None, extra_hint: str = "",
                  project_map: bool = False, skills: list | None = None, untrusted: list[str] | None = None,
-                 user_rules: Any = None, game_tools: bool = False, test_tools: Any = None):
+                 user_rules: Any = None, game_tools: bool = False, test_tools: Any = None,
+                 critic: Any = None):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -619,6 +621,8 @@ class AgentRunner:
         self.install_mode = install_mode if install_mode in ("otomatik", "manuel") else "otomatik"
         self._env_section: str | None = None
         self._nudge: str | None = None          # sonraki çağrıya eklenecek geçici hatırlatma
+        # B4 gidiş gözetmeni (agent/critic.py): yalnız gözetimsiz görevde (Proje/Derin) verilir; None → kapalı
+        self.critic = critic
         self._extra_body: dict[str, Any] | None = None
         self._writes: list[tuple[str, str | None, str | None]] = []  # (yol, önce, sonra) — son araç
         self.toolbox = (
@@ -1220,6 +1224,17 @@ class AgentRunner:
                 outcome.stopped = "user_control"
                 self.events.status("Masaüstünü uzun süre siz kullandınız; ajan işi güvenli noktada duraklattı.")
                 break
+            if self.critic is not None and not self._cancelled():
+                verdict = self.critic.check(step, history)
+                if verdict is not None and verdict[0] == "dur":
+                    outcome.stopped = "critic"
+                    outcome.critic_reason = verdict[1]
+                    self.events.status("Gözetmen (ayrı model) iki kontrolde üst üste ajanın görevden uzaklaştığını "
+                                       f"gördü; görev temiz bir denemeyle yeniden yapılacak: {verdict[1][:160]}")
+                    break
+                if verdict is not None:
+                    self._nudge = (self._nudge + "\n\n" if self._nudge else "") + verdict[1]
+                    self.events.status("Gözetmen notu: ajan görevden uzaklaşıyor olabilir; yönlendirildi.")
             # Sert sınır, modele GERÇEKTEN gidecek (eski çıktıları kısaltılmış) geçmişe bakar; kısaltma yetmezse durur
             if self.hard_context_limit and self._history_tokens(self._visible(history)) >= self.hard_context_limit:
                 outcome.stopped = "context_limit"

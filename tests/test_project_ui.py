@@ -213,6 +213,9 @@ def test_bagimsiz_gorevler_paralel_ve_arayuzsuz(win, tmp_path, monkeypatch):
     assert [d for d in disp if d.startswith("Proje görevi")] == ["Proje görevi 3/3: README yaz"]
     assert len([c for c in client.calls if c[0] == "task" and "PROJE GÖREVİ" in c[2]]) == 3
     assert not any((w.ctx.settings.resolved_data_dir() / "worktrees").rglob("*.txt"))
+    from evren_studio.agent import critic as cr
+
+    assert all(isinstance(kw.get("critic"), cr.Critic) for kw in kws)       # B4: paralel yolda da gözetmen
     gate = s.project._par_gate                                         # kota kapısı: paralel görevlerin hepsinde
     assert gate is not None and gate.max_parallel == 3 and len(gates) == 2 and all(g is gate for g in gates)
     s_ = w.ctx.settings                                               # oturum ajanıyla aynı ayarlar
@@ -266,3 +269,90 @@ def test_kopyada_kurallar_yalniz_ana_klasorde_onayliysa(win, tmp_path):
     (wt / userrules.RULES_FILE).write_text(_json.dumps(
         {"kurallar": [{"olay": "tur_sonu", "komut": "del *"}]}), encoding="utf-8")
     assert pc._headless_rules(wt) is None                                    # kopyadaki içerik farklı → onaysız
+
+
+@pytest.mark.parametrize("acik", [True, False])
+def test_gozetmen_proje_gorev_turuna_verilir_plan_turuna_verilmez(win, tmp_path, acik, monkeypatch):
+    """B4 (R-31): gözetmen yalnız gözetimsiz Proje GÖREVİ turunun koşucusuna gider; ayar kapalıysa hiç."""
+    from evren_studio.agent import critic as cr
+
+    app, w = win
+    w.ctx.settings.progress_critic = acik
+    from evren_studio.ui import session_view as svmod
+
+    built = []
+    real_runner = svmod.AgentRunner
+
+    class Spy(real_runner):
+        def __init__(self, *a, **kw):
+            built.append(kw.get("critic"))
+            super().__init__(*a, **kw)
+    monkeypatch.setattr(svmod, "AgentRunner", Spy)
+    client = FakeClient()
+    seen = []
+    s, proj, PlanCard = _start_capture(w, tmp_path, client, seen)
+    assert _wait(app, lambda: s.findChildren(PlanCard))
+    s.findChildren(PlanCard)[-1].approved.emit()
+    assert _wait(app, lambda: not s.project.active and s.project.state and s.project.state.status == "bitti")
+    plan_runs = [c for k, c in seen if k == "plan"]
+    task_runs = [c for k, c in seen if k == "auto"]
+    assert plan_runs and all(c is None for c in plan_runs)
+    assert len(task_runs) == 2
+    if acik:
+        assert all(isinstance(c, cr.Critic) for c in task_runs) and task_runs[0] is not task_runs[1]
+        assert built[-2:] == task_runs                                  # oturum turu koşucuya iletti
+    else:
+        assert all(c is None for c in task_runs)
+
+
+def test_sirali_gorev_gozetmen_puanlari_proje_gunlugunde(win, tmp_path):
+    """Sıralı (oturum turu) görevin gözetmen kayıtları TaskRun üzerinden proje günlüğüne düşer (R-22 ölçümü)."""
+    app, w = win
+    client = FakeClient()
+
+    class C:
+        def __init__(self):
+            self.log = [{"adim": 8, "puan": 9, "neden": "iyi"}]
+
+        def check(self, step, history):
+            return None
+    s, proj, PlanCard = _start(w, tmp_path, client)
+    s.project._make_critic = C
+    assert _wait(app, lambda: s.findChildren(PlanCard))
+    s.findChildren(PlanCard)[-1].approved.emit()
+    assert _wait(app, lambda: not s.project.active and s.project.state and s.project.state.status == "bitti")
+    assert sum("gözetmen puanları (adım:puan) 8:9" in x for x in s.project.state.log) == 2
+
+
+def _start_capture(w, tmp_path, client, seen):
+    s = w.session
+    real = s.start_run
+
+    def spy(*a, **kw):
+        seen.append((kw.get("mode_override"), kw.get("critic")))
+        return real(*a, **kw)
+    s.start_run = spy
+    return _start(w, tmp_path, client)
+
+
+def test_arayuzsuz_gorev_gozetmen_puanlarini_dondurur(win, tmp_path, monkeypatch):
+    """Paralel (arayüzsüz) görevin gözetmen kayıtları TaskRun'a taşınır (ölçüm günlüğü için)."""
+    from evren_studio.agent import deep
+
+    app, w = win
+    s = w.session
+    s.new_session()
+    s.welcome._choose(str(tmp_path))
+    pc = s.project
+    marks = [{"adim": 8, "puan": 9, "neden": "iyi"}]
+    fake_critic = type("C", (), {"log": marks})()
+    pc._make_critic = lambda: fake_critic
+    pc._free_chain = lambda: ["qwen3.8-flash-next"]
+    got = {}
+
+    def sub(**kw):
+        got.update(kw)
+        return deep.SubResult("bitti", "done", "", 0, 1.0, "", "qwen3.8-flash-next")
+    monkeypatch.setattr(deep, "run_subagent", sub)
+    run = pc._run_task_in(pj.Task(idx=1, title="t", criteria="c"), "istem", tmp_path)
+    assert run.stopped == "done" and run.critic == marks and got["runner_kw"]["critic"] is fake_critic

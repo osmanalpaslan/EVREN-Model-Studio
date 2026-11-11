@@ -439,12 +439,16 @@ class ProjectController(QObject):
         model, fallbacks, role = self._model_for("kod", fallback=req["fallback"])
 
         def hook(outcome, exc) -> None:
-            req["result"] = self._task_result(msg_id, outcome, exc, model)
+            res = self._task_result(msg_id, outcome, exc, model)
+            res.critic = list(getattr(req.get("critic"), "log", None) or [])
+            req["result"] = res
             req["event"].set()
 
+        critic = self._make_critic()
+        req["critic"] = critic
         sv._turn_id = msg_id
         sv._turn_hook = hook
-        sv.start_run(history_from=msg_id, mode_override="auto", model_override=(model, fallbacks, role))
+        sv.start_run(history_from=msg_id, mode_override="auto", model_override=(model, fallbacks, role), critic=critic)
         if not sv.running and not req["event"].is_set():
             sv._turn_hook = None
             req["result"] = pj.TaskRun(stopped="error", error=None, summary="tur başlatılamadı")
@@ -483,6 +487,8 @@ class ProjectController(QObject):
         if exc is not None:
             return pj.TaskRun(stopped="error", summary=summary, model=used,
                               error=exc if isinstance(exc, ApiError) else None, reads=reads)
+        if outcome.stopped == "critic":
+            summary = getattr(outcome, "critic_reason", "") or summary
         return pj.TaskRun(stopped=outcome.stopped, summary=summary, model=used, diff=diff, reads=reads)
 
     def _review(self, messages: list[dict]) -> str:
@@ -511,6 +517,16 @@ class ProjectController(QObject):
                      output_limit=s.tool_output_limit)
         r = tb.run_command(command, timeout_seconds=s.command_timeout_seconds)
         return r.exit_code, r.output
+
+    def _make_critic(self):
+        """B4: görev denemesi başına yeni gözetmen (ayar kapalıysa / EVREN yoksa None). Yalnız EVREN: ücret yok."""
+        from ..agent import critic as cr
+
+        if not getattr(self.ctx.settings, "progress_critic", False) or "evren" not in self.ctx.available_providers():
+            return None
+        sid = self.view.session_id
+        return cr.Critic(chat=lambda msgs: self.ctx.ai_chat("elestirmen", msgs, max_tokens=300, session_id=sid,
+                                                        evren_only=True)[0])
 
     def _free_chain(self) -> list[str]:
         """Kod rolü zincirinin EVREN (ücretsiz) modelleri; birincil model EVREN değilse boş."""
@@ -561,6 +577,8 @@ class ProjectController(QObject):
                   extra_hint="\n\n".join(h for h in (router.ROLE_HINTS.get("kod", ""), sv._profile_hint()) if h),
                   stall_retry_body=({"reasoning_effort": "none"}
                                     if info and (info.capabilities or {}).get("reasoning_effort") else None))
+        critic = self._make_critic()
+        kw["critic"] = critic
         token = CancelToken()
         token._event = self._cancel                 # kullanıcı projeyi durdurunca bu ajan da güvenli noktada durur
         client = self.ctx.make_client()
@@ -573,9 +591,10 @@ class ProjectController(QObject):
                                     max_steps=int(self.ctx.settings.agent_max_steps or 80))
         finally:
             client.close()
+        marks = list(getattr(critic, "log", None) or [])
         if res.error:
-            return pj.TaskRun(stopped="error", summary=res.error, model=res.model)
-        return pj.TaskRun(stopped=res.stopped, summary=res.text, model=res.model)
+            return pj.TaskRun(stopped="error", summary=res.error, model=res.model, critic=marks)
+        return pj.TaskRun(stopped=res.stopped, summary=res.text, model=res.model, critic=marks)
 
     def _fetch_quota(self):
         client = self.ctx.make_client()

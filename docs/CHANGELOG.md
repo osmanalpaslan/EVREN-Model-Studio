@@ -2,6 +2,12 @@
 
 ## Yayınlanmamış — açık kaynak depolardan gelen geliştirmeler (Madde 20)
 
+- **Gözetmen** (B4): Proje (ve Derin Mod) görevi kullanıcı başında olmadan yürürken ayrı ve hızlı bir model 8 adımda
+  bir "görev yolunda mı" diye puan verir. Ajan görevden uzaklaşıyorsa önce uyarılır; iki kontrolde üst üste
+  uzaklaşmışsa görev durdurulup gerekçesiyle temiz bir denemeyle yeniden yapılır. Yalnız EVREN (ücretsiz) modeli
+  kullanır; ayar `progress_critic`.
+- **Düzeltme — doğrulama komutunun kendi yazım hatası görevi takıyordu**: planın `python -c` doğrulaması bozuk
+  yazıldığında iş doğru olsa bile görev 3 kez denenip takılıyordu; artık karar incelemeye bırakılır.
 - **Proje ajanı birbirinden bağımsız görevleri AYNI ANDA yapar** (B3): her görev projenin ayrı bir git çalışma
   kopyasında (worktree) çalışır, bitince sırayla proje dalına birleştirilir. Gerçek ölçüm (3 bağımsız modüllü iş):
   üç görev 80 sn'de bitti (tek tek ~209 sn), kabul 8/8. Çakışan ya da doğrulanamayan paralel deneme kaybolmaz: aynı
