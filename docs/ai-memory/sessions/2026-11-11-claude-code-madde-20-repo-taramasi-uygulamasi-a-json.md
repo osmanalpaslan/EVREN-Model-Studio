@@ -61,6 +61,56 @@ ağı + iç işler); yetki verildiği için kod tablosunda qwen öne alınacak (
   deep.REPRO_VERIFY (doğrulama). GERÇEK önce/sonra (tests/e2e_yeniden_uretme_real_api.py, div sıfır hatası): ÖNCE iki
   planlayıcının 1. görevi doğrudan düzeltme (0/2) → SONRA ikisinde de "başarısız testi yaz, şu an kalıyor" (2/2), 93 sn.
   test_yeniden_uretme 13 (tetiklenen 6 + tetiklenmeyen 4…); mutasyon 4/4.
+- B2 (alt ajan bulguları dosyaya) YAPILMADI, gerekçeli: Derin bağlam notu ≤3500 karakter, alt ajan istemi bunun 5-10
+  katı; bulguyu dosyaya taşımak her alt ajana bir okuma adımı (~10 sn) ekler, kazanç yok → net olumsuz.
+- B3 paralel görev (dal feat/b3-paralel-gorev, CAID): ProjectRunner bağımsız görevleri (bağımlılıkları bitmiş, hiç
+  denenmemiş, son görev değil) `<veri>/worktrees/<dal>/gorev-N` git çalışma kopyalarında ThreadPoolExecutor ile aynı
+  anda yapar (project_ui._run_task_in → deep.run_subagent mode="auto", test_check=True), kopyada doğrular + commit'ler,
+  sonra SIRAYLA `merge --no-ff`; çakışma → `merge --abort` + görev seq_only ile sırayla, paralel denemenin dersi
+  (PAR_NOTE) isteme geçer. Açılmaz: parallel ≤1, git yok, <3 görev, planda HİÇ bağımlılık yok (planlayıcı yazmamışsa
+  "bağımsız" sanılan görev aslında sıralı olabilir), birincil kod modeli EVREN değil (arayüzsüz ajanın kullanımı
+  maliyet/bütçe kaydına girmez). Kota kapısı (QuotaGate): pencere ≥%60 → sırayla; günlük kota / durdurma → deneme
+  hakkı geri verilir. .venv/node_modules (yoksayılan) kopyaya dizin bağlantısı (junction) ile verilir; ÖLÇÜLDÜ:
+  `git worktree remove --force` bağlantının hedefine girmiyor ama klasörü bağlantıyla bırakıyor → önce bağlantı
+  kaldırılır, kalan artık Python 3.12 rmtree ile (bağlantı içine girmez) silinir. Eşitlik yaması: arayüzsüz ajana
+  oturum ajanının ayarları (onaylı proje kuralları — onay ANA klasörün anahtarıyla, kopyada içerik aynıysa —, beceriler,
+  güvenilmeyen klasörler, kurulum kipi, komut süre/çıktı sınırı, düzenleme denetimi, rol ipucu + profil, istatistik).
+  test_paralel_gorev 14 + test_project_ui 3 yeni; mutasyon 29/30 (kaçan: çift katman korumanın ilk katmanı, bilinçli;
+  ilk turda kaçan kurulum kipi / runner_kw iletimi → testler güçlendirildi). Riskli alan paketi 122 + güvenlik/döngü 54 geçti.
+  GERÇEK (e2e_proje `--hedef paralel`, 3 bağımsız modül + tests + README, kabul denetimi önce doğru 8/8 / hatalı 7/8
+  ile sınandı): `--paralel 3` → plan 5 görev (1-3 bağımsız), 1-3 AYNI ANDA 80 sn (tek tek 69+66+74 sn), toplam 725 sn,
+  kabul 8/8. Sıralı tail (görev 4: 292 sn — ajanın `find /c "test_"` komutu tüm diski taradı, 120 sn zaman aşımı;
+  görev 5: 220 sn) toplamı belirliyor. `find` sorunu ÖLÇÜM ORTAMI farkı: betik Git Bash'ten başlatıldı, PATH'te
+  /usr/bin önde → Unix find; kullanıcı uygulamayı Başlat menüsünden açınca Windows find.exe (gerçekçi ölçüm PowerShell'den).
+  `--paralel 1` (aynı hedef, planlayıcı bu kez 8 görev yazdı): yürütme 1490 sn, DURAKLATILDI, kabul 7/8 — görev 3 üç
+  denemede takıldı: planlayıcının doğrulama komutu `python -c "…; 
+import traceback;
+try: …"` (düz metin `
+`) →
+  Python komutun KENDİSİNİ okuyamadı (SyntaxError, File "<string>"); check_command_broken yalnız PowerShell
+  hatalarını tanıyordu → ayrı düzeltme (R-28). Karşılaştırma: paralel 630 sn / 8/8 · sıralı 1490 sn / 7/8 (plan
+  şekli farklı; adil kıyas paralel bölümde: 3 görev 80 sn ↔ tek tek ~209 sn).
+
+- Düzeltme (B3 ölçümünden): `python -c` satır içi kodun kendi yazım hatası artık bozuk doğrulama komutu sayılır
+  (karar incelemeye; kayıt 2026-11-11-proje-python-c-…); PLAN_FORMAT: doğrulama tek satır. Testler 4+4+2, mutasyon 4/4.
+
+- B4 gidiş gözetmeni (dal feat/b4-gozetmen, B3'ün üstünde; OpenHands "verification stack"): agent/critic.py — gözetimsiz
+  Proje GÖREVİ turunda (sıralı oturum turu + paralel arayüzsüz ajan; Derin uygulama aşaması da) her 8 adımda bir ayrı
+  hızlı model (rol `elestirmen`: deepseek-v4-flash → gemma → qwen; kod modeli qwen'den AYRI; yalnız EVREN, ücret yok)
+  son 16 mesajın kısa dökümüyle 0-10 puan verir. ≤3 → ilk sefer yalnız geçici not (nudge), üst üste ikinci ≤3 → tur
+  `critic` ile durur; ProjectRunner gerekçeyi geri bildirim yapıp yeniden dener. Eleştirmen hatası / okunamayan yanıt /
+  "puan" yok → hiçbir şey (iş asla eleştirmen yüzünden durmaz); arada iyi puan sayaçı sıfırlar. Puanlar proje
+  günlüğüne (ölçüm: yanlış alarm = başarılı görevde ≤3). Plan turu ve normal kullanıcı turu gözetmensiz. Ayar
+  `progress_critic` (varsayılan açık). test_gozetmen 16 + test_project_ui 5 (bağlantı: plan turu yok, görev turu var,
+  ayar kapalı yok, koşucuya iletim, puanların günlüğe taşınması); mutasyon 17/17 (ilk turda kaçan: sıralı yolda puan
+  taşıma → test eklendi). Riskli alan paketi (koşucu, router, oturum, proje, derin, güvenlik; 24 dosya) 360 geçti.
+
+- B3+B4 SON KODLA GERÇEK ÖLÇÜM (2026-11-12 00:15-00:44, PowerShell'den — kullanıcı ortamı PATH'i): tam takım
+  1114/1114 (8 dk 48 sn) · e2e_proje paralel+gözetmen 8/8, 550 sn (plan 249 sn, yürütme 301 sn; 1-3 aynı anda 112 sn) ·
+  zorluk 12/12, 928 sn · R-13: E2E_OK · ajan 4/6 (düşen 2: glm-5.3 HTTP 503 model_capacity_exhausted — sunucu;
+  deepseek + qwen 4/4) · arayüz 15/15. Gözetmen proje koşusunda HİÇ devreye girmedi (görevler <8 adım; model_calls'ta
+  0 elestirmen) → yanlış alarm için tests/e2e_gozetmen_real_api.py yazıldı: gerçek 7 başarılı 8+ adımlı tur (zorluk +
+  proje veritabanları) 0 not/0 durdurma (puan 7-9); yapay raydan çıkma 2/2 yakalandı; zorlanıp yolunda olan serbest.
 
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2

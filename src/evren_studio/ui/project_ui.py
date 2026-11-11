@@ -305,11 +305,20 @@ class ProjectController(QObject):
         sv = self.view
         sv._note("Proje ajanı başladı. Bilgisayar bu sürede uykuya geçmez; bitince bildirim alırsınız.", "spark")
         self.ctx.probe_models("Proje")              # A8 (en çok 30 dk'da bir; arka planda)
+        par = self._parallel_width()
+        # B3: Derin Mod'daki gibi kota kapısı — pencere ≥%60 → aynı anda 1 görev; ≥%85 → her model çağrısından önce bekle
+        from ..agent.quota import QuotaGate
+
+        self._par_gate = QuotaGate(self._fetch_quota, max_parallel=par) if par > 1 else None
         hooks = pj.ProjectHooks(
             run_task=self._run_task_blocking, review=self._review, run_check=self._run_check,
             commit_message=self._commit_message,
             save=self._save, status=self.sig_status.emit, task_changed=self.sig_tasks.emit,
-            quota_wait=self._quota_wait, cancelled=self._cancel.is_set)
+            quota_wait=self._quota_wait, cancelled=self._cancel.is_set,
+            # B3: bağımsız görevler ayrı git worktree'lerinde aynı anda (Ayarlar: project_parallel; 1 = kapalı)
+            run_task_in=self._run_task_in, run_check_in=self._run_check_in,
+            parallel=par, parallel_limit=self._par_gate.parallel_limit if self._par_gate else (lambda: 1),
+            worktree_root=self.ctx.settings.resolved_data_dir() / "worktrees")
 
         def job():
             pj.keep_awake(True)
@@ -430,12 +439,16 @@ class ProjectController(QObject):
         model, fallbacks, role = self._model_for("kod", fallback=req["fallback"])
 
         def hook(outcome, exc) -> None:
-            req["result"] = self._task_result(msg_id, outcome, exc, model)
+            res = self._task_result(msg_id, outcome, exc, model)
+            res.critic = list(getattr(req.get("critic"), "log", None) or [])
+            req["result"] = res
             req["event"].set()
 
+        critic = self._make_critic()
+        req["critic"] = critic
         sv._turn_id = msg_id
         sv._turn_hook = hook
-        sv.start_run(history_from=msg_id, mode_override="auto", model_override=(model, fallbacks, role))
+        sv.start_run(history_from=msg_id, mode_override="auto", model_override=(model, fallbacks, role), critic=critic)
         if not sv.running and not req["event"].is_set():
             sv._turn_hook = None
             req["result"] = pj.TaskRun(stopped="error", error=None, summary="tur başlatılamadı")
@@ -474,6 +487,8 @@ class ProjectController(QObject):
         if exc is not None:
             return pj.TaskRun(stopped="error", summary=summary, model=used,
                               error=exc if isinstance(exc, ApiError) else None, reads=reads)
+        if outcome.stopped == "critic":
+            summary = getattr(outcome, "critic_reason", "") or summary
         return pj.TaskRun(stopped=outcome.stopped, summary=summary, model=used, diff=diff, reads=reads)
 
     def _review(self, messages: list[dict]) -> str:
@@ -494,11 +509,99 @@ class ProjectController(QObject):
         return clean_commit_message(text)
 
     def _run_check(self, command: str) -> tuple[int | None, str]:
+        return self._run_check_in(command, Path(self._ws()))
+
+    def _run_check_in(self, command: str, root: Path) -> tuple[int | None, str]:
         s = self.ctx.settings
-        tb = ToolBox(Workspace(self._ws()), command_timeout=s.command_timeout_seconds,
+        tb = ToolBox(Workspace(str(root)), command_timeout=s.command_timeout_seconds,
                      output_limit=s.tool_output_limit)
         r = tb.run_command(command, timeout_seconds=s.command_timeout_seconds)
         return r.exit_code, r.output
+
+    def _make_critic(self):
+        """B4: görev denemesi başına yeni gözetmen (ayar kapalıysa / EVREN yoksa None). Yalnız EVREN: ücret yok."""
+        from ..agent import critic as cr
+
+        if not getattr(self.ctx.settings, "progress_critic", False) or "evren" not in self.ctx.available_providers():
+            return None
+        sid = self.view.session_id
+        return cr.Critic(chat=lambda msgs: self.ctx.ai_chat("elestirmen", msgs, max_tokens=300, session_id=sid,
+                                                        evren_only=True)[0])
+
+    def _free_chain(self) -> list[str]:
+        """Kod rolü zincirinin EVREN (ücretsiz) modelleri; birincil model EVREN değilse boş."""
+        model, fallbacks, _role = self._model_for("kod")
+        if not model or self.ctx.provider_of(model) != "evren":
+            return []
+        return [m for m in [model, *fallbacks] if m and self.ctx.provider_of(m) == "evren"]
+
+    def _headless_rules(self, root: Path):
+        """Kopyadaki kullanıcı kuralları YALNIZ ana proje klasöründe aynı içerikle onaylıysa (onay kartı açılmaz:
+        arka plan iş parçacığı; onaysızsa kuralsız — oturum turundaki davranışla aynı)."""
+        from ..agent import userrules
+
+        try:
+            rules, digest = userrules.load(root)
+        except userrules.RulesError:
+            return None
+        key = str(Path(self._ws()).resolve()).lower()
+        if not rules or (self.ctx.settings.approved_rules or {}).get(key) != digest:
+            return None
+        return userrules.UserRules(Path(root), rules)
+
+    def _parallel_width(self) -> int:
+        """B3 aynı anda yapılacak görev sayısı (Ayarlar: project_parallel; 1 = kapalı). Arayüzsüz ajanın kullanımı
+        ücretli sağlayıcının maliyet/bütçe kaydına girmez → paralel YALNIZ birincil kod modeli EVREN ise açık."""
+        n = int(getattr(self.ctx.settings, "project_parallel", 1) or 1)
+        return n if n > 1 and self._free_chain() else 1
+
+    def _run_task_in(self, task: pj.Task, prompt: str, root: Path) -> pj.TaskRun:
+        """B3: görevi verilen çalışma kopyasında (worktree) ARAYÜZSÜZ ajanla yapar (Otomatik kip, test koruma bekçisi
+        açık). Oturum ekranında tur görünmez; ilerleme proje notlarında. Durdurma, projenin iptal işaretini paylaşır.
+        Yalnız EVREN modelleri (ücretli yedeğe geçmez: maliyet kaydı yok)."""
+        from ..agent import deep
+        from ..api.client import CancelToken
+
+        chain = self._free_chain()
+        if not chain:
+            return pj.TaskRun(stopped="error", summary="EVREN modeli yok (paralel görev yalnız EVREN ile)")
+        info = self.ctx.model_info(chain[0])
+        s, sv = self.ctx.settings, self.view
+        # Oturum ajanıyla (session_view.start_run) AYNI ayarlar: proje kuralları (ana klasörde onaylıysa), beceriler,
+        # güvenilmeyen klasörler, kurulum kipi, komut süre/çıktı sınırı, düzenleme denetimi, rol ipucu + profil.
+        # Arayüz gerektirenler (MCP/Serena, test araçları, servis/iş yöneticisi) yok: kopyada arayüzsüz çalışır.
+        kw = dict(user_rules=self._headless_rules(root), skills=sv._run_skills(root),
+                  untrusted=list(s.untrusted_dirs or []), project_map=s.project_map, install_mode=s.install_mode,
+                  command_timeout=s.command_timeout_seconds, output_limit=s.tool_output_limit,
+                  edit_check=s.edit_diagnostics, route_role="kod", stats_sink=self.ctx.record_model_call,
+                  extra_hint="\n\n".join(h for h in (router.ROLE_HINTS.get("kod", ""), sv._profile_hint()) if h),
+                  stall_retry_body=({"reasoning_effort": "none"}
+                                    if info and (info.capabilities or {}).get("reasoning_effort") else None))
+        critic = self._make_critic()
+        kw["critic"] = critic
+        token = CancelToken()
+        token._event = self._cancel                 # kullanıcı projeyi durdurunca bu ajan da güvenli noktada durur
+        client = self.ctx.make_client()
+        try:
+            res = deep.run_subagent(client=client, model=chain[0], fallbacks=chain[1:], root=root, prompt=prompt,
+                                    marker="", cancel=token, mode="auto", test_check=True,
+                                    gate=getattr(self, "_par_gate", None), runner_kw=kw,
+                                    base_body=router.consistent_body("kod", chain[0]),
+                                    context_tokens=getattr(info, "context_length", None),
+                                    max_steps=int(self.ctx.settings.agent_max_steps or 80))
+        finally:
+            client.close()
+        marks = list(getattr(critic, "log", None) or [])
+        if res.error:
+            return pj.TaskRun(stopped="error", summary=res.error, model=res.model, critic=marks)
+        return pj.TaskRun(stopped=res.stopped, summary=res.text, model=res.model, critic=marks)
+
+    def _fetch_quota(self):
+        client = self.ctx.make_client()
+        try:
+            return client.get_quota()
+        finally:
+            client.close()
 
     def _quota_wait(self) -> tuple[float, str]:
         """Görev öncesi kota denetimi (iş parçacığında, 60 sn önbellekli). Hata → beklemeden devam."""

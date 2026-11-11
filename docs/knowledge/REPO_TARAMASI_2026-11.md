@@ -71,6 +71,17 @@ Plandex (MIT) 2025-10'dan beri güncellenmiyor.
 | C3 | Sesle yazma (faster-whisper, isteğe bağlı kurulum) | orta | Konuşarak görev verme | gerçek Türkçe ses örneği |
 | C4 | Gerçek terminal (pywinpty) | büyük | Etkileşimli komutlar | arayüz testi |
 
+### Uygulama durumu (2026-11-11)
+
+- A1, A2, A3, B1: YAPILDI (PR #56). Ölçümler oturum günlüğünde (`docs/ai-memory/sessions/2026-11-11-…`).
+- B2: YAPILMADI (gerekçe): Derin'in bağlam notu ≤3500 karakter; alt ajan istemi bunun 5-10 katı. Bulguyu dosyaya
+  taşımak her alt ajana bir okuma adımı (~10 sn) ekler; token kazancı küçük → net olumsuz.
+- B3: YAPILDI (dal `feat/b3-paralel-gorev`): Proje ajanı (ve Derin'in uygulama aşaması) bağımsız görevleri ayrı git
+  çalışma kopyalarında aynı anda yapar, sırayla birleştirir; çakışan/doğrulanamayan sırayla yeniden yapılır. Gerçek:
+  3 bağımsız görev 80 sn (tek tek ~209 sn), kabul 8/8. Toplam süreyi sıralı kalan görevler (toparlama, README) belirler.
+- B4: YAPILDI (dal `feat/b4-gozetmen`): gözetimsiz görevde ayrı hızlı model 8 adımda bir puan; tek düşük → not,
+  iki üst üste düşük → erken durdur + gerekçeyle yeniden dene. Yanlış alarm ölçümü: oturum günlüğü.
+
 ## 5. Kaynaklar
 
 - GitHub API, 2026-11-11 (her satırdaki yıldız/lisans/tarih).

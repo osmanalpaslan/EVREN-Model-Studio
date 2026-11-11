@@ -23,6 +23,15 @@
 | plan | Plan modunda özellik isteği | dosya değişmez, plan yazılır |
 | girdi | `input()` bekleyen betiği çalıştır | girdi beklediğini açıklar (takılmaz) |
 
+## Madde 20 B3+B4 sonrası (2026-11-12, dal `feat/b4-gozetmen`, auto, PowerShell'den)
+
+- Tam paket **12/12**, 928 sn (A aşaması sonu 2026-11-11: 12/12, 1410 sn — sunucu yükü farkı; gerileme yok).
+  planlama 235 sn, mini_proje 363 sn en uzunlar.
+- Gözetmen (B4) zorluk turlarında devrede DEĞİL (yalnız gözetimsiz Proje/Derin görevi). Yanlış alarm ayrı ölçüldü:
+  `tests\e2e_gozetmen_real_api.py <db…>` — gerçek koşulardan 7 başarılı 8+ adımlı tur → 7 kontrol, puan 7-9,
+  **0 not / 0 durdurma**; bilerek raydan çıkarılmış 2 döküm yakalandı (0/0 ve 1/1 → not + durdurma); "zorlanıyor ama
+  yolunda" döküm serbest (8, 9).
+
 ## Sonuçlar (2026-10-19)
 
 | Tur | auto | deepseek-v4-flash | qwen3.8-flash-next |

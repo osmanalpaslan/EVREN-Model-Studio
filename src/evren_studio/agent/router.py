@@ -49,6 +49,7 @@ ROLE_LABELS = {
     "web": "web",
     "metin": "Türkçe metin",
     "qa": "QA testi",
+    "elestirmen": "gözetmen",
 }
 
 # EVREN: 2026-10-19 ölçümü (12 görev, gerçek API; CHALLENGE_RESULTS.md "8 motor"):
@@ -84,6 +85,8 @@ EVREN_ROUTES: dict[str, list[str]] = {
     "baslik": ["deepseek-v4-flash", "qwen3.8-flash-next", "gemma-4-31b"],
     "commit": ["deepseek-v4-flash", "gemma-4-31b", "qwen3.8-flash-next"],
     "hata": ["deepseek-v4-flash", "qwen3.8-flash-next", "gemma-4-31b"],
+    # B4 gözetmen: kod modelinden (qwen) AYRI ve hızlı model — kısa JSON puanı
+    "elestirmen": ["deepseek-v4-flash", "gemma-4-31b", "qwen3.8-flash-next"],
     # F2 — A6 zorluk: kısa, tek dosyalık iş → hızlı model (gemma 12 görev 3,1 dk; uzun işte döngüye girdiği
     # için YALNIZ bu rolde önde). A7 iş türü rolleri: tests/e2e_rol_paketi_real_api.py, 2026-10-24, paket başına
     # 2 görev × 1 koşu (küçük örnek; CHALLENGE_RESULTS.md "Rol paketleri"): qwen3.8-flash-next 8/8 ve her pakette
@@ -121,6 +124,7 @@ PAID_ROUTES: dict[str, list[str]] = {
     "web": ["claude-sonnet-5-5", "gpt-5.3-codex", "gpt-6.1-sol"],
     "metin": ["claude-sonnet-5-5", "gpt-6.1-sol", "claude-haiku-5-5"],
     "qa": ["claude-sonnet-5-5", "gpt-6.1-sol", "claude-haiku-5-5"],
+    "elestirmen": ["claude-haiku-5-5", "gpt-6-luna"],
 }
 PAID_ROUTES_VERIFIED = False
 # Dengeli politika: bu rollerde (az token, yüksek değer) ücretli güçlü model önce gelir

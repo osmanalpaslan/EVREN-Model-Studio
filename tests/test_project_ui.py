@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 
 import pytest
 
@@ -150,3 +151,208 @@ def test_klasorsuz_ve_bos_hedef(win):
     s._note = lambda text, icon="dot": (notes.append(text), orig(text, icon))
     s.send("/proje bir şey yap")
     assert any("proje klasöründe" in n for n in notes) and not s.project.planning
+
+
+PLAN3 = """<plan>
+- [ ] 1. a.txt dosyasını oluştur
+  Bitti ölçütü: a.txt var
+- [ ] 2. b.txt dosyasını oluştur
+  Bitti ölçütü: b.txt var
+- [ ] 3. README yaz
+  Bitti ölçütü: README.md iki dosyayı anlatır
+  Bağımlı: 1, 2
+</plan>"""
+
+
+class Plan3Client(FakeClient):
+    def chat(self, model, messages, stream=False, cancel=None, on_delta=None, tools=None, **kw):
+        res = super().chat(model, messages, stream=stream, cancel=cancel, on_delta=on_delta, tools=tools, **kw)
+        if self.calls[-1][0] == "plan":
+            return ChatResult(content="İnceledim.\n" + PLAN3, finish_reason="stop")
+        return res
+
+
+@pytest.mark.skipif(__import__("shutil").which("git") is None, reason="git yok")
+def test_bagimsiz_gorevler_paralel_ve_arayuzsuz(win, tmp_path, monkeypatch):
+    """B3 (R-31): gerçek tur akışı — bağımsız 1 ve 2 çalışma kopyalarında arayüzsüz, 3 (toparlama) oturumda."""
+    from evren_studio.ui.project_ui import PlanCard
+    from tests.test_project_agent import _git_repo
+
+    from evren_studio.agent import deep
+
+    app, w = win
+    client = Plan3Client()
+    gates, kws = [], []
+    real_sub = deep.run_subagent
+
+    def spy(**kw):
+        gates.append(kw.get("gate"))
+        kws.append(kw.get("runner_kw") or {})
+        return real_sub(**kw)
+    monkeypatch.setattr(deep, "run_subagent", spy)
+    proj = tmp_path / "proje"
+    proj.mkdir()
+    _git_repo(proj)
+    w.ctx.make_client = lambda log_sink=None: client
+    w.ctx.settings.project_parallel = 3
+    w.ctx.settings.install_mode = "manuel"                         # varsayılandan farklı
+    s = w.session
+    s.new_session()
+    s.welcome._choose(str(proj))
+    s.composer.set_model("auto", emit=True)
+    s.project._headless_rules = lambda root: ("KURAL", Path(root))      # kablolama: kopyanın kuralı
+    s.send("/proje iki dosya ve README")
+    assert _wait(app, lambda: s.findChildren(PlanCard))
+    s.findChildren(PlanCard)[-1].approved.emit()
+    assert _wait(app, lambda: not s.project.active and s.project.state and s.project.state.status == "bitti", 30)
+    st = s.project.state
+    assert [t.status for t in st.tasks] == ["bitti"] * 3
+    assert any("AYNI ANDA" in x for x in st.log)
+    msgs = w.ctx.db.get_session_messages(s.session_id)
+    disp = [(m.get("meta") or {}).get("display", "") for m in msgs if m["role"] == "user"]
+    assert [d for d in disp if d.startswith("Proje görevi")] == ["Proje görevi 3/3: README yaz"]
+    assert len([c for c in client.calls if c[0] == "task" and "PROJE GÖREVİ" in c[2]]) == 3
+    assert not any((w.ctx.settings.resolved_data_dir() / "worktrees").rglob("*.txt"))
+    from evren_studio.agent import critic as cr
+
+    assert all(isinstance(kw.get("critic"), cr.Critic) for kw in kws)       # B4: paralel yolda da gözetmen
+    gate = s.project._par_gate                                         # kota kapısı: paralel görevlerin hepsinde
+    assert gate is not None and gate.max_parallel == 3 and len(gates) == 2 and all(g is gate for g in gates)
+    s_ = w.ctx.settings                                               # oturum ajanıyla aynı ayarlar
+    for kw in kws:
+        assert kw["install_mode"] == s_.install_mode and kw["command_timeout"] == s_.command_timeout_seconds
+        assert kw["untrusted"] == list(s_.untrusted_dirs or []) and kw["edit_check"] == s_.edit_diagnostics
+        assert kw["route_role"] == "kod" and "skills" in kw
+        assert kw["user_rules"][0] == "KURAL" and "worktrees" in str(kw["user_rules"][1])
+
+
+def test_paralel_yalniz_evren_modelinde(win, tmp_path):
+    """Arayüzsüz ajanın kullanımı maliyet kaydına girmez → birincil kod modeli ücretliyse paralel KAPALI."""
+    app, w = win
+    s = w.session
+    s.new_session()
+    pc = s.project
+    w.ctx.settings.project_parallel = 3
+    pc._model_for = lambda role, fallback=False: ("evren-x", ["ucretli-y"], role)
+    real = w.ctx.provider_of
+    w.ctx.provider_of = lambda m: "openai" if m.startswith("ucretli") else "evren" if m.startswith("evren") else real(m)
+    assert pc._parallel_width() == 3 and pc._free_chain() == ["evren-x"]          # ücretli yedek zincirden çıkar
+    pc._model_for = lambda role, fallback=False: ("ucretli-y", ["evren-x"], role)
+    assert pc._parallel_width() == 1 and pc._free_chain() == []
+    w.ctx.settings.project_parallel = 1
+    pc._model_for = lambda role, fallback=False: ("evren-x", [], role)
+    assert pc._parallel_width() == 1
+
+
+def test_kopyada_kurallar_yalniz_ana_klasorde_onayliysa(win, tmp_path):
+    """Paralel görevin kopyasında proje kuralları: ana klasörde AYNI içerikle onaylıysa çalışır; onaysızsa kuralsız
+    (arka plan iş parçacığından onay kartı açılmaz)."""
+    import json as _json
+
+    from evren_studio.agent import userrules
+
+    app, w = win
+    s = w.session
+    s.new_session()
+    main, wt = tmp_path / "ana", tmp_path / "kopya"
+    for d in (main, wt):
+        (d / ".evren").mkdir(parents=True)
+        (d / userrules.RULES_FILE).write_text(_json.dumps(
+            {"kurallar": [{"olay": "tur_sonu", "komut": "echo ok"}]}), encoding="utf-8")
+    s.welcome._choose(str(main))
+    pc = s.project
+    assert pc._headless_rules(wt) is None                                    # onaysız
+    _rules, digest = userrules.load(main)
+    w.ctx.settings.approved_rules = {str(main.resolve()).lower(): digest}
+    got = pc._headless_rules(wt)
+    assert got is not None and Path(got.root) == wt and len(got.rules) == 1
+    (wt / userrules.RULES_FILE).write_text(_json.dumps(
+        {"kurallar": [{"olay": "tur_sonu", "komut": "del *"}]}), encoding="utf-8")
+    assert pc._headless_rules(wt) is None                                    # kopyadaki içerik farklı → onaysız
+
+
+@pytest.mark.parametrize("acik", [True, False])
+def test_gozetmen_proje_gorev_turuna_verilir_plan_turuna_verilmez(win, tmp_path, acik, monkeypatch):
+    """B4 (R-31): gözetmen yalnız gözetimsiz Proje GÖREVİ turunun koşucusuna gider; ayar kapalıysa hiç."""
+    from evren_studio.agent import critic as cr
+
+    app, w = win
+    w.ctx.settings.progress_critic = acik
+    from evren_studio.ui import session_view as svmod
+
+    built = []
+    real_runner = svmod.AgentRunner
+
+    class Spy(real_runner):
+        def __init__(self, *a, **kw):
+            built.append(kw.get("critic"))
+            super().__init__(*a, **kw)
+    monkeypatch.setattr(svmod, "AgentRunner", Spy)
+    client = FakeClient()
+    seen = []
+    s, proj, PlanCard = _start_capture(w, tmp_path, client, seen)
+    assert _wait(app, lambda: s.findChildren(PlanCard))
+    s.findChildren(PlanCard)[-1].approved.emit()
+    assert _wait(app, lambda: not s.project.active and s.project.state and s.project.state.status == "bitti")
+    plan_runs = [c for k, c in seen if k == "plan"]
+    task_runs = [c for k, c in seen if k == "auto"]
+    assert plan_runs and all(c is None for c in plan_runs)
+    assert len(task_runs) == 2
+    if acik:
+        assert all(isinstance(c, cr.Critic) for c in task_runs) and task_runs[0] is not task_runs[1]
+        assert built[-2:] == task_runs                                  # oturum turu koşucuya iletti
+    else:
+        assert all(c is None for c in task_runs)
+
+
+def test_sirali_gorev_gozetmen_puanlari_proje_gunlugunde(win, tmp_path):
+    """Sıralı (oturum turu) görevin gözetmen kayıtları TaskRun üzerinden proje günlüğüne düşer (R-22 ölçümü)."""
+    app, w = win
+    client = FakeClient()
+
+    class C:
+        def __init__(self):
+            self.log = [{"adim": 8, "puan": 9, "neden": "iyi"}]
+
+        def check(self, step, history):
+            return None
+    s, proj, PlanCard = _start(w, tmp_path, client)
+    s.project._make_critic = C
+    assert _wait(app, lambda: s.findChildren(PlanCard))
+    s.findChildren(PlanCard)[-1].approved.emit()
+    assert _wait(app, lambda: not s.project.active and s.project.state and s.project.state.status == "bitti")
+    assert sum("gözetmen puanları (adım:puan) 8:9" in x for x in s.project.state.log) == 2
+
+
+def _start_capture(w, tmp_path, client, seen):
+    s = w.session
+    real = s.start_run
+
+    def spy(*a, **kw):
+        seen.append((kw.get("mode_override"), kw.get("critic")))
+        return real(*a, **kw)
+    s.start_run = spy
+    return _start(w, tmp_path, client)
+
+
+def test_arayuzsuz_gorev_gozetmen_puanlarini_dondurur(win, tmp_path, monkeypatch):
+    """Paralel (arayüzsüz) görevin gözetmen kayıtları TaskRun'a taşınır (ölçüm günlüğü için)."""
+    from evren_studio.agent import deep
+
+    app, w = win
+    s = w.session
+    s.new_session()
+    s.welcome._choose(str(tmp_path))
+    pc = s.project
+    marks = [{"adim": 8, "puan": 9, "neden": "iyi"}]
+    fake_critic = type("C", (), {"log": marks})()
+    pc._make_critic = lambda: fake_critic
+    pc._free_chain = lambda: ["qwen3.8-flash-next"]
+    got = {}
+
+    def sub(**kw):
+        got.update(kw)
+        return deep.SubResult("bitti", "done", "", 0, 1.0, "", "qwen3.8-flash-next")
+    monkeypatch.setattr(deep, "run_subagent", sub)
+    run = pc._run_task_in(pj.Task(idx=1, title="t", criteria="c"), "istem", tmp_path)
+    assert run.stopped == "done" and run.critic == marks and got["runner_kw"]["critic"] is fake_critic

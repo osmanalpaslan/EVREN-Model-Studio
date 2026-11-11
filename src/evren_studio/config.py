@@ -190,6 +190,12 @@ class Settings:
     # Derin Mod'da aynı anda çalışan alt ajan sayısı (1-3; kota penceresi doluysa kendiliğinden 1'e iner).
     # 3 (2026-11-07): 3 eşzamanlı istek EVREN'de birbirini beklemiyor; "anla" aşamasının 3 incelemesi tek turda biter
     deep_parallel: int = 3
+    # Proje ajanı (ve Derin Mod uygulama aşaması): bağımsız görevler ayrı git çalışma kopyalarında aynı anda (1 = kapalı).
+    # Madde 20 B3 (2026-11-11, CAID yöntemi). Git deposu ve plandaki bağımlılık bilgisi gerekir; yoksa sırayla.
+    project_parallel: int = 3
+    # Madde 20 B4 (2026-11-11): gözetimsiz Proje/Derin görevinde ayrı hızlı model 8 adımda bir "görev yolunda mı"
+    # puanlar; iki kez üst üste çok düşükse görev temiz denemeyle yeniden yapılır. Yalnız EVREN (ücretsiz).
+    progress_critic: bool = True
     mcp_servers: list[dict] = field(default_factory=list)
     # Zamanlanmış görevler (Madde 12c, 2026-11-05): yalnız uygulama açıkken çalışır (Claude Code yerel görevleri gibi)
     schedule_enabled: bool = True          # kapalıysa hiçbir görev kendiliğinden başlamaz ("Şimdi çalıştır" çalışır)
