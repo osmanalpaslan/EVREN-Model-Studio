@@ -243,6 +243,8 @@ def check_smoke(lines: list[str]) -> list[str]:
     for k in ("wmcp_baslatici", "blender_donustur"):
         if kv.get(k) != "var":
             problems.append(f"{k}.py pakette YOK")
+    if kv.get("json_repair") != "var":
+        problems.append("json_repair pakette YOK (bozuk JSON onarımı çalışmaz)")
     if kv.get("keyring") != "WinVaultKeyring":
         problems.append(f"anahtar deposu (Credential Manager) yok: keyring={kv.get('keyring')}")
     if not kv.get("tls", "").startswith("tamam"):

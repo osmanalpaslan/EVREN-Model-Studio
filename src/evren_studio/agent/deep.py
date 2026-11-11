@@ -455,7 +455,9 @@ def plan(st: DeepState, sub_with_model: Callable[[str, str, str], SubResult], mo
     try:
         verdict = judge(judge_messages(st.goal, results))
         m = re.search(r"\{.*\}", verdict or "", re.S)
-        data = json.loads(m.group(0)) if m else {}
+        from . import jsonfix
+
+        data = (jsonfix.obj(m.group(0)) if m else None) or {}     # bozuk karar artık hep "A" sayılmaz (A1)
     except Exception:
         data = {}
     choice = 1 if str(data.get("secim", "A")).strip().upper().startswith("B") else 0

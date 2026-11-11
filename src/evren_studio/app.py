@@ -112,6 +112,12 @@ def smoke_report(window) -> list[str]:
         lines.append(f"python={mcp._base_python()}")
     except mcp.McpError:
         lines.append("python=YOK")
+    try:                                    # bozuk JSON onarımı (agent/jsonfix.py) pakete girdi mi
+        import json_repair  # noqa: F401
+
+        lines.append("json_repair=var")
+    except ImportError:
+        lines.append("json_repair=YOK")
     try:                                    # anahtar Credential Manager'da: paketlenince arka uç kaybolabilir
         import keyring
 

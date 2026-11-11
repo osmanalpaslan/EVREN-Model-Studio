@@ -289,11 +289,11 @@ def review_messages(task: Task, diff: str, check_output: str, agent_summary: str
 def parse_review(text: str) -> tuple[bool, str]:
     m = re.search(r"\{.*\}", text or "", re.S)
     if m:
-        try:
-            d = json.loads(m.group(0))
+        from . import jsonfix
+
+        d = jsonfix.obj(m.group(0))             # bozuk JSON onarılır (Madde 20 A1)
+        if d is not None and "tamam" in d:
             return bool(d.get("tamam")), str(d.get("neden") or "")[:400]
-        except json.JSONDecodeError:
-            pass
     low = (text or "").lower()
     return ('"tamam": true' in low or "tamam: evet" in low), (text or "")[:300]
 

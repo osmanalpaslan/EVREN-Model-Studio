@@ -13,6 +13,7 @@ dependencies = [
     "keyring>=25",
     "markdown>=3.6",
     "pygments>=2.17",
+    "json-repair>=0.52",   # model çıktısındaki bozuk JSON (agent/jsonfix.py; MIT, bağımlılıksız)
 ]
 
 [project.optional-dependencies]

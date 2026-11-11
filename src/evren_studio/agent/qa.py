@@ -195,6 +195,12 @@ def _json_block(text: str, rx: re.Pattern) -> dict | None:
             return data if isinstance(data, dict) else None
         except ValueError:
             pass
+        from . import jsonfix
+
+        # Madde 20 A1: json_repair + kendi anahtar-sınırı okuyucularımız yarışır, en çok bilgiyi kurtaran kazanır
+        chosen = jsonfix.best(raw, extra=[_loose_fields(raw)])
+        if chosen:
+            return chosen
         loose = _loose_fields(raw)
         if loose:
             return loose
