@@ -26,6 +26,10 @@ ağı + iç işler); yetki verildiği için kod tablosunda qwen öne alınacak (
   Araç argümanları BİLEREK onarılmaz (yarım write_file sessizce eksik dosya yazardı) — test bunu kilitler.
   Duman testi `json_repair=var` (paketle.py denetler). requirements + pyproject.
 
+- Kod rolü yedek sırası qwen → deepseek → gemma (kullanıcı "yetki sende"; karne ölçümü 2026-11-06). Yalnız auto güvenlik
+  ağı + iç işler (Derin/Proje kod aşaması). 6 test eski sırayı adla yazmıştı → tablo-göreli yazıldı (first/second), anlamı
+  korundu (ceza/bekleme/puan/zayıf gün mantığı).
+
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2
   kaçtı → iki test eklendi). Bulgu: json_repair TEK BAŞINA daha iyi değil — 2026-10-19 gerçek QA çıktısında (`'""'`)

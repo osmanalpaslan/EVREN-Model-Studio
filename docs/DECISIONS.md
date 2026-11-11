@@ -138,3 +138,8 @@
 - **Düz metin anahtar dosyası**: güvenlik gereği reddedildi (kural).
 - **Windows Görev Zamanlayıcı ile izleme**: MVP'de gereksiz sistem servisi;
   kullanıcı başlatmalı uygulama içi zamanlayıcı yeterli.
+
+## #128 Kod rolünde yedek sıra: qwen önde (2026-11-11)
+Kullanıcı yetkisiyle ("yetki sende"). Karne ölçümü (2026-11-06): qwen3.8-flash-next 95,5 puan, ortanca görev 29 sn;
+deepseek-v4.1-flash 91,7, 55 sn. 2026-10-21 kararı (deepseek önde) değişti. Etkisi yalnız auto'nun güvenlik ağı ve iç
+işler (Derin/Proje kod aşaması); kullanıcı turlarını auto (sunucu) seçer. Karne rafta (motor_karnesi=False).
