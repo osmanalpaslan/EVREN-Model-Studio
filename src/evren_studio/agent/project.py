@@ -50,6 +50,11 @@ SHARED_FILE_LIMIT = 12_000        # tek dosya (karakter); daha büyüğü eklenm
 SHARED_TOTAL_LIMIT = 16_000       # toplam (karakter; ~5 bin token)
 
 REOPEN_NOTE = "önceki çalıştırmada takıldı: "
+PAR_NOTE = "paralel deneme tutmadı: "
+# Madde 20 B3 (2026-11-11, CAID yöntemi — docs/knowledge/REPO_TARAMASI_2026-11.md): bağımsız görevler projenin AYRI git
+# worktree'lerinde aynı anda yapılır, proje dalına sırayla birleştirilir. Ortak klasörde aynı anda çalışan ajanlar
+# birbirini bozar (CAID: belirgin düşüş). Git'e girmeyen ama testler için gereken klasörler kopyaya BAĞLANTI olur.
+LINK_DIRS = (".venv", "venv", "env", "node_modules")
 STATUS_LABEL = {"bekliyor": "bekliyor", "calisiyor": "çalışıyor", "bitti": "bitti",
                 "takildi": "takıldı", "atlandi": "atlandı"}
 STATUS_MARK = {"bekliyor": " ", "calisiyor": "~", "bitti": "x", "takildi": "!", "atlandi": "-"}
@@ -68,6 +73,7 @@ class Task:
     commit: str = ""
     note: str = ""
     seconds: float = 0.0
+    seq_only: bool = False            # paralel denemesi tutmadı (çakışma/doğrulanamadı) → yalnız sırayla (B3)
 
     def todo(self) -> dict:
         """Yan paneldeki Görevler sekmesi biçimi."""
@@ -132,7 +138,9 @@ proje klasöründe çalışan, kısa süren, girdi beklemeyen bir komut olabilir
 - Doğrulama komutu zaten PowerShell içinde çalışır: `powershell -Command "..."` diye SARMALAMA.
   `$` değişkenli uzun komut yerine bir betik dosyası yazdırıp `powershell -File betik.ps1` kullan.
 - Doğrulama gerçek sonucu ölçsün (dosya var mı, satır sayısı tutuyor mu); bir kelimenin geçme
-  sayısını saymak doğrulama değildir."""
+  sayısını saymak doğrulama değildir.
+- "Bağımlı" satırını DİKKATLE doldur: bağımlılığı olmayan görevler AYNI ANDA (paralel) yapılabilir. Bir görev önceki
+  bir görevin oluşturduğu dosyayı, fonksiyonu ya da sonucu kullanıyorsa o görevin numarasını mutlaka yaz."""
 
 
 # Madde 20 B1 (2026-11-11; Agentless / SWE-agent yaklaşımı, docs/knowledge/REPO_TARAMASI_2026-11.md): hata düzeltme
@@ -364,6 +372,29 @@ class Git:
     def stash(self, message: str) -> bool:
         return self._run("stash", "push", "-u", "-m", message)[0] == 0
 
+    # -- paralel görevler için çalışma kopyaları (B3) --
+    def worktree_add(self, path: Path, branch: str, base: str = "HEAD") -> tuple[bool, str]:
+        c, o = self._run("worktree", "add", "-q", "-b", branch, str(path), base, timeout=120)
+        return c == 0, o
+
+    def worktree_remove(self, path: Path) -> None:
+        self._run("worktree", "remove", "--force", str(path), timeout=120)
+        self._run("worktree", "prune")
+
+    def delete_branch(self, branch: str) -> None:
+        self._run("branch", "-D", branch)
+
+    def merge(self, branch: str, message: str) -> tuple[bool, str]:
+        """Dalı birleştirir; çakışmada birleştirmeyi GERİ ALIR (çalışma klasörü eski hâline döner)."""
+        c, o = self._run("merge", "--no-ff", "-m", message, branch, timeout=120)
+        if c != 0:
+            self._run("merge", "--abort")
+            return False, o
+        return True, o
+
+    def ignored(self, name: str) -> bool:
+        return self._run("check-ignore", "-q", name)[0] == 0
+
     def diff_since(self, rev: str, limit: int = REVIEW_DIFF_LIMIT) -> str:
         """İzlenen dosyaların farkı + yeni (izlenmeyen) dosyaların içeriği. Git dizinine
         DOKUNMAZ: `add -N` stash'i bozuyordu (test_project_agent ile bulundu)."""
@@ -419,6 +450,12 @@ class ProjectHooks:
     commit_message: Callable[[Task, str], str] | None = None          # yapay zekâ commit mesajı (boş → şablon)
     cancelled: Callable[[], bool] = lambda: False
     sleep: Callable[[float], None] = time.sleep
+    # B3 paralel: arayüzsüz görev çalıştırma ve komut, verilen klasörde (worktree). İkisi + parallel>1 + git → açık.
+    run_task_in: Callable[[Task, str, Path], TaskRun] | None = None
+    run_check_in: Callable[[str, Path], tuple[int | None, str]] | None = None
+    parallel: int = 1
+    parallel_limit: Callable[[], int] = lambda: 1_000     # anlık üst sınır (kota penceresi doluysa 1: QuotaGate)
+    worktree_root: Path | None = None
 
 
 class ProjectRunner:
@@ -497,17 +534,30 @@ class ProjectRunner:
         self._reopen_stuck()
         self._prepare_git()
         self._save()
-        for task in st.tasks:
-            if task.status in ("bitti", "takildi", "atlandi"):
-                continue
+        par = self._parallel_width()
+        while True:
             if self.hooks.cancelled():
                 return self._pause("Kullanıcı durdurdu.")
+            pending = [t for t in st.tasks if t.status not in ("bitti", "takildi", "atlandi")]
+            if not pending:
+                break
+            task = pending[0]
             bad = self._deps_failed(task)
             if bad:
                 task.status, task.note = "atlandi", f"bağlı olduğu görev(ler) tamamlanamadı: {bad}"
                 self._log(f"Görev {task.idx} atlandı: {task.note}")
                 self._save()
                 continue
+            if par > 1:
+                ready = self._ready(pending)
+                width = min(par, max(1, int(self.hooks.parallel_limit()))) if len(ready) >= 2 else 1
+                if width > 1:
+                    if self._run_parallel(ready[:width]) == "pause":
+                        return st
+                    continue
+                if len(ready) >= 2 and not getattr(self, "_slow_noted", False):
+                    self._slow_noted = True
+                    self._log("EVREN kota penceresi dolmak üzere: görevler şimdilik sırayla yapılıyor.")
             result = self._run_task(task)
             if result == "pause":
                 return st
@@ -526,6 +576,164 @@ class ProjectRunner:
         self._save()
         return st
 
+    # -- B3: bağımsız görevleri ayrı git worktree'lerinde aynı anda yap (CAID) --
+    def _parallel_width(self) -> int:
+        h, st = self.hooks, self.state
+        if (h.parallel <= 1 or h.run_task_in is None or h.run_check_in is None or h.worktree_root is None
+                or self.git is None or not st.git or len(st.tasks) < 3):
+            return 1
+        if not any(t.depends for t in st.tasks):
+            # Planlayıcı bağımlılığı hiç yazmadıysa "bağımsız" sanılan görevler aslında sıralı olabilir → sırayla
+            self._log("Planda görev bağımlılıkları belirtilmemiş: görevler sırayla yapılacak (paralel kapalı).")
+            return 1
+        return max(1, int(h.parallel))
+
+    def _ready(self, pending: list[Task]) -> list[Task]:
+        """Aynı anda yapılabilecekler: kendi bağımlılıklarının hepsi bitmiş, daha önce denenmemiş, paralel denemesi
+        tutmamış (seq_only) olmayan görevler. Son görev (toparlama: tüm testler, README) her zaman tek başına yapılır."""
+        done = {t.idx for t in self.state.tasks if t.status == "bitti"}
+        last = self.state.tasks[-1].idx
+        return [t for t in pending if not t.seq_only and t.idx != last and t.attempts == 0
+                and all(d in done for d in t.depends)]
+
+    def _link_ignored(self, wt: Path) -> list[Path]:
+        """Git'e girmeyen (yoksayılan) bağımlılık klasörlerini kopyaya bağlantı olarak verir (testler orada çalışsın)."""
+        import os
+        import subprocess as sp
+
+        links = []
+        for name in LINK_DIRS:
+            src, dst = self.root / name, wt / name
+            if not src.is_dir() or dst.exists() or not self.git.ignored(name):
+                continue
+            try:
+                if os.name == "nt":            # dizin bağlantısı (junction): yönetici izni gerekmez
+                    sp.run(["cmd", "/c", "mklink", "/J", str(dst), str(src)], capture_output=True, timeout=30,
+                           check=True, creationflags=getattr(sp, "CREATE_NO_WINDOW", 0))
+                else:
+                    os.symlink(src, dst, target_is_directory=True)
+                links.append(dst)
+            except (OSError, sp.SubprocessError):
+                continue
+        return links
+
+    @staticmethod
+    def _unlink(links: list[Path]) -> None:
+        """Bağlantıları YALNIZ bağlantı olarak kaldırır (hedefe dokunmaz) — worktree silinmeden ÖNCE; aksi hâlde
+        silme bağlantının içine girip projenin .venv / node_modules klasörünü silebilirdi."""
+        import os
+
+        for p in links:
+            try:
+                if os.path.isjunction(p):      # Python 3.12+: dizin bağlantısı → yalnız bağlantı kaldırılır
+                    os.rmdir(p)
+                elif p.is_symlink():
+                    p.unlink()
+            except OSError:
+                pass
+
+    def _attempt_in(self, task: Task, wt: Path, base: str) -> tuple[bool, str, TaskRun]:
+        """Görevi kopyada bir kez dene: çalıştır → doğrula (komut + inceleme, kopyada) → kopyada commit."""
+        st = self.state
+        feedback = ""
+        if (task.note or "").startswith(REOPEN_NOTE):
+            feedback = task.note[len(REOPEN_NOTE):]
+        t0 = time.monotonic()
+        run = self.hooks.run_task_in(task, task_prompt(st, task, feedback, shared_reads(st, self.root)), wt)
+        task.seconds += time.monotonic() - t0
+        task.model = run.model or task.model
+        if run.error is not None or run.stopped in ("cancelled", "error"):
+            why = run.error.message[:200] if run.error is not None else f"tur '{run.stopped}' ile bitti"
+            return False, why, run
+        wgit = Git(wt)
+        if not run.diff:
+            run.diff = wgit.diff_since(base)
+        ok, reason = self._verify(task, run, cwd=wt)
+        if not ok:
+            return False, reason, run
+        wgit.commit_all(f"EVREN proje görev {task.idx}: {task.title}"[:120])
+        return True, reason, run
+
+    def _run_parallel(self, batch: list[Task]) -> str:
+        from concurrent.futures import ThreadPoolExecutor
+
+        st = self.state
+        wait, why = self.hooks.quota_wait()
+        if wait < 0:
+            self._pause(why)
+            return "pause"
+        if wait > 0 and not self._wait(wait, why):
+            self._pause("Kullanıcı durdurdu.")
+            return "pause"
+        base = self.git.head()
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "-", st.branch or "proje")
+        jobs: list[tuple[Task, Path, str, list[Path]]] = []
+        for t in batch:
+            wt = Path(self.hooks.worktree_root) / safe / f"gorev-{t.idx}"
+            br = f"{st.branch}-gorev-{t.idx}"
+            if wt.exists():
+                self.git.worktree_remove(wt)
+            self.git.delete_branch(br)
+            ok, out = self.git.worktree_add(wt, br, base)
+            if not ok:
+                self._log(f"Görev {t.idx} için çalışma kopyası açılamadı ({out[:120]}); sırayla yapılacak.")
+                t.seq_only = True
+                continue
+            jobs.append((t, wt, br, self._link_ignored(wt)))
+        if len(jobs) < 2:
+            for t, wt, br, links in jobs:
+                self._cleanup_wt(t, wt, br, links)
+                t.seq_only = True
+            return "ok"
+        for t, *_ in jobs:
+            t.status, t.attempts = "calisiyor", t.attempts + 1
+        self._log("Görev " + ", ".join(str(t.idx) for t, *_ in jobs) + " AYNI ANDA başladı (ayrı çalışma kopyaları).")
+        self._save()
+        with ThreadPoolExecutor(max_workers=len(jobs)) as ex:
+            futs = [ex.submit(self._attempt_in, t, wt, base) for t, wt, _br, _l in jobs]
+            results = []
+            for f in futs:
+                try:
+                    results.append(f.result())
+                except Exception as exc:          # tek görevin çökmesi ötekileri düşürmesin
+                    results.append((False, f"{type(exc).__name__}: {exc}", TaskRun(stopped="error")))
+        for (t, wt, br, links), (ok, reason, run) in zip(jobs, results):
+            if not ok and run.stopped in ("cancelled", "quota_daily"):
+                # Kullanıcı durdurdu / günlük kota bitti: yarım deneme başarısızlık sayılmaz; sürdürünce yeniden
+                # (paralel olabilir) denenir. Kota: sonraki turdaki quota_wait projeyi duraklatır.
+                t.status, t.attempts = "bekliyor", max(0, t.attempts - 1)
+            elif ok:
+                merged, out = self.git.merge(br, f"EVREN proje görev {t.idx}: {t.title} (paralel)"[:120])
+                if merged:
+                    t.status, t.commit, t.note = "bitti", self.git.head(), (reason or "")[:200]
+                    self._log(f"Görev {t.idx} bitti (paralel, birleştirildi {t.commit[:8]})")
+                else:
+                    t.status, t.seq_only = "bekliyor", True
+                    t.note = PAR_NOTE + "birleştirmede çakışma; görev güncel kodun üstünde yeniden yapılacak"
+                    self._log(f"Görev {t.idx}: paralel sonuç birleştirilemedi (çakışma); sırayla yeniden yapılacak.")
+            else:
+                t.status, t.seq_only = "bekliyor", True
+                t.note = PAR_NOTE + (reason or "doğrulanamadı")[:300]
+                self._log(f"Görev {t.idx}: paralel deneme doğrulanamadı; sırayla yeniden yapılacak ({reason[:120]}).")
+            self._cleanup_wt(t, wt, br, links)
+        self._save()
+        if self.hooks.cancelled():
+            self._pause("Kullanıcı durdurdu.")
+            return "pause"
+        return "ok"
+
+    def _cleanup_wt(self, task: Task, wt: Path, branch: str, links: list[Path]) -> None:
+        import shutil
+
+        self._unlink(links)                   # ÖNCE bağlantılar: hedef (.venv / node_modules) asla silinmez
+        self.git.worktree_remove(wt)
+        if wt.exists():
+            # Ölçüldü (2026-11-11): `worktree remove --force` yoksayılan artıkları ve bağlantıları klasörle birlikte
+            # bırakıyor. Kalan bağlantıları da kaldır, sonra sil (Python 3.12 rmtree bağlantının içine girmez).
+            self._unlink(list(wt.iterdir()))
+            shutil.rmtree(wt, ignore_errors=True)
+        self.git.delete_branch(branch)
+
     def _pause(self, reason: str) -> ProjectState:
         st = self.state
         for t in st.tasks:
@@ -542,6 +750,9 @@ class ProjectRunner:
         feedback = ""
         if (task.note or "").startswith(REOPEN_NOTE):
             feedback = task.note[len(REOPEN_NOTE):]
+            task.note = ""
+        elif (task.note or "").startswith(PAR_NOTE):        # B3: paralel denemenin dersi sıralı denemeye geçer
+            feedback = task.note[len(PAR_NOTE):]
             task.note = ""
         outages = 0
         while task.attempts < MAX_ATTEMPTS:
@@ -631,12 +842,14 @@ class ProjectRunner:
         self._save()
         return "failed"
 
-    def _verify(self, task: Task, run: TaskRun) -> tuple[bool, str]:
+    def _verify(self, task: Task, run: TaskRun, cwd: Path | None = None) -> tuple[bool, str]:
+        """cwd verilirse (B3 paralel çalışma kopyası) doğrulama komutu orada çalışır."""
         if run.stopped not in ("done", "max_steps", "loop", "context_limit"):
             return False, f"tur '{run.stopped}' ile bitti"
         check_out = ""
         if task.check:
-            code, out = self.hooks.run_check(task.check)
+            code, out = (self.hooks.run_check_in(task.check, cwd) if cwd is not None and self.hooks.run_check_in
+                         else self.hooks.run_check(task.check))
             check_out = f"$ {task.check}\n(çıkış {code})\n{out}"
             if code != 0 and check_command_broken(out):
                 self._log(f"Görev {task.idx}: doğrulama komutunun kendisi bozuk (kabuk/sözdizimi hatası); "
@@ -646,7 +859,7 @@ class ProjectRunner:
             elif code != 0:
                 return False, f"doğrulama komutu başarısız (çıkış {code}): {out.strip()[-300:]}"
         diff = run.diff
-        if not diff and self.git is not None and self.state.git:
+        if not diff and cwd is None and self.git is not None and self.state.git:   # kopyada fark run.diff'te
             diff = self.git.diff_since("HEAD")
         try:
             text = self.hooks.review(review_messages(task, diff, check_out, run.summary))

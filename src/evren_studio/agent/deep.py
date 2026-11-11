@@ -168,10 +168,13 @@ def transcript_of(messages: list[dict], limit: int = 3000) -> str:
 def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, prompt: str,
                  marker: str, gate=None, cancel=None, mcp=None, max_steps: int = SUB_MAX_STEPS,
                  context_tokens: int | None = None, base_body: dict | None = None,
-                 progress: Callable[[str], None] | None = None) -> SubResult:
+                 progress: Callable[[str], None] | None = None, mode: str = "plan",
+                 test_check: bool = False, runner_kw: dict | None = None) -> SubResult:
     """Salt okunur (Plan modu) arayüzsüz alt ajan. Son yanıt metnini döndürür.
     R-26: blok ilk turda yoksa koşucu bir kez dürter (final_marker); tur yine bloksuz biterse aynı
-    bağlamla kısa "yalnız sonucu ver" turu açılır (2026-10-21: ikinci planlayıcı plan vermemişti)."""
+    bağlamla kısa "yalnız sonucu ver" turu açılır (2026-10-21: ikinci planlayıcı plan vermemişti).
+    runner_kw: ek AgentRunner ayarları (B3 paralel proje görevi: proje kuralları, güvenilmeyen klasörler, kurulum
+    kipi, komut süre sınırı… oturum ajanıyla aynı)."""
     store = MemoryStore()
     history = [{"id": 0, "role": "user", "content": prompt}]
     store.messages.append(history[0])
@@ -185,10 +188,12 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
         return {"daily": "quota_daily", "cancelled": "cancelled"}.get(r) if r else None
     def make(steps):
         return AgentRunner(client, model, session_id=0, store=store, events=events,
-                           workspace=Workspace(root), mode="plan", stream=False, cancel=cancel,
+                           workspace=Workspace(root), mode=mode, stream=False, cancel=cancel,
                            max_steps=steps, before_model_call=before, fallback_models=list(fallbacks),
-                           final_marker=marker, mcp=mcp, context_tokens=context_tokens,
-                           base_body=base_body)        # ör. {"reasoning_effort": "high"}; yalnız birincil modelde
+                           final_marker=marker or None, mcp=mcp, context_tokens=context_tokens,
+                           base_body=base_body,        # ör. {"reasoning_effort": "high"}; yalnız birincil modelde
+                           test_check=test_check,      # B3 paralel görev (mode="auto"): test koruma bekçisi açık
+                           **(runner_kw or {}))
 
     def last_text():
         texts = [m.get("content") or "" for m in history if m.get("role") == "assistant" and (m.get("content") or "").strip()]

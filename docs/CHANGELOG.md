@@ -1,5 +1,19 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — açık kaynak depolardan gelen geliştirmeler (Madde 20)
+
+- **Proje ajanı birbirinden bağımsız görevleri AYNI ANDA yapar** (B3): her görev projenin ayrı bir git çalışma
+  kopyasında (worktree) çalışır, bitince sırayla proje dalına birleştirilir. Gerçek ölçüm (3 bağımsız modüllü iş):
+  üç görev 80 sn'de bitti (tek tek ~209 sn), kabul 8/8. Çakışan ya da doğrulanamayan paralel deneme kaybolmaz: aynı
+  görev güncel kodun üstünde sırayla yeniden yapılır. Planda bağımlılık bilgisi yoksa, git yoksa ya da kod modeli
+  ücretli bir sağlayıcıysa eskisi gibi sırayla çalışır. EVREN kota penceresi dolmak üzereyken kendiliğinden sıraya
+  döner. Ayar: `project_parallel` (1 = kapalı, varsayılan 3).
+- **Hata düzeltme işlerinde önce hatayı yeniden üreten test** (B1): Proje ve Derin Mod planı, düzeltmeden önce hatayı
+  gösteren (şu an kalan) bir test yazar; doğrulama bu testin artık geçtiğine bakar.
+- **PDF, Word ve PowerPoint okuma** (A3): sohbete eklenen ya da ajanın açtığı belge metne çevrilir (salt okunur).
+- **Hata bekçisi ruff ile** (A2): Python dosyasında tanımsız ad ve yapı hataları düzenlemeden hemen sonra yakalanır.
+- **Bozuk JSON onarımı** (A1): modellerin bozuk yazdığı sonuç blokları (Derin/QA/Proje) onarılarak okunur.
+
 ## 0.4.2 — 2026-11-07
 
 - **Kurulum temiz bir Windows'ta denendi (Windows Sandbox, internetsiz)**: Python, Git, Node.js ve GitHub CLI olmayan

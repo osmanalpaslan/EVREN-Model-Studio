@@ -31,6 +31,38 @@ HEDEF = ("Python standart kütüphanesiyle bir sıcaklık dönüştürücü yap.
          "tests/ klasöründe unittest testleri olsun ve `python -m unittest discover -s tests` geçsin. "
          "Son olarak README.md'ye kullanım örnekleri yaz.")
 
+# Madde 20 B3 (2026-11-11): birbirinden BAĞIMSIZ parçalı hedef — paralel görevler (ayrı git çalışma kopyaları) ile
+# sıralı yürütmeyi aynı hedefte karşılaştırmak için: `--hedef paralel --paralel 3` / `--paralel 1`
+HEDEF_PAR = ("Python standart kütüphanesiyle birbirinden bağımsız üç küçük modül yap. "
+             "(1) metin.py: kelime_say(s) boşluklarla ayrılmış kelime sayısını döndürür (birden çok boşluk tek "
+             "ayırıcıdır), ters(s) metni ters çevirir. "
+             "(2) sayi.py: asal_mi(n) n asal ise True (n < 2 için False), faktoriyel(n) n! döndürür, n < 0 ise "
+             "ValueError fırlatır. "
+             "(3) tarih.py: artik_yil(y) artık yıl ise True (Gregoryen kural: 400'e bölünen artık, 100'e bölünen "
+             "değil, 4'e bölünen artık), ay_gun(y, m) o aydaki gün sayısını döndürür, m 1-12 dışındaysa ValueError. "
+             "Her modülün tests/ klasöründe kendi unittest dosyası olsun (test_metin.py, test_sayi.py, "
+             "test_tarih.py) ve `python -m unittest discover -s tests` geçsin. "
+             "Son olarak README.md'ye üç modülün kullanım örneklerini yaz.")
+
+KABUL_PAR = r"""
+import metin, sayi, tarih
+def hata(f, *a):
+    try:
+        f(*a)
+    except ValueError:
+        return True
+    return False
+r = {
+ "kelime_say": metin.kelime_say("bir iki  üç") == 3, "ters": metin.ters("abc") == "cba",
+ "asal_mi": sayi.asal_mi(7) and not sayi.asal_mi(1) and not sayi.asal_mi(9),
+ "faktoriyel": sayi.faktoriyel(5) == 120 and sayi.faktoriyel(0) == 1 and hata(sayi.faktoriyel, -1),
+ "artik_yil": tarih.artik_yil(2024) and tarih.artik_yil(2000) and not tarih.artik_yil(1900),
+ "ay_gun": tarih.ay_gun(2024, 2) == 29 and tarih.ay_gun(2023, 2) == 28 and tarih.ay_gun(2023, 4) == 30
+           and hata(tarih.ay_gun, 2023, 13),
+}
+print(" ".join(k + "=" + ("1" if v else "0") for k, v in r.items()))
+"""
+
 
 def run(cmd, cwd, timeout=60):
     # Kabul, kullanıcının normal ortamında çalışır: bu betiği çalıştırırken verilen
@@ -59,6 +91,18 @@ def kabul(p: Path) -> list[tuple[str, bool, str]]:
     return r
 
 
+def kabul_par(p: Path) -> list[tuple[str, bool, str]]:
+    c, o = run([PY, "-c", KABUL_PAR], p)
+    got = dict(x.split("=", 1) for x in (o.splitlines()[-1:] or [""])[0].split() if "=" in x) if c == 0 else {}
+    r = [(f"{k}", got.get(k) == "1", "" if c == 0 else o[-120:])
+         for k in ("kelime_say", "ters", "asal_mi", "faktoriyel", "artik_yil", "ay_gun")]
+    c, o = run([PY, "-m", "unittest", "discover", "-s", "tests"], p, timeout=120)
+    r.append(("kendi testleri geçiyor", c == 0, (o.splitlines() or [''])[-1][:80]))
+    readme = (p / "README.md").read_text(encoding="utf-8", errors="replace") if (p / "README.md").exists() else ""
+    r.append(("README üç modül", all(m in readme for m in ("metin", "sayi", "tarih")), ""))
+    return r
+
+
 def main() -> int:
     for s in (sys.stdout, sys.stderr):
         try:
@@ -71,8 +115,17 @@ def main() -> int:
         i = args.index("--cikti")
         out = Path(args[i + 1])
         del args[i:i + 2]
+    hedef, par = "tek", None
+    if "--hedef" in args:
+        i = args.index("--hedef")
+        hedef = args[i + 1]
+        del args[i:i + 2]
+    if "--paralel" in args:
+        i = args.index("--paralel")
+        par = int(args[i + 1])
+        del args[i:i + 2]
     model = args[0] if args else "auto-pro"
-    base = out.resolve() / model
+    base = out.resolve() / (model + ("" if hedef == "tek" else f"-{hedef}") + ("" if par is None else f"-p{par}"))
     shutil.rmtree(base, ignore_errors=True)
     proj = base / "proje"
     proj.mkdir(parents=True)
@@ -122,12 +175,14 @@ def main() -> int:
             time.sleep(0.05)
         return cond()
 
+    if par is not None:
+        w.ctx.settings.project_parallel = par
     s = w.session
     s.new_session()
     s.welcome._choose(str(proj))
     s.composer.set_model(model, emit=True)
     t0 = time.monotonic()
-    s.send("/proje " + HEDEF)
+    s.send("/proje " + (HEDEF_PAR if hedef == "paralel" else HEDEF))
     ok_plan = wait(lambda: s.findChildren(PlanCard) or (not s.running and not s.project.planning), 15 * 60)
     pump(1)
     cards = s.findChildren(PlanCard)
@@ -136,9 +191,12 @@ def main() -> int:
         print("FAIL: plan kartı gelmedi")
         return 1
     st = s.project.state
-    print(f"[{model}] plan: {len(st.tasks)} görev · {round(time.monotonic() - t0)} sn", flush=True)
+    plan_s = round(time.monotonic() - t0)
+    print(f"[{model}] plan: {len(st.tasks)} görev · {plan_s} sn", flush=True)
     for t in st.tasks:
-        print(f"   {t.idx}. {t.title} | ölçüt: {t.criteria[:70]} | doğrulama: {t.check[:50]}", flush=True)
+        print(f"   {t.idx}. {t.title} | ölçüt: {t.criteria[:70]} | doğrulama: {t.check[:50]} | bağımlı: {t.depends}",
+              flush=True)
+    t_run = time.monotonic()
     cards[-1].approved.emit()
     shot = {"done": False}
 
@@ -156,10 +214,13 @@ def main() -> int:
     # Tam mesaj: commit'in ilk satırı yapay zekâ önerisi olabilir, "EVREN proje görev N" gövdededir
     log = subprocess.run(["git", "log", "--format=%B"], cwd=proj, capture_output=True, text=True,
                          encoding="utf-8").stdout
-    checks = kabul(proj)
+    checks = kabul_par(proj) if hedef == "paralel" else kabul(proj)
     passed = sum(1 for _n, o, _d in checks if o)
+    paralel_log = [x for x in st.log if "AYNI ANDA" in x or "paralel" in x or "sırayla" in x]
     rapor = {
-        "model": model, "sure_sn": round(time.monotonic() - t0), "zaman_icinde": finished,
+        "model": model, "hedef": hedef, "paralel": par, "plan_sn": plan_s,
+        "yurutme_sn": round(time.monotonic() - t_run), "paralel_gunluk": paralel_log[:20],
+        "sure_sn": round(time.monotonic() - t0), "zaman_icinde": finished,
         "durum": st.status, "duraklama": st.pause_reason,
         "gorevler": [{"no": t.idx, "baslik": t.title, "durum": t.status, "deneme": t.attempts,
                       "model": t.model, "commit": t.commit[:8], "not": t.note[:160], "sn": round(t.seconds)}
@@ -171,6 +232,9 @@ def main() -> int:
         "yakalanmamis_hata": errors[:5],
     }
     (base / "rapor.json").write_text(json.dumps(rapor, ensure_ascii=False, indent=1), encoding="utf-8")
+    for x in paralel_log:
+        print("   [paralel] " + x[:160], flush=True)
+    print(f"[{model}] yürütme {rapor['yurutme_sn']} sn (plan {plan_s} sn)", flush=True)
     print(f"[{model}] durum={st.status} · {rapor['sure_sn']} sn · dal={branch} · commit={rapor['commit_sayisi']} "
           f"· plan/rapor dosyası={rapor['plan_dosyasi']}/{rapor['rapor_dosyasi']} · bildirim={bool(notes)}", flush=True)
     for t in rapor["gorevler"]:
