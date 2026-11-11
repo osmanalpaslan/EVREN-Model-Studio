@@ -58,6 +58,13 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   Windows "Tolga" Türkçe sesiyle üretilen 3 cümle: 4,3 / 5,3 / 5,8 sn (model yükleme dahil); doğruluk iyi, küçük
   hatalar ("KDV" → "kat mater vergisi", "şüpheli" → "Şükeli", "Projeklasöründeki") — metin gönderilmeden düzeltilebilir.
   Gerçek mikrofonla kayıt bu oturumda denenmedi (kullanıcı başında değil); kayıt yolu birim testli.
+- C3 DÜZELTME (C4 paketlemesine bakarken bulundu): kurulum paketi (spec excludes) `PySide6.QtMultimedia`'yı DIŞARIDA
+  bırakıyor → QAudioSource ile kayıt kurulu uygulamada ÇALIŞMAZDI (kaynaktan çalışınca görünmüyor). QtMultimedia'yı
+  eklemek ~60 MB (FFmpeg). Bunun yerine KAYIT da ses ortamında ayrı süreçte: `sounddevice` (MIT) ile `kaydet.py`
+  ("HAZIR" yazınca dinliyor; durdurma dosyası gelince WAV yazıp çıkar; üst sınır 120 sn). Kurulum takımı sürümü
+  (`kuruldu.json` surum=2): eski kurulumda kaydedici yoksa yeniden kurulur (gerçek: 3,4 sn). Uygulama kapanınca açık
+  kayıt süreci öldürülür. GERÇEK MİKROFON: kaydedici 0,78 sn'de hazır, 2,5 sn kayıt, sessizlik → boş metin (uydurma
+  yok; arayüz "anlaşılamadı" der), geçici klasör silindi. test_sesle_yazma 15; mutasyon (yeni parçalar) 8/8.
 
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası
