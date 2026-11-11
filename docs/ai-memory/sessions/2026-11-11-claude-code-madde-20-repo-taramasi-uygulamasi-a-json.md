@@ -105,6 +105,13 @@ try: …"` (düz metin `
   ayar kapalı yok, koşucuya iletim, puanların günlüğe taşınması); mutasyon 17/17 (ilk turda kaçan: sıralı yolda puan
   taşıma → test eklendi). Riskli alan paketi (koşucu, router, oturum, proje, derin, güvenlik; 24 dosya) 360 geçti.
 
+- B3+B4 SON KODLA GERÇEK ÖLÇÜM (2026-11-12 00:15-00:44, PowerShell'den — kullanıcı ortamı PATH'i): tam takım
+  1114/1114 (8 dk 48 sn) · e2e_proje paralel+gözetmen 8/8, 550 sn (plan 249 sn, yürütme 301 sn; 1-3 aynı anda 112 sn) ·
+  zorluk 12/12, 928 sn · R-13: E2E_OK · ajan 4/6 (düşen 2: glm-5.3 HTTP 503 model_capacity_exhausted — sunucu;
+  deepseek + qwen 4/4) · arayüz 15/15. Gözetmen proje koşusunda HİÇ devreye girmedi (görevler <8 adım; model_calls'ta
+  0 elestirmen) → yanlış alarm için tests/e2e_gozetmen_real_api.py yazıldı: gerçek 7 başarılı 8+ adımlı tur (zorluk +
+  proje veritabanları) 0 not/0 durdurma (puan 7-9); yapay raydan çıkma 2/2 yakalandı; zorlanıp yolunda olan serbest.
+
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2
   kaçtı → iki test eklendi). Bulgu: json_repair TEK BAŞINA daha iyi değil — 2026-10-19 gerçek QA çıktısında (`'""'`)
