@@ -120,11 +120,12 @@ def test_yeni_rollerin_zincirleri_ve_etiketleri():
 
 def test_kalite_cezasi_yalniz_siralamayi_degistirir():
     avail = {"deepseek-v4.1-flash", "qwen3.8-flash-next", "gemma-4-31b"}
-    r = router.choose("kod", available=avail, penalties={"deepseek-v4.1-flash": "kalite puanı 0.40"})
-    assert r.model == "qwen3.8-flash-next" and "deepseek-v4.1-flash" in r.fallbacks
+    first, second = router.EVREN_ROUTES["kod"][:2]           # tablo sırası değişse de test anlamını korur
+    r = router.choose("kod", available=avail, penalties={first: "kalite puanı 0.40"})
+    assert r.model == second and first in r.fallbacks
     assert "geri alındı" in r.reason
     temiz = router.choose("kod", available=avail)
-    assert temiz.model == "deepseek-v4.1-flash" and "geri alındı" not in temiz.reason
+    assert temiz.model == first and "geri alındı" not in temiz.reason
     # sağlıksız (30 dk) model cezalıdan da geride
     now = datetime.now(timezone.utc)
     health = {"qwen3.8-flash-next": {"healthy": 0, "last_test_at": now.isoformat()}}

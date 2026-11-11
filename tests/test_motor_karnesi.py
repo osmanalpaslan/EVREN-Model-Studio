@@ -98,13 +98,14 @@ def test_karne_veritabaninda_kalici(tmp_path):
 # ---- 3) yönlendirme: puana göre sıra, bugün zayıfsa güçlü yedek --------------------------------------------
 
 def test_puan_iki_aday_puanliysa_sirayi_belirler_puansizin_yeri_degismez():
-    r = router.choose("kod", scores={"qwen3.8-flash-next": 92, "gemma-4-31b": 70, "deepseek-v4.1-flash": 80})
-    assert [r.model] + r.fallbacks == ["qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"]
+    # tablo (2026-11-11): qwen → deepseek → gemma; puanlar sırayı değiştirmeli
+    r = router.choose("kod", scores={"deepseek-v4.1-flash": 92, "gemma-4-31b": 70, "qwen3.8-flash-next": 80})
+    assert [r.model] + r.fallbacks == ["deepseek-v4.1-flash", "qwen3.8-flash-next", "gemma-4-31b"]
     assert "gerçek puana göre" in r.reason
     tek = router.choose("kod", scores={"gemma-4-31b": 99})               # tek puan: sıra değişmez (R-22)
-    assert tek.model == "deepseek-v4.1-flash" and "puan" not in tek.reason
-    kismi = router.choose("kod", scores={"qwen3.8-flash-next": 50, "gemma-4-31b": 90})
-    assert [kismi.model] + kismi.fallbacks == ["deepseek-v4.1-flash", "gemma-4-31b", "qwen3.8-flash-next"]
+    assert tek.model == "qwen3.8-flash-next" and "puan" not in tek.reason
+    kismi = router.choose("kod", scores={"deepseek-v4.1-flash": 50, "gemma-4-31b": 90})
+    assert [kismi.model] + kismi.fallbacks == ["qwen3.8-flash-next", "gemma-4-31b", "deepseek-v4.1-flash"]
 
 
 def test_puan_olcmedigi_islerde_kullanilmaz():
@@ -114,12 +115,12 @@ def test_puan_olcmedigi_islerde_kullanilmaz():
 
 
 def test_bugun_zayif_motor_guclu_yedege_birakir_gerekcesiyle():
-    r = router.choose("kod", weak={"deepseek-v4.1-flash": "yoklama 40 sn, normali ~2 sn"})
-    # yavaş ama güçlü deepseek, kodda hile eğilimli gemma'nın ÖNÜNDE kalır
-    assert r.model == "qwen3.8-flash-next" and r.fallbacks == ["deepseek-v4.1-flash", "gemma-4-31b"]
+    r = router.choose("kod", weak={"qwen3.8-flash-next": "yoklama 40 sn, normali ~2 sn"})
+    # yavaş ama güçlü qwen, kodda hile eğilimli gemma'nın ÖNÜNDE kalır
+    assert r.model == "deepseek-v4.1-flash" and r.fallbacks == ["qwen3.8-flash-next", "gemma-4-31b"]
     assert "bugün zayıf" in r.reason and "40 sn" in r.reason
     temiz = router.choose("kod", weak={})                                # tetiklenmeyen (R-22)
-    assert temiz.model == "deepseek-v4.1-flash" and "zayıf" not in temiz.reason
+    assert temiz.model == "qwen3.8-flash-next" and "zayıf" not in temiz.reason
 
 
 def test_zayiflik_yuzunden_zayif_role_hileci_motor_one_gecmez():

@@ -12,7 +12,6 @@ Qt kullanmaz; arayüz bunu arka plan iş parçacığında çağırır (R-04).
 from __future__ import annotations
 
 import difflib
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -245,9 +244,11 @@ def parse_response(text: str, paths: set[str]) -> list[OutOfScope]:
     m = re.search(r"\{.*\}", text or "", re.S)
     if not m:
         return []
-    try:
-        data = json.loads(m.group(0))
-    except json.JSONDecodeError:
+    from . import jsonfix
+
+    # Bozuk JSON önceden "kapsam dışı yok" sayılıyordu → ihlal sessizce kaçıyordu; artık onarılır (Madde 20 A1)
+    data = jsonfix.obj(m.group(0))
+    if data is None:
         return []
     out: list[OutOfScope] = []
     norm = {p.replace("\\", "/").lower(): p for p in paths}

@@ -23,13 +23,14 @@ from __future__ import annotations
 import json
 import os
 import sys
-import tempfile
 import time
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
+from gecici import klasor  # noqa: E402 — geçici klasörler çıkışta silinir (2026-11-11 disk sızıntısı)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 HATA_ESIK = 3.0
@@ -116,7 +117,7 @@ def main() -> int:
 
 
 def denetle(tema: str, out: Path, goruntu: bool, gecis: bool = False) -> list[dict]:
-    data = Path(tempfile.mkdtemp(prefix="evren-denetim-"))
+    data = klasor("evren-denetim-")
     acilis = ("koyu" if tema == "açık" else "açık") if gecis else tema
     (data / "config.json").write_text(json.dumps({"theme": acilis}), encoding="utf-8")
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(data)
@@ -381,7 +382,12 @@ def denetle(tema: str, out: Path, goruntu: bool, gecis: bool = False) -> list[di
             pump(0.4)
             kaydir_ve_olc("sayfa_scheduled_ayrinti", sayfa)
             sayfa.show_list()
-    w.close()
+    w.close()                                   # bağlam + veritabanı kapanır (closeEvent)
+    pump(0.2)
+    from gecici import sakla, sil
+
+    if not sakla():
+        sil(data)                               # 154 evren-denetim-* birikmişti (2026-11-11)
     return sorted(bulgular, key=lambda b: (b["duzey"] != "HATA", b["oran"]))
 
 

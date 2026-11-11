@@ -1898,16 +1898,18 @@ class AgentRunner:
         return ToolResult(True, content, f"{verb}: {change.rel_path}  +{added} −{removed}", extra)
 
     def _post_edit_check(self, rel_path: str, text: str | None) -> str:
-        """Hata bekçisi: önce yerleşik (sözdizimi/JSON), sorun yoksa Serena teşhisi. Hiçbir
-        hata turu düşürmez."""
+        """Hata bekçisi: önce yerleşik (sözdizimi/JSON); sözdizimi temizse ruff (Python, Madde 20 A2) + Serena teşhisi
+        birlikte (aynı satır tekrarlanmaz). Hiçbir hata turu düşürmez."""
         if not self.edit_check or self.workspace is None:
             return ""
         from . import diagnostics
 
         try:
             problems = diagnostics.builtin_problems(rel_path, text, self.workspace.root)
-            if not problems and self.mcp is not None and hasattr(self.mcp, "diagnostics"):
-                problems = self.mcp.diagnostics(rel_path)
+            if not problems:
+                problems = diagnostics.lint_problems(rel_path, text)
+                if self.mcp is not None and hasattr(self.mcp, "diagnostics"):
+                    problems = diagnostics.merge(problems, self.mcp.diagnostics(rel_path))
         except Exception:
             return ""
         return diagnostics.note(rel_path, problems)

@@ -223,17 +223,18 @@ def win(tmp_path, monkeypatch, fake_keyring):
 def test_yedege_gecen_model_bekleme_suresinde_sona_alinir_ve_normal_hiz_okunur(win):
     _app, w = win
     ctx = w.ctx
+    first = router.EVREN_ROUTES["kod"][0]                     # tablonun birincisi yedeğe geçilen model olsun
     for _ in range(6):
-        ctx.record_model_call({"model": "deepseek-v4.1-flash", "ok": True, "duration_s": 5, "first_chunk_s": 1,
+        ctx.record_model_call({"model": first, "ok": True, "duration_s": 5, "first_chunk_s": 1,
                                "out_tokens": 400, "role": "kod"})
     base = ctx.model_baselines()
-    assert base["deepseek-v4.1-flash"].tps == 100 and base["deepseek-v4.1-flash"].samples == 6
-    ctx.record_model_call({"model": "deepseek-v4.1-flash", "ok": False, "event": "switch", "detail": "x → y: yavaşlık"})
+    assert base[first].tps == 100 and base[first].samples == 6
+    ctx.record_model_call({"model": first, "ok": False, "event": "switch", "detail": "x → y: yavaşlık"})
     health = {r["model"]: dict(r) for r in ctx.db.all_model_health()}
     r = router.choose("kod", health=health)
-    assert r.model != "deepseek-v4.1-flash" and r.fallbacks[-1] == "deepseek-v4.1-flash"    # A4
+    assert r.model != first and r.fallbacks[-1] == first    # A4
     sonra = datetime.now(timezone.utc).replace(year=datetime.now(timezone.utc).year + 1)  # bekleme bitti
-    assert router.choose("kod", health=health, now=sonra).model == "deepseek-v4.1-flash"
+    assert router.choose("kod", health=health, now=sonra).model == first
 
 
 def test_model_listesi_degisince_uyari_ilk_yuklemede_degil(win):

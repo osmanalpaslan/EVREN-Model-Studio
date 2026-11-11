@@ -11,15 +11,16 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
+from gecici import klasor  # noqa: E402 — geçici klasörler çıkışta silinir (2026-11-11 disk sızıntısı)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")
-os.environ["EVREN_STUDIO_DATA_DIR"] = tempfile.mkdtemp(prefix="evren-zaman-")
+os.environ["EVREN_STUDIO_DATA_DIR"] = str(klasor("evren-zaman-"))
 
 PROMPT = ("topla.py dosyasında topla(a, b) fonksiyonunu yaz (iki sayının toplamını döndürsün) ve "
           "tests/test_topla.py içinde unittest ile 3 test yaz; testleri çalıştırıp geçtiğini doğrula.")
@@ -39,7 +40,7 @@ def main() -> int:
 
     w = MainWindow()
     w.show()
-    proj = Path(tempfile.mkdtemp(prefix="zaman-proje-"))
+    proj = klasor("zaman-proje-")
     s = w.ctx.settings
     s.default_model, s.agent_mode = "deepseek-v4.1-flash", "manuel"
     user_view = w.session.session_id

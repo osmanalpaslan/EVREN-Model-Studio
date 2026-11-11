@@ -66,6 +66,76 @@ def builtin_problems(rel_path: str, text: str | None, root: Path | None = None) 
     return []
 
 
+# ---- ruff (Madde 20 A2, 2026-11-11; docs/knowledge/REPO_TARAMASI_2026-11.md) ------------------------------------------
+# Yerleşik denetim Python'da yalnız sözdizimini görüyordu; modellerin en sık hatası (eksik import / tanımsız ad) ancak
+# Serena açıkken yakalanıyordu. ruff (Astral, MIT) aynı işi Serena'sız, milisaniyede yapar. YALNIZ kesin hatalar
+# (flake8'in CI'da "gerçek hata" diye kullandığı küme): E9 sözdizimi/G-Ç, F63 karşılaştırma/assert hataları, F7 yapı
+# (döngü dışı break/continue, fonksiyon dışı return…), F82 tanımsız ad. Stil/kullanılmayan import BİLEREK yok (gürültü).
+# Yıldızlı içe aktarmada ruff F821 değil F405 verir (seçili değil) → yanlış alarm yok (test sınar).
+RUFF_SELECT = "E9,F63,F7,F82"
+_ruff_cache: list[str | None] = []
+
+
+def ruff_bin() -> str | None:
+    """Kurulum paketinde `_internal/tools/ruff.exe`; kaynaktan çalışırken ortamdaki ruff. Yoksa None (denetim atlanır)."""
+    import sys
+
+    if _ruff_cache:
+        return _ruff_cache[0]
+    found = None
+    base = getattr(sys, "_MEIPASS", None)
+    if base and (Path(base) / "tools" / "ruff.exe").is_file():
+        found = str(Path(base) / "tools" / "ruff.exe")
+    if found is None:
+        try:
+            from ruff.__main__ import find_ruff_bin
+
+            found = str(find_ruff_bin())
+        except Exception:
+            found = shutil.which("ruff")
+    _ruff_cache.append(found)
+    return found
+
+
+def ruff_problems(rel_path: str, text: str) -> list[str]:
+    """Dosya diske DEĞİL standart girdiden verilir (--isolated: projenin ruff ayarı karışmaz). Hata → sessizce []."""
+    exe = ruff_bin()
+    if not exe or not text.strip():
+        return []
+    try:
+        r = subprocess.run([exe, "check", "--isolated", "--no-cache", "--select", RUFF_SELECT, "--output-format", "json",
+                            "--stdin-filename", rel_path, "-"], input=text, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=15,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0)
+        items = json.loads(r.stdout or "[]")
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return []
+    out = []
+    for d in items if isinstance(items, list) else []:
+        code, msg = d.get("code") or "", d.get("message") or ""
+        row = (d.get("location") or {}).get("row", "?")
+        if code == "F821":
+            msg = f"tanımsız ad ({msg}) — içe aktarma ya da tanım eksik"
+        out.append(f"satır {row}: {code} {msg}")
+    return out[:MAX_PROBLEMS]
+
+
+def lint_problems(rel_path: str, text: str | None) -> list[str]:
+    """Sözdizimi TEMİZKEN çalışan ikinci katman (şimdilik yalnız Python: ruff)."""
+    if text is None or os.path.splitext(rel_path)[1].lower() not in (".py", ".pyw"):
+        return []
+    return ruff_problems(rel_path, text)
+
+
+def merge(first: list[str], second: list[str]) -> list[str]:
+    """İki kaynağın bulguları; aynı satır için ikincisininki atılır (model aynı hatayı iki kez görmesin)."""
+    import re
+
+    rows = {m.group(1) for p in first if (m := re.match(r"satır (\d+)", p))}
+    extra = [p for p in second if not ((m := re.match(r"satır (\d+)", p)) and m.group(1) in rows)]
+    return (first + extra)[:MAX_PROBLEMS]
+
+
 def _node_check(path: Path) -> list[str]:
     node = shutil.which("node") or (r"C:\Program Files\nodejs\node.exe"
                                     if os.name == "nt" and Path(r"C:\Program Files\nodejs\node.exe").exists()

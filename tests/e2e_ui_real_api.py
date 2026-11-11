@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
+from gecici import klasor  # noqa: E402 — geçici klasörler çıkışta silinir (2026-11-11 disk sızıntısı)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")   # gözlem ajanı: bu koşunun kayıtları "e2e" kaynaklı
 
@@ -34,7 +35,7 @@ def main() -> int:
     model = sys.argv[1] if len(sys.argv) > 1 else "deepseek-v4-flash"
     out = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "build" / "shots"
     out.mkdir(parents=True, exist_ok=True)
-    tmp = Path(tempfile.mkdtemp(prefix="evren-e2e-"))
+    tmp = klasor("evren-e2e-")
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(tmp / "data")
     proj = tmp / "proje"
     proj.mkdir()

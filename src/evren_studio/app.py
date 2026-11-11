@@ -112,6 +112,25 @@ def smoke_report(window) -> list[str]:
         lines.append(f"python={mcp._base_python()}")
     except mcp.McpError:
         lines.append("python=YOK")
+    from .agent import diagnostics
+
+    lines.append(f"ruff={'var' if diagnostics.ruff_bin() else 'YOK'}")   # hata bekçisi (Madde 20 A2)
+    try:                                    # belge okuma (Madde 20 A3): kütüphaneler + Word/PowerPoint şablon dosyaları
+        import docx
+        import pdfminer.high_level  # noqa: F401
+        import pptx
+
+        docx.Document()
+        pptx.Presentation()
+        lines.append("belge=var")
+    except Exception as exc:                # noqa: BLE001
+        lines.append(f"belge=HATA {type(exc).__name__}")
+    try:                                    # bozuk JSON onarımı (agent/jsonfix.py) pakete girdi mi
+        import json_repair  # noqa: F401
+
+        lines.append("json_repair=var")
+    except ImportError:
+        lines.append("json_repair=YOK")
     try:                                    # anahtar Credential Manager'da: paketlenince arka uç kaybolabilir
         import keyring
 

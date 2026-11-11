@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 108 · Açık/izlenen: 7 · Oturum: 43 · Kural: 36
+Kayıt: 108 · Açık/izlenen: 7 · Oturum: 44 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -133,6 +133,7 @@ Kayıt: 108 · Açık/izlenen: 7 · Oturum: 43 · Kural: 36
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-11-11 | [2026-11-11-claude-code-madde-20-repo-taramasi-uygulamasi-a-json](sessions/2026-11-11-claude-code-madde-20-repo-taramasi-uygulamasi-a-json.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 20 repo taraması uygulaması (A json_repair ruff belgeler, B Derin, C) |
 | 2026-11-07 | [2026-11-07-claude-code-madde-16-kurulumlu-exe-mit-kendi-imza-go](sessions/2026-11-07-claude-code-madde-16-kurulumlu-exe-mit-kendi-imza-go.md) | Claude Code / claude-opus-5-5 | kismi | Madde 16 kurulumlu exe (MIT, kendi imza, gomulu programlar) |
 | 2026-11-06 | [2026-11-06-claude-code-madde-14-motor-karnesi-ve-akilli-yonlend](sessions/2026-11-06-claude-code-madde-14-motor-karnesi-ve-akilli-yonlend.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 14 motor karnesi ve akilli yonlendirme |
 | 2026-11-05 | [2026-11-05-claude-code-masaustu-madde-13-masaustu-kontrolu-windows-mcp-v](sessions/2026-11-05-claude-code-masaustu-madde-13-masaustu-kontrolu-windows-mcp-v.md) | Claude Code (masaüstü) / claude-opus-5-5 | devam-ediyor | Madde 13 masaüstü kontrolü (Windows-MCP) ve masaüstü QA |

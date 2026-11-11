@@ -69,7 +69,10 @@ ROLE_LABELS = {
 #   modelstats.effective_speeds). O gün deepseek-v4.1-flash 14,4, qwen3.8-flash-next 3,7 sn/100 token ölçüldü.
 EVREN_ROUTES: dict[str, list[str]] = {
     "sohbet": ["deepseek-v4-flash", "qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
-    "kod": ["deepseek-v4.1-flash", "qwen3.8-flash-next", "gemma-4-31b"],
+    # 2026-11-11 kullanıcı yetkisiyle ("yetki sende"): karne ölçümü (2026-11-06: qwen 95,5 · ortanca görev 29 sn;
+    # deepseek 91,7 · 55 sn) sabit tabloya işlendi — 2026-10-21 kararının (deepseek önde) yerine. Bu sıra yalnız auto'nun
+    # güvenlik ağı ve iç işler (Derin/Proje kod aşaması) içindir; kullanıcı turlarını auto (sunucu) seçer.
+    "kod": ["qwen3.8-flash-next", "deepseek-v4.1-flash", "gemma-4-31b"],
     "plan": ["deepseek-v4.1-flash", "qwen3.8-flash-next", "deepseek-v4-flash"],
     "gorsel": ["gemma-4-31b", "qwen3.8-flash-next", "qwen3-vl-30b"],
     "buyuk_baglam": ["deepseek-v4-flash", "deepseek-v4.1-flash", "mimo-v2.6-pro"],
