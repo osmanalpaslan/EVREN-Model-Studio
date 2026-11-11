@@ -165,6 +165,7 @@ class MainWindow(QMainWindow):
         def skip() -> None:
             self.ctx.settings.update_skipped = info.version
             self.ctx.save_settings()
+            self.sidebar.update_btn.hide()
 
         lines = [f"Yüklü sürüm {__version__}; yeni sürüm {info.version}. Kurulum dosyası indirilir, çalıştırınca "
                  "eski sürümün üstüne kurulur (ayarlarınız ve oturumlarınız korunur)."]
@@ -175,6 +176,16 @@ class MainWindow(QMainWindow):
                            ("Sürüm notları", lambda: QDesktopServices.openUrl(QUrl(info.url)), "ghost"),
                            ("Bu sürümü atla", skip, "ghost")], icon_name="download")
         self.session.transcript.add(card)
+        # Kart yalnız oturum açıkken görünür; kenar çubuğundaki düğme her ekranda görünür
+        btn = self.sidebar.update_btn
+        btn.setText(f"Yeni sürüm {info.version} — indir")
+        btn.setToolTip(f"Yüklü sürüm {__version__}. Tıklayınca kurulum dosyası tarayıcıda indirilir.")
+        try:
+            btn.clicked.disconnect()
+        except (RuntimeError, TypeError):
+            pass
+        btn.clicked.connect(lambda _=None: QDesktopServices.openUrl(QUrl(info.asset_url or info.url)))
+        btn.show()
         self.show_notification("EVREN Studio — yeni sürüm", f"{info.version} yayınlandı. İndirmek için uygulamaya bakın.")
 
     def _send_gozlem(self) -> None:

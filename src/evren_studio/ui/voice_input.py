@@ -49,8 +49,16 @@ class VoiceInput(QObject):
         self._sync()
 
     def _sync(self) -> None:
+        from . import icons, theme
+
         b = self.composer.mic_btn
-        b.setChecked(self.recording)
+        rec = self.recording
+        b.setChecked(rec)
+        # Görünür durum: çip düğmelerinin seçili hâli için genel stil yok → dinlerken yazı + kırmızı çerçeve (Derin gibi)
+        b.setText("Dinliyor" if rec else ("…" if self.busy else ""))
+        b.setIcon(icons.icon("mic", color="danger" if rec else None, size=15))
+        theme.style(b, (lambda pal: f"QToolButton {{ border: 1px solid {pal.danger}; color: {pal.danger}; }}")
+                    if rec else (lambda _pal: ""))
         b.setToolTip("Dinliyor — durdurmak için tıklayın" if self.recording else
                      ("Hazırlanıyor…" if self.busy else "Sesle yaz (konuşun; metin kutuya eklenir)"))
         b.setEnabled(not self.busy or self.recording)

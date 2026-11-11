@@ -118,8 +118,14 @@ def test_arayuz_yeni_surum_karti_ve_atla(win, monkeypatch):
     assert len(cards) == 1 and "0.5.0" in cards[0][1]
     buttons = cards[0][2]
     assert {"İndir", "Sürüm notları", "Bu sürümü atla"} <= set(buttons)
+    sb = w.sidebar.update_btn                                             # karşılama ekranında da görünen düğme
+    assert sb.isVisibleTo(w.sidebar) and "0.5.0" in sb.text()
+    opened = []
+    monkeypatch.setattr("PySide6.QtGui.QDesktopServices.openUrl", lambda url: opened.append(url.toString()))
+    sb.click()
+    assert opened == ["https://x/k.exe"]
     buttons["Bu sürümü atla"].click()
-    assert w.ctx.settings.update_skipped == "0.5.0"
+    assert w.ctx.settings.update_skipped == "0.5.0" and not sb.isVisibleTo(w.sidebar)
     w.check_updates()                                                    # 24 saat dolmadı → yeniden sorulmaz
     app.processEvents()
     assert len(calls) == 1

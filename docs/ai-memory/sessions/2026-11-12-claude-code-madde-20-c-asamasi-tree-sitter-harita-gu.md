@@ -43,6 +43,13 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   veriliyor (PyAV sürümünden bağımsız). Bulunan arayüz kusuru: oturum yokken (karşılama ekranı) `_note` MODAL pencere
   açıyor → sesle yazma notları orada mikrofon baloncuğuna gidiyor (`_voice_note`); test bunu yakaladı (takılma).
 
+- ARAYÜZ GÖRSEL DENETİM (R-05/R-33, QT_QPA_PLATFORM=windows, iki tema): ui_denetim HATA 0 / KESİK 0 (açıkta 1 eski
+  UYARI: karşılama kenar çubuğu soluk yazı 4,39 < 4,5 — yeni değil, analiz aşamasında). Görüntülere bakınca 3 kusur
+  bulundu ve düzeltildi: (1) çip düğmelerinin SEÇİLİ hâli için stil yoktu → Kabuk/Günlük seçimi görünmüyordu
+  (QPushButton[variant=chip]:checked eklendi); (2) mikrofonun "dinliyor" hâli yalnız ipucundaydı → "Dinliyor" yazısı +
+  kırmızı çerçeve (Derin düğmesinin düzeni); (3) güncelleme kartı oturum yokken (karşılama ekranı — açılışta genelde
+  bu) GÖRÜNMÜYORDU → kenar çubuğunda her ekranda görünen "Yeni sürüm X — indir" düğmesi ("atla" gizler).
+
 ## Test sonuçları
 - C1: test_proje_haritasi_diller 21 (11 dil örneği, Go/C#/Rust haritası, çözümleyici yok → eski yöntem, bozuk kaynak,
   uyumsuz paket, bütçe darken en çok başvurulan önce, kendi dosyasını saymama) + test_f3_verimlilik harita testleri

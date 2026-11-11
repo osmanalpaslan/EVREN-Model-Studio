@@ -260,6 +260,10 @@ QPushButton[variant="danger"]:hover {{ background: {p.del_bg}; }}
 QToolButton[variant="chip"] {{ background: transparent; border: 1px solid transparent; border-radius: 7px;
                                padding: 3px 8px; color: {p.text_dim}; }}
 QToolButton[variant="chip"]:hover {{ background: {p.hover}; color: {p.text}; }}
+QPushButton[variant="chip"] {{ background: transparent; border: 1px solid {p.border}; border-radius: 7px;
+                               padding: 3px 10px; color: {p.text_dim}; }}
+QPushButton[variant="chip"]:hover {{ background: {p.hover}; color: {p.text}; }}
+QPushButton[variant="chip"]:checked {{ background: {p.selected}; color: {p.text}; border-color: {p.accent}; }}
 QToolButton[variant="icon"], QPushButton[variant="icon"] {{ background: transparent; border: none; border-radius: 7px; padding: 5px; }}
 QToolButton[variant="icon"]:hover, QPushButton[variant="icon"]:hover {{ background: {p.hover}; }}
 QToolButton[variant="icon"]:checked {{ background: {p.selected}; }}
