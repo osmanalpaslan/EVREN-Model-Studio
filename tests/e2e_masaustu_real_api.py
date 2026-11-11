@@ -15,13 +15,14 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PY = sys.executable                     # uygulamanın Python'u (PySide6 kurulu)
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
+from gecici import klasor  # noqa: E402 — geçici klasörler çıkışta silinir (2026-11-11 disk sızıntısı)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")
 
@@ -95,7 +96,7 @@ def make_window(install: bool):
 
     from evren_studio.agent import mcp
 
-    data = Path(tempfile.mkdtemp(prefix="evren-masaustu-"))
+    data = klasor("evren-masaustu-")
     os.environ["EVREN_STUDIO_DATA_DIR"] = str(data)
     app = QApplication.instance() or QApplication([])
     # EVREN Studio penceresi görünmez (offscreen) kalsın ama bu ayar masaüstü sunucusuna ve ajanın açtığı test
@@ -135,7 +136,7 @@ def wait_idle(app, w, limit):
 
 
 def run_agent(app, w) -> int:
-    proj = Path(tempfile.mkdtemp(prefix="masaustu-ajan-"))
+    proj = klasor("masaustu-ajan-")
     (proj / "hesap.py").write_text(APP.format(hatali=False), encoding="utf-8")
     w.new_session()
     w.session.welcome._choose(str(proj))
@@ -169,7 +170,7 @@ def run_agent(app, w) -> int:
 
 
 def run_qa(app, w, hatali: bool) -> tuple[bool, dict]:
-    proj = Path(tempfile.mkdtemp(prefix=f"masaustu-qa-{'hatali' if hatali else 'dogru'}-"))
+    proj = klasor(f"masaustu-qa-{'hatali' if hatali else 'dogru'}-")
     (proj / "hesap.py").write_text(APP.format(hatali=hatali), encoding="utf-8")
     (proj / "README.md").write_text(f"# Hesap\nÇalıştırma: `\"{PY}\" hesap.py` (Qt penceresi). İki sayıyı toplar "
                                     "(Topla düğmesi).\n",

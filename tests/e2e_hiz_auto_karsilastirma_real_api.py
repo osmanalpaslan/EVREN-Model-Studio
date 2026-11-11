@@ -15,12 +15,13 @@ from __future__ import annotations
 import os
 import statistics
 import sys
-import tempfile
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
+from gecici import klasor  # noqa: E402 — geçici klasörler çıkışta silinir (2026-11-11 disk sızıntısı)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 SOHBET = [
@@ -92,7 +93,7 @@ def main() -> int:
         motorlar = [m for m in args[i + 1].split(",") if m]
         del args[i:i + 2]
     tur = int(args[0]) if args else 1
-    os.environ["EVREN_STUDIO_DATA_DIR"] = tempfile.mkdtemp(prefix="evren-hiz-")
+    os.environ["EVREN_STUDIO_DATA_DIR"] = str(klasor("evren-hiz-"))
     from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance() or QApplication([])
@@ -109,7 +110,7 @@ def main() -> int:
             for model in order:
                 proj = None
                 if kind == "ajan":
-                    proj = Path(tempfile.mkdtemp(prefix="hiz-proje-"))
+                    proj = klasor("hiz-proje-")
                     (proj / "hesap.py").write_text("def topla(a, b):\n    return a + b\n", encoding="utf-8")
                     (proj / "test_hesap.py").write_text(
                         "from hesap import topla\n\n\ndef test_topla():\n    assert topla(2, 3) == 5\n",

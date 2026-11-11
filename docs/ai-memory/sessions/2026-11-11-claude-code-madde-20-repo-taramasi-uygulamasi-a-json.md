@@ -30,6 +30,13 @@ ağı + iç işler); yetki verildiği için kod tablosunda qwen öne alınacak (
   ağı + iç işler (Derin/Proje kod aşaması). 6 test eski sırayı adla yazmıştı → tablo-göreli yazıldı (first/second), anlamı
   korundu (ceza/bekleme/puan/zayıf gün mantığı).
 
+- GEÇİCİ KLASÖR SIZINTISI (disk temizliği oturumundan istek, 2026-11-11): Temp'te 21 evren-masaustu-* (~8,5 GB; Windows-MCP
+  venv + uv önbelleği) ve 154 evren-denetim-* birikmişti. tools/gecici.py (klasor() kaydeder, çıkışta atexit ile siler;
+  kilitte kısa bekleyip yeniden dener; salt okunur dosya; `--sakla` / EVREN_GECICI_SAKLA=1). Uygulandı: e2e_masaustu,
+  e2e_hiz, e2e_ui, e2e_zamanlayici; ui_denetim denetle() pencere kapanınca hemen siler. test_gecici_klasor 4 (bekçi: mkdtemp
+  kullanıp silmeyen betik testi düşürür). Gerçek: ui_denetim çalıştırıldı, klasör sayısı değişmedi. Mevcut eski klasörler
+  SİLİNMEDİ (toplu silme kullanıcı onayı ister; disk oturumu yürütüyor).
+
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2
   kaçtı → iki test eklendi). Bulgu: json_repair TEK BAŞINA daha iyi değil — 2026-10-19 gerçek QA çıktısında (`'""'`)
