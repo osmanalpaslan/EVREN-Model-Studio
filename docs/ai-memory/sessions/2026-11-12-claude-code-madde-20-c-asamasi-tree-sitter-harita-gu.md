@@ -27,12 +27,23 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   sembolleri önce (Aider PageRank'in sade hâli: tanımlanan ad başka dosyada geçiyorsa dosya puanı +1). Python `ast`
   ile kaldı. Paket: requirements/pyproject, spec hiddenimports (importlib ile adla yüklenir), duman `harita_dilleri=11`
   + check_smoke denetimi.
+- C2 güncelleme denetimi: `evren_studio/updates.py` (Qt'siz) — GitHub Releases `releases/latest` (depo PUBLIC,
+  kimliksiz), sürüm karşılaştırma, taslak/ön sürüm önerilmez, "bu sürümü atla", yalnız kendi deposunun sayfa/indirme
+  adresi açılır (yanıt başka adres gösterirse sabit sayfa), günde en çok bir kez (saat geri alınırsa da denetler).
+  MainWindow: açılıştan 20 sn sonra arka planda (R-04), yeni sürümde oturum ekranında kart (İndir / Sürüm notları /
+  Bu sürümü atla) + Windows bildirimi; KENDİLİĞİNDEN İNDİRMEZ/KURMAZ. Ayarlar > Genel "Yeni sürüm çıkınca haber ver",
+  Yardım > "Güncellemeleri denetle" (elle; günlük sınır yok). Testlerde otomatik denetim kapalı
+  (EVREN_STUDIO_NO_UPDATE_CHECK, conftest — yoklama ile aynı düzen). Ayarlar > Ajan'a "Gözetmen" (B4) seçeneği de eklendi.
 
 ## Test sonuçları
 - C1: test_proje_haritasi_diller 21 (11 dil örneği, Go/C#/Rust haritası, çözümleyici yok → eski yöntem, bozuk kaynak,
   uyumsuz paket, bütçe darken en çok başvurulan önce, kendi dosyasını saymama) + test_f3_verimlilik harita testleri
   değişmeden geçti; mutasyon 10/10 (ilk turda 3 kaçtı: sıralama testi alfabetik sıraya denk geliyordu, ABI hatası ve
   gizli üye sınanmıyordu → testler güçlendirildi). test_kurulum_paketi duman denetimi güncellendi.
+- C2: test_guncelleme 19 (sürüm karşılaştırma 8, taslak/ön sürüm/aynı, atla, ağ hatası, yabancı adres, günlük sınır,
+  arayüz kartı + atla + 24 sa + ayar kapalı, test ortamında otomatik kapalı, Yardım'dan elle) + test_ayarlar_menu;
+  mutasyon 10/10. GERÇEK GitHub: depoda henüz yayın yok → 404 → "güncel" (0,7 sn, hata yok); gerçek yanıt
+  ayrıştırması başka herkese açık depoyla (ruff 0.17.4) doğrulandı. 0.5.0 yayınlanınca uçtan uca tekrar denenecek.
 
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası

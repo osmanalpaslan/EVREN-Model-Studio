@@ -2,6 +2,9 @@
 
 ## Yayınlanmamış — açık kaynak depolardan gelen geliştirmeler (Madde 20)
 
+- **Yeni sürüm bildirimi** (C2): uygulama günde en çok bir kez GitHub'daki son sürüme bakar; yeni sürüm varsa
+  "İndir" kartı gösterir (kendiliğinden indirmez). Ayarlar > Genel'den kapatılabilir; Yardım sayfasından elle
+  denetlenebilir.
 - **Proje haritası artık 11 dilde** (C1): Go, Rust, Java, C#, JavaScript, TypeScript, PHP, C, C++, Ruby ve Kotlin
   projelerinde de sınıf/fonksiyon adları ajana baştan verilir (önceden yalnız Python ve kısmen JS). Harita
   sığmayınca en çok kullanılan dosyaların ayrıntısı önce gösterilir.

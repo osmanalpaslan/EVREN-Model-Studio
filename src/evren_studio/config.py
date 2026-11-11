@@ -196,6 +196,10 @@ class Settings:
     # Madde 20 B4 (2026-11-11): gözetimsiz Proje/Derin görevinde ayrı hızlı model 8 adımda bir "görev yolunda mı"
     # puanlar; iki kez üst üste çok düşükse görev temiz denemeyle yeniden yapılır. Yalnız EVREN (ücretsiz).
     progress_critic: bool = True
+    # Madde 20 C2 (2026-11-12): günde en çok bir kez GitHub'daki son sürüme bakılır; yeniyse yalnız BİLDİRİLİR
+    update_check: bool = True
+    update_last_check: str = ""          # ISO zaman (UTC)
+    update_skipped: str = ""             # kullanıcının "bu sürümü atla" dediği sürüm
     mcp_servers: list[dict] = field(default_factory=list)
     # Zamanlanmış görevler (Madde 12c, 2026-11-05): yalnız uygulama açıkken çalışır (Claude Code yerel görevleri gibi)
     schedule_enabled: bool = True          # kapalıysa hiçbir görev kendiliğinden başlamaz ("Şimdi çalıştır" çalışır)
