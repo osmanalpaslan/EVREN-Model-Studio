@@ -5,3 +5,6 @@ markdown>=3.6
 pygments>=2.17
 json-repair>=0.52
 ruff>=0.17
+pdfminer.six>=20250000
+python-docx>=1.2
+python-pptx>=1.0

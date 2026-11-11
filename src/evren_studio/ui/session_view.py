@@ -86,6 +86,7 @@ ATTACH_OPEN = "<ekli_dosyalar>"
 ATTACH_CLOSE = "</ekli_dosyalar>"
 MENTION_RE = re.compile(r"(?<!\S)@([^\s]+)")
 MAX_ATTACH_BYTES = 100 * 1024
+MAX_ATTACH_DOC_CHARS = 120_000      # belge eki (PDF/Word/PowerPoint) metne çevrildikten sonra en çok
 
 
 TITLE_SYSTEM = ("Bir sohbet oturumuna başlık veriyorsun. Yalnızca başlığı yaz: Türkçe, 3-6 kelime, "
@@ -115,6 +116,17 @@ def file_block(att: Attachment, ws: str | None) -> tuple[str, str]:
             pass
     reason = ""
     content = ""
+    from ..agent import documents
+
+    if documents.is_document(p):                 # Madde 20 A3: PDF/Word/PowerPoint eki metne çevrilir
+        try:
+            text = documents.extract(p)
+        except documents.DocumentError as exc:
+            return label, f"### {label}\n(İçerik eklenmedi: {exc} Dosya yolu: {p})"
+        if len(text) > MAX_ATTACH_DOC_CHARS:
+            text = (text[:MAX_ATTACH_DOC_CHARS] + f"\n\n⚠ KISALTILDI: belge uzun, ilk {MAX_ATTACH_DOC_CHARS:,} karakter "
+                    "eklendi. Tamamı için dosyayı bir proje klasörüne koyup ajana okutun.")
+        return label, f"### {label}\n(Belge metne çevrildi; sayfa/slayt numaralı.)\n\n{text}"
     try:
         size = p.stat().st_size
         if size > MAX_ATTACH_BYTES:

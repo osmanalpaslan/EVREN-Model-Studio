@@ -43,6 +43,15 @@ ağı + iç işler); yetki verildiği için kod tablosunda qwen öne alınacak (
   altına koyar (pip ikilisi Scripts'te → PyInstaller kendiliğinden almaz); duman `ruff=var`. test_ruff_bekci 6 +
   test_mcp_akilli güncellendi; mutasyon 5/6 → kaçan "yıldızlı import koruması" GEREKSİZDİ (ruff F405 verir) → kaldırıldı.
 
+- A3 belgeler (dal feat/a3-belgeler): agent/documents.py — PDF (pdfminer.six, `--- Sayfa N ---`; taranmış PDF'te "metin
+  yok" notu, uydurma yok), Word (python-docx; başlık/liste/tablo belge sırasıyla), PowerPoint (python-pptx; slayt, tablo,
+  konuşmacı notu); hepsi MIT. read_file belgeyi metne çevirip okur (salt okunur); write_file .docx/.pptx/.pdf adına düz
+  metin YAZMAZ (bozuk dosya) → betikle üretmeyi önerir; sohbet eki metne çevrilir (≤120 bin karakter). Gerçek Türkçe PDF
+  (Windows çizimi, gömülü yazı tipi): ğ ş ı İ doğru. Testte PDF elle üretildi (offscreen'de Qt yazıyı yol olarak çiziyor →
+  metin katmanı yok). Duman `belge=var` (şablon dosyaları dahil). test_belgeler 7; mutasyon 8/8.
+- Tuzak tekrarı (R-29): heredoc içinde Python yaması ters bölü/
+'yi bozdu (iki kez) → Write aracıyla dosya + birleştirme.
+
 ## Test sonuçları
 - A1: test_json_onarim 9, ilgili paket (qa, derin, scope, project, bozuk_json, kurulum) 112 geçti; mutasyon 7/7 (ilk turda 2
   kaçtı → iki test eklendi). Bulgu: json_repair TEK BAŞINA daha iyi değil — 2026-10-19 gerçek QA çıktısında (`'""'`)

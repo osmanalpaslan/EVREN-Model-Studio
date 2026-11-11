@@ -243,6 +243,8 @@ def check_smoke(lines: list[str]) -> list[str]:
     for k in ("wmcp_baslatici", "blender_donustur"):
         if kv.get(k) != "var":
             problems.append(f"{k}.py pakette YOK")
+    if kv.get("belge") != "var":
+        problems.append(f"PDF/Word/PowerPoint okuma pakette eksik: belge={kv.get('belge')}")
     if kv.get("ruff") != "var":
         problems.append("ruff pakette YOK (hata bekçisi Python'da yalnız sözdizimine bakar)")
     if kv.get("json_repair") != "var":

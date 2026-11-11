@@ -88,7 +88,8 @@ TOOL_SPECS: list[ToolSpec] = [
         "read_file", READ,
         "Bir metin dosyasını satır numaralarıyla okur. Büyük dosyalarda "
         "start_line/end_line ile aralık iste. Satır/eşleşme SAYMAK için kullanma; "
-        "search_files toplam sayıyı verir.",
+        "search_files toplam sayıyı verir. PDF, Word (.docx) ve PowerPoint (.pptx) belgeleri metne "
+        "çevrilip okunur (sayfa/slayt numaralı; salt okunur — bu dosyalar düzenlenemez).",
         _obj({
             "path": {"type": "string", "description": "Proje köküne göre dosya yolu"},
             "start_line": {"type": "integer", "description": "İlk satır (1'den başlar)"},
@@ -709,8 +710,18 @@ class ToolBox:
         p = self.ws.resolve(path)
         if not p.is_file():
             raise ToolError(f"Dosya bulunamadı: {path}")
-        tf = self.load_text(p)
-        lines = tf.text.split("\n")
+        from . import documents
+
+        kind = ""
+        if documents.is_document(p):             # Madde 20 A3: PDF/Word/PowerPoint → metin (salt okunur)
+            try:
+                text = documents.extract(p)
+            except documents.DocumentError as exc:
+                raise ToolError(str(exc)) from exc
+            kind = ", belge metne çevrildi — salt okunur"
+        else:
+            text = self.load_text(p).text
+        lines = text.split("\n")
         if lines and lines[-1] == "":
             lines.pop()
         total = len(lines)
@@ -730,7 +741,7 @@ class ToolBox:
                     f"kalanı oku (start_line={end + 1}) veya sayım için search_files kullan.")
         if total == 0:
             return f"{self.ws.rel(p)} (boş dosya)"
-        return f"{self.ws.rel(p)} ({total} satır)\n{body}{note}"
+        return f"{self.ws.rel(p)} ({total} satır{kind})\n{body}{note}"
 
     def search_files(self, pattern: str, path: str = ".", glob: str | None = None,
                      ignore_case: bool = True) -> str:
@@ -798,6 +809,14 @@ class ToolBox:
     def prepare_write(self, path: str, content: str) -> FileChange:
         if content is None:
             raise ToolError("content parametresi gerekli.")
+        from . import documents
+
+        if documents.is_document(path):
+            # Düz metni .docx/.pptx/.pdf adıyla yazmak açılmayan bozuk belge üretir (Madde 20 A3)
+            raise ToolError("Bu bir belge türü (PDF/Word/PowerPoint): metin olarak yazılamaz, yazılırsa dosya bozuk "
+                            "olur. Belge üretmek için Python betiği yaz ve çalıştır (Word: python-docx, sunum: "
+                            "python-pptx, PDF: reportlab ya da önce .docx/.html üretip dönüştür); ya da içeriği .md/.txt "
+                            "olarak yaz.")
         p = self.ws.resolve(path, for_write=True)
         if p.is_dir():
             raise ToolError(f"'{path}' bir klasör; dosya yolu verin.")
