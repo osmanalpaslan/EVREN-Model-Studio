@@ -259,6 +259,11 @@ class Composer(QWidget):
                                    "Ctrl+V ile yapıştırabilirsiniz")
         self.attach_btn.clicked.connect(self.attach_requested.emit)
         row.addWidget(self.attach_btn)
+        # C3 sesle yazma: tıklayınca dinler, yeniden tıklayınca yazıya çevirip kutuya ekler (ui/voice_input.py)
+        self.mic_btn = self._chip("mic", "")
+        self.mic_btn.setCheckable(True)
+        self.mic_btn.setToolTip("Sesle yaz (konuşun; metin kutuya eklenir)")
+        row.addWidget(self.mic_btn)
 
         self.mode_btn = self._chip("shield", MODES["manuel"])
         self.mode_btn.setPopupMode(QToolButton.InstantPopup)

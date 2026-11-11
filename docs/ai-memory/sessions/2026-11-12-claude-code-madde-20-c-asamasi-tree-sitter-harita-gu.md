@@ -34,6 +34,14 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   Bu sürümü atla) + Windows bildirimi; KENDİLİĞİNDEN İNDİRMEZ/KURMAZ. Ayarlar > Genel "Yeni sürüm çıkınca haber ver",
   Yardım > "Güncellemeleri denetle" (elle; günlük sınır yok). Testlerde otomatik denetim kapalı
   (EVREN_STUDIO_NO_UPDATE_CHECK, conftest — yoklama ile aynı düzen). Ayarlar > Ajan'a "Gözetmen" (B4) seçeneği de eklendi.
+- C3 sesle yazma: agent/voice.py (Qt'siz) + ui/voice_input.py + yazı kutusunda mikrofon düğmesi. İlk tıklamada onay
+  (~600 MB) → `<veri>/ses/venv` (sistem Python'u, _base_python) + `pip install faster-whisper==1.2.1` + "small" model
+  (int8, CPU). Kayıt QAudioSource ile (16 kHz tek kanal; desteklenmezse cihazın biçimi alınıp dönüştürülür), en çok
+  120 sn; çeviri AYRI süreçte (uygulama donmaz, bellek iade), metin kutuya EKLENİR (gönderilmez), geçici ses silinir.
+  Ses bilgisayardan çıkmaz. GERÇEK KURULUMDA bulunan: faster-whisper 1.2.1 dosyayı PyAV ile çözerken PyAV 19'da
+  kaldırılmış `metadata_errors` parametresini kullanıyor → çöküyordu; WAV artık numpy ile okunup modele DİZİ olarak
+  veriliyor (PyAV sürümünden bağımsız). Bulunan arayüz kusuru: oturum yokken (karşılama ekranı) `_note` MODAL pencere
+  açıyor → sesle yazma notları orada mikrofon baloncuğuna gidiyor (`_voice_note`); test bunu yakaladı (takılma).
 
 ## Test sonuçları
 - C1: test_proje_haritasi_diller 21 (11 dil örneği, Go/C#/Rust haritası, çözümleyici yok → eski yöntem, bozuk kaynak,
@@ -44,6 +52,12 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   arayüz kartı + atla + 24 sa + ayar kapalı, test ortamında otomatik kapalı, Yardım'dan elle) + test_ayarlar_menu;
   mutasyon 10/10. GERÇEK GitHub: depoda henüz yayın yok → 404 → "güncel" (0,7 sn, hata yok); gerçek yanıt
   ayrıştırması başka herkese açık depoyla (ruff 0.17.4) doğrulandı. 0.5.0 yayınlanınca uçtan uca tekrar denenecek.
+- C3: test_sesle_yazma 12 (kurulu değil, yarım kurulum, kurulum sırası, ayrı süreç + bozuk çıktı, eski çevirici
+  yenilenir, WAV, 48 kHz stereo float → 16 kHz tek kanal, onay hayır/evet, metin eklenir gönderilmez, boş/hata notu,
+  çok kısa kayıt, karşılama ekranında modal yok); mutasyon 9/9. GERÇEK: temiz klasöre kurulum 139 sn, 752 MB;
+  Windows "Tolga" Türkçe sesiyle üretilen 3 cümle: 4,3 / 5,3 / 5,8 sn (model yükleme dahil); doğruluk iyi, küçük
+  hatalar ("KDV" → "kat mater vergisi", "şüpheli" → "Şükeli", "Projeklasöründeki") — metin gönderilmeden düzeltilebilir.
+  Gerçek mikrofonla kayıt bu oturumda denenmedi (kullanıcı başında değil); kayıt yolu birim testli.
 
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası

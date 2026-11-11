@@ -2,6 +2,9 @@
 
 ## Yayınlanmamış — açık kaynak depolardan gelen geliştirmeler (Madde 20)
 
+- **Sesle yazma** (C3): yazı kutusundaki mikrofon düğmesine basıp konuşun, yeniden basınca konuşma yazıya çevrilip
+  kutuya eklenir (gönderilmez; düzeltip siz gönderirsiniz). İlk kullanımda ~600 MB'lık konuşma tanıma bileşeni
+  onayınızla bir kez indirilir; ses bilgisayarınızdan çıkmaz.
 - **Yeni sürüm bildirimi** (C2): uygulama günde en çok bir kez GitHub'daki son sürüme bakar; yeni sürüm varsa
   "İndir" kartı gösterir (kendiliğinden indirmez). Ayarlar > Genel'den kapatılabilir; Yardım sayfasından elle
   denetlenebilir.
