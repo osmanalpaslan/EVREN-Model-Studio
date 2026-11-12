@@ -13,6 +13,10 @@
   bellek artışı 80 → 35 MB. Kapalı araç kartlarının ayrıntıları ve boş yanıt parçaları gerektiğinde kurulur; tek bir
   uzun ajan turu artık tamamı birden çizilmez. Sağ paneldeki Değişiklikler listesi yalnız açıkken hesaplanır ve ajan
   çalışırken her dosya değişikliğinde tüm farkları baştan hesaplamaz.
+- **Daha küçük veritabanı**: ajanın dosya geçmişi (her düzenlemede dosyanın önceki/sonraki hâli) sıkıştırılarak saklanır.
+  Gerçek veride veritabanı 12,7 → 6,8 MB; eski kayıtlar açılıştan 15 sn sonra arka planda bir kez dönüştürülür (her
+  kayıt yazılmadan önce açılıp aslıyla karşılaştırılır). Not: 0.5.0'a geri dönülürse eski sürüm sıkıştırılmış kayıtları
+  açamaz.
 - **Yeni görünüm: güncel iOS tasarım dili (iOS 27 "Liquid Glass")**: yazma kutusu, düğmeler ve öneri kartları ince
   belirgin kenarlı "cam" yüzey; hap biçimli seçiciler; ayarlarda onay kutuları yerine iOS anahtarları; açılır listelerde
   ⌃⌄ işareti (artık açılır olduğu belli); sağ panelde iOS bölümlü sekme düğmesi; büyük, kalın başlıklar; iOS sistem

@@ -145,9 +145,27 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(20 * 1000, self, self._auto_update_check)
         # Günlük otomatik yerel yedek (açılıştan 60 sn sonra, arka planda; açılışı yavaşlatmaz)
         QTimer.singleShot(60 * 1000, self, self._auto_backup)
+        QTimer.singleShot(15 * 1000, self, self._maintain_history)
 
     update_info = None
     last_auto_backup = None
+    last_history_maintenance = None
+
+    def _maintain_history(self) -> None:
+        """Ajanın dosya geçmişini arka planda bir kez sıkıştırır ve gerekiyorsa veritabanını küçültür (2026-11-12,
+        kullanıcı onayı; bkz. db.maintain_file_history). Testte kapalı (EVREN_STUDIO_NO_DB_MAINT)."""
+        import os
+
+        from ..db import PACK_DONE_KEY
+
+        db = self.ctx.db
+        if os.environ.get("EVREN_STUDIO_NO_DB_MAINT") or db.get_meta(PACK_DONE_KEY) == "1":
+            return
+
+        def done(info) -> None:
+            self.last_history_maintenance = info
+
+        workers.Task(db.maintain_file_history, on_done=done, on_error=lambda _e: None).start()
 
     def _auto_backup(self) -> None:
         import os

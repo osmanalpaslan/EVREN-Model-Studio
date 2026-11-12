@@ -178,3 +178,7 @@
   yalnızca konsol kod sayfası sorunudur, veri UTF-8'dir.
 - keyring/Windows Credential Manager servisi kapalıysa anahtar kaydı
   AÇIKÇA başarısız olur; düz metne sessiz geçiş YAPILMAZ.
+- Sürüm geri alma (0.5.1 → 0.5.0): 0.5.1 ajanın dosya geçmişini sıkıştırarak saklar (eski kayıtlar açılıştan sonra
+  arka planda dönüştürülür). 0.5.0'a dönülürse eski sürüm bu kayıtları AÇAMAZ: Değişiklikler sekmesi ve "geri al" hata
+  verir (dosyalara yanlış içerik YAZMAZ). Gerekirse günlük yedekten (veri klasörü > yedekler) dönüştürme öncesi
+  veritabanı geri yüklenir.
