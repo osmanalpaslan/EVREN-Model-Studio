@@ -23,6 +23,18 @@
 | plan | Plan modunda özellik isteği | dosya değişmez, plan yazılır |
 | girdi | `input()` bekleyen betiği çalıştır | girdi beklediğini açıklar (takılmaz) |
 
+## Derin Mod kanıt + soru ayıklama (2026-11-13 00:56-01:09, dal `surum/0.5.1-istekler`, `tests/e2e_derin_real_api.py`)
+
+- Yeni davranış (harita + gerçek test kanıtı, 00:56): Anla 37 sn (3/3 bulgu, 12 araç çağrısı) · belirsiz istek 50 sn,
+  4 soru (eski ayıklama; ikişer tekrar → ayıklama yeniden yapıldı, aynı veride yeni kod 2 soru) · Planla 73 sn ·
+  Doğrula yanlış değişiklik 46 sn, 7 onaylı sorun (ilki gerçek pytest çıktısı: "testler DÜŞÜYOR") · doğru değişiklik
+  35 sn, 0 sorun. SONUÇ: GEÇTİ.
+- Eski davranış aynı saatlerde (`--haritasiz --testsiz`, 01:05): 31 sn / 12 araç · 49 sn · 76 sn · 34 sn (6 yüksek) ·
+  56 sn. SONUÇ: GEÇTİ.
+- İlk "önce" koşusu (00:0x, eski kod): 80 · 139 · 176 · 141 · 439 sn — değişmeyen Planla da 176 → 73 sn hızlandığı
+  için fark EVREN yüküdür (kontrol aşaması). 3 dosyalık projede harita araç sayısını azaltmadı; kazanç doğrulukta
+  (düşen test her zaman onaylı yüksek sorun, gerçek çıktı denetçilere gider).
+
 ## Madde 20 C aşaması + analiz düzeltmeleri sonrası (2026-11-12 akşam, dal `feat/c1-harita`, sürüm 0.5.0, auto)
 
 - Tam paket **11/12**, 1444 sn: düşen **mini_proje 4/5** — kök neden EVREN tarafı yavaşlık: dosyaları yazan TEK model

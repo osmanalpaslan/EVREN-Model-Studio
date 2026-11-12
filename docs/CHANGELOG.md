@@ -6,9 +6,10 @@
   kesintisinde son mesaj kaybolmaz (tam eşitleme korunur). Veri klasörü ağ sürücüsündeyse eski kip kullanılır. Yedekteki
   YEDEK_BILGI.json elle geri yüklemenin güvenli sırasını yazar.
 
-- **Derin Mod daha güvenilir**: doğrulamadan önce projenin testleri gerçekten çalıştırılır; düşen test, denetçilerin
-  yorumundan bağımsız olarak "yüksek" sorun sayılır ve düzeltme turu açılır (gerçek test çıktısı denetçilere kanıt
-  olarak gider). Alt ajanlar proje haritasını kullanır. Aynı kararı farklı sözcüklerle soran tekrar eden sorular tek
+- **Derin Mod daha güvenilir**: doğrulamadan önce projenin testleri gerçekten çalıştırılır; değişiklikten önce geçen
+  test düşerse, denetçilerin yorumundan bağımsız olarak "yüksek" sorun sayılır ve düzeltme turu açılır (gerçek test
+  çıktısı denetçilere kanıt olarak gider). Projede işten ÖNCE de düşen testler varsa bunlar bu değişikliğin hatası
+  sayılmaz; ilgisiz eski hata için düzeltme turu açılmaz. Alt ajanlar proje haritasını kullanır. Aynı kararı farklı sözcüklerle soran tekrar eden sorular tek
   soruya iner (gerçek koşuda 4 sorudan 2'si tekrardı).
 - **Ajan daha kısa ve odaklı kod/test yazar**: EVREN saniyede ~10-20 token yazdığı için gereksiz uzun test dosyaları
   dakikalar sürüyordu (171 satırlık tek dosya 5 dk); her davranış ve kenar durum için bir test kuralı korunur.

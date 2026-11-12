@@ -35,6 +35,10 @@ BASE_TEST = ("import unittest\n\nfrom calc import add, sub\n\n\nclass T(unittest
              "    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n\n"
              "    def test_sub(self):\n        self.assertEqual(sub(5, 3), 2)\n")
 
+# İşle ilgisiz, değişiklikten ÖNCE de düşen test (kullanıcı projelerinde sık görülür)
+OLD_FAILING = ("import unittest\n\n\nclass Eski(unittest.TestCase):\n    def test_bilinen_eski_hata(self):\n"
+               "        self.assertEqual('istanbul'.upper(), 'İSTANBUL')   # Python Türkçe i'yi bilmez\n")
+
 BAD_CALC = BASE_CALC + "\n\ndef div(a, b):\n    return a / b\n"
 BAD_TEST = BASE_TEST + "\n    def test_div(self):\n        self.assertEqual(div(6, 3), 2)\n"
 GOOD_CALC = BASE_CALC + ('\n\ndef div(a, b):\n    if b == 0:\n        raise ValueError("b sıfır olamaz")\n'
@@ -214,6 +218,31 @@ def main() -> int:
                   f"{'BEKLENEN' if passed else 'BEKLENMEYEN'} · {time.monotonic() - t0:.0f} sn", flush=True)
             for i in issues[:4]:
                 print(f"     [{i.get('ciddiyet')}] {i.get('dosya')}: {str(i.get('aciklama'))[:120]}", flush=True)
+        if "--testsiz" not in sys.argv:
+            # 2026-11-13: projede İŞLE İLGİSİZ, önceden düşen bir test var → doğru değişiklik "yüksek" sorun almamalı
+            # (başlangıç ölçümü; Proje ajanının test bekçisiyle aynı ilke, R-20)
+            t0 = time.monotonic()
+            (tmp / "calc.py").write_text(BASE_CALC, encoding="utf-8")
+            (tmp / "test_calc.py").write_text(BASE_TEST, encoding="utf-8")
+            (tmp / "test_eski.py").write_text(OLD_FAILING, encoding="utf-8")
+            vst = dp.DeepState(goal=GOAL)
+            vst.baseline_tests = dp.project_tests(tmp)
+            (tmp / "calc.py").write_text(GOOD_CALC, encoding="utf-8")
+            (tmp / "test_calc.py").write_text(GOOD_TEST, encoding="utf-8")
+            tests = dp.project_tests(tmp)
+            print(f"   gerçek test: önce {vst.baseline_tests and vst.baseline_tests['durum']} · sonra "
+                  f"{tests and tests['durum']}", flush=True)
+            issues = dp.verify(vst, GOOD_DIFF, vsub, gate, gate.max_parallel, lambda t: None, tests=tests,
+                               with_tests=True)
+            high = [i for i in issues if str(i.get("ciddiyet", "")).lower().startswith(("yuk", "yük"))]
+            passed = (vst.baseline_tests or {}).get("durum") == "dustu" and not high
+            ok &= passed
+            print(f"3 DOĞRULA (DOĞRU değişiklik + ÖNCEDEN düşen ilgisiz test): {len(issues)} onaylı sorun, "
+                  f"{len(high)} yüksek → {'BEKLENEN' if passed else 'BEKLENMEYEN'} · {time.monotonic() - t0:.0f} sn",
+                  flush=True)
+            for i in issues[:4]:
+                print(f"     [{i.get('ciddiyet')}] {i.get('dosya')}: {str(i.get('aciklama'))[:120]}", flush=True)
+            (tmp / "test_eski.py").unlink()
         q = gate.snapshot(fresh=True)
         print(f"Kota: pencere %{int((getattr(q, 'usage_ratio', 0) or 0) * 100)}, "
               f"günlük kalan {getattr(q, 'daily_remaining_tokens', '?')}", flush=True)

@@ -63,6 +63,7 @@ class DeepState:
     answers: str = ""                                     # kullanıcının yanıtı ("" → sorulmadı/yanıtsız)
     log_dir: str = ""                                     # alt ajan dökümlerinin klasörü
     project_note: str = ""                                # Proje sonucu (kısmi ise neden)
+    baseline_tests: dict | None = None                    # uygulamadan ÖNCE testlerin durumu (project_tests)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -362,24 +363,36 @@ def project_tests(root: Path, cancel=None, timeout: int | None = None) -> dict |
     return {"komut": cmd, "durum": state, "cikis": code, "son": testcheck.tail(out, lines=30, chars=3000)}
 
 
-def tests_text(tests: dict | None) -> str:
+def pre_failing(tests: dict | None, baseline: dict | None) -> bool:
+    """Testler şimdi düşüyor ve değişiklikten ÖNCE de düşüyordu mu (önceden var olan hata)?"""
+    return bool(tests and baseline and tests.get("durum") == "dustu" and baseline.get("durum") == "dustu")
+
+
+def tests_text(tests: dict | None, baseline: dict | None = None) -> str:
     if not tests:
         return "\nGERÇEK TEST SONUCU: projede otomatik test bulunamadı; davranışı kod okuyarak denetle.\n"
     label = {"gecti": "GEÇTİ", "dustu": "DÜŞTÜ", "yok": "çalışmadı (zaman aşımı/test yok)"}.get(tests["durum"],
                                                                                                 tests["durum"])
-    return (f"\nGERÇEK TEST SONUCU (uygulama az önce çalıştırdı, `{tests['komut']}`): {label}"
-            f" (çıkış kodu {tests['cikis']})\n```\n{tests['son']}\n```\n"
-            "Bu sonuç kanıttır: testler geçtiyse 'test düşüyor' deme; düştüyse nedenini bul. Testlerin istenen "
-            "davranışı (kenar durumlar dahil) gerçekten sınayıp sınamadığını ayrıca değerlendir.\n")
+    out = (f"\nGERÇEK TEST SONUCU (uygulama az önce çalıştırdı, `{tests['komut']}`): {label}"
+           f" (çıkış kodu {tests['cikis']})\n```\n{tests['son']}\n```\n"
+           "Bu sonuç kanıttır: testler geçtiyse 'test düşüyor' deme; düştüyse nedenini bul. Testlerin istenen "
+           "davranışı (kenar durumlar dahil) gerçekten sınayıp sınamadığını ayrıca değerlendir.\n")
+    if pre_failing(tests, baseline):
+        out += (f"NOT: Testler bu değişiklikten ÖNCE de düşüyordu (uygulamadan önceki çalıştırma, çıkış "
+                f"{baseline['cikis']}):\n```\n{(baseline.get('son') or '')[-1500:]}\n```\n"
+                "Önceden var olan hatayı bu değişikliğin sorunu sayma, isteğin dışındaysa düzeltilmesini önerme. İki "
+                "çıktıyı karşılaştır: bu değişikliğin YENİ bozduğu test ya da istenen düzeltmenin hâlâ düşen testi "
+                "varsa onu 'yuksek' bildir.\n")
+    return out
 
 
 def verify_prompt(goal: str, diff: str, lens: str, tasks: str = "", tests: dict | None = None,
-                  with_tests: bool = False) -> str:
+                  with_tests: bool = False, baseline: dict | None = None) -> str:
     from .project import is_bugfix
 
     tasks = f"\nProje görevlerinin durumu:\n{tasks}\n" if tasks else ""
     repro = REPRO_VERIFY if is_bugfix(goal) else ""
-    evidence = tests_text(tests) if (with_tests or tests) else ""
+    evidence = tests_text(tests, baseline) if (with_tests or tests) else ""
     return f"""DERİN MOD · ÇEKİŞMELİ DOĞRULAMA (salt okunur; dosya değiştirme).
 Kullanıcının isteği: {goal}
 Bakış açın: {lens}
@@ -551,19 +564,24 @@ def verify(st: DeepState, diff: str, sub: Callable[..., SubResult], gate=None, m
            log: Callable[[str], None] = lambda t: None, tasks: str = "", tests: dict | None = None,
            with_tests: bool = False) -> list[dict]:
     """with_tests: testler çalıştırıldı (tests None ise test bulunamadı). Düşen test, denetçiler görmese de
-    onaylanmış "yuksek" sorundur (kanıt; düzeltme turu açılır)."""
+    onaylanmış "yuksek" sorundur (kanıt; düzeltme turu açılır) — testler değişiklikten ÖNCE de düşüyorsa
+    (st.baseline_tests) otomatik sorun EKLENMEZ: ilgisiz eski hatayı düzeltme turu kapsamı aşar (2026-11-13; Proje
+    ajanının test bekçisiyle aynı ilke, R-20); iki çıktı denetçilere gider, yeni bozulmayı onlar bildirir."""
     if not diff.strip():
         log("Doğrula: değişiklik bulunamadı")
         st.issues = []
         return []
+    baseline = st.baseline_tests
     if with_tests:
         log("Doğrula: testler " + ({"gecti": "geçti", "dustu": "DÜŞTÜ", "yok": "çalışmadı"}.get(tests["durum"], "?")
-                                   + f" ({tests['komut']})" if tests else "bulunamadı"))
-    results = run_parallel([lambda i=i, l=l: _block(sub(verify_prompt(st.goal, diff, l, tasks, tests, with_tests),
+                                   + f" ({tests['komut']})" if tests else "bulunamadı")
+            + (" — değişiklikten önce de düşüyordu, otomatik sorun eklenmedi" if pre_failing(tests, baseline) else ""))
+    results = run_parallel([lambda i=i, l=l: _block(sub(verify_prompt(st.goal, diff, l, tasks, tests, with_tests,
+                                                                      baseline),
                                                         "<denetim>", f"denetim-{i + 1}").text, "denetim") or {}
                             for i, l in enumerate(VERIFY_LENSES)], gate, max_parallel)
     st.issues = confirmed_issues([r for r in results if isinstance(r, dict)])
-    if tests and tests.get("durum") == "dustu":
+    if tests and tests.get("durum") == "dustu" and not pre_failing(tests, baseline):
         st.issues.insert(0, {"ciddiyet": "yuksek", "dosya": tests["komut"],
                              "aciklama": f"Projenin testleri DÜŞÜYOR (gerçek çalıştırma, `{tests['komut']}`, çıkış "
                                          f"{tests['cikis']}):\n{tests['son'][-1500:]}"})

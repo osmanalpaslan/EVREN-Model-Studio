@@ -94,20 +94,65 @@ def test_akista_dogrulama_once_testleri_calistirir_dusen_test_duzeltme_turu_acar
         monkeypatch.setattr(s.deep, "_diff", lambda: "--- a/notlar.txt\n+++ b/notlar.txt\n+merhaba\n")
         runs = []
         dusuk = {"komut": "python -m unittest", "durum": "dustu", "cikis": 1, "son": "FAIL: test_x\nAssertionError"}
+        gecen = {**dusuk, "durum": "gecti", "cikis": 0, "son": "OK"}
+        sira = [gecen, dusuk, gecen]                          # başlangıç ölçümü · 1. doğrulama · düzeltme sonrası
         monkeypatch.setattr(dp, "project_tests", lambda root, cancel=None, timeout=None: runs.append(str(root)) or (
-            dusuk if len(runs) == 1 else {**dusuk, "durum": "gecti", "cikis": 0, "son": "OK"}))
+            sira[len(runs) - 1]))
         seen_kw = []
         real = dp.run_subagent
         monkeypatch.setattr(dp, "run_subagent", lambda **kw: seen_kw.append(kw.get("runner_kw")) or real(**kw))
         s.send("/derin Basit bir not uygulaması ekle: notlar.txt ve README")
         assert _wait(app, lambda: s.findChildren(PlanCard))
+        assert len(runs) == 1 and s.deep.state.baseline_tests == gecen, "başlangıç ölçümü plan onayından ÖNCE"
         s.findChildren(PlanCard)[-1].approved.emit()
         assert _wait(app, lambda: not s.deep.active, 40)
-        assert len(runs) == 2 and runs[0] == str(proj), "her doğrulamadan önce testler çalıştı (ilk + düzeltme sonrası)"
+        assert len(runs) == 3 and runs[0] == str(proj), "başlangıç + her doğrulamadan önce (ilk + düzeltme sonrası)"
         duzelt = [k for k, _m in client.calls if k == "duzelt"]
-        assert len(duzelt) == 1, "düşen test (denetçi görmese de) bir düzeltme turu açtı"
+        assert len(duzelt) == 1, "başta geçen test bozuldu → (denetçi görmese de) bir düzeltme turu açtı"
         assert s.deep.state.status == "bitti" and not s.deep.state.issues, "düzeltmeden sonra testler geçti"
         assert seen_kw and all(kw and kw.get("project_map") is True for kw in seen_kw), "alt ajanlar haritayla"
+
+
+def test_akista_onceden_dusen_test_duzeltme_turu_acmaz(win, tmp_path, monkeypatch):
+    """Tetiklenmeyen durum (R-22, gerçek akış R-31): testler değişiklikten ÖNCE de düşüyordu → ilgisiz eski hata için
+    düzeltme turu açılmaz (kapsam, R-20); iş denetçiler sorun bulmadığı için biter."""
+    from test_derin_mod import FakeClient, _session, _wait
+
+    from evren_studio.ui.project_ui import PlanCard
+
+    app, w = win
+    client = FakeClient()
+    client.verify_n = 99
+    s, _proj = _session(w, tmp_path, client)
+    monkeypatch.setattr(s.deep, "_diff", lambda: "--- a/notlar.txt\n+++ b/notlar.txt\n+merhaba\n")
+    eski = {"komut": "python -m pytest -q", "durum": "dustu", "cikis": 1, "son": "FAILED test_eski.py::test_x"}
+    monkeypatch.setattr(dp, "project_tests", lambda root, cancel=None, timeout=None: dict(eski))
+    s.send("/derin Basit bir not uygulaması ekle: notlar.txt ve README")
+    assert _wait(app, lambda: s.findChildren(PlanCard))
+    s.findChildren(PlanCard)[-1].approved.emit()
+    assert _wait(app, lambda: not s.deep.active, 40)
+    assert not [k for k, _m in client.calls if k == "duzelt"], "önceden düşen test düzeltme turu açmadı"
+    assert s.deep.state.status == "bitti" and not s.deep.state.issues
+
+
+def test_onceden_dusen_test_otomatik_sorun_degil_ama_iki_cikti_denetciye_gider():
+    sub = _sub_returning([])
+    st = dp.DeepState(goal="div ekle")
+    st.baseline_tests = {"komut": "python -m pytest -q", "durum": "dustu", "cikis": 1, "son": "FAILED test_eski::t"}
+    tests = {"komut": "python -m pytest -q", "durum": "dustu", "cikis": 1, "son": "FAILED test_eski::t"}
+    assert dp.verify(st, "--- a\n+++ b\n+x\n", sub, tests=tests, with_tests=True) == []
+    assert all("değişiklikten ÖNCE de düşüyordu" in p and "FAILED test_eski::t" in p and "YENİ bozduğu" in p
+               for p in sub.prompts)
+
+
+def test_once_gecen_sonra_dusen_test_yuksek_sorun_ve_not_yok():
+    sub = _sub_returning([])
+    st = dp.DeepState(goal="div ekle")
+    st.baseline_tests = {"komut": "python -m pytest -q", "durum": "gecti", "cikis": 0, "son": "3 passed"}
+    tests = {"komut": "python -m pytest -q", "durum": "dustu", "cikis": 1, "son": "FAILED test_div"}
+    issues = dp.verify(st, "--- a\n+++ b\n+x\n", sub, tests=tests, with_tests=True)
+    assert len(issues) == 1 and issues[0]["ciddiyet"] == "yuksek"
+    assert not any("ÖNCE de düşüyordu" in p for p in sub.prompts)
 
 
 def test_harita_ayari_kapaliysa_alt_ajanlara_verilmez(win, tmp_path, monkeypatch):

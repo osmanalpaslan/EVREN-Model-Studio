@@ -346,9 +346,19 @@ class DeepController(QObject):
             text, _m = self.ctx.ai_chat("inceleme", messages, max_tokens=600, session_id=self.view.session_id,
                                         evren_only=True)
             return text
-        self._bg(lambda: dp.plan(st, lambda m, p, k: subs[m](p, k, f"plan-{m}"), models[:2], judge, self._gate,
-                                 self._gate.max_parallel, self._log),
-                 self._after_plan)
+        ws, cancel = self._ws(), self._cancel
+
+        def job():
+            tasks = dp.plan(st, lambda m, p, k: subs[m](p, k, f"plan-{m}"), models[:2], judge, self._gate,
+                            self._gate.max_parallel, self._log)
+            # Başlangıç ölçümü (2026-11-13): Anla/Planla salt okunur → dosyalar henüz değişmedi. Testler ÖNCEDEN de
+            # düşüyorsa doğrulama bunu bu değişikliğin sorunu saymaz (Proje ajanının test bekçisiyle aynı ilke, R-20)
+            if ws:
+                st.baseline_tests = dp.project_tests(Path(ws), cancel=cancel)
+                if st.baseline_tests and st.baseline_tests.get("durum") == "dustu":
+                    self._log("Planla: projenin testleri değişiklikten ÖNCE de düşüyor (doğrulamada ayrılır)")
+            return tasks
+        self._bg(job, self._after_plan)
 
     def _after_plan(self, tasks) -> None:
         st = self.state
