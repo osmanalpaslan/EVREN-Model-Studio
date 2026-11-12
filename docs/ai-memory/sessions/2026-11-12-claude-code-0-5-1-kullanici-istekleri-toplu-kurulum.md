@@ -24,12 +24,20 @@ Kullanıcı (2026-11-12 20:40): (1) kurulum "yalnız benim için" gibi kursun am
 - Döngü bekçisi kalıcı çözüm (kayıt 2026-11-12-dongu-bekcisi-turu-durdurdu, gözlem cf3c8b0737b8 kapatıldı): masaüstü
   kuralı tüm dış araçlara genellendi; yerel komut dış sayaçları sıfırlar; doğru uyarı metni; gözlemde döngü türü + araç
   adı; model değişip tur sürdüyse "durdurdu" denmez; proje görevinde EVREN_PLAN.md / EVREN_RAPOR.md yazılmaz.
+- "girdi" düşüşü (kayıt 2026-11-12-zorluk-paketi-gorevi-dustu-girdi, gözlem 2983bc967976 kapatıldı): kök neden
+  DENETLEYİCİNİN yanlış alarmı — gemma doğru açıklamıştı ("isim girişi bekliyor"), liste "giriş/isim"i tanımıyordu.
+  Denetleyici düzeltildi + bilinen doğru/yanlış cevaplarla birim testi (R-25). Uygulama: girdi bekleyen program
+  girdisiz çalışınca ajana ipucu (tools.stdin_hint; Read-Host çıkış 0 olsa da).
+- YENİ HATA (analizde bulundu, kayıt 2026-11-12-ajan-komutlarinda-pipe-edilen-metnin-basina-bom-ekleniyordu): ajan
+  komutlarında borulanan metnin başına BOM ekleniyordu ($OutputEncoding BOM'lu UTF8) → BOM'suz UTF-8.
 
 ## Test sonuçları
 - test_kurulum_paketi 14 (yeni: OverridesAllowed YOK); mutasyon 2/2 (dialog / commandline dialog geri eklenince test düşüyor). Kurulum dosyası bu adımda DERLENMEDİ (kullanıcı: toplu, sonda) — ISCC derlemesi ve Sandbox denemesi 0.5.1 çıktısında.
 - Döngü bekçisi: test_dongu_dis_araclar 12 + test_loop_guard / test_masaustu / test_masaustu_otomatik / test_gozlem /
   test_project_ui / test_hiz_adim / test_agent_runner (174) geçti; mutasyon 15/15. İlk denemede dış OKUMA eşiğini 3/5
   yapmak masaüstü R-22 testlerini düşürdü → geri alındı (ölçülmüş kural korunur).
+- Girdi + BOM: test_zorluk_denetleyici 15 (gerçek PowerShell dahil); komut/araç risk paketi 71 + 98 geçti; mutasyon
+  7/8 + 2/2 (kaçan: PowerShell mesajının iki imzası her zaman birlikte — bilinçli yedeklik).
 
 ## Sorunlar ve kayıtlar
 <!-- Karşılaşılan sorunlar → docs/ai-memory/incidents/... kimlikleri. -->

@@ -615,6 +615,24 @@ def unwrap_powershell(command: str) -> str:
 _HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n(.*)", re.S)
 
 
+# Programın klavyeden girdi bekleyip girdisiz (stdin kapalı) çalıştırıldığı için kapandığını gösteren İMZALAR. Yalnız
+# bunlar: "unexpected EOF while parsing" (sözdizimi hatası) gibi başka EOF hataları tetiklemez.
+_STDIN_SIGNS = ("EOFError: EOF when reading a line",                     # Python input()
+                "NonInteractive mode",                                   # PowerShell Read-Host (-NonInteractive)
+                "Read and Prompt functionality is not available")
+STDIN_HINT = ("\n\n[İpucu] Program klavyeden girdi bekledi ama komutlar girdisiz çalışır (stdin kapalı), bu yüzden "
+              "durdu. Kullanıcıya programın girdi beklediğini ve NE beklediğini açıkça söyle; gerekiyorsa girdiyi "
+              "komutla ver (PowerShell: `'örnek' | python program.py`) ve bunu yaptığını belirt — kendi uydurduğun "
+              "girdinin çıktısını programın gerçek çıktısıymış gibi sunma.")
+
+
+def stdin_hint(output: str) -> str:
+    """2026-11-12 analiz ("girdi" görevi): girdi bekleyen program girdisiz çalışınca ajana durumu açıkça söyler; böylece
+    her model kullanıcıya "program girdi bekliyor" diye açıklar. Boş dize → ilgisiz çıktı."""
+    text = output or ""
+    return STDIN_HINT if any(s in text for s in _STDIN_SIGNS) else ""
+
+
 def heredoc_hint(command: str) -> str:
     """Windows PowerShell'de bash heredoc'u (`python - <<'PY'` …) yoktur; komut hiç çalışmaz. Gerçek kullanımda ajan bunu
     deneyip bir adım kaybediyordu (2026-11-12 analiz). Heredoc sayılması için işaret kelimesinin SONRAKİ bir satırda
@@ -632,8 +650,10 @@ def heredoc_hint(command: str) -> str:
 def shell_argv(command: str) -> list[str]:
     if os.name == "nt":
         prefix = (
-            "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; "
-            "$OutputEncoding=[System.Text.Encoding]::UTF8; "
+            # BOM'SUZ UTF-8 (2026-11-12 analiz): [Text.Encoding]::UTF8 BOM'lu → `'Ali' | python x.py` programa
+            # "﻿Ali" veriyordu; borulanan (pipe) her metnin başı sessizce bozuluyordu.
+            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); "
+            "$OutputEncoding=[System.Text.UTF8Encoding]::new($false); "
         )
         return ["powershell.exe", "-NoProfile", "-NonInteractive",
                 "-Command", prefix + unwrap_powershell(command)]
