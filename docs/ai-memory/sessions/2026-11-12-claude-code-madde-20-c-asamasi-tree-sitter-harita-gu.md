@@ -139,6 +139,10 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.
 
 ## Sonraki motor için notlar
+- 2026-11-12 20:30: kullanıcı onayıyla v0.5.0 YAYINLANDI (ilk deneme otomatik denetimce engellenmişti; onaydan sonra
+  geçti). `--target` kısa SHA ile HTTP 422 "target_commitish is invalid" → TAM SHA gerekir. GitHub'dan indirilen
+  dosyanın sha256'sı ve imzası doğrulandı. C2 uçtan uca: updates.check('0.4.2') → 0.5.0 + Kurulum asset adresi;
+  check('0.5.0') → None; atlanan → None.
 - 2026-11-12 20:00: PR #58 birleşti (master 01d083b), sürüm 0.5.0. GitHub v0.5.0 YAYINI YAPILMADI: Claude Code
   otomatik denetimi herkese açık yayın oluşturmayı engelledi ("Create Public Surface"); kullanıcı izni/eylemi gerekir:
   `gh release create v0.5.0 dist\EVREN-Studio-Kurulum-0.5.0.exe dist\EVREN-Studio-Kurulum-0.5.0.exe.sha256 --target 01d083b`
