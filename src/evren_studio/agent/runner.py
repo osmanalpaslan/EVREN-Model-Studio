@@ -52,6 +52,7 @@ from .tools import (
     ToolSpec,
     Workspace,
     find_project_venv,
+    stdin_hint,
     truncate_middle,
     validate_todos,
 )
@@ -2126,7 +2127,10 @@ class AgentRunner:
         warn = self._test_cmd_check(snap)
         if warn:
             extra["test_edit"] = True
-        return ToolResult(ok, result.to_text(self.output_limit) + warn,
+        # Program klavyeden girdi bekledi (girdi görevi, 2026-11-12). Çıkış koduna bakılmaz: PowerShell Read-Host
+        # girdisiz çalışınca hata yazar ama betik 0 ile biter (gerçek ölçüm).
+        hint = stdin_hint(result.output)
+        return ToolResult(ok, result.to_text(self.output_limit) + warn + hint,
                           f"Çalıştırıldı: {command[:80]} ({state})", extra)
 
 

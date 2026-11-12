@@ -231,10 +231,20 @@ def kur_girdi(p: Path) -> dict:
     return {}
 
 
+# 2026-11-12 (gözlem 2983bc967976): gemma'nın DOĞRU açıklaması — "oyun.py kullanıcıdan isim GİRİŞİ beklediği için doğrudan
+# çalıştırdığımda hata verdi" — "giriş"/"isim" kelimeleri listede olmadığından KALDI sayılmıştı (denetleyicinin yanlış
+# alarmı). Türkçe eş anlamlılar eklendi; denetleyici bilinen doğru/yanlış cevaplarla sınanır (tests/test_zorluk_denetleyici).
+GIRDI_ANAHTAR = ("input", "girdi", "giriş", "stdin", "eof", "klavye", "isim", "ad gir", "adını", "adınız",
+                 "kullanıcıdan")
+
+
 def kontrol_girdi(p: Path, s: dict, yanit: str) -> list:
+    # Türkçe küçük harf: "GİRİŞ".lower() Python'da birleşik noktalı "i̇" üretir → önce İ→i, I→ı; İngilizce büyük
+    # harfli kelimeler (INPUT) için düz lower() da denenir.
+    tr = yanit.replace("İ", "i").replace("I", "ı").lower()
     low = yanit.lower()
-    return [("girdi beklediğini açıkladı", any(k in low for k in ("input", "girdi", "eof", "klavye", "ad gir",
-                                                                   "adınız")), yanit[-160:].replace("\n", " "))]
+    ok = any(k in tr or k in low for k in GIRDI_ANAHTAR)
+    return [("girdi beklediğini açıkladı", ok, yanit[-160:].replace("\n", " "))]
 
 
 def kur_planlama(p: Path) -> dict:

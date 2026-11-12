@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-12 21:16 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. 0.5.0 yayında. Madde 21 (0.5.1 istekleri, TOPLU; dal `surum/0.5.1-istekler`) SÜRÜYOR — son yapılan: (c) girdi düşüşü giderildi + borulanan metne BOM ekleyen hata düzeltildi. Kullanıcı "yeni çıktıyı oluştur ve gereken tüm testleri tamamla" diyene kadar tam takım / gerçek API / paket YOK.
+- **Güncelleme:** 2026-11-12 21:16 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. 0.5.0 yayında. Madde 21 (0.5.1 istekleri, TOPLU; dal `surum/0.5.1-istekler`) SÜRÜYOR: (a) kurulum yalnız kullanıcı, (b) döngü bekçisi kalıcı çözüm, (c) girdi + BOM YAPILDI; SIRADA: kapsamlı analiz (performans, tasarım, kullanım kolaylığı, eksik/hata) + iOS 27 Liquid Glass tasarım + Türk bayrağına sadık yeni logo/animasyonlar. Kullanıcı "yeni çıktıyı oluştur ve gereken tüm testleri tamamla" diyene kadar tam takım / gerçek API / paket YOK.
 - **Aktif dal:** `surum/0.5.1-istekler` (master 9ba3543 üstünde; 0.5.1 istekleri burada birikir).
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı

@@ -44,3 +44,6 @@ Kullanıcı (2026-11-12 20:40): (1) kurulum "yalnız benim için" gibi kursun am
 
 ## Sonraki motor için notlar
 - Kullanıcı "oluştur + tüm testler" diyene kadar tam takım / gerçek API / paket ÇALIŞTIRMA (Madde 21).
+- Girdi düzeltmesinin uygulama kısmı (stdin ipucu) ayrı commit; denetleyici değişikliği tests/e2e_zorluk_real_api.py'de —
+  gerçek zorluk koşusu 0.5.1 toplu testlerinde.
+
