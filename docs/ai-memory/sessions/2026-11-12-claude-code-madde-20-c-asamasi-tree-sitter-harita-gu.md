@@ -124,6 +124,10 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   uyarısı (yalnız test kodu); (d) tüm kullanıcılar (UAC) kurulumu ve kaldırmada veri silme seçeneği gerçek ortamda
   denenmedi.
 
+- Paket 0.5.0 (ilk derleme 19:18): 210 MB, imzalı; duman harita_dilleri=11, tek_ornek=var, terminal=var. Terminal
+  denetimi yalnız dosya varlığına bakıyordu → duman testi artık paketli uygulamada kabuğu GERÇEKTEN açıp komut çalıştırır
+  (`terminal=var WinPTY`); kaynaktan doğrulandı, paket yeniden derlendi.
+
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.

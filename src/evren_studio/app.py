@@ -214,7 +214,23 @@ def smoke_report(window) -> list[str]:
         from .agent import ptyshell
 
         agent_exe = _P(winpty.__file__).parent / "winpty-agent.exe"
-        lines.append("terminal=" + ("var" if ptyshell.available() and agent_exe.is_file() else "EKSIK"))
+        if not (ptyshell.available() and agent_exe.is_file()):
+            lines.append("terminal=EKSIK")
+        else:                               # dosyalar yetmez: paketli uygulamada kabuk GERÇEKTEN açılıp komut çalıştırıyor mu
+            import tempfile
+            import time as _t
+
+            sh = ptyshell.PtyShell(tempfile.gettempdir(), 80, 24)
+            try:
+                sh.start()
+                sh.write("Write-Output ('duman' + 'kabuk')\r")
+                end = _t.monotonic() + 15
+                while _t.monotonic() < end and "dumankabuk" not in sh.text().replace("'duman' + 'kabuk'", ""):
+                    _t.sleep(0.2)
+                ok = "dumankabuk" in sh.text().replace("'duman' + 'kabuk'", "")
+                lines.append("terminal=" + ("var" if ok else "ACILMADI") + f" {sh.backend}")
+            finally:
+                sh.close()
     except Exception as exc:                # noqa: BLE001
         lines.append(f"terminal=HATA {type(exc).__name__}")
     try:                                    # anahtar Credential Manager'da: paketlenince arka uç kaybolabilir
