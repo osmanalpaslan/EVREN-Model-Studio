@@ -92,6 +92,9 @@ def test_kurulum_kimligi_kilit_adi_lisans_ve_kapsam():
     assert m and uuid.UUID(m.group(1))                                    # sabit, geçerli GUID
     assert "LicenseFile=..\\LICENSE" in ISS and (ROOT / "LICENSE").read_text(encoding="utf-8").startswith("MIT")
     assert "PrivilegesRequired=lowest" in ISS                             # yönetici izni gerekmez
+    # Kullanıcı kararı (2026-11-12): kurulum "kimin için" diye SORMAZ, "tüm kullanıcılar" seçeneği yok
+    assert not re.search(r"^\s*PrivilegesRequiredOverridesAllowed\s*=", ISS, re.M)
+    assert "{autopf}" in ISS                                              # yalnız-kullanıcı kipinde %LOCALAPPDATA%\Programs
     assert "{localappdata}\\EVREN-Model-Studio" in ISS                    # veri yeri değişmez
 
 

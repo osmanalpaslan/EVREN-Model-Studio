@@ -1,5 +1,9 @@
 # Değişiklik Günlüğü
 
+## Yayınlanmamış — 0.5.1 (istekler birikiyor)
+
+- **Kurulum artık soru sormadan yalnız sizin için kurar**: "Kimin için kurulsun?" penceresi ve "tüm kullanıcılar" seçeneği kaldırıldı; yönetici izni istenmez.
+
 ## 0.5.0 — 2026-11-12 (kurulum dosyası `EVREN-Studio-Kurulum-0.5.0.exe`)
 
 Açık kaynak depo taramasından gelen geliştirmeler (Madde 20):

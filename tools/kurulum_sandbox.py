@@ -35,7 +35,7 @@ $once = @{}
 foreach ($c in 'python','git','node','gh') { $once[$c] = (Get-Command $c -ErrorAction SilentlyContinue).Source }
 $once | ConvertTo-Json | Out-File -Encoding utf8 "$out\once.json"
 $t0 = Get-Date
-$p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',
+$p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',
      '/TASKS="__TASKS__"',"/LOG=$out\kurulum.log" -Wait -PassThru
 "kurulum cikis $($p.ExitCode) sure $([int]((Get-Date)-$t0).TotalSeconds) sn" | Out-File -Append -Encoding utf8 "$out\ilerleme.txt"
 # kurulumdan SONRA: kayıt defterindeki yeni PATH ile

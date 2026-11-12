@@ -36,8 +36,8 @@ dosyaları, AppMutex, duman testi, PATH tazeleme, Store python yer tutucusu). Te
 | Paketleyici | **PyInstaller, klasörlü (onedir)**, pencereli (konsolsuz) | Olgun, ücretsiz, PySide6 desteği iyi. Onedir her açılışta geçici klasöre açılmaz: hızlı başlar, antivirüs yanlış alarmı daha az |
 | Kurulum aracı | **Inno Setup 6** (ücretsiz, açık kaynak; `ISCC.exe`) | Türkçe arayüz hazır (`Turkish.isl`), kullanıcı veya tüm kullanıcılar kurulumu, kaldırıcı, yükseltme, imzalama desteği |
 | Değerlendirilip ertelenen | MSIX (imza zorunlu, Store akışı), Nuitka (derleme uzun; antivirüs açısından daha iyi olabilir; sorun çıkarsa yeniden değerlendir), cx_Freeze, WiX/MSI (kurumsal dağıtım istenirse) | — |
-| Kurulum kapsamı | Varsayılan **yalnız bu kullanıcı** (`PrivilegesRequired=lowest`, `PrivilegesRequiredOverridesAllowed=dialog`): yönetici izni gerekmez. İsteyen "tüm kullanıcılar" seçer (UAC ister) | Kurumsal bilgisayarlarda yönetici izni olmayan kullanıcılar da kurabilsin |
-| Kurulum yeri | Kullanıcı: `%LOCALAPPDATA%\Programs\EVREN Studio` · Tüm kullanıcılar: `%ProgramFiles%\EVREN Studio` | Windows standardı |
+| Kurulum kapsamı | **Yalnız bu kullanıcı** (`PrivilegesRequired=lowest`): yönetici izni gerekmez, SORMAZ. "Tüm kullanıcılar" seçeneği 2026-11-12 kullanıcı kararıyla KALDIRILDI (`PrivilegesRequiredOverridesAllowed` yok) | Kurumsal bilgisayarlarda yönetici izni olmayan kullanıcılar da kurabilsin |
+| Kurulum yeri | `%LOCALAPPDATA%\Programs\EVREN Studio` | Windows standardı (kullanıcı kapsamı) |
 | Kullanıcı verisi | Değişmez: `%LOCALAPPDATA%\EVREN-Model-Studio` (config.json, evren.db, attachments, logs), anahtar Credential Manager'da | Kaynak koddan kurulumla aynı yer: geçişte veri kaybolmaz |
 | Mimari | Yalnız **Windows 10/11 x64** | PySide6 6.7+ gereksinimi |
 | Sürüm | Tek kaynak: `evren_studio.__version__` → pyproject, EXE sürüm bilgisi ve Inno `AppVersion` buradan | Şu an sürüm `pyproject.toml` ve `__init__.py`'de iki kez yazılı (0.2.0) |
@@ -148,7 +148,7 @@ Sandbox** (Windows 10/11 Pro'da yerleşik) veya sanal makine:
 - [x] Kullanıcı adında boşluk ve Türkçe harf (ör. `C:\Users\Osman Alpaslan`). (geliştirme bilgisayarı)
 - [ ] Eski sürümün üzerine yükseltme: veri ve anahtar korunur.
 - [ ] Kaldırma: "verileri sil = hayır" veri kalır; "evet" veri + anahtarlar silinir.
-- [ ] Tüm kullanıcılar kurulumu (UAC) da çalışır. — DOĞRULANMADI (yönetici onayı gerekir)
+- [x] ~~Tüm kullanıcılar kurulumu (UAC)~~ — seçenek KALDIRILDI (kullanıcı kararı 2026-11-12), denenecek bir şey yok.
 - [ ] Defender taraması temiz; SmartScreen davranışı belgelenir.
 - [ ] Ekran görüntüleriyle kurulum adımları (R-05), sonuç bu dosyaya ve
       CHANGELOG'a yazılır; doğrulanmayan madde "doğrulanmadı" diye kalır.

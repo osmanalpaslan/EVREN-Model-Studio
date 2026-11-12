@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 109 · Açık/izlenen: 7 · Oturum: 45 · Kural: 36
+Kayıt: 109 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -135,6 +135,7 @@ Kayıt: 109 · Açık/izlenen: 7 · Oturum: 45 · Kural: 36
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
 | 2026-11-12 | [2026-11-12-claude-code-madde-20-c-asamasi-tree-sitter-harita-gu](sessions/2026-11-12-claude-code-madde-20-c-asamasi-tree-sitter-harita-gu.md) | Claude Code / claude-opus-5-5 | tamamlandi | Madde 20 C asamasi: tree-sitter harita, guncelleme, ses, terminal |
+| 2026-11-12 | [2026-11-12-claude-code-0-5-1-kullanici-istekleri-toplu-kurulum](sessions/2026-11-12-claude-code-0-5-1-kullanici-istekleri-toplu-kurulum.md) | Claude Code / claude-opus-5-5 | devam-ediyor | 0.5.1 kullanici istekleri (toplu): kurulum yalniz kullanici |
 | 2026-11-11 | [2026-11-11-claude-code-madde-20-repo-taramasi-uygulamasi-a-json](sessions/2026-11-11-claude-code-madde-20-repo-taramasi-uygulamasi-a-json.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 20 repo taraması uygulaması (A json_repair ruff belgeler, B Derin, C) |
 | 2026-11-07 | [2026-11-07-claude-code-madde-16-kurulumlu-exe-mit-kendi-imza-go](sessions/2026-11-07-claude-code-madde-16-kurulumlu-exe-mit-kendi-imza-go.md) | Claude Code / claude-opus-5-5 | kismi | Madde 16 kurulumlu exe (MIT, kendi imza, gomulu programlar) |
 | 2026-11-06 | [2026-11-06-claude-code-madde-14-motor-karnesi-ve-akilli-yonlend](sessions/2026-11-06-claude-code-madde-14-motor-karnesi-ve-akilli-yonlend.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 14 motor karnesi ve akilli yonlendirme |
