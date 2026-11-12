@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 114 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
+Kayıt: 115 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -20,6 +20,7 @@ Kayıt: 114 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-13 | [2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib](incidents/2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib.md) | hata | dusuk | cozuldu | EVREN Studio gözlem ajanı | Qt warning: qfontdatabase: cannot find font directory .venv/lib/site-packages/pyside#/lib/fo… |
 | 2026-11-12 | [2026-11-12-zorluk-paketi-gorevi-dustu-girdi](incidents/2026-11-12-zorluk-paketi-gorevi-dustu-girdi.md) | yanlis-iddia | orta | cozuldu | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: girdi |
 | 2026-11-12 | [2026-11-12-logodaki-yildiz-turk-bayragi-kanunu-ndaki-yerinden-uzaktaydi](incidents/2026-11-12-logodaki-yildiz-turk-bayragi-kanunu-ndaki-yerinden-uzaktaydi.md) | hata | orta | cozuldu | Claude Code | Logodaki yıldız Türk Bayrağı Kanunu'ndaki yerinden uzaktaydı |
 | 2026-11-12 | [2026-11-12-dongu-bekcisi-turu-durdurdu](incidents/2026-11-12-dongu-bekcisi-turu-durdurdu.md) | risk | orta | cozuldu | EVREN Studio gözlem ajanı | Döngü bekçisi turu durdurdu |

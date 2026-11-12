@@ -404,9 +404,12 @@ def devam_zorunlu(metin: str, onceki_durma: str, son_yanit: str, *, model: str =
                   ayrinti={"model": model, "rol": rol, "olay": "devam_zorunlu", "acik_plan": acik_plan or None})
 
 
-# Windows/Qt'nin zararsız, sık uyarıları (gözlem değeri yok)
+# Windows/Qt'nin zararsız, sık uyarıları (gözlem değeri yok). "Cannot find font directory": yalnız ekransız
+# (offscreen) test kipinde çıkar — Qt orada kendi yazı tipi klasörünü arar; gerçek pencere (windows platformu)
+# sistem yazı tiplerini kullanır, kullanıcıda görünmez (gözlem 60677e5d4254, 2026-11-13).
 _QT_ZARARSIZ = ("QWindowsWindow::setGeometry", "Unable to set geometry", "QFont::setPointSize",
-                "propagateSizeHints", "OpenType support missing", "QSocketNotifier: Can only be used")
+                "propagateSizeHints", "OpenType support missing", "QSocketNotifier: Can only be used",
+                "Cannot find font directory")
 
 
 def qt_mesaji(seviye: str, mesaj: str) -> str | None:

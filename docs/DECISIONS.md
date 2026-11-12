@@ -138,6 +138,14 @@
 - **Düz metin anahtar dosyası**: güvenlik gereği reddedildi (kural).
 - **Windows Görev Zamanlayıcı ile izleme**: MVP'de gereksiz sistem servisi;
   kullanıcı başlatmalı uygulama içi zamanlayıcı yeterli.
+- **Windows 11 "Mica" pencere zemini (2026-11-13, analiz önerisi değerlendirildi, şimdilik UYGULANMADI)**: (1) uygulama
+  Windows 10 1809+ destekliyor (kurulum MinVersion 10.0.17763), Mica yalnız Windows 11'de (22000/22621+) → iki ayrı
+  görünüm; (2) Mica'nın rengi masaüstü duvar kâğıdından gelir → R-33'ün "her zeminde WCAG ≥ 4,5" ölçümü sabit renkle
+  yapılamaz, okunurluk garanti edilemez; (3) Qt'de yarı saydam pencere (WA_TranslucentBackground) + tüm yüzeylerin QSS
+  zeminini saydamlaştırmak tema yeniden yazımı demek, bazı ekran kartlarında yeniden boyutlandırmada siyah kare/titreme
+  bilinir; ekran geçiş katmanı (transitions.py) opak görüntüyle çalışıyor; (4) kazanç yalnız görsel (analizde öncelik
+  "Düşük", 3–4 saat). Kullanıcı isterse yalnız Windows 11'de, Ayarlar'da "Deneysel" seçenek olarak ve iki temada
+  okunurluk ölçümüyle eklenebilir.
 
 ## #128 Kod rolünde yedek sıra: qwen önde (2026-11-11)
 Kullanıcı yetkisiyle ("yetki sende"). Karne ölçümü (2026-11-06): qwen3.8-flash-next 95,5 puan, ortanca görev 29 sn;
