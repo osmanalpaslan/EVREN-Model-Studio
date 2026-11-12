@@ -128,6 +128,12 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   denetimi yalnız dosya varlığına bakıyordu → duman testi artık paketli uygulamada kabuğu GERÇEKTEN açıp komut çalıştırır
   (`terminal=var WinPTY`); kaynaktan doğrulandı, paket yeniden derlendi.
 
+- SON ÖLÇÜMLER (2026-11-12 19:07-20:00, son kod): tam takım **1188/1188** (8 dk 01 sn) · zorluk auto 11/12 (mini_proje
+  6 dk sınırında; EVREN auto tek çağrıda 296-322 sn bekletti; aynı görev qwen3.8-flash-next ile 5/5 → kod gerilemesi değil)
+  · R-13 API E2E_OK (tekrarda; ilk denemede glm 503) · ajan 4/6 (glm-5.3 503 "model dolu") · arayüz 15/15 · paket 0.5.0
+  210 MB imzalı, duman tamam (paketli uygulamada kabuk gerçekten açıldı: terminal=var WinPTY) · Windows Sandbox
+  internetsiz temiz kurulum GEÇTİ (~21 dk).
+
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.

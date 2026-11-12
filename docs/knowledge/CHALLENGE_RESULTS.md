@@ -23,6 +23,19 @@
 | plan | Plan modunda özellik isteği | dosya değişmez, plan yazılır |
 | girdi | `input()` bekleyen betiği çalıştır | girdi beklediğini açıklar (takılmaz) |
 
+## Madde 20 C aşaması + analiz düzeltmeleri sonrası (2026-11-12 akşam, dal `feat/c1-harita`, sürüm 0.5.0, auto)
+
+- Tam paket **11/12**, 1444 sn: düşen **mini_proje 4/5** — kök neden EVREN tarafı yavaşlık: dosyaları yazan TEK model
+  çağrısı 5 dk 23 sn sürdü, görev 6 dk sınırında kesildi (o an ajanın 2 testi kırmızıydı). Değişikliklerle ilgisiz
+  (heredoc engeli / gözetmen devreye girmedi; normal turda gözetmen yok). Sabahki koşuda da mini_proje 362 sn ile
+  sınırdaydı. Aynı akşam planlama 362 sn (sabah 235). Aynı anda Windows Sandbox kurulum denemesi de çalışıyordu.
+  R-21 gereği düşen görev tek başına tekrarlandı: auto ile 0/1 (6 dk'da yalnız 2 adım; sunucunun auto yönlendirmesi
+  tek çağrıda 296 sn bekletti — sabah en uzun çağrı 202 sn, ortalama 13 sn). Aynı görev doğrudan
+  **qwen3.8-flash-next ile 5/5** → görev mevcut kodla doğru yapılıyor; düşüş EVREN auto tarafı yavaşlığı, kod gerilemesi
+  DEĞİL. İzlenecek: mini_proje 6 dk sınırına üç koşudur dayanıyor (sınır ya da görev boyu gözden geçirilebilir).
+- R-13 (aynı akşam): API E2E_OK (ilk denemede glm-5.3 HTTP 503, tekrarda geçti) · ajan 4/6 (düşen 2: glm-5.3 HTTP 503
+  "model dolu"; deepseek + qwen 4/4) · arayüz 15/15. Windows Sandbox internetsiz temiz kurulum (0.5.0): GEÇTİ.
+
 ## Madde 20 B3+B4 sonrası (2026-11-12, dal `feat/b4-gozetmen`, auto, PowerShell'den)
 
 - Tam paket **12/12**, 928 sn (A aşaması sonu 2026-11-11: 12/12, 1410 sn — sunucu yükü farkı; gerileme yok).
