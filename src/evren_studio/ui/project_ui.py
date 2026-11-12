@@ -448,7 +448,8 @@ class ProjectController(QObject):
         req["critic"] = critic
         sv._turn_id = msg_id
         sv._turn_hook = hook
-        sv.start_run(history_from=msg_id, mode_override="auto", model_override=(model, fallbacks, role), critic=critic)
+        sv.start_run(history_from=msg_id, mode_override="auto", model_override=(model, fallbacks, role), critic=critic,
+                     protected_files=(pj.PLAN_FILE, pj.REPORT_FILE))
         if not sv.running and not req["event"].is_set():
             sv._turn_hook = None
             req["result"] = pj.TaskRun(stopped="error", error=None, summary="tur başlatılamadı")
@@ -579,6 +580,7 @@ class ProjectController(QObject):
                                     if info and (info.capabilities or {}).get("reasoning_effort") else None))
         critic = self._make_critic()
         kw["critic"] = critic
+        kw["protected_files"] = (pj.PLAN_FILE, pj.REPORT_FILE)
         token = CancelToken()
         token._event = self._cancel                 # kullanıcı projeyi durdurunca bu ajan da güvenli noktada durur
         client = self.ctx.make_client()

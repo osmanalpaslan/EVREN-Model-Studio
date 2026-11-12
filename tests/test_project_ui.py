@@ -223,6 +223,7 @@ def test_bagimsiz_gorevler_paralel_ve_arayuzsuz(win, tmp_path, monkeypatch):
         assert kw["install_mode"] == s_.install_mode and kw["command_timeout"] == s_.command_timeout_seconds
         assert kw["untrusted"] == list(s_.untrusted_dirs or []) and kw["edit_check"] == s_.edit_diagnostics
         assert kw["route_role"] == "kod" and "skills" in kw
+        assert kw["protected_files"] == (pj.PLAN_FILE, pj.REPORT_FILE)       # yürütücünün dosyaları yazılmaz
         assert kw["user_rules"][0] == "KURAL" and "worktrees" in str(kw["user_rules"][1])
 
 
@@ -280,12 +281,13 @@ def test_gozetmen_proje_gorev_turuna_verilir_plan_turuna_verilmez(win, tmp_path,
     w.ctx.settings.progress_critic = acik
     from evren_studio.ui import session_view as svmod
 
-    built = []
+    built, prot = [], []
     real_runner = svmod.AgentRunner
 
     class Spy(real_runner):
         def __init__(self, *a, **kw):
             built.append(kw.get("critic"))
+            prot.append(kw.get("protected_files"))
             super().__init__(*a, **kw)
     monkeypatch.setattr(svmod, "AgentRunner", Spy)
     client = FakeClient()
@@ -298,6 +300,7 @@ def test_gozetmen_proje_gorev_turuna_verilir_plan_turuna_verilmez(win, tmp_path,
     task_runs = [c for k, c in seen if k == "auto"]
     assert plan_runs and all(c is None for c in plan_runs)
     assert len(task_runs) == 2
+    assert prot[-2:] == [(pj.PLAN_FILE, pj.REPORT_FILE)] * 2 and not prot[0]   # yalnız görev turları korur
     if acik:
         assert all(isinstance(c, cr.Critic) for c in task_runs) and task_runs[0] is not task_runs[1]
         assert built[-2:] == task_runs                                  # oturum turu koşucuya iletti

@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 109 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
+Kayıt: 110 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -20,6 +20,7 @@ Kayıt: 109 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-12 | [2026-11-12-dongu-bekcisi-turu-durdurdu](incidents/2026-11-12-dongu-bekcisi-turu-durdurdu.md) | risk | orta | cozuldu | EVREN Studio gözlem ajanı | Döngü bekçisi turu durdurdu |
 | 2026-11-11 | [2026-11-11-proje-python-c-dogrulamasinin-kendi-yazim-hatasi-gorevi-taki](incidents/2026-11-11-proje-python-c-dogrulamasinin-kendi-yazim-hatasi-gorevi-taki.md) | hata | orta | cozuldu | Claude Code | Proje: python -c dogrulamasinin kendi yazim hatasi gorevi takiltiyordu |
 | 2026-11-07 | [2026-11-07-windows-mcp-kisayolu-alt-i-altgr-olarak-gonderiyor](incidents/2026-11-07-windows-mcp-kisayolu-alt-i-altgr-olarak-gonderiyor.md) | hata | orta | cozuldu | Claude Code | Windows-MCP kisayolu Alt'i AltGr olarak gonderiyor |
 | 2026-11-06 | [2026-11-06-dongu-bekcisi-turu-durdurdu](incidents/2026-11-06-dongu-bekcisi-turu-durdurdu.md) | hata | orta | cozuldu | EVREN Studio gözlem ajanı | Döngü bekçisi turu durdurdu |

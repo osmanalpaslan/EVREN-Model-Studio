@@ -1742,7 +1742,8 @@ class SessionView(QWidget):
 
     def start_run(self, history_from: int | None = None, mode_override: str | None = None,
                   model_override: tuple[str, list[str], str] | None = None, no_writes: bool = False,
-                  extra_tools=None, final_marker: str | None = None, critic=None) -> None:
+                  extra_tools=None, final_marker: str | None = None, critic=None,
+                  protected_files: tuple[str, ...] = ()) -> None:
         """history_from: yalnız bu mesajdan itibaren geçmiş (proje görevi: temiz bağlam).
         mode_override / model_override: proje ajanının plan (salt okunur) ve görev (Otomatik) turları."""
         sid = self.session_id
@@ -1898,6 +1899,7 @@ class SessionView(QWidget):
             user_rules=self._user_rules(ws.root) if ws is not None else None,
             game_tools=self._wants_game_tools(ws.root if ws is not None else None, run_role, history),
             critic=critic,                  # B4: yalnız Proje görevi turunda (project_ui verir)
+            protected_files=protected_files,  # Proje görevi: yürütücünün EVREN_PLAN.md / EVREN_RAPOR.md'si yazılmaz
         )
         runner = self.runner
         self.running = True

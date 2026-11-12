@@ -120,6 +120,24 @@ FLIPFLOP_STOP = 2      # 1. kez uyarı, 2. kez tur durur
 DESKTOP_PREFIX = "mcp__masaustu__"
 DESKTOP_ACTION_WARN = 4
 DESKTOP_ACTION_STOP = 6
+# 2026-11-12 (uygulama analizi, kalıcı çözüm): yukarıdaki kural YALNIZ masaüstüne özeldi; kullanıcının gerçek web QA
+# oturumlarında Playwright `browser_navigate` / `browser_console_messages` tekrarları aynı yanlış uyarıyı ("arada dosya
+# değişmedi; sonuç aynı olacak") almaya devam etti. Durumu DIŞARIDA olan TÜM araçlar (MCP: masaüstü, tarayıcı, diğer
+# bağlayıcılar) için genel kural: (1) aynı sunucudaki başarılı bir EYLEM o sunucunun diğer sayaçlarını sıfırlar ve
+# eylemlerin eşiği yüksektir (sayfayı yeniden açmak / aynı düğmeye yeniden basmak meşru); (2) başarılı bir YEREL komut
+# (sunucuyu yeniden başlatmak, derlemek) dış dünyayı değiştirebildiği için TÜM dış sayaçları sıfırlar; (3) arada hiçbir
+# eylem yokken aynı dış okumanın tekrarı yerel okuma gibi sayılır (3. kez = döngü; masaüstü QA ölçümü, R-22 testleri).
+EXTERNAL_PREFIX = "mcp__"
+EXTERNAL_ACTION_WARN = DESKTOP_ACTION_WARN
+EXTERNAL_ACTION_STOP = DESKTOP_ACTION_STOP
+EXTERNAL_REPEAT_NOTE = ("\n\n[Döngü uyarısı] Bu dış aracı aynı parametrelerle bu turda zaten {n} kez çağırdın ve arada "
+                        "bu araçla durumu değiştiren bir işlem yapmadın. Bir şeyin olmasını bekliyorsan bekleme aracını "
+                        "kullan ya da farklı bir yol dene; ilerleyemiyorsan dur ve neyin engel olduğunu açıkça söyle.")
+# Proje yürütücüsünün kendi dosyaları (agent/project.py PLAN_FILE/REPORT_FILE): görev turunda ajan bunları düzenlerse
+# yürütücü bir sonraki kayıtta üzerine yazar — emek boşa gider (2026-11-11 e2e: ajan planı "tamam" işaretleyip doğrulama
+# komutunu orada düzeltmeye çalıştı). Koşucuya `protected_files` verilince bu dosyalara yazma çalıştırılmadan açıklanır.
+PROTECTED_NOTE = ("{name} dosyası proje yürütücüsüne ait: görev durumunu ve planı yürütücü kendisi işler, buradaki "
+                  "değişiklik bir sonraki kayıtta silinir. Bu dosyayı düzenleme; görevin kendi işine devam et.")
 # glm-5.3 metin protokolünde tek yanıtta 39 çağrı (çoğu uydurma dosya) üretti:
 MAX_CALLS_PER_STEP = 12
 REPEAT_NOTE = ("\n\n[Döngü uyarısı] Bu çağrıyı bu turda aynı parametrelerle zaten {n} kez yaptın ve "
@@ -252,6 +270,12 @@ def looks_like_unfinished_intent(text: str) -> bool:
 
 def call_signature(call: "ToolCall") -> str:
     return call.name + " " + json.dumps(call.arguments, ensure_ascii=False, sort_keys=True)
+
+
+def external_scope(name: str) -> str:
+    """`mcp__<sunucu>__<araç>` → `mcp__<sunucu>__` (aynı dış sunucunun tüm araçları)."""
+    parts = name.split("__")
+    return "__".join(parts[:2]) + "__" if len(parts) >= 3 else name
 
 
 # ---- veri yapıları --------------------------------------------------------------
@@ -528,7 +552,7 @@ class AgentRunner:
                  base_body: dict[str, Any] | None = None, extra_hint: str = "",
                  project_map: bool = False, skills: list | None = None, untrusted: list[str] | None = None,
                  user_rules: Any = None, game_tools: bool = False, test_tools: Any = None,
-                 critic: Any = None):
+                 critic: Any = None, protected_files: tuple[str, ...] = ()):
         self.client = client
         self.model = model
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
@@ -623,6 +647,9 @@ class AgentRunner:
         self._nudge: str | None = None          # sonraki çağrıya eklenecek geçici hatırlatma
         # B4 gidiş gözetmeni (agent/critic.py): yalnız gözetimsiz görevde (Proje/Derin) verilir; None → kapalı
         self.critic = critic
+        # Proje görevi turunda yürütücünün kendi dosyaları (EVREN_PLAN.md, EVREN_RAPOR.md): yazılmaz (PROTECTED_NOTE)
+        self.protected_files = tuple(p.lower() for p in protected_files)
+        self._loop_kind = self._loop_tool = ""
         self._extra_body: dict[str, Any] | None = None
         self._writes: list[tuple[str, str | None, str | None]] = []  # (yol, önce, sonra) — son araç
         self.toolbox = (
@@ -773,10 +800,11 @@ class AgentRunner:
         except Exception:
             pass                                  # kayıt hatası turu bozmasın
 
-    def _quality(self, event: str, detail: str = "") -> None:
-        """A5: kalite olayı (modelstats.QUALITY_WEIGHTS) — o anki model adına kaydedilir."""
+    def _quality(self, event: str, detail: str = "", model: str | None = None, **extra: Any) -> None:
+        """A5: kalite olayı (modelstats.QUALITY_WEIGHTS) — o anki (ya da verilen) model adına kaydedilir. `extra`
+        gözleme gider (ör. döngü türü + araç adı; gozlem._AYRINTI_IZINLI süzer)."""
         self.quality_events.append(event)
-        self._record(model=self.model, ok=False, event=event, detail=detail[:200])
+        self._record(model=model or self.model, ok=False, event=event, detail=detail[:200], **extra)
 
     def _switch_model(self, outcome: "TurnOutcome", exc: ApiError | None, loop_reason: str = "",
                       slow_reason: str = "", empty_reason: str = "") -> bool:
@@ -1192,6 +1220,8 @@ class AgentRunner:
                     if stop == "flipflop":
                         flipflops += 1
                         if flipflops >= FLIPFLOP_STOP:
+                            if not loop_reason:
+                                self._loop_kind, self._loop_tool = "ileri_geri", call.name
                             loop_reason = loop_reason or (
                                 f"bir dosya tekrar tekrar eski hâline döndürüldü ({res.extra.get('path', '?')})")
                     elif stop:
@@ -1206,8 +1236,16 @@ class AgentRunner:
                 outcome.stopped = "cancelled"
                 break
             if loop_reason:
-                self._quality("loop", loop_reason)
-            if loop_reason and self._switch_model(outcome, None, loop_reason):
+                kind, tool = getattr(self, "_loop_kind", "") or "ayni_cagri", getattr(self, "_loop_tool", "")
+                prev_model = self.model
+                switched = self._switch_model(outcome, None, loop_reason)
+                # Gözlem: döngünün TÜRÜ + aracın adı (kişisel veri yok) ve sonucu — 2026-11-12'ye kadar yalnız "loop"
+                # yazılıyordu; 13 kaydın hangi araçtan geldiği geriye dönük bulunamadı. Model değişip tur sürdüyse
+                # "durdu" diye raporlanmaz. Kayıt, döngüye giren (eski) modelin adına.
+                self._quality("loop", loop_reason, model=prev_model, loop_kind=kind, tool=tool,
+                              result="model_degisti" if switched else "durdu")
+                self._loop_kind = self._loop_tool = ""
+            if loop_reason and switched:
                 repeats.clear()
                 file_states.clear()
                 flipflops = 0
@@ -1282,6 +1320,7 @@ class AgentRunner:
                 key = call_signature(call)
                 repeats[key] = repeats.get(key, 0) + 1
                 if repeats[key] >= REPEAT_STOP:
+                    self._loop_kind, self._loop_tool = "basarisiz_duzenleme", call.name
                     return "", f"aynı başarısız düzenleme {repeats[key]} kez denendi ({call.name})"
                 if repeats[key] >= REPEAT_WARN:
                     return REPEAT_NOTE.format(n=repeats[key] - 1), ""
@@ -1299,20 +1338,30 @@ class AgentRunner:
         key = call_signature(call)
         repeats[key] = repeats.get(key, 0) + 1
         n = repeats[key]
-        warn, stop = REPEAT_WARN, REPEAT_STOP
-        if call.name.startswith(DESKTOP_PREFIX) and spec.kind == EXEC:
-            warn, stop = DESKTOP_ACTION_WARN, DESKTOP_ACTION_STOP
-            if res.ok:
-                # Ekranı değiştiren eylem: DİĞER tüm masaüstü sayaçları yeniden sayılır (okumalar ve başka eylemler —
-                # gerçek QA 20:3x: farklı sayılar yazıp her seferinde Topla'ya basmak "Click 6 kez" sayılıyordu). Aynı
-                # eylemin arada hiçbir değişiklik olmadan tekrarı sayılmaya devam eder; iki eylem arasında sonsuz gidip
-                # gelme turun adım sınırına takılır.
-                for k in [k for k in repeats if k.startswith(DESKTOP_PREFIX) and k != key]:
-                    del repeats[k]
+        warn, stop, note = REPEAT_WARN, REPEAT_STOP, REPEAT_NOTE
+        external = call.name.startswith(EXTERNAL_PREFIX)
+        if external:
+            note = EXTERNAL_REPEAT_NOTE
+            if spec.kind == EXEC:
+                warn, stop = EXTERNAL_ACTION_WARN, EXTERNAL_ACTION_STOP
+                if res.ok:
+                    # Durumu değiştiren eylem (tıklama, sayfaya gitme, yazma): AYNI SUNUCUNUN diğer sayaçları yeniden
+                    # sayılır (okumalar ve başka eylemler — masaüstü QA 2026-11-06: farklı sayılar yazıp her seferinde
+                    # Topla'ya basmak "Click 6 kez" sayılıyordu). Aynı eylemin arada hiçbir değişiklik olmadan tekrarı
+                    # sayılmaya devam eder; iki eylem arasında sonsuz gidip gelme turun adım sınırına takılır.
+                    scope = external_scope(call.name)
+                    for k in [k for k in repeats if k.startswith(scope) and k != key]:
+                        del repeats[k]
+        elif spec.kind == EXEC and res.ok:
+            # Yerel komut (ör. sunucuyu yeniden başlat, derle) dış uygulamanın / sayfanın durumunu değiştirebilir:
+            # tarayıcıda aynı sayfayı yeniden açmak artık "aynı sonuç" sayılmaz.
+            for k in [k for k in repeats if k.startswith(EXTERNAL_PREFIX)]:
+                del repeats[k]
         if n >= stop:
+            self._loop_kind, self._loop_tool = ("dis_arac_tekrar" if external else "ayni_cagri"), call.name
             return "", f"“{describe_call(call)}” {n} kez aynı sonuçla tekrarlandı"
         if n >= warn:
-            return REPEAT_NOTE.format(n=n - 1), ""
+            return note.format(n=n - 1), ""
         return "", ""
 
     def _history_tokens(self, history: list[dict]) -> int:
@@ -1335,6 +1384,11 @@ class AgentRunner:
         if self.no_writes and spec.kind == WRITE:
             return ToolResult(False, "Bu çalışmada (QA) dosya değiştirilemez: yalnız test et ve bulguyu raporla.",
                               "Engellendi (QA)")
+        if self.protected_files and spec.kind == WRITE:
+            target = str(call.arguments.get("path") or call.arguments.get("file_path") or "")
+            name = target.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+            if name.lower() in self.protected_files:
+                return ToolResult(False, PROTECTED_NOTE.format(name=name), f"Korumalı dosya: {name}")
         if normalize_mode(self.mode) == "plan" and spec.kind in (WRITE, EXEC) and call.name not in WEB_TOOLS:
             _d, reason = decide(self.mode, spec.kind, self.perms)
             return ToolResult(False, reason, "Plan modunda engellendi")
