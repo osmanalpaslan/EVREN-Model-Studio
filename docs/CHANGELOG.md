@@ -2,6 +2,10 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Düzeltme — kapanmış pencerenin gecikmeli işleri**: pencere kapandıktan sonra günlük yedek, geçmiş bakımı, güncelleme
+  denetimi ve gözlem gönderimi artık başlamaz (aynı süreçte ikinci pencere açan araçlarda silinmiş klasördeki veritabanını
+  açmaya çalışıyordu). Yedek, veritabanı dosyası yoksa boş dosya oluşturmak yerine açık hata verir.
+
 - **Veritabanı yazma 3,5 kat hızlı (WAL kipi)**: her mesaj kaydı 3,4 → 1 ms; kayıt sürerken okuma beklemez. Elektrik
   kesintisinde son mesaj kaybolmaz (tam eşitleme korunur). Veri klasörü ağ sürücüsündeyse eski kip kullanılır. Yedekteki
   YEDEK_BILGI.json elle geri yüklemenin güvenli sırasını yazar.

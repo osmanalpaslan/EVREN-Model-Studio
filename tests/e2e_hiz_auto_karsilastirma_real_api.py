@@ -100,6 +100,7 @@ def main() -> int:
     from evren_studio.ui.main_window import MainWindow
 
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.show()
     w.ctx.settings.suggest_project = False
     pump(app, 2.0)

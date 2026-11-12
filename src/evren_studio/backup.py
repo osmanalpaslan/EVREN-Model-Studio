@@ -15,6 +15,9 @@ from pathlib import Path
 
 def backup(db_path: Path, data_dir: Path, config_path: Path | None, dest: Path) -> dict:
     """Yedeği `dest` (.zip) dosyasına yazar. Dönüş: {"oturum": n, "mesaj": n, "boyut_kb": n, "dosyalar": [...]}."""
+    if not Path(db_path).is_file():
+        # sqlite3.connect eksik dosyayı sessizce BOŞ veritabanı olarak oluşturur: yanlış yerde başıboş evren.db kalırdı
+        raise FileNotFoundError(f"Veritabanı bulunamadı: {db_path}")
     dest = Path(dest)
     if dest.suffix.lower() != ".zip":
         dest = dest.with_suffix(".zip")

@@ -313,6 +313,7 @@ def main() -> int:
     sv.SessionView._note = lambda self, text, icon_name="dot": (notes.append(text), orig_note(self, text, icon_name))[1]
 
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.resize(1440, 900)
     w.show()
 

@@ -62,6 +62,7 @@ def main() -> int:
     from evren_studio.ui.transcript import ApprovalWidget, AssistantMessageWidget
 
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.resize(1440, 900)
     w.show()
     results: list[tuple[str, bool, str]] = []

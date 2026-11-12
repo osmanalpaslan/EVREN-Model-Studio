@@ -105,6 +105,7 @@ def make_window(install: bool):
     from evren_studio.ui.main_window import MainWindow
 
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.show()
     real = Path(os.environ.get("LOCALAPPDATA", "")) / "EVREN-Model-Studio"
     src = real if mcp.windows_ready(real) else None

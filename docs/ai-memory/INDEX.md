@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 115 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
+Kayıt: 117 · Açık/izlenen: 8 · Oturum: 46 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -13,6 +13,7 @@ Kayıt: 115 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
 | yuksek | [2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor](incidents/2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor.md) | eksik | ajan | Ajan çok fazlı işte faz bitince sonrakine geçmeyi unutuyor |
 | yuksek | [2026-11-01-yavaslik-gecisi-zayif-modele-gitti-gemma-celiskili-testte-hi](incidents/2026-11-01-yavaslik-gecisi-zayif-modele-gitti-gemma-celiskili-testte-hi.md) | hata | ajan | Yavaşlık geçişi zayıf modele gitti, gemma çelişkili testte hile yazdı |
 | orta | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | api | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
+| orta | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje.md) | risk | test | Zorluk paketi görevi düştü: mini_proje |
 | dusuk | [2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz](incidents/2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz.md) | hata | test/izleme | İzleme döngüsü testi zamanlamaya bağlı ve kararsız |
 | dusuk | [2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi](incidents/2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi.md) | ortam | test | Alt süreçler yük altında ara sıra boş çıktıyla dönüyor (bu bilgisayar) |
 
@@ -20,7 +21,9 @@ Kayıt: 115 · Açık/izlenen: 7 · Oturum: 46 · Kural: 36
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-13 | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje.md) | risk | orta | izleniyor | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: mini_proje |
 | 2026-11-13 | [2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib](incidents/2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib.md) | hata | dusuk | cozuldu | EVREN Studio gözlem ajanı | Qt warning: qfontdatabase: cannot find font directory .venv/lib/site-packages/pyside#/lib/fo… |
+| 2026-11-13 | [2026-11-13-arka-plan-gorevi-hata-verdi-operationalerror](incidents/2026-11-13-arka-plan-gorevi-hata-verdi-operationalerror.md) | hata | yuksek | cozuldu | EVREN Studio gözlem ajanı | Arka plan görevi hata verdi: OperationalError |
 | 2026-11-12 | [2026-11-12-zorluk-paketi-gorevi-dustu-girdi](incidents/2026-11-12-zorluk-paketi-gorevi-dustu-girdi.md) | yanlis-iddia | orta | cozuldu | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: girdi |
 | 2026-11-12 | [2026-11-12-logodaki-yildiz-turk-bayragi-kanunu-ndaki-yerinden-uzaktaydi](incidents/2026-11-12-logodaki-yildiz-turk-bayragi-kanunu-ndaki-yerinden-uzaktaydi.md) | hata | orta | cozuldu | Claude Code | Logodaki yıldız Türk Bayrağı Kanunu'ndaki yerinden uzaktaydı |
 | 2026-11-12 | [2026-11-12-dongu-bekcisi-turu-durdurdu](incidents/2026-11-12-dongu-bekcisi-turu-durdurdu.md) | risk | orta | cozuldu | EVREN Studio gözlem ajanı | Döngü bekçisi turu durdurdu |

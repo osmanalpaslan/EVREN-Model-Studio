@@ -70,6 +70,30 @@ def test_pencere_kurulumu_ag_istegi_yapmaz(win):
     assert len(calls) == 1
 
 
+def test_acilis_yukleri_tek_yontemde_ve_uygulama_onu_cagirir(win, monkeypatch):
+    """2026-11-13: e2e_ui_real_api pencereyi doğrudan kurduğu için canlı model listesi hiç yüklenmiyordu ("canlı model
+    listesi" kontrolü düştü). Açılış yükü tek yöntemde: kurulum ağ isteği yapmaz, start_background_loads 1-1,5 sn sonra
+    canlı listeyi ve kullanımı yükler; app.main de testler de bu yöntemi çağırır."""
+    import inspect
+    import time
+
+    from evren_studio import app as appmod
+
+    app, w, calls = win
+    seen = []
+    monkeypatch.setattr(w.session, "load_live_models", lambda: seen.append("modeller"))
+    monkeypatch.setattr(w.session, "refresh_usage", lambda: seen.append("kullanim"))
+    app.processEvents()
+    assert seen == [] and calls == []                              # kurulum kendiliğinden yüklemez
+    w.start_background_loads()
+    end = time.monotonic() + 5
+    while time.monotonic() < end and len(seen) < 2:
+        app.processEvents()
+        time.sleep(0.02)
+    assert seen == ["modeller", "kullanim"]
+    assert "window.start_background_loads()" in inspect.getsource(appmod.main)
+
+
 def test_kapanista_kurulmamis_izleme_sayfasi_sorun_cikarmaz(win):
     app, w, _calls = win
     w.close()

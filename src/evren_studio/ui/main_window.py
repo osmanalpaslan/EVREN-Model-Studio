@@ -150,6 +150,18 @@ class MainWindow(QMainWindow):
     update_info = None
     last_auto_backup = None
     last_history_maintenance = None
+    # Pencere kapandı (closeEvent: bağlam ve veritabanı kapalı). Gecikmeli işler (yedek 60 sn, bakım 15 sn, güncelleme
+    # 20 sn, gözlem gönderimi) bundan sonra çalışmaz — gözlem b8efe202e31e (2026-11-12, 7 kez): aynı süreçte ikinci
+    # pencere açan araçta kapanmış pencerenin yedeği silinmiş klasördeki veritabanını açmaya çalışıyordu.
+    _closed = False
+
+    def start_background_loads(self) -> None:
+        """Açılıştan sonra arka planda: canlı EVREN model listesi (1 sn; yetenek bayrakları, yeni modeller) ve kullanım
+        düğmesi (1,5 sn). Pencere kurulumu ağ isteği YAPMAZ (açılış hızı, tests/test_acilis_hizi). Uygulama (app.py) ve
+        pencereyi doğrudan kuran gerçek API testleri aynı yolu çağırır — 2026-11-13: e2e_ui_real_api canlı listeyi hiç
+        yüklemiyordu ("canlı model listesi" kontrolü düştü; açılış hızlandırması Modeller sayfasındaki isteği kaldırınca)."""
+        QTimer.singleShot(1500, self, self.session.refresh_usage)
+        QTimer.singleShot(1000, self, self.session.load_live_models)
 
     def _maintain_history(self) -> None:
         """Ajanın dosya geçmişini arka planda bir kez sıkıştırır ve gerekiyorsa veritabanını küçültür (2026-11-12,
@@ -158,6 +170,8 @@ class MainWindow(QMainWindow):
 
         from ..db import PACK_DONE_KEY
 
+        if self._closed:
+            return
         db = self.ctx.db
         if os.environ.get("EVREN_STUDIO_NO_DB_MAINT") or db.get_meta(PACK_DONE_KEY) == "1":
             return
@@ -172,7 +186,7 @@ class MainWindow(QMainWindow):
 
         from ..backup import auto_backup
 
-        if not self.ctx.settings.auto_backup or os.environ.get("EVREN_STUDIO_NO_AUTO_BACKUP"):
+        if self._closed or not self.ctx.settings.auto_backup or os.environ.get("EVREN_STUDIO_NO_AUTO_BACKUP"):
             return
         ctx = self.ctx
 
@@ -185,7 +199,7 @@ class MainWindow(QMainWindow):
     def _auto_update_check(self) -> None:
         import os
 
-        if not os.environ.get("EVREN_STUDIO_NO_UPDATE_CHECK"):      # testler gerçek GitHub'a gitmesin (conftest)
+        if not self._closed and not os.environ.get("EVREN_STUDIO_NO_UPDATE_CHECK"):   # testler GitHub'a gitmesin
             self.check_updates()
 
     def check_updates(self, force: bool = False) -> None:
@@ -244,6 +258,8 @@ class MainWindow(QMainWindow):
     def _send_gozlem(self) -> None:
         from .. import gozlem
 
+        if self._closed:
+            return
         gozlem.AYAR_ACIK = bool(self.ctx.settings.gozlem_enabled)
         if not gozlem.etkin() or self._gozlem_busy:
             return
@@ -597,6 +613,10 @@ class MainWindow(QMainWindow):
             self.session.new_session()   # veriler silindiyse
 
     def closeEvent(self, event) -> None:
+        self._closed = True            # gecikmeli yedek/bakım/güncelleme/gözlem işleri artık çalışmaz
+        timer = getattr(self, "_gozlem_timer", None)
+        if timer is not None:
+            timer.stop()
         workers.set_accepting(False)   # kapanırken geç gelen sonuçlar işlenmesin
         self.session.shutdown()
         self.scheduler.shutdown()
