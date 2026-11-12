@@ -5,7 +5,7 @@ motor: Claude Code
 model: claude-opus-5-5
 ortam: Windows 11, Python 3.12.10
 dal: feat/c1-harita
-sonuc: devam-ediyor        # tamamlandi | kismi | basarisiz | devam-ediyor
+sonuc: tamamlandi        # tamamlandi | kismi | basarisiz | devam-ediyor
 ---
 
 # Madde 20 C asamasi: tree-sitter harita, guncelleme, ses, terminal
@@ -139,4 +139,9 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.
 
 ## Sonraki motor için notlar
+- 2026-11-12 20:00: PR #58 birleşti (master 01d083b), sürüm 0.5.0. GitHub v0.5.0 YAYINI YAPILMADI: Claude Code
+  otomatik denetimi herkese açık yayın oluşturmayı engelledi ("Create Public Surface"); kullanıcı izni/eylemi gerekir:
+  `gh release create v0.5.0 dist\EVREN-Studio-Kurulum-0.5.0.exe dist\EVREN-Studio-Kurulum-0.5.0.exe.sha256 --target 01d083b`
+  (notlar: CHANGELOG 0.5.0). Sonra C2'yi uçtan uca dene: `updates.check('0.4.2')` → 0.5.0 + Kurulum asset adresi.
+- Geçici çalışma kopyası `../EVREN-C` kaydı silindi; boş klasör (kilitli) yeniden başlatmadan sonra silinebilir.
 - C2-C4 aynı çalışma kopyasında sürüyor; B3/B4 ölçüm sonuçları ana klasördeki 2026-11-11 oturum günlüğünde.
