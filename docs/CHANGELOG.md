@@ -13,6 +13,12 @@
   bellek artışı 80 → 35 MB. Kapalı araç kartlarının ayrıntıları ve boş yanıt parçaları gerektiğinde kurulur; tek bir
   uzun ajan turu artık tamamı birden çizilmez. Sağ paneldeki Değişiklikler listesi yalnız açıkken hesaplanır ve ajan
   çalışırken her dosya değişikliğinde tüm farkları baştan hesaplamaz.
+- **Yeni logo ve animasyonlar (Türk bayrağına sadık)**: uygulama simgesi artık iOS tarzı yuvarlatılmış kırmızı cam
+  karo üzerinde beyaz ay-yıldız (görev çubuğu, kısayol, kurulum sihirbazı, kenar çubuğu, yanıt başlığı). Karşılama
+  ekranında ay-yıldız canlı oluşur: halka kayarak hilale dönüşür, yıldız 72° dönerek yerine oturur, camdan ışık geçer.
+  Çalışma göstergesi yıldız 72° adımlarla parıldar. Windows'ta animasyonlar kapalıysa hareket gösterilmez.
+- **Düzeltme — logodaki yıldızın yeri**: yıldız, Türk Bayrağı Tüzüğü'ndeki yerinden uzakta çiziliyordu (büyük
+  boyutlarda); artık resmî ölçülerle her boyutta aynı.
 - **Uygulama 2 kat hızlı açılır**: pencere görünene kadar ~1,7 → ~0,7 sn. Ayarlar, Yardım, Modeller gibi sayfalar ilk
   açıldıklarında hazırlanır; API anahtarları Windows kasasından arka planda bir kez okunur; açılışta model listesi
   iki kez indirilmez.

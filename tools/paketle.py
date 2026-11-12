@@ -65,52 +65,76 @@ def version_file(ver: str) -> str:
 """
 
 
-def wizard_images() -> tuple[str, str]:
-    """Kurulum sihirbazının sol (büyük) ve sağ üst (küçük) resimleri — uygulama logosundan (ui/brand.py), %100 ve
-    %200 ölçek. Yoksa sihirbaz Inno Setup'ın kendi resmini gösterir (kullanıcı 2026-11-07: "setupta logo yok")."""
+def _qt_brand():
     os.environ["QT_QPA_PLATFORM"] = "windows"        # offscreen kipte yazılar kutucuk çıkar (R-05)
     sys.path.insert(0, str(ROOT / "src"))
-    from PySide6.QtCore import QRectF, Qt
-    from PySide6.QtGui import QColor, QFont, QImage, QPainter
     from PySide6.QtWidgets import QApplication
 
     from evren_studio.ui import brand
 
-    _app = QApplication.instance() or QApplication([])
-    red = QColor(brand.FLAG_RED)                    # brand_color() koyu temada beyaz döner
+    return QApplication.instance() or QApplication([]), brand
+
+
+def update_icon(path: Path = ROOT / "assets" / "evren.ico") -> Path:
+    """assets/evren.ico her paketlemede marka kodundan (ui/brand.py cam karo) yeniden üretilir: simge kodla aynı
+    kalır (2026-11-12: yeni iOS tarzı simge, yasal ay-yıldız geometrisi)."""
+    _app, brand = _qt_brand()
+    if not brand.save_ico(str(path)):
+        raise SystemExit("simge yazılamadı: " + str(path))
+    return path
+
+
+def wizard_images() -> tuple[str, str]:
+    """Kurulum sihirbazının sol (büyük) ve sağ üst (küçük) resimleri — uygulama logosundan (ui/brand.py), %100 ve
+    %200 ölçek. Yoksa sihirbaz Inno Setup'ın kendi resmini gösterir (kullanıcı 2026-11-07: "setupta logo yok").
+    2026-11-12: büyük resim bayrak kırmızısı geçişli zemin + ortada cam karo simge + ad; küçük resim cam karo."""
+    from PySide6.QtCore import QPointF, QRectF, Qt
+    from PySide6.QtGui import QColor, QFont, QImage, QLinearGradient, QPainter, QRadialGradient
+
+    _app, brand = _qt_brand()
     out_large, out_small = [], []
     for scale in (1, 2):
-        # Büyük: 164×314 kırmızı zemin, beyaz ay-yıldız + ad
+        # Büyük: 164×314 — üstten alta kırmızı geçiş, simgenin arkasında yumuşak ışık, cam karo, ad
         w, h = 164 * scale, 314 * scale
         img = QImage(w, h, QImage.Format_RGB32)
-        img.fill(red)
         p = QPainter(img)
         p.setRenderHint(QPainter.Antialiasing)
-        size = 120 * scale
-        p.translate((w - size) / 2, 70 * scale)
+        bg = QLinearGradient(0, 0, 0, h)
+        bg.setColorAt(0.0, QColor(brand.TILE_TOP))
+        bg.setColorAt(0.55, QColor(brand.FLAG_RED))
+        bg.setColorAt(1.0, QColor(brand.TILE_BOTTOM))
+        p.fillRect(0, 0, w, h, bg)
+        size = 104 * scale
+        cx, cy = w / 2, 118 * scale
+        glow = QRadialGradient(QPointF(cx, cy), size * 0.95)
+        glow.setColorAt(0.0, QColor(255, 255, 255, 70))
+        glow.setColorAt(1.0, QColor(255, 255, 255, 0))
         p.setPen(Qt.NoPen)
-        p.setBrush(QColor("white"))
-        p.drawPath(brand.crescent_star_path(size))
-        p.resetTransform()
+        p.setBrush(glow)
+        p.drawEllipse(QPointF(cx, cy), size * 0.95, size * 0.95)
+        brand.paint_tile(p, QRectF(cx - size / 2, cy - size / 2, size, size))
         p.setPen(QColor("white"))
-        f = QFont("Segoe UI", 15)
+        f = QFont("Segoe UI Variable Display", 15)
         f.setBold(True)
         f.setPixelSize(22 * scale)
         p.setFont(f)
-        p.drawText(QRectF(0, 205 * scale, w, 40 * scale), Qt.AlignCenter, "EVREN Studio")
+        p.drawText(QRectF(0, 200 * scale, w, 34 * scale), Qt.AlignCenter, "EVREN Studio")
+        f.setBold(False)
+        f.setPixelSize(11 * scale)
+        p.setFont(f)
+        p.drawText(QRectF(0, 232 * scale, w, 20 * scale), Qt.AlignCenter, "Türkçe kod ajanı ve sohbet")
         p.end()
         large = BUILD / f"sihirbaz_buyuk_{scale * 100}.bmp"
         img.save(str(large), "BMP")
         out_large.append(str(large))
-        # Küçük: 58×58 beyaz zemin, kırmızı ay-yıldız
+        # Küçük: 58×58 beyaz zemin, cam karo simge
         s = 58 * scale
         img = QImage(s, s, QImage.Format_RGB32)
         img.fill(QColor("white"))
         p = QPainter(img)
         p.setRenderHint(QPainter.Antialiasing)
-        p.setPen(Qt.NoPen)
-        p.setBrush(red)
-        p.drawPath(brand.crescent_star_path(s))
+        m = 5 * scale
+        brand.paint_tile(p, QRectF(m, m, s - 2 * m, s - 2 * m))
         p.end()
         small = BUILD / f"sihirbaz_kucuk_{scale * 100}.bmp"
         img.save(str(small), "BMP")
@@ -271,6 +295,7 @@ def build(signed: bool) -> Path:
     if signed and not cert_thumbprint():
         raise SystemExit("imza sertifikası yok: önce `tools\\paketle.py sertifika` (ya da --imzasiz)")
     shutil.rmtree(PYI_DIST, ignore_errors=True)
+    update_icon()                                   # exe/kısayol simgesi marka koduyla aynı olsun
     r = subprocess.run([sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--log-level", "WARN",
                         "--distpath", str(PYI_DIST), "--workpath", str(BUILD / "pyi" / "work"),
                         str(INSTALLER / "evren_studio.spec")], cwd=ROOT)

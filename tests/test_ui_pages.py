@@ -423,9 +423,10 @@ def test_tekerlek_korumasi_sonradan_eklenen_alani_kapsar(qa):
     assert wheel_guard.protect(page) == 0, "aynı alan iki kez korunmamalı"
 
 
-def test_calisma_gostergesi_yalniz_gorunurken_doner(qa):
+def test_calisma_gostergesi_yalniz_gorunurken_doner(qa, monkeypatch):
     from evren_studio.ui.brand import BusyStar
 
+    monkeypatch.delenv("EVREN_STUDIO_NO_ANIM", raising=False)     # animasyon açık (conftest testte kapatır)
     app, w, errors, warnings, _ = qa
     comp = w.session.composer
     star = comp.run_dot

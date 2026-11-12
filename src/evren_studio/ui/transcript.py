@@ -349,7 +349,7 @@ class AssistantMessageWidget(QWidget):
         head = QHBoxLayout()
         head.setSpacing(6)
         logo = QLabel()
-        logo.setPixmap(brand.pixmap(16))
+        logo.setPixmap(brand.tile_pixmap(18))         # cam karo (önbellekli; her yanıtta yeniden çizilmez)
         head.addWidget(logo)
         name = QLabel("EVREN")
         name.setStyleSheet("font-weight: 600;")

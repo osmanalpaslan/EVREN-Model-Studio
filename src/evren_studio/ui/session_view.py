@@ -239,10 +239,9 @@ class WelcomeView(QWidget):
         col.setMaximumWidth(COLUMN_WIDTH - 60)
         cl = QVBoxLayout(col)
         cl.setSpacing(14)
-        self.logo = QLabel()
-        self.refresh_logo()
-        self.logo.setAlignment(Qt.AlignCenter)
-        cl.addWidget(self.logo)
+        # Canlı ay-yıldız (2026-11-12): halka hilale dönüşür, yıldız yerine oturur, ışıma (brand.BrandMark)
+        self.logo = brand.BrandMark(80)
+        cl.addWidget(self.logo, 0, Qt.AlignHCenter)
         title = QLabel("Bugün ne üzerinde çalışalım?")
         title.setProperty("role", "title")
         title.setAlignment(Qt.AlignCenter)
@@ -294,7 +293,7 @@ class WelcomeView(QWidget):
         self.set_workspace(ctx.settings.code_workdir if ctx.settings.code_workdir and Path(ctx.settings.code_workdir).is_dir() else None)
 
     def refresh_logo(self) -> None:
-        self.logo.setPixmap(brand.pixmap(72))
+        self.logo.update()                  # cam karo temadan bağımsız; tema değişince yeniden çizilir
 
     def refresh(self) -> None:
         self.key_card.setVisible(not self.ctx.available_providers())
@@ -703,6 +702,7 @@ class SessionView(QWidget):
         self.tool_widgets.clear()
         self.welcome.refresh()
         self.stack.setCurrentWidget(self.welcome)
+        self.welcome.logo.replay()          # yeni oturumda ay-yıldız yeniden oluşur
         self.composer.set_agentic(self.welcome.workspace is not None)
         self.panel.set_session(None, self.welcome.workspace, [])
         self._update_header()

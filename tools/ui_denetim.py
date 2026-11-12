@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 from gecici import klasor  # noqa: E402 — geçici klasörler çıkışta silinir (2026-11-11 disk sızıntısı)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("EVREN_STUDIO_NO_ANIM", "1")      # karşılama logosu ara karede değil, son hâlinde ölçülsün
 
 HATA_ESIK = 3.0
 UYARI_ESIK = 4.5
