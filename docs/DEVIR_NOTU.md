@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-12 19:06 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 20 bitti (C1-C4 + 0.5.0 dal `feat/c1-harita`, tam takım 1171). Uygulama analizi düzeltmeleri SÜRÜYOR: heredoc uyarısı (6e5cb63) ve tek örnek YAPILDI; sırada günlük otomatik yedek, okunurluk/belge; sonra tam takım → PR → 0.5.0 paketi + GitHub yayını → rapor → bilgisayarı kapat.
+- **Güncelleme:** 2026-11-12 19:06 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 20 bitti (C1-C4 + 0.5.0 dal `feat/c1-harita`, tam takım 1171). Uygulama analizi düzeltmeleri SÜRÜYOR: heredoc uyarısı, tek örnek, günlük otomatik yedek YAPILDI; sırada okunurluk/belge; sonra tam takım → PR → 0.5.0 paketi + GitHub yayını → rapor → bilgisayarı kapat.
 - **Aktif dal:** `master` (eski not: `feat/masaustu-kontrol` birleşti). Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

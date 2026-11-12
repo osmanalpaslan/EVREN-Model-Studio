@@ -125,8 +125,26 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(2 * 60 * 1000, self, self._send_gozlem)
         # C2: güncelleme denetimi açılıştan 20 sn sonra (açılışı yavaşlatmaz), günde en çok bir kez
         QTimer.singleShot(20 * 1000, self, self._auto_update_check)
+        # Günlük otomatik yerel yedek (açılıştan 60 sn sonra, arka planda; açılışı yavaşlatmaz)
+        QTimer.singleShot(60 * 1000, self, self._auto_backup)
 
     update_info = None
+    last_auto_backup = None
+
+    def _auto_backup(self) -> None:
+        import os
+
+        from ..backup import auto_backup
+
+        if not self.ctx.settings.auto_backup or os.environ.get("EVREN_STUDIO_NO_AUTO_BACKUP"):
+            return
+        ctx = self.ctx
+
+        def done(path) -> None:
+            self.last_auto_backup = path
+
+        workers.Task(lambda: auto_backup(ctx.db.path, ctx.data_dir(), ctx.store.path), on_done=done,
+                     on_error=lambda _e: None).start()
 
     def _auto_update_check(self) -> None:
         import os
@@ -137,7 +155,7 @@ class MainWindow(QMainWindow):
     def check_updates(self, force: bool = False) -> None:
         from datetime import datetime, timezone
 
-        from .. import __version__, updates
+        from .. import updates
 
         s = self.ctx.settings
         if not s.update_check or (not force and not updates.due(s.update_last_check)):
@@ -157,7 +175,6 @@ class MainWindow(QMainWindow):
         from PySide6.QtCore import QUrl
         from PySide6.QtGui import QDesktopServices
 
-        from .. import __version__
         from .transcript import ActionCard
 
         self.update_info = info

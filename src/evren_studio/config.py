@@ -200,6 +200,8 @@ class Settings:
     update_check: bool = True
     update_last_check: str = ""          # ISO zaman (UTC)
     update_skipped: str = ""             # kullanıcının "bu sürümü atla" dediği sürüm
+    # 2026-11-12 analiz: günde bir kez <veri>/yedekler/otomatik-YYYYMMDD.zip (son 7 gün; anahtarlar girmez)
+    auto_backup: bool = True
     mcp_servers: list[dict] = field(default_factory=list)
     # Zamanlanmış görevler (Madde 12c, 2026-11-05): yalnız uygulama açıkken çalışır (Claude Code yerel görevleri gibi)
     schedule_enabled: bool = True          # kapalıysa hiçbir görev kendiliğinden başlamaz ("Şimdi çalıştır" çalışır)

@@ -48,3 +48,33 @@ def backup(db_path: Path, data_dir: Path, config_path: Path | None, dest: Path) 
                 "not": "API anahtarları yedekte yoktur (Windows Credential Manager)."}, ensure_ascii=False, indent=1))
     return {"oturum": n_sess, "mesaj": n_msg, "boyut_kb": max(1, dest.stat().st_size // 1024), "dosyalar": names,
             "yol": str(dest)}
+
+
+AUTO_DIR = "yedekler"
+AUTO_PREFIX = "otomatik-"
+AUTO_KEEP = 7
+
+
+def auto_backup(db_path: Path, data_dir: Path, config_path: Path | None, keep: int = AUTO_KEEP,
+                today: str | None = None) -> Path | None:
+    """Günlük otomatik yedek (2026-11-12 analiz: tüm oturumlar tek veritabanında, otomatik yedek yoktu — dosya bozulursa
+    ya da yanlışlıkla silinirse geri dönüş yoktu). `<veri>/yedekler/otomatik-YYYYMMDD.zip`; bugünkü varsa yeniden
+    alınmaz; en yeni `keep` tanesi kalır, eskiler silinir. Yalnız uygulamanın KENDİ klasörüne yazar; hiçbir yere
+    göndermez; API anahtarları girmez. Dönüş: yeni yedeğin yolu ya da None (bugün zaten alınmış)."""
+    folder = Path(data_dir) / AUTO_DIR
+    folder.mkdir(parents=True, exist_ok=True)
+    stamp = today or datetime.now().strftime("%Y%m%d")
+    target = folder / f"{AUTO_PREFIX}{stamp}.zip"
+    made = None
+    if not target.is_file():
+        tmp = target.with_suffix(".yaziliyor.zip")
+        backup(db_path, data_dir, config_path, tmp)
+        tmp.replace(target)                          # yarım yazılmış yedek "bugünkü" sayılmasın
+        made = target
+    olds = sorted(folder.glob(f"{AUTO_PREFIX}[0-9]*.zip"))
+    for old in olds[:-keep] if keep > 0 else []:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    return made

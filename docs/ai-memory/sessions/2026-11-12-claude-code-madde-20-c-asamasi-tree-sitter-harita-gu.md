@@ -106,6 +106,13 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   Testler: mutex, sinyal yok, pencere öne gelir, GERÇEK iki süreç (`python -m evren_studio` ×2 → ikinci 0 ile çıkar, ilk
   açık kalır); mutasyon 3/4 + gereksiz satır sadeleştirildi.
 
+- Bulgu 3 (EKSİK) — otomatik yedek YOKTU: tüm oturumlar tek veritabanında (kullanıcının gerçek verisi 12,7 MB, 716
+  mesaj); yalnız elle .zip yedeği vardı. Düzeltme: backup.auto_backup — günde bir kez `<veri>/yedekler/otomatik-YYYYMMDD.zip`
+  (sqlite backup API: açık bağlantıda tutarlı kopya; önce .yaziliyor.zip sonra yeniden adlandırma), en yeni 7 kalır,
+  kullanıcının kendi dosyalarına dokunmaz, anahtarlar girmez; açılıştan 60 sn sonra arka planda; Ayarlar > Gizlilik
+  "Her gün otomatik yedek al" (varsayılan açık); testlerde kapalı (EVREN_STUDIO_NO_AUTO_BACKUP). test_otomatik_yedek 3;
+  mutasyon 4/4.
+
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.
