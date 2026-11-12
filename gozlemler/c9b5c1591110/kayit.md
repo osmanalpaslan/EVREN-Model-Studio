@@ -7,8 +7,8 @@ alan: test
 durum: cozuldu                # acik | cozuldu | kabul-edildi
 kaynak: e2e
 ilk_gorulme: 2026-11-04T17:49:39+00:00
-cozuldu_tarih: 2026-11-04T19:54:04+00:00
-cozum_kaydi: 2026-11-04-zorluk-paketi-gorevi-dustu-mini-proje
+cozuldu_tarih: 2026-11-12T22:52:19+00:00
+cozum_kaydi: 2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje
 ---
 
 # Zorluk paketi görevi düştü: mini_proje
