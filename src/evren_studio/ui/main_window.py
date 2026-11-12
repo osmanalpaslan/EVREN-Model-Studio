@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
-from . import brand, icons, theme, transcript, wheel_guard, workers
+from . import brand, icons, theme, transcript, transitions, wheel_guard, workers
 from .app_context import AppContext
 from .connection_page import ConnectionPage
 from .errors_page import ErrorsPage
@@ -334,7 +334,7 @@ class MainWindow(QMainWindow):
             except TypeError:
                 pass
         wheel_guard.protect(page)          # ekranda sonradan eklenen alanlar da korunsun
-        self.center.setCurrentWidget(page)
+        transitions.switch(self.center, page)          # yumuşak geçiş (2026-11-12)
         self.sidebar.set_page(key)
         self.panel.setVisible(False)
 
@@ -348,7 +348,7 @@ class MainWindow(QMainWindow):
         self.session.composer.focus()
 
     def show_sessions(self) -> None:
-        self.center.setCurrentWidget(self.session)
+        transitions.switch(self.center, self.session)
         self.sidebar.set_page(None)
         self.sidebar.set_current(self.session.session_id)
         self.panel.setVisible(self.ctx.settings.panel_visible)

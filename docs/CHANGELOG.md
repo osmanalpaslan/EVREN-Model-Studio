@@ -13,6 +13,10 @@
   bellek artışı 80 → 35 MB. Kapalı araç kartlarının ayrıntıları ve boş yanıt parçaları gerektiğinde kurulur; tek bir
   uzun ajan turu artık tamamı birden çizilmez. Sağ paneldeki Değişiklikler listesi yalnız açıkken hesaplanır ve ajan
   çalışırken her dosya değişikliğinde tüm farkları baştan hesaplamaz.
+- **Ekran geçişlerinde yumuşak animasyon**: sayfalar arası (oturum ↔ Ayarlar/Modeller/…), başka oturum açılınca, yeni
+  oturumda, sağ panel sekmelerinde, Ayarlar bölümlerinde ve zamanlanmış görev listesi ↔ ayrıntıda eski ekran 0,2 sn'de
+  yumuşakça kaybolur, yeni sayfa birkaç piksel aşağıdan yerine oturur. Sayfa anında kullanılabilir (geçiş tıklamayı
+  engellemez). Windows'ta animasyonlar kapalıysa geçiş anında olur.
 - **Daha küçük veritabanı**: ajanın dosya geçmişi (her düzenlemede dosyanın önceki/sonraki hâli) sıkıştırılarak saklanır.
   Gerçek veride veritabanı 12,7 → 6,8 MB; eski kayıtlar açılıştan 15 sn sonra arka planda bir kez dönüştürülür (her
   kayıt yazılmadan önce açılıp aslıyla karşılaştırılır). Not: 0.5.0'a geri dönülürse eski sürüm sıkıştırılmış kayıtları

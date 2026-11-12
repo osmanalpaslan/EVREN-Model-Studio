@@ -56,7 +56,7 @@ from ..api.client import CancelToken
 from ..api.providers import PROVIDERS, estimate_cost, price_hint
 from ..budget import current_state
 from ..api.errors import ApiError, ErrorKind
-from . import brand, icons, theme
+from . import brand, icons, theme, transitions
 from .attachments import Attachment, attachment_from_path, clipboard_image_attachment
 from .composer import MODE_COMMANDS, SLASH_COMMANDS, Composer
 from .usage_popup import UsageSnapshot
@@ -697,6 +697,7 @@ class SessionView(QWidget):
         if self.running:
             QMessageBox.information(self, "Ajan çalışıyor", "Önce çalışan işlemi durdurun (Esc).")
             return
+        snap = transitions.begin(self.stack)       # yumuşak geçiş: akış temizlenmeden önceki görüntü
         self.session_id = None
         self.workspace = None
         self.edit_from = None
@@ -709,7 +710,7 @@ class SessionView(QWidget):
         self.transcript.clear()
         self.tool_widgets.clear()
         self.welcome.refresh()
-        self.stack.setCurrentWidget(self.welcome_page)
+        transitions.finish(snap, self.stack, self.welcome_page)
         self.welcome.logo.replay()          # yeni oturumda ay-yıldız yeniden oluşur
         self.composer.set_agentic(self.welcome.workspace is not None)
         self.panel.set_session(None, self.welcome.workspace, [])
@@ -760,6 +761,9 @@ class SessionView(QWidget):
         row = self.ctx.db.get_session(session_id)
         if not row:
             return
+        # Yumuşak geçiş yalnız başka oturuma geçerken (aynı oturumun içten yeniden çizimi titremesin)
+        switching = session_id != self.session_id
+        snap = transitions.begin(self.stack) if switching else None
         if session_id != self.session_id:
             self._kolay_fail, self._last_route_role = False, ""
         self.session_id = session_id
@@ -774,7 +778,8 @@ class SessionView(QWidget):
         self.composer.set_model(self.model)
         self.composer.set_mode(self.mode)
         self.composer.set_agentic(self.workspace is not None)
-        self.stack.setCurrentWidget(self.transcript)
+        # defer: eski görüntü geçmiş çizilirken üstte durur; canlandırma çizim bittikten sonra başlar
+        transitions.finish(snap, self.stack, self.transcript, force=True, defer=True)
         self.render_history(self.ctx.db.get_session_messages(session_id))
         self.panel.set_session(session_id, self.workspace, self.ctx.db.get_session_todos(session_id))
         self._update_header()

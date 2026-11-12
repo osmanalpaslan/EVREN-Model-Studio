@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..agent.tools import ToolBox, ToolError, Workspace, decode_bytes, diff_stats, make_diff, revert_file
-from . import icons, theme
+from . import icons, theme, transitions
 from .transcript import CodeView, DiffView, faint_label, icon_button
 from .workers import Task
 
@@ -1050,7 +1050,7 @@ class SidePanel(QWidget):
 
     def set_index(self, index: int) -> None:
         if 0 <= index < len(self._titles):
-            self.stack.setCurrentIndex(index)
+            transitions.switch(self.stack, index, ms=140, rise=0)       # yumuşak sekme geçişi
             self.tab_title.setText(self._titles[index])
             self._buttons[index].setChecked(True)
             if self.stack.widget(index) is self.git:

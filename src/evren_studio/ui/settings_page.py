@@ -42,6 +42,7 @@ from ..secrets import delete_api_key, load_api_key, mask_api_key, save_api_key
 from .base_page import BasePage, card, kv_row
 from .mcp_settings import McpSettingsCard
 from .gametools_card import GameToolsCard
+from . import transitions
 from .workers import Task
 
 PAID_PROVIDERS = ("openai", "anthropic")
@@ -713,7 +714,7 @@ class SettingsPage(BasePage):
         from PySide6.QtCore import Qt
 
         key = self.nav.item(row).data(Qt.UserRole)
-        self.stack.setCurrentIndex(self._page_index[key])
+        transitions.switch(self.stack, self._page_index[key], ms=160, rise=6)       # yumuşak bölüm geçişi
         if key == "github" and hasattr(self, "github_card"):
             self.github_card.refresh()           # GitHub durumu yalnız bu menü açılınca denetlenir (ağ)
 
