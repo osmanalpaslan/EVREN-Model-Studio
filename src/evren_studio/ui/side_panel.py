@@ -1020,6 +1020,12 @@ class SidePanel(QWidget):
         self.git = GitTab(ctx)
         self._titles: list[str] = []
         self._buttons: list = []
+        # iOS bölümlü denetim (2026-11-12): bölüm düğmeleri tek bir iz içinde, seçili parça yükseltilmiş
+        self.segments = QFrame()
+        self.segments.setObjectName("Segmented")
+        seg_lay = QHBoxLayout(self.segments)
+        seg_lay.setContentsMargins(2, 2, 2, 2)
+        seg_lay.setSpacing(1)
         group = QButtonGroup(self)
         group.setExclusive(True)
         for i, (widget, icon_name, label) in enumerate((
@@ -1034,9 +1040,10 @@ class SidePanel(QWidget):
             b = icon_button(icon_name, label, 17, checkable=True)
             b.clicked.connect(lambda _=False, idx=i: self.set_index(idx))
             group.addButton(b)
-            hl.addWidget(b)
+            seg_lay.addWidget(b)
             self._titles.append(label)
             self._buttons.append(b)
+        hl.addWidget(self.segments)
         lay.addWidget(head)
         lay.addWidget(self.stack, 1)
         self.set_index(0)

@@ -13,6 +13,13 @@
   bellek artışı 80 → 35 MB. Kapalı araç kartlarının ayrıntıları ve boş yanıt parçaları gerektiğinde kurulur; tek bir
   uzun ajan turu artık tamamı birden çizilmez. Sağ paneldeki Değişiklikler listesi yalnız açıkken hesaplanır ve ajan
   çalışırken her dosya değişikliğinde tüm farkları baştan hesaplamaz.
+- **Yeni görünüm: güncel iOS tasarım dili (iOS 27 "Liquid Glass")**: yazma kutusu, düğmeler ve öneri kartları ince
+  belirgin kenarlı "cam" yüzey; hap biçimli seçiciler; ayarlarda onay kutuları yerine iOS anahtarları; açılır listelerde
+  ⌃⌄ işareti (artık açılır olduğu belli); sağ panelde iOS bölümlü sekme düğmesi; büyük, kalın başlıklar; iOS sistem
+  renkleri. Açık tema parlak beyaz değil yumuşak gri; koyu temada yazılar parlak, vurgu beyaz (önceki kararlarınız
+  korundu). Tüm yazılar iki temada okunurluk ölçümünden geçti.
+- **Düzeltme — komut listesi yazma kutusunun üstüne biniyordu**: "/" ile açılan liste küçük pencerede yazma kutusunun
+  arkasına ve alttaki uyarı yazısının üstüne taşıyordu; artık pencereye göre kısalır, karşılama ekranı gerekirse kayar.
 - **Yeni logo ve animasyonlar (Türk bayrağına sadık)**: uygulama simgesi artık iOS tarzı yuvarlatılmış kırmızı cam
   karo üzerinde beyaz ay-yıldız (görev çubuğu, kısayol, kurulum sihirbazı, kenar çubuğu, yanıt başlığı). Karşılama
   ekranında ay-yıldız canlı oluşur: halka kayarak hilale dönüşür, yıldız 72° dönerek yerine oturur, camdan ışık geçer.

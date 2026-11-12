@@ -192,6 +192,11 @@ def test_karsilama_ekrani_canli_logo_ve_yeni_oturumda_yeniden_olusur(tmp_path, m
         w.session.new_session()
         assert calls == [1]
         side = w.sidebar.logo.pixmap()
-        assert side is not None and side.width() == 48, "kenar çubuğunda 24 px cam karo (2x)"
+        assert side is not None and side.width() / side.devicePixelRatio() == 24, "kenar çubuğunda 24 px cam karo"
+        img = side.toImage()
+        s = img.width()
+        assert img.pixelColor(0, 0).alpha() == 0, "süperelips köşesi saydam"
+        hollow = img.pixelColor(int(s * 0.465), s // 2)                   # iç ay dairesi: kırmızı zemin görünür
+        assert hollow.red() > 180 and hollow.green() < 80, "cam karo (kırmızı zemin), eski saydam işaret değil"
     finally:
         w.close()

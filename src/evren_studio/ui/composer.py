@@ -207,6 +207,8 @@ class Composer(QWidget):
         self.popup.setVisible(False)
         self.popup.setMouseTracking(True)
         self.popup.setIconSize(QSize(16, 16))
+        self.popup.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # uzun satır "…" ile kısalır
+        self.popup.setTextElideMode(Qt.ElideRight)
         self.popup.setFocusPolicy(Qt.NoFocus)
         self.popup.itemClicked.connect(self._accept_item)
         outer.addWidget(self.popup)
@@ -560,8 +562,12 @@ class Composer(QWidget):
     def _open_popup(self, title: str) -> None:
         self.popup_title.setText(title)
         self.popup_title.setVisible(True)
-        rows = max(1, min(self.popup.count(), 9))
         row_h = max(self.popup.sizeHintForRow(0), 24) if self.popup.count() else 30
+        # Liste pencereye sığsın (2026-11-12): 9 satır ~420 px; küçük pencerede yazma kutusuyla üst üste biniyordu.
+        # Pay: başlık çubuğu + yazma kutusu + alt bilgi + akıştan görünür kalacak en az ~140 px.
+        avail = self.window().height() - 48 - self.frame.sizeHint().height() - 60 - 140
+        fit = max(3, (avail - 14) // (row_h + 2))
+        rows = max(1, min(self.popup.count(), 9, fit))
         self.popup.setFixedHeight(rows * (row_h + 2) + 14)
         self.popup.setVisible(True)
         if self.popup.currentRow() < 0:

@@ -97,9 +97,9 @@ def test_sikisik_gorunum(win):
     app, w = win
     w.toggle_compact_view()
     assert w.ctx.settings.compact_view and w.session.transcript.lay.spacing() == 10
-    assert "padding: 3px 9px" in app.styleSheet()
+    assert "padding: 3px 10px" in app.styleSheet()          # sıkışık düğme dolgusu (iOS tasarımı 2026-11-12)
     w.toggle_compact_view()
-    assert w.session.transcript.lay.spacing() == 18 and "padding: 3px 9px" not in app.styleSheet()
+    assert w.session.transcript.lay.spacing() == 18 and "padding: 3px 10px" not in app.styleSheet()
 
 
 def test_sade_gorunum_biten_kartlari_gizler_calisan_ve_hatali_kalir(win):

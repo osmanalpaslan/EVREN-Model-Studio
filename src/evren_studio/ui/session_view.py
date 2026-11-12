@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QStackedWidget,
     QToolButton,
     QVBoxLayout,
@@ -446,7 +447,14 @@ class SessionView(QWidget):
         self.welcome.workspace_changed.connect(self._welcome_ws)
         self.welcome.open_settings.connect(lambda: self.page_requested.emit("settings"))
         self.transcript = Transcript()
-        self.stack.addWidget(self.welcome)
+        # Karşılama kaydırılabilir alanda (2026-11-12): en küçük boyu 469 px idi; yığının en küçük boyunu belirliyor,
+        # pencere en küçük boyda (600) ya da komut listesi açıkken yazma kutusuyla üst üste biniyordu.
+        self.welcome_page = QScrollArea()
+        self.welcome_page.setWidgetResizable(True)
+        self.welcome_page.setFrameShape(QFrame.NoFrame)
+        self.welcome_page.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.welcome_page.setWidget(self.welcome)
+        self.stack.addWidget(self.welcome_page)
         self.stack.addWidget(self.transcript)
         lay.addWidget(self.stack, 1)
 
@@ -701,7 +709,7 @@ class SessionView(QWidget):
         self.transcript.clear()
         self.tool_widgets.clear()
         self.welcome.refresh()
-        self.stack.setCurrentWidget(self.welcome)
+        self.stack.setCurrentWidget(self.welcome_page)
         self.welcome.logo.replay()          # yeni oturumda ay-yıldız yeniden oluşur
         self.composer.set_agentic(self.welcome.workspace is not None)
         self.panel.set_session(None, self.welcome.workspace, [])
@@ -1452,7 +1460,7 @@ class SessionView(QWidget):
                 self.last_error = f"{name} API anahtarı yok"
                 back()
                 return
-            self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome)
+            self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome_page)
             self.welcome.refresh()
             QMessageBox.warning(self, "API anahtarı yok",
                                 f"Önce Ayarlar sayfasından {name} API anahtarınızı girin.")
@@ -3222,7 +3230,7 @@ class SessionView(QWidget):
             "bekçisi açık maddeler bitene kadar ajanı sürdürmeye çalışır.",
             [("Proje ajanıyla yürüt", lambda: choose(lambda: self.project.command("/proje", text))),
              ("Normal devam", lambda: choose(lambda: self.send(text)))])
-        self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome)
+        self.stack.setCurrentWidget(self.transcript if self.session_id else self.welcome_page)
         if not self.session_id:
             self._ensure_session(text[:60])
             self.stack.setCurrentWidget(self.transcript)
