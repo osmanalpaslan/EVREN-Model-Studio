@@ -387,6 +387,8 @@ def project_tests(root: Path, cancel=None, timeout: int | None = None) -> dict |
     from . import testcheck
     from .tools import ToolBox
 
+    if not root:                       # klasör bağı koparsa (Derin Mod klasörsüz başlamaz ama sürerken kaldırılabilir)
+        return None
     cmd = testcheck.detect_command(Path(root))
     if not cmd:
         return None

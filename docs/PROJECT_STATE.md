@@ -1,9 +1,11 @@
 # Proje Durumu
 
 > Oturum kesilirse çalışmaya bu dosyadan devam edilir.
-> Son güncelleme: 2026-11-12 — 0.5.0 yayında; 0.5.1 istekleri `surum/0.5.1-istekler` dalında (performans 2–3 kat,
-> iOS 27 tasarım dili, Türk bayrağına sadık yeni logo/animasyonlar; analiz ve öneriler:
-> docs/knowledge/ANALIZ_2026-11-12.md). Güncel iş ve plan: docs/DEVIR_NOTU.md "Şu an".
+> Son güncelleme: 2026-11-13 — 0.5.0 yayında; 0.5.1 istekleri `surum/0.5.1-istekler` dalında (performans 2–3 kat,
+> iOS 27 tasarım dili, Türk bayrağına sadık yeni logo/animasyonlar, tüm API anahtarları/motorlar tek "Sağlayıcılar ve
+> anahtarlar" ekranında, Derin Mod gerçek test kanıtı + başlangıç ölçümü + soru birleştirme, SQLite WAL; analiz:
+> docs/knowledge/ANALIZ_2026-11-12.md, son çalışma raporu: docs/knowledge/RAPOR_2026-11-13.md). Güncel iş ve plan:
+> docs/DEVIR_NOTU.md "Şu an".
 
 ## Konum ve sınırlar
 

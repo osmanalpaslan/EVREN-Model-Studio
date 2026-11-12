@@ -83,6 +83,11 @@ def test_projenin_sanal_ortami_kullanilir(tmp_path):
     assert testcheck._python(tmp_path) == str(exe)
 
 
+def test_klasor_yoksa_test_aranmaz_cokmez():
+    """Derin Mod klasörsüz başlamaz ama klasör sürerken kaldırılabilir: doğrulama çökmeden "test bulunamadı" sayar."""
+    assert dp.project_tests(None) is None and dp.project_tests("") is None
+
+
 def test_derin_dogrulamada_calismayan_test_sorun_sayilmaz_ve_istem_soyler():
     """Zaman aşımı / test yok → "yüksek" sorun EKLENMEZ (tetiklenmeyen); istem testlerin çalışmadığını söyler."""
     sub = _sub_returning([])

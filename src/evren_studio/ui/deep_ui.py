@@ -465,7 +465,7 @@ class DeepController(QObject):
                     git.commit_all(f"Derin Mod: doğrulama düzeltmeleri (tur {fix_round})")
             diff = pj.Git(Path(ws)).diff_since(base) if base else diff_now
             # Önce testler GERÇEKTEN çalışır (2026-11-12): sonuç denetçilere kanıt, düşen test onaylı sorun
-            tests = dp.project_tests(Path(ws), cancel=cancel) if (diff or "").strip() else None
+            tests = dp.project_tests(ws, cancel=cancel) if (diff or "").strip() else None
             return dp.verify(st, diff or "", sub, self._gate, self._gate.max_parallel, self._log, tasks,
                              tests=tests, with_tests=True)
         self._bg(job, self._after_verify)
