@@ -4,11 +4,11 @@ baslik: Qt warning: qfontdatabase: cannot find font directory .venv/lib/site-pac
 tur: qt_uyari
 onem: dusuk
 alan: ui
-durum: acik                # acik | cozuldu | kabul-edildi
+durum: cozuldu                # acik | cozuldu | kabul-edildi
 kaynak: uygulama
 ilk_gorulme: 2026-11-12T16:19:14+00:00
-cozuldu_tarih:
-cozum_kaydi:
+cozuldu_tarih: 2026-11-12T22:27:21+00:00
+cozum_kaydi: 2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib
 ---
 
 # Qt warning: qfontdatabase: cannot find font directory .venv/lib/site-packages/pyside#/lib/fo…
