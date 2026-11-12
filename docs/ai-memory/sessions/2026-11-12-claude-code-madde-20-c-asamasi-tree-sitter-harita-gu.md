@@ -91,6 +91,13 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   (olay günlüğü Kernel-Power 506/507, User32 1074) → koşu ve oturum kapandı; kod sorunu değil. Artık uzun
   işlerden önce `~/.claude/skills/yeni-proje/uyanik_tut.ps1` (SetThreadExecutionState).
 
+- UYGULAMA ANALİZİ (kullanıcı 2026-11-12: "uygulamayı detaylı analiz et, hata/eksikleri bul"). Kaynaklar: gerçek
+  kullanım veritabanı (salt okunur, yalnız hata türleri/sayıları), statik tarama (ruff F/B/PLE), ekran görüntüleri,
+  ILERIDE/INDEX açık maddeleri. Bulgu 1 — ajan PowerShell'de bash heredoc'u (`python - <<'PY'`) deniyordu (gerçek
+  kullanımda araç hataları arasında): komut hiç çalışmaz, adım kaybı. Düzeltme: tools.heredoc_hint — işaret + SONRAKİ
+  satırda tek başına bitiş kelimesi varsa çalıştırmadan ne yapılacağını söyleyen ToolError (bit kaydırma `x << y`
+  etkilenmez). Tetiklenen 4 / tetiklenmeyen 6 (gerçek PowerShell'de çalıştırılarak).
+
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.
