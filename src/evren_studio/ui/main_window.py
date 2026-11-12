@@ -123,6 +123,87 @@ class MainWindow(QMainWindow):
         self._gozlem_timer.timeout.connect(self._send_gozlem)
         self._gozlem_timer.start()
         QTimer.singleShot(2 * 60 * 1000, self, self._send_gozlem)
+        # C2: güncelleme denetimi açılıştan 20 sn sonra (açılışı yavaşlatmaz), günde en çok bir kez
+        QTimer.singleShot(20 * 1000, self, self._auto_update_check)
+        # Günlük otomatik yerel yedek (açılıştan 60 sn sonra, arka planda; açılışı yavaşlatmaz)
+        QTimer.singleShot(60 * 1000, self, self._auto_backup)
+
+    update_info = None
+    last_auto_backup = None
+
+    def _auto_backup(self) -> None:
+        import os
+
+        from ..backup import auto_backup
+
+        if not self.ctx.settings.auto_backup or os.environ.get("EVREN_STUDIO_NO_AUTO_BACKUP"):
+            return
+        ctx = self.ctx
+
+        def done(path) -> None:
+            self.last_auto_backup = path
+
+        workers.Task(lambda: auto_backup(ctx.db.path, ctx.data_dir(), ctx.store.path), on_done=done,
+                     on_error=lambda _e: None).start()
+
+    def _auto_update_check(self) -> None:
+        import os
+
+        if not os.environ.get("EVREN_STUDIO_NO_UPDATE_CHECK"):      # testler gerçek GitHub'a gitmesin (conftest)
+            self.check_updates()
+
+    def check_updates(self, force: bool = False) -> None:
+        from datetime import datetime, timezone
+
+        from .. import updates
+
+        s = self.ctx.settings
+        if not s.update_check or (not force and not updates.due(s.update_last_check)):
+            return
+        skipped = s.update_skipped
+
+        def done(info) -> None:
+            s.update_last_check = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            self.ctx.save_settings()
+            if info is not None:
+                self._show_update(info)
+
+        workers.Task(lambda: updates.check(__version__, skipped=skipped), on_done=done,
+                     on_error=lambda _e: None).start()
+
+    def _show_update(self, info) -> None:
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        from .transcript import ActionCard
+
+        self.update_info = info
+
+        def skip() -> None:
+            self.ctx.settings.update_skipped = info.version
+            self.ctx.save_settings()
+            self.sidebar.update_btn.hide()
+
+        lines = [f"Yüklü sürüm {__version__}; yeni sürüm {info.version}. Kurulum dosyası indirilir, çalıştırınca "
+                 "eski sürümün üstüne kurulur (ayarlarınız ve oturumlarınız korunur)."]
+        if info.notes:
+            lines.append(info.notes.strip().splitlines()[0][:200])
+        card = ActionCard(f"EVREN Studio {info.version} yayınlandı", lines,
+                          [("İndir", lambda: QDesktopServices.openUrl(QUrl(info.asset_url or info.url)), "primary"),
+                           ("Sürüm notları", lambda: QDesktopServices.openUrl(QUrl(info.url)), "ghost"),
+                           ("Bu sürümü atla", skip, "ghost")], icon_name="download")
+        self.session.transcript.add(card)
+        # Kart yalnız oturum açıkken görünür; kenar çubuğundaki düğme her ekranda görünür
+        btn = self.sidebar.update_btn
+        btn.setText(f"Yeni sürüm {info.version} — indir")
+        btn.setToolTip(f"Yüklü sürüm {__version__}. Tıklayınca kurulum dosyası tarayıcıda indirilir.")
+        try:
+            btn.clicked.disconnect()
+        except (RuntimeError, TypeError):
+            pass
+        btn.clicked.connect(lambda _=None: QDesktopServices.openUrl(QUrl(info.asset_url or info.url)))
+        btn.show()
+        self.show_notification("EVREN Studio — yeni sürüm", f"{info.version} yayınlandı. İndirmek için uygulamaya bakın.")
 
     def _send_gozlem(self) -> None:
         from .. import gozlem

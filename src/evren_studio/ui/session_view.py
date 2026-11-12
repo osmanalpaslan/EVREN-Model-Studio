@@ -487,6 +487,10 @@ class SessionView(QWidget):
         self.composer.mode_changed.connect(self.set_mode)
         self.composer.model_changed.connect(self.set_model)
         self.composer.attach_requested.connect(self.attach_files)
+        from .voice_input import VoiceInput
+
+        self.voice = VoiceInput(self.composer, self.ctx.data_dir(), self)    # C3 sesle yazma (mikrofon düğmesi)
+        self.voice.note.connect(self._voice_note)
         from .deep_ui import DeepController
 
         self.deep = DeepController(self)
@@ -1692,6 +1696,19 @@ class SessionView(QWidget):
         elif cmd == "/yardim":
             self._show_help()
         return True
+
+    def _voice_note(self, text: str, icon_name: str = "dot") -> None:
+        """Sesle yazma notu: oturum açıksa akışa; karşılama ekranındaysa (oturum yok) mikrofonun üstünde baloncuk —
+        _note orada MODAL pencere açardı (kurulum sürerken "kuruluyor/kuruldu" iki kez kilitleyen pencere)."""
+        if self.session_id or self.stack.currentWidget() is self.transcript:
+            self._note(text, icon_name)
+            return
+        from PySide6.QtWidgets import QToolTip
+
+        btn = self.composer.mic_btn
+        btn.setToolTip(text)
+        if btn.isVisible():
+            QToolTip.showText(btn.mapToGlobal(btn.rect().bottomLeft()), text, btn)
 
     def _note(self, text: str, icon_name: str = "dot") -> None:
         if self.stack.currentWidget() is not self.transcript:

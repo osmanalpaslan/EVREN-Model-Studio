@@ -249,6 +249,12 @@ def check_smoke(lines: list[str]) -> list[str]:
         problems.append("ruff pakette YOK (hata bekçisi Python'da yalnız sözdizimine bakar)")
     if kv.get("json_repair") != "var":
         problems.append("json_repair pakette YOK (bozuk JSON onarımı çalışmaz)")
+    if kv.get("tek_ornek") != "var":
+        problems.append("QtNetwork pakette YOK: ikinci açılış ikinci pencere açar (zamanlanmış görevler çift çalışır)")
+    if not (kv.get("terminal") or "").startswith("var"):           # "var WinPTY": kabuk gerçekten açıldı
+        problems.append(f"etkileşimli terminal pakette eksik: terminal={kv.get('terminal')} (pywinpty/pyte/winpty-agent)")
+    if kv.get("harita_dilleri") != "11":
+        problems.append(f"proje haritası dil çözümleyicileri eksik: harita_dilleri={kv.get('harita_dilleri')} (11 olmalı)")
     if kv.get("keyring") != "WinVaultKeyring":
         problems.append(f"anahtar deposu (Credential Manager) yok: keyring={kv.get('keyring')}")
     if not kv.get("tls", "").startswith("tamam"):

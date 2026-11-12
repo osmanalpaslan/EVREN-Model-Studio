@@ -28,6 +28,12 @@ class HelpPage(BasePage):
         diag_btn = QPushButton("Tanılama Çalıştır")
         diag_btn.clicked.connect(self.run_diag)
         l.addWidget(diag_btn)
+        self.update_btn = QPushButton("Güncellemeleri denetle")
+        self.update_btn.clicked.connect(self.check_updates)
+        l.addWidget(self.update_btn)
+        self.update_label = QLabel("")
+        self.update_label.setWordWrap(True)
+        l.addWidget(self.update_label)
         self.root.addWidget(c)
 
         c2, l2 = card()
@@ -62,6 +68,29 @@ class HelpPage(BasePage):
         l3.addWidget(self.diag)
         self.root.addWidget(c3)
         self.root.addStretch(1)
+
+    def check_updates(self) -> None:
+        """Elle denetim (C2): günlük sınır ve "atla" yok sayılır; yeni sürüm varsa ana penceredeki kart açılır."""
+        from .. import updates
+
+        self.update_btn.setEnabled(False)
+        self.update_label.setText("GitHub'daki son sürüme bakılıyor…")
+
+        def done(info) -> None:
+            self.update_btn.setEnabled(True)
+            if info is None:
+                self.update_label.setText(f"Güncelsiniz (EVREN Studio {__version__}) — ya da GitHub'a ulaşılamadı.")
+                return
+            self.update_label.setText(f"Yeni sürüm: {info.version}. İndirme kartı oturum ekranında açıldı.")
+            win = self.window()
+            if hasattr(win, "_show_update"):
+                win._show_update(info)
+
+        def failed(_exc) -> None:
+            self.update_btn.setEnabled(True)
+            self.update_label.setText("Denetlenemedi (internet bağlantısını kontrol edin).")
+
+        Task(lambda: updates.check(__version__), on_done=done, on_error=failed).start()
 
     def run_diag(self) -> None:
         self.diag.clear()

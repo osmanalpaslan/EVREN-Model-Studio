@@ -1,7 +1,27 @@
 # Değişiklik Günlüğü
 
-## Yayınlanmamış — açık kaynak depolardan gelen geliştirmeler (Madde 20)
+## 0.5.0 — 2026-11-12 (kurulum dosyası `EVREN-Studio-Kurulum-0.5.0.exe`)
 
+Açık kaynak depo taramasından gelen geliştirmeler (Madde 20):
+
+- **Günlük otomatik yedek**: oturumlarınız her gün veri klasöründeki "yedekler"e kopyalanır (son 7 gün; API
+  anahtarları girmez). Ayarlar > Gizlilik'ten kapatılabilir.
+- **Düzeltme — uygulama ikinci kez açılınca ikinci pencere açılıyordu**: aynı veritabanı iki pencerede kullanılıyor,
+  zamanlanmış görevler iki kez çalışabiliyordu. Artık çalışan pencere öne gelir.
+- **Düzeltme — ajan PowerShell'de çalışmayan bash komut biçimi** (`<<'EOF'`) denediğinde komut boşuna
+  çalıştırılmaz; ne yapması gerektiği söylenir.
+- **Gerçek terminal** (C4): Terminal sekmesinde yeni "Kabuk" görünümü — proje klasöründe sürekli açık PowerShell:
+  `cd` ve değişkenler komutlar arasında kalır, soru soran komutlara (onay, ad, şifre değil) yanıt verebilirsiniz,
+  Ctrl+C çalışan komutu keser. Eski "Günlük" görünümü (ajanın komutları) aynen duruyor.
+- **Sesle yazma** (C3): yazı kutusundaki mikrofon düğmesine basıp konuşun, yeniden basınca konuşma yazıya çevrilip
+  kutuya eklenir (gönderilmez; düzeltip siz gönderirsiniz). İlk kullanımda ~600 MB'lık konuşma tanıma bileşeni
+  onayınızla bir kez indirilir; ses bilgisayarınızdan çıkmaz.
+- **Yeni sürüm bildirimi** (C2): uygulama günde en çok bir kez GitHub'daki son sürüme bakar; yeni sürüm varsa
+  "İndir" kartı gösterir (kendiliğinden indirmez). Ayarlar > Genel'den kapatılabilir; Yardım sayfasından elle
+  denetlenebilir.
+- **Proje haritası artık 11 dilde** (C1): Go, Rust, Java, C#, JavaScript, TypeScript, PHP, C, C++, Ruby ve Kotlin
+  projelerinde de sınıf/fonksiyon adları ajana baştan verilir (önceden yalnız Python ve kısmen JS). Harita
+  sığmayınca en çok kullanılan dosyaların ayrıntısı önce gösterilir.
 - **Gözetmen** (B4): Proje (ve Derin Mod) görevi kullanıcı başında olmadan yürürken ayrı ve hızlı bir model 8 adımda
   bir "görev yolunda mı" diye puan verir. Ajan görevden uzaklaşıyorsa önce uyarılır; iki kontrolde üst üste
   uzaklaşmışsa görev durdurulup gerekçesiyle temiz bir denemeyle yeniden yapılır. Yalnız EVREN (ücretsiz) modeli

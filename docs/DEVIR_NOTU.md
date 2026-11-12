@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-11 23:20 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 20: A1-A3 + B1 master'da (PR #56). B2 gerekçeyle yapılmadı. B3 paralel görev YAPILDI (dal `feat/b3-paralel-gorev`, commit e923245; paralel 8/8 630 sn, sıralı 7/8 1490 sn). Ölçümde bulunan `python -c` doğrulama hatası düzeltildi (ayrı commit). B4 gözetmen YAPILDI (dal `feat/b4-gozetmen`, B3'ün üstünde; test + mutasyon 17/17). SIRADA: tam takım → e2e_proje paralel (gözetmen açık, yanlış alarm sayımı) → zorluk tam paket (R-21) → R-13 üçlüsü → TEK PR (B3+düzeltme+B4) → C1-C4.
+- **Güncelleme:** 2026-11-12 19:56 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. Madde 20 + uygulama analizi TAMAM, sürüm 0.5.0 (dal `feat/c1-harita`): tam takım 1188/1188, zorluk 11/12 (düşen mini_proje EVREN auto yavaşlığı; qwen ile 5/5), R-13 API OK / ajan 4/6 (glm 503) / arayüz 15/15, Sandbox GEÇTİ. SIRADA: PR + birleştirme → GitHub yayını v0.5.0 + C2 uçtan uca → masaüstü kopya → rapor → bilgisayarı kapat.
 - **Aktif dal:** `master` (eski not: `feat/masaustu-kontrol` birleşti). Kullanıcı 2026-11-05 onayıyla eklendi: (1) kullanıcı fareyi/klavyeyi kullanınca
   ajan bekler, kontrol dönünce AYNI adımı tekrarlar (yarıda kalan işlemde ekranı yeniden okur), 5 dk bırakılmazsa
   güvenli noktada durur + "Devam et" kartı; (2) `test_araci_ac`: ajan gerektiğinde tarayıcı/masaüstü test aracını kendisi

@@ -200,9 +200,17 @@ class Sidebar(QWidget):
         lay.addWidget(self.list, 1)
 
         self.empty = QLabel("Henüz oturum yok.\n“Yeni oturum” ile başlayın.")
-        self.empty.setProperty("role", "faint")
+        self.empty.setProperty("role", "dim")         # faint açık temada 4,39 kontrast (ui_denetim UYARI)
         self.empty.setAlignment(Qt.AlignCenter)
         lay.addWidget(self.empty)
+
+        # C2: yeni sürüm varsa her ekranda görünen düğme (oturum kartı karşılama ekranında görünmüyordu)
+        self.update_btn = QPushButton()
+        self.update_btn.setProperty("variant", "primary")
+        self.update_btn.setIcon(icons.icon("download", color="on_accent", size=15))
+        self.update_btn.setCursor(Qt.PointingHandCursor)
+        self.update_btn.hide()
+        lay.addWidget(self.update_btn)
 
         sep = QWidget()
         sep.setFixedHeight(1)

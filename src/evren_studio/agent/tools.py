@@ -612,6 +612,23 @@ def unwrap_powershell(command: str) -> str:
     return body
 
 
+_HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n(.*)", re.S)
+
+
+def heredoc_hint(command: str) -> str:
+    """Windows PowerShell'de bash heredoc'u (`python - <<'PY'` …) yoktur; komut hiç çalışmaz. Gerçek kullanımda ajan bunu
+    deneyip bir adım kaybediyordu (2026-11-12 analiz). Heredoc sayılması için işaret kelimesinin SONRAKİ bir satırda
+    tek başına (bitiş) geçmesi gerekir → `1 << y` gibi bit kaydırmalar etkilenmez. Boş dize → sorun yok."""
+    if os.name != "nt":
+        return ""
+    m = _HEREDOC.search(command or "")
+    if not m or not re.search(rf"^[ \t]*{re.escape(m.group(2))}[ \t]*\r?$", m.group(3), re.M):
+        return ""
+    return ("Bu komut çalıştırılmadı: Windows PowerShell'de bash heredoc'u (`<<'EOF'`) yok. Çok satırlı kodu "
+            "write_file ile bir dosyaya (ör. betik.py) yazıp `python betik.py` ile çalıştır; tek satır için "
+            "`python -c \"...\"` kullan.")
+
+
 def shell_argv(command: str) -> list[str]:
     if os.name == "nt":
         prefix = (
@@ -887,6 +904,9 @@ class ToolBox:
                     on_output: Callable[[str], None] | None = None) -> CommandResult:
         if not command or not command.strip():
             raise ToolError("Komut boş olamaz.")
+        hint = heredoc_hint(command)
+        if hint:
+            raise ToolError(hint)
         timeout = int(timeout_seconds or self.command_timeout)
         timeout = max(1, min(timeout, 1800))
         env = project_env(self.ws.root)

@@ -99,6 +99,9 @@ def _yoklama_kapali(monkeypatch):
     monkeypatch.setenv("EVREN_STUDIO_NO_PROBE", "1")
     # E6 ders önerisi de ek model çağrısı yapar (yalnız sinyal varsa); learnings testleri açıkça sınar
     monkeypatch.setenv("EVREN_STUDIO_NO_LEARNINGS", "1")
+    # C2 güncelleme denetimi açılıştan 20 sn sonra GitHub'a gider; uzun arayüz testlerinde tetiklenmesin
+    monkeypatch.setenv("EVREN_STUDIO_NO_UPDATE_CHECK", "1")
+    monkeypatch.setenv("EVREN_STUDIO_NO_AUTO_BACKUP", "1")     # uzun testte veri klasörüne yedek yazılmasın
 
 
 @pytest.fixture(autouse=True)

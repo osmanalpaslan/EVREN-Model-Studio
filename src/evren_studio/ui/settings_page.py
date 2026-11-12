@@ -270,6 +270,9 @@ class SettingsPage(BasePage):
         l.addWidget(kv_row_widget("Sohbet yanıtları:", self.answer_style, "Kısa ve öz"))
         self.ai_titles = QCheckBox("Oturum başlıklarını yapay zekâ üretsin (bağlı API ile, ilk yanıttan sonra)")
         l.addWidget(self.ai_titles)
+        self.update_check = QCheckBox("Yeni sürüm çıkınca haber ver (günde en çok bir kez GitHub'a bakar; kendiliğinden "
+                                      "indirmez)")
+        l.addWidget(self.update_check)
         self._add("genel", c)
 
         # ================= Görünüm =================
@@ -397,6 +400,9 @@ class SettingsPage(BasePage):
         l.addWidget(self.test_check)
         self.plan_guard = QCheckBox("Plan bekçisi: ajan fazlara ayırdığı işte açık madde varken durmasın, sıradakine geçsin (önerilir)")
         l.addWidget(self.plan_guard)
+        self.progress_critic = QCheckBox("Gözetmen: Proje/Derin görevinde ayrı bir model ajanın yolunda olup olmadığını "
+                                         "8 adımda bir denetlesin (yalnız EVREN, önerilir)")
+        l.addWidget(self.progress_critic)
         self._add("ajan", c)
         c, l = card()
         l.addWidget(section("Sınırlar"))
@@ -631,6 +637,8 @@ class SettingsPage(BasePage):
         backup_btn = QPushButton("Oturumları yedekle (.zip)…")
         backup_btn.setToolTip("Veritabanı, ayarlar ve skill'ler tek dosyaya; API anahtarları yedeğe girmez")
         backup_btn.clicked.connect(lambda _=None: backup_sessions(self, self.ctx))
+        self.auto_backup = QCheckBox("Her gün otomatik yedek al (veri klasöründe \"yedekler\", son 7 gün; "
+                                     "API anahtarları girmez)")
         export_btn = QPushButton("Tüm verileri dışa aktar (JSON)")
         export_btn.clicked.connect(self.export_data)
         purge_btn = QPushButton("Eski hata kayıtlarını temizle")
@@ -638,7 +646,7 @@ class SettingsPage(BasePage):
         wipe_btn = QPushButton("Tüm oturumları ve kayıtları sil")
         wipe_btn.setProperty("variant", "danger")
         wipe_btn.clicked.connect(self.wipe_data)
-        for b in (open_btn, backup_btn, export_btn, purge_btn, wipe_btn):
+        for b in (open_btn, backup_btn, self.auto_backup, export_btn, purge_btn, wipe_btn):
             l.addWidget(b)
         self._add("gizlilik", c)
 
@@ -785,6 +793,9 @@ class SettingsPage(BasePage):
         self.edit_diag.setChecked(s.edit_diagnostics)
         self.test_check.setChecked(s.test_check)
         self.plan_guard.setChecked(s.plan_guard)
+        self.progress_critic.setChecked(s.progress_critic)
+        self.update_check.setChecked(s.update_check)
+        self.auto_backup.setChecked(s.auto_backup)
         self.autopro_smart.setChecked(s.autopro_smart)
         self.autopro_probe.setChecked(s.autopro_probe)
         self.autopro_architect.setChecked(s.autopro_architect)
@@ -847,6 +858,9 @@ class SettingsPage(BasePage):
         s.edit_diagnostics = self.edit_diag.isChecked()
         s.test_check = self.test_check.isChecked()
         s.plan_guard = self.plan_guard.isChecked()
+        s.progress_critic = self.progress_critic.isChecked()
+        s.update_check = self.update_check.isChecked()
+        s.auto_backup = self.auto_backup.isChecked()
         s.autopro_smart = self.autopro_smart.isChecked()
         s.autopro_probe = self.autopro_probe.isChecked()
         s.autopro_architect = self.autopro_architect.isChecked()
