@@ -8,6 +8,10 @@
 3. DOĞRULA (R-25 kabul denetimi sınaması): BİLİNEN YANLIŞ bir değişiklikte (bölme sıfır kontrolü
    yok, istenen hata fırlatılmıyor) onaylanmış sorun bulunmalı; BİLİNEN DOĞRU değişiklikte
    "yüksek" sorun çıkmamalı.
+
+2026-11-12 (uygulamayla aynı): alt ajanlar proje haritasını alır; doğrulamadan önce testler GERÇEKTEN çalışır.
+A/B bayrakları: --haritasiz (eski: harita yok) · --testsiz (eski: test kanıtı yok) · --yalniz-anla (yalnız 1. aşama).
+Her alt ajanın araç çağrısı sayısı ve süresi yazdırılır (EVREN hızından bağımsız karşılaştırma ölçüsü).
 """
 from __future__ import annotations
 
@@ -104,12 +108,19 @@ def main() -> int:
         r = ctx.ai_route(role)
         return [m for m in [r.model] + r.fallbacks if ctx.provider_of(m) == "evren"]
 
+    harita = "--haritasiz" not in sys.argv
+    adimlar: list[tuple[str, int, float]] = []          # (etiket, araç çağrısı, süre sn)
+    print(f"proje haritası: {'AÇIK' if harita else 'KAPALI'} · test kanıtı: "
+          f"{'KAPALI' if '--testsiz' in sys.argv else 'AÇIK'}", flush=True)
+
     def sub_for(model_chain):
         def run(prompt, marker, label=""):
             c = ctx.make_client()
             try:
-                return dp.run_subagent(client=c, model=model_chain[0], fallbacks=model_chain[1:], root=tmp,
-                                       prompt=prompt, marker=marker, gate=gate)
+                res = dp.run_subagent(client=c, model=model_chain[0], fallbacks=model_chain[1:], root=tmp,
+                                      prompt=prompt, marker=marker, gate=gate, runner_kw={"project_map": harita})
+                adimlar.append((label or marker, int(res.tools or 0), float(res.seconds or 0.0)))
+                return res
             finally:
                 c.close()
         return run
@@ -121,7 +132,13 @@ def main() -> int:
         got = [f["angle"] for f in st.findings if f.get("data")]
         print(f"1 ANLA: {len(got)}/{len(st.findings)} bulgu ({', '.join(got)}) · {time.monotonic() - t0:.0f} sn "
               f"· durum: {[f['stopped'] for f in st.findings]}", flush=True)
+        anla = [a for a in adimlar if a[0].startswith("anla")]
+        print(f"   araç çağrısı: {[a[1] for a in anla]} (toplam {sum(a[1] for a in anla)}) · alt ajan süreleri "
+              f"{[round(a[2]) for a in anla]} sn", flush=True)
         print(f"   net istekte sorular ({len(st.questions)}): {st.questions}", flush=True)
+        if "--yalniz-anla" in sys.argv:
+            print("SONUÇ:", "GEÇTİ" if (ok and len(got) >= 2) else "KALDI")
+            return 0 if (ok and len(got) >= 2) else 1
         ok &= len(st.questions) == 0                     # R-22: net istekte soru kartı çıkmamalı
         ok &= len(got) >= 2
 
@@ -141,7 +158,7 @@ def main() -> int:
                 try:
                     ch = chain("kod")
                     return dp.run_subagent(client=c, model=ch[0], fallbacks=ch[1:], root=amb, prompt=prompt,
-                                           marker=marker, gate=gate)
+                                           marker=marker, gate=gate, runner_kw={"project_map": harita})
                 finally:
                     c.close()
             t0 = time.monotonic()
@@ -183,7 +200,13 @@ def main() -> int:
             (tmp / "calc.py").write_text(files[name][0], encoding="utf-8")
             (tmp / "test_calc.py").write_text(files[name][1], encoding="utf-8")
             vst = dp.DeepState(goal=GOAL)
-            issues = dp.verify(vst, diff, vsub, gate, gate.max_parallel, lambda t: None)
+            with_tests = "--testsiz" not in sys.argv
+            tests = dp.project_tests(tmp) if with_tests else None
+            if with_tests:
+                print(f"   gerçek test: {tests['durum'] if tests else 'yok'} ({tests['komut'] if tests else '-'})",
+                      flush=True)
+            issues = dp.verify(vst, diff, vsub, gate, gate.max_parallel, lambda t: None, tests=tests,
+                               with_tests=with_tests)
             high = [i for i in issues if str(i.get("ciddiyet", "")).lower().startswith(("yuk", "yük"))]
             passed = bool(issues) if expect_issue else not high
             ok &= passed

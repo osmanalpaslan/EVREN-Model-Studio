@@ -254,19 +254,52 @@ def findings_text(findings: list[dict]) -> str:
     return "\n\n".join(out) or "(bulgu yok)"
 
 
+_FILE_NAME = re.compile(r"[\w\-]+\.[a-z0-9]{2,5}\b")
+# Soru kalıbı sözcükleri (ilk 5 harf): her soruda geçer, iki sorunun AYNI karar olduğunu göstermez.
+_Q_STOP = frozenset({"yoksa", "misin", "mısın", "musun", "müsün", "olara", "için", "veya", "olsun", "gibi", "kadar",
+                     "daha", "bunu", "bunun", "şunu", "bunla", "hangi", "nasıl", "neden", "nedir", "acaba", "lütfe",
+                     "ister", "istiy", "gerek", "olmal"})
+# "X dosyası klasörde yok" kalıbı: aynı dosyaların yokluğunu soran iki soru, sözcükleri farklı da olsa tek karardır.
+_MISSING_FILE = re.compile(r"(klasör\w*|projede|dizin\w*)\s+(yok|bulunm\w*|bulunam\w*|mevcut değil|yer alm\w*|eksik)")
+
+
+def _q_terms(low: str) -> set[str]:
+    """Sorunun anlamlı sözcük kökleri: Türkçe ekleri atlamak için her sözcüğün ilk 5 harfi (klasörde/klasöre,
+    raporlanacak/rapor aynı kök olur), kalıp sözcükleri ve DOSYA ADLARI hariç (dosya adları ayrıca karşılaştırılır;
+    sözcük sayılsalar aynı dosyayla ilgili iki ayrı karar — hangi sayfa okunacak / negatifler iade mi — birleşiyordu).
+    2026-11-13'te 3 gerçek koşunun soruları + kurgu tetiklenmeyen gruplarla denendi: 4 harf farklı kararları
+    birleştirdi ("Rapor hangi biçimde" ≈ "Raporda hangi ay"), 6 harf aynı soruyu kaçırdı."""
+    return {w[:5] for w in re.findall(r"\w{4,}", _FILE_NAME.sub(" ", low))} - _Q_STOP
+
+
+def _same_question(words: set, names: set, s_words: set, s_names: set,
+                   missing: bool = False, s_missing: bool = False) -> bool:
+    """İki soru aynı mı (2026-11-12/13 gerçek ölçümleri: üç alt ajan aynı eksik dosyayı ve aynı ay seçimini farklı
+    sözcüklerle ikişer kez sordu). Farklı dosya adlarını anan sorular hiç birleştirilmez (X.csv ≠ Y.csv); aynı
+    dosyaların klasörde olmadığını soranlar birleşir; diğerlerinde en az 2 ortak kök ve kısa sorunun %60'ı gerekir
+    (%50 gerçek koşuda ay seçimi ile şehir/sayfa eşlemesi sorularını birleştirdi, %67 aynı ay sorusunu kaçırdı)."""
+    if names and s_names and names != s_names:
+        return False
+    if names and names == s_names and missing and s_missing:
+        return True
+    inter = len(words & s_words)
+    return inter >= 2 and inter / max(1, min(len(words), len(s_words))) >= 0.6
+
+
 def collect_questions(findings: list[dict], limit: int = 4) -> list[str]:
     """Alt ajanların sorularını birleştirir (aynı/çok benzer olanlar bir kez)."""
     out: list[str] = []
-    seen: list[set] = []
+    seen: list[tuple[set, set, bool]] = []
     for f in findings:
         for q in ((f.get("data") or {}).get("sorular") or []):
             q = str(q).strip()
             if len(q) < 8:
                 continue
-            words = {w for w in re.findall(r"\w{4,}", q.lower())}
-            if any(len(words & s) >= max(2, len(words) // 2) for s in seen):
+            low = q.lower()
+            key = (_q_terms(low), set(_FILE_NAME.findall(low)), bool(_MISSING_FILE.search(low)))
+            if any(_same_question(key[0], key[1], sw, sn, key[2], sm) for sw, sn, sm in seen):
                 continue
-            seen.append(words)
+            seen.append(key)
             out.append(q[:300])
     return out[:limit]
 
@@ -309,20 +342,48 @@ def judge_messages(goal: str, plans: list[dict]) -> list[dict]:
 
 
 REPRO_VERIFY = """
-HATA DÜZELTME İŞİ (B1): hatayı yeniden üreten bir test var mı, düzeltmeden sonra GEÇİYOR mu (komutla çalıştır)?
-Test, geçsin diye zayıflatılmış / atlanmış / beklentisi değiştirilmiş mi? Yeniden üretme testi yoksa ya da kalıyorsa
-"yuksek" sorundur."""
+HATA DÜZELTME İŞİ (B1): hatayı yeniden üreten bir test var mı, düzeltmeden sonra GEÇİYOR mu (aşağıdaki GERÇEK test
+sonucuna bak)? Test, geçsin diye zayıflatılmış / atlanmış / beklentisi değiştirilmiş mi? Yeniden üretme testi yoksa ya
+da kalıyorsa "yuksek" sorundur."""
 
 
-def verify_prompt(goal: str, diff: str, lens: str, tasks: str = "") -> str:
+def project_tests(root: Path, cancel=None, timeout: int | None = None) -> dict | None:
+    """Doğrulamadan ÖNCE projenin testlerini GERÇEKTEN çalıştırır (2026-11-12). Denetçiler Plan (salt okunur) kipinde
+    komut çalıştıramıyordu; istem "komutla çalıştır" diyordu ama testler son doğrulamada hiç koşmuyordu → denetim
+    yalnız okuyarak verilen kanaatti. Dönüş: {komut, durum (gecti|dustu|yok), cikis, son} ya da test yoksa None."""
+    from . import testcheck
+    from .tools import ToolBox
+
+    cmd = testcheck.detect_command(Path(root))
+    if not cmd:
+        return None
+    t = timeout or testcheck.TEST_TIMEOUT
+    state, code, out = testcheck.run(ToolBox(Workspace(Path(root)), command_timeout=t), cmd, timeout=t, cancel=cancel)
+    return {"komut": cmd, "durum": state, "cikis": code, "son": testcheck.tail(out, lines=30, chars=3000)}
+
+
+def tests_text(tests: dict | None) -> str:
+    if not tests:
+        return "\nGERÇEK TEST SONUCU: projede otomatik test bulunamadı; davranışı kod okuyarak denetle.\n"
+    label = {"gecti": "GEÇTİ", "dustu": "DÜŞTÜ", "yok": "çalışmadı (zaman aşımı/test yok)"}.get(tests["durum"],
+                                                                                                tests["durum"])
+    return (f"\nGERÇEK TEST SONUCU (uygulama az önce çalıştırdı, `{tests['komut']}`): {label}"
+            f" (çıkış kodu {tests['cikis']})\n```\n{tests['son']}\n```\n"
+            "Bu sonuç kanıttır: testler geçtiyse 'test düşüyor' deme; düştüyse nedenini bul. Testlerin istenen "
+            "davranışı (kenar durumlar dahil) gerçekten sınayıp sınamadığını ayrıca değerlendir.\n")
+
+
+def verify_prompt(goal: str, diff: str, lens: str, tasks: str = "", tests: dict | None = None,
+                  with_tests: bool = False) -> str:
     from .project import is_bugfix
 
     tasks = f"\nProje görevlerinin durumu:\n{tasks}\n" if tasks else ""
     repro = REPRO_VERIFY if is_bugfix(goal) else ""
+    evidence = tests_text(tests) if (with_tests or tests) else ""
     return f"""DERİN MOD · ÇEKİŞMELİ DOĞRULAMA (salt okunur; dosya değiştirme).
 Kullanıcının isteği: {goal}
 Bakış açın: {lens}
-{tasks}
+{tasks}{evidence}
 ÖNCE istenen nihai çıktının (ör. rapor dosyası, özellik) gerçekten var olduğunu dosyalardan doğrula;
 yoksa bu "yuksek" bir sorundur.{repro}
 
@@ -384,7 +445,7 @@ def answer_prompt(goal: str, findings: list[dict]) -> str:
 
 
 def render_report(st: DeepState) -> str:
-    lines = [f"# EVREN Derin Mod raporu", "", f"- İstek: {st.goal}", f"- Tür: {st.kind}", f"- Başlangıç: {st.started_at}",
+    lines = ["# EVREN Derin Mod raporu", "", f"- İstek: {st.goal}", f"- Tür: {st.kind}", f"- Başlangıç: {st.started_at}",
              f"- Durum: {st.status}" + (f" ({st.pause_reason})" if st.pause_reason else ""), "", "## Anla — bulgular", "",
              findings_text(st.findings), ""]
     if st.questions:
@@ -487,15 +548,25 @@ def plan(st: DeepState, sub_with_model: Callable[[str, str, str], SubResult], mo
 
 
 def verify(st: DeepState, diff: str, sub: Callable[..., SubResult], gate=None, max_parallel: int = 2,
-           log: Callable[[str], None] = lambda t: None, tasks: str = "") -> list[dict]:
+           log: Callable[[str], None] = lambda t: None, tasks: str = "", tests: dict | None = None,
+           with_tests: bool = False) -> list[dict]:
+    """with_tests: testler çalıştırıldı (tests None ise test bulunamadı). Düşen test, denetçiler görmese de
+    onaylanmış "yuksek" sorundur (kanıt; düzeltme turu açılır)."""
     if not diff.strip():
         log("Doğrula: değişiklik bulunamadı")
         st.issues = []
         return []
-    results = run_parallel([lambda i=i, l=l: _block(sub(verify_prompt(st.goal, diff, l, tasks), "<denetim>",
-                                                        f"denetim-{i + 1}").text, "denetim") or {}
+    if with_tests:
+        log("Doğrula: testler " + ({"gecti": "geçti", "dustu": "DÜŞTÜ", "yok": "çalışmadı"}.get(tests["durum"], "?")
+                                   + f" ({tests['komut']})" if tests else "bulunamadı"))
+    results = run_parallel([lambda i=i, l=l: _block(sub(verify_prompt(st.goal, diff, l, tasks, tests, with_tests),
+                                                        "<denetim>", f"denetim-{i + 1}").text, "denetim") or {}
                             for i, l in enumerate(VERIFY_LENSES)], gate, max_parallel)
     st.issues = confirmed_issues([r for r in results if isinstance(r, dict)])
+    if tests and tests.get("durum") == "dustu":
+        st.issues.insert(0, {"ciddiyet": "yuksek", "dosya": tests["komut"],
+                             "aciklama": f"Projenin testleri DÜŞÜYOR (gerçek çalıştırma, `{tests['komut']}`, çıkış "
+                                         f"{tests['cikis']}):\n{tests['son'][-1500:]}"})
     log(f"Doğrula: {len(st.issues)} onaylanmış sorun")
     return st.issues
 

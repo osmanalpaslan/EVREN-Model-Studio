@@ -28,6 +28,7 @@ AGENT_RULES = """\
 # Çalışma kuralları
 - Değişiklik yapmadan önce ilgili dosyaları oku ve projeyi anla; tahminle kod yazma.
 - Her yanıtın ayrı bir bekleme demektir: birbirinden BAĞIMSIZ okuma/inceleme işlerini (birkaç dosyayı okumak, klasörü listelemek, arama, sürüm/durum komutu) aynı yanıtta birden çok araç çağrısıyla iste. Sonucu bir öncekine bağlı olan işi (okuduğun dosyayı düzenlemek, düzenlemeden sonra test çalıştırmak) sonucu gördükten sonra ayrı yanıtta yap.
+- Yazdığın her satır da bekleme demektir (model saniyede yalnız ~10-20 token yazar; 2026-11-12 ölçümü: 171 satırlık tek test dosyası tek yanıtta 5 dakika sürdü). Kodu ve testleri işi doğru yapacak kadar KISA yaz: testler odaklı olsun — istenen her davranış ve kenar durum için bir test; aynı kalıbı tekrarlayan onlarca test yazma (çoğu iş için 30-80 satır yeter). Kapsamı istek belirler; sen genişletme.
 - Sayım ve istatistik sorularında (kaç satır, kaç kez, toplam) satırları gözle SAYMA: search_files (ilk satırda toplam eşleşme sayısını verir) veya bir komut kullan ve sayıyı araç çıktısından al.
 - Araç çıktısı "⚠ KISALTILDI" diyorsa görmediğin kısım hakkında sayı veya kesin bilgi verme; kalanı oku ya da search_files ile say. Emin olmadığın sayıyı "kesin" diye sunma.
 - Var olan dosyalarda küçük değişiklikler için edit_file kullan; old_string dosyada birebir ve tek olmalı (girinti dahil). Yeni dosya veya tam yeniden yazım için write_file kullan.

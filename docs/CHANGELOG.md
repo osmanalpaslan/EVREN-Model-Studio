@@ -2,6 +2,16 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Derin Mod daha güvenilir**: doğrulamadan önce projenin testleri gerçekten çalıştırılır; düşen test, denetçilerin
+  yorumundan bağımsız olarak "yüksek" sorun sayılır ve düzeltme turu açılır (gerçek test çıktısı denetçilere kanıt
+  olarak gider). Alt ajanlar proje haritasını kullanır. Aynı kararı farklı sözcüklerle soran tekrar eden sorular tek
+  soruya iner (gerçek koşuda 4 sorudan 2'si tekrardı).
+- **Ajan daha kısa ve odaklı kod/test yazar**: EVREN saniyede ~10-20 token yazdığı için gereksiz uzun test dosyaları
+  dakikalar sürüyordu (171 satırlık tek dosya 5 dk); her davranış ve kenar durum için bir test kuralı korunur.
+- **Düzenleme hatası daha hızlı toparlanır**: ajanın değiştirmek istediği metin dosyada birebir bulunamazsa dosyadaki
+  en yakın bölüm (ya da "boşluk/girinti farklı") satır numaralarıyla gösterilir; ajan dosyayı yeniden okumak için ayrı
+  bir adım harcamaz.
+
 - **Kurulum artık soru sormadan yalnız sizin için kurar**: "Kimin için kurulsun?" penceresi ve "tüm kullanıcılar" seçeneği kaldırıldı; yönetici izni istenmez.
 - **Döngü koruması kalıcı çözüm**: tarayıcı gibi dış araçlarla (MCP) çalışırken yersiz "döngü" uyarısı verilmez; ajan
   gerçekten aynı işi tekrarlarsa yine durdurulur. Proje yürütücüsünün plan/rapor dosyalarını ajan artık bozamaz.

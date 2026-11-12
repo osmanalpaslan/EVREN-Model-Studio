@@ -385,6 +385,54 @@ def needs_ps_bom(path: Path, text: str | None) -> bool:
             and any(ord(ch) > 127 for ch in text))
 
 
+NEAREST_MAX_LINES = 20000          # bu kadar satırdan büyük dosyada en yakın bölüm aranmaz
+NEAREST_MIN_RATIO = 0.6
+
+
+def nearest_region(text: str, old: str, max_chars: int = 1500) -> str:
+    """edit_file "old_string bulunamadı" dediğinde dosyadaki EN YAKIN bölüm (2026-11-12; gerçek kullanımda düzenlemelerin
+    %2,3'ü bu hatayla düştü, ajan dosyayı yeniden okumak için bir adım daha harcıyordu). Boşluk/girinti farkıysa bunu
+    açıkça söyler. Benzer bölüm yoksa "" (ipucu uydurulmaz). Hızlı: önce ilk satıra göre aday seçer."""
+    lines = text.split("\n")
+    old_lines = old.strip("\n").split("\n")
+    if not old.strip() or len(lines) > NEAREST_MAX_LINES or len(old_lines) > 200:
+        return ""
+    n = len(old_lines)
+
+    def show(i: int, why: str) -> str:
+        chunk = "\n".join(f"{i + k + 1:>5}| {lines[i + k]}" for k in range(min(n, len(lines) - i)))
+        if len(chunk) > max_chars:
+            chunk = chunk[:max_chars] + "\n… (kısaltıldı)"
+        return f"\n{why} (satır {i + 1}-{min(i + n, len(lines))}; birebir kopyalayıp yeniden deneyin):\n```\n{chunk}\n```"
+
+    squash = " ".join(old.split())
+    first = next((ln.strip() for ln in old_lines if ln.strip()), "")
+    first_sq = " ".join(first.split())                 # satır içi boşluk farkı da ("total <  0") yakalanır
+    starts = [i for i, ln in enumerate(lines) if first_sq and " ".join(ln.split()) == first_sq]
+    for i in starts:                                   # aynı metin, yalnız boşluk/girinti farklı
+        if " ".join("\n".join(lines[i:i + n]).split()) == squash:
+            return show(i, "Bu metin dosyada VAR ama boşluk/girinti farklı; dosyadaki gerçek hâli")
+    cands = sorted(range(len(lines)), key=lambda i: -difflib.SequenceMatcher(None, first, lines[i].strip()).quick_ratio()
+                   if first else 0)[:30]
+
+    def ratio(a: str, b: str) -> float:
+        # difflib'in "autojunk"u 200+ karakterde sık karakterleri yok sayar; tekrarlı kodda benzerliği yapay düşürüyordu
+        # (150 satırlık neredeyse aynı bölüm bulunamadı). Kısa metin: karakter düzeyi; uzun: satır düzeyi (hızlı).
+        if len(a) <= 600 and len(b) <= 600:
+            return difflib.SequenceMatcher(None, a, b, autojunk=False).ratio()
+        return difflib.SequenceMatcher(None, a.split("\n"), b.split("\n"), autojunk=False).ratio()
+
+    best, best_i = 0.0, -1
+    for i in cands:
+        window = "\n".join(lines[i:i + n])
+        r = ratio(old.strip("\n"), window)
+        if r > best:
+            best, best_i = r, i
+    if best_i < 0 or best < NEAREST_MIN_RATIO:
+        return ""
+    return show(best_i, f"Dosyadaki en yakın bölüm (benzerlik %{int(best * 100)})")
+
+
 def make_diff(before: str | None, after: str | None, rel_path: str,
               context: int = 3) -> str:
     a = (before or "").splitlines(keepends=True)
@@ -888,7 +936,7 @@ class ToolBox:
         if count == 0:
             raise ToolError(
                 "old_string dosyada bulunamadı. Dosyayı read_file ile yeniden "
-                "okuyup metni birebir (girinti dahil) kopyalayın."
+                "okuyup metni birebir (girinti dahil) kopyalayın." + nearest_region(meta.text, old)
             )
         if count > 1 and not replace_all:
             raise ToolError(

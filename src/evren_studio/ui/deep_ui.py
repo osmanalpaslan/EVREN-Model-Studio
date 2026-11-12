@@ -157,10 +157,13 @@ class DeepController(QObject):
                 self.sig_label.emit(f"Derin · {PHASE_LABELS.get(phase, phase)} · {name}: {title[:70]}")
             self.sig_label.emit(f"Derin · {PHASE_LABELS.get(phase, phase)} · {name}: {chain[0]} düşünüyor")
             try:
+                # Proje haritası (2026-11-12): alt ajanlar dosya ağacını + sembolleri baştan alır, her biri aynı
+                # yapıyı yeniden keşfetmez (oturum ajanıyla aynı ayar; EVREN'de her keşif adımı 15-80 sn)
                 res = dp.run_subagent(client=client, model=chain[0], fallbacks=chain[1:], root=root,
                                       prompt=prompt, marker=marker, gate=self._gate, cancel=self._cancel,
                                       context_tokens=getattr(info, "context_length", None),
-                                      base_body=self._effort_body(role, chain[0]), progress=progress)
+                                      base_body=self._effort_body(role, chain[0]), progress=progress,
+                                      runner_kw={"project_map": bool(self.ctx.settings.project_map)})
             finally:
                 client.close()
             if res.stopped == "quota_daily":
@@ -424,8 +427,8 @@ class DeepController(QObject):
     def _verify(self) -> None:
         st = self.state
         st.phase = "dogrula"
-        self._log(f"4/5 DOĞRULA: iki bağımsız denetçi değişikliği isteğe karşı çürütmeye çalışıyor"
-                  + (f" (düzeltme turu {st.fix_round})" if st.fix_round else ""))
+        self._log("4/5 DOĞRULA: önce testler gerçekten çalışır, sonra iki bağımsız denetçi değişikliği isteğe karşı "
+                  "çürütmeye çalışır" + (f" (düzeltme turu {st.fix_round})" if st.fix_round else ""))
         self.sig_label.emit("Derin · doğrula")
         m1, m2 = self._verifier_models()
         subs = [self._sub(m1, "inceleme"), self._sub(m2, "kod")]
@@ -438,13 +441,18 @@ class DeepController(QObject):
         fix_round = st.fix_round
         tasks = self._tasks_text
 
+        cancel = self._cancel
+
         def job():
             if base and commit:
                 git = pj.Git(Path(ws))
                 if git.dirty():
                     git.commit_all(f"Derin Mod: doğrulama düzeltmeleri (tur {fix_round})")
             diff = pj.Git(Path(ws)).diff_since(base) if base else diff_now
-            return dp.verify(st, diff or "", sub, self._gate, self._gate.max_parallel, self._log, tasks)
+            # Önce testler GERÇEKTEN çalışır (2026-11-12): sonuç denetçilere kanıt, düşen test onaylı sorun
+            tests = dp.project_tests(Path(ws), cancel=cancel) if (diff or "").strip() else None
+            return dp.verify(st, diff or "", sub, self._gate, self._gate.max_parallel, self._log, tasks,
+                             tests=tests, with_tests=True)
         self._bg(job, self._after_verify)
 
     def _after_verify(self, issues) -> None:
