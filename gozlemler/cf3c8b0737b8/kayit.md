@@ -7,8 +7,8 @@ alan: ajan
 durum: cozuldu                # acik | cozuldu | kabul-edildi
 kaynak: e2e
 ilk_gorulme: 2026-11-05T19:07:47+00:00
-cozuldu_tarih: 2026-11-06T16:58:35+00:00
-cozum_kaydi: 2026-11-06-dongu-bekcisi-turu-durdurdu
+cozuldu_tarih: 2026-11-12T18:11:05+00:00
+cozum_kaydi: 2026-11-12-dongu-bekcisi-turu-durdurdu
 ---
 
 # Döngü bekçisi turu durdurdu
