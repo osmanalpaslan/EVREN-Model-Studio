@@ -445,7 +445,8 @@ class SessionView(QWidget):
         self.welcome = WelcomeView(ctx)
         self.welcome.suggestion.connect(self._suggestion)
         self.welcome.workspace_changed.connect(self._welcome_ws)
-        self.welcome.open_settings.connect(lambda: self.page_requested.emit("settings"))
+        # "Anahtar gir": Ayarlar > Sağlayıcılar ve anahtarlar açılır ve EVREN ekleme penceresi gelir
+        self.welcome.open_settings.connect(lambda: self.page_requested.emit("settings:saglayicilar:evren"))
         self.transcript = Transcript()
         # Karşılama kaydırılabilir alanda (2026-11-12): en küçük boyu 469 px idi; yığının en küçük boyunu belirliyor,
         # pencere en küçük boyda (600) ya da komut listesi açıkken yazma kutusuyla üst üste biniyordu.
@@ -678,7 +679,8 @@ class SessionView(QWidget):
                 desc = ["EVREN sunucusu seçer · her istekte değişebilir"]
             if m.provider.startswith("gw-"):
                 gw = PROVIDERS.get(m.provider)
-                desc = [f"{gw.name if gw else m.provider} · ücretli olabilir · doğrulanmadı"]
+                cost = "ücretli olabilir · doğrulanmadı" if (gw is None or gw.paid) else "yerel · ücretsiz"
+                desc = [f"{gw.name if gw else m.provider} · {cost}"]
             elif m.provider != "evren":
                 desc = [d for d in desc if d != "araç"] + [price_hint(m.id)]
             group = "otomatik" if m.id == router.AUTO_PRO_ID else m.provider
@@ -1006,7 +1008,7 @@ class SessionView(QWidget):
         assert self.unattended, "start_unattended yalnız gözetimsiz görünümde"
         self.last_stop, self.last_error = "", ""
         provider = self.ctx.provider_of(model)
-        if not self.ctx.has_provider_key(provider):
+        if not self.ctx.provider_ready(provider):
             name = PROVIDERS.get(provider).name if provider in PROVIDERS else provider
             self.last_error = f"{name} API anahtarı yok"
             return None
@@ -1076,15 +1078,15 @@ class SessionView(QWidget):
             model = router.normalize_model_id(model)
             self.composer.set_model(model)
         provider = self.ctx.provider_of(model)
-        if provider != "evren" and not self.ctx.has_provider_key(provider):
+        if provider != "evren" and not self.ctx.provider_ready(provider):
             name = PROVIDERS[provider].name
             self.composer.set_model(self.model)          # seçimi geri al
             if QMessageBox.question(
                 self, f"{name} anahtarı gerekli",
                 f"{model} bir {name} modelidir ve ücretlidir. Kullanmak için {name} API "
-                "anahtarınızı Ayarlar > Sağlayıcılar bölümüne girin. Ayarlar açılsın mı?",
+                "anahtarınızı Ayarlar > Sağlayıcılar ve anahtarlar bölümüne girin. Ayarlar açılsın mı?",
             ) == QMessageBox.Yes:
-                self.page_requested.emit("settings")
+                self.page_requested.emit(f"settings:saglayicilar:{provider}")   # doğrudan o sağlayıcının penceresi
             return
         self.model = model
         if self.session_id:
@@ -1119,7 +1121,7 @@ class SessionView(QWidget):
             self, "Aylık bütçe doldu",
             f"Ücretli sağlayıcılar için aylık bütçeye ulaşıldı ({st.text()}). Bu tahmindir; "
             "gerçek harcama için sağlayıcı panelinize bakın.\n\nBu ay bu sınırı aşarak devam "
-            "edilsin mi? (Bütçeyi Ayarlar > Sağlayıcılar'dan değiştirebilirsiniz.)",
+            "edilsin mi? (Bütçeyi Ayarlar > Sağlayıcılar ve anahtarlar'dan değiştirebilirsiniz.)",
         ) == QMessageBox.Yes
         if ok:
             self._budget_override = self._month()
@@ -1135,7 +1137,7 @@ class SessionView(QWidget):
         if st.warn and self._budget_warned != self._month():
             self._budget_warned = self._month()
             self._note(f"Ücretli kullanım bütçesinin %{int(st.ratio * 100)}'i kullanıldı ({st.text()}). "
-                       "Tahminidir; bütçe Ayarlar > Sağlayıcılar'dan değiştirilebilir.", "gauge")
+                       "Tahminidir; bütçe Ayarlar > Sağlayıcılar ve anahtarlar'dan değiştirilebilir.", "gauge")
 
     def _policy(self) -> CompactPolicy:
         s = self.ctx.settings
@@ -1459,7 +1461,7 @@ class SessionView(QWidget):
                 return
             self.composer.set_model("auto", emit=True)
         provider = self.ctx.provider_of(self.model)
-        if not self.ctx.has_provider_key(provider):
+        if not self.ctx.provider_ready(provider):
             name = PROVIDERS.get(provider).name if provider in PROVIDERS else provider
             if self.unattended:
                 self.last_error = f"{name} API anahtarı yok"
@@ -2516,7 +2518,7 @@ class SessionView(QWidget):
             if self._ask_budget():
                 self.start_run()          # geçmiş araç sonuçlarıyla biter; kaldığı yerden sürer
             else:
-                self._note("Aylık bütçe nedeniyle durduruldu. Bütçeyi Ayarlar > Sağlayıcılar'dan "
+                self._note("Aylık bütçe nedeniyle durduruldu. Bütçeyi Ayarlar > Sağlayıcılar ve anahtarlar'dan "
                            "artırabilir veya ücretsiz bir EVREN modeline geçebilirsiniz.", "stop")
         elif outcome.stopped == "quota_daily":
             self._quota_pause("gunluk", "günlük EVREN kotası azaldı")

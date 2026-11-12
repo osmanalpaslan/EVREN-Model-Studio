@@ -325,9 +325,16 @@ class MainWindow(QMainWindow):
                 lab.setWordWrap(True)
 
     def show_page(self, key: str) -> None:
+        # "settings:saglayicilar:evren" → Ayarlar, Sağlayıcılar menüsü, EVREN ekleme penceresi (2026-11-12)
+        key, _, rest = key.partition(":")
         page = self.pages[key] if key in self.page_keys else None
         if page is None:
             return
+        if rest and hasattr(page, "open_category"):
+            cat, _, action = rest.partition(":")
+            page.open_category(cat)
+            if action and hasattr(page, "open_connection"):
+                QTimer.singleShot(0, page, lambda a=action: page.open_connection(a))   # sayfa görünür olduktan sonra
         if hasattr(page, "refresh"):
             try:
                 page.refresh()

@@ -505,34 +505,54 @@ def test_ayarlar_saglayici_anahtari_ve_butce(win, monkeypatch, fake_keyring):
     page.refresh()
     assert page.budget.value() == 5.0 and page.budget_enforce.isChecked()   # varsayılan $5/ay
     assert "Bu ayki tahmini harcama" in page.spend_label.text()
-    p = page._prov["anthropic"]
-    assert p["key_label"].text() == "yok"
-    p["input"].setText(ANT_KEY)
-    page.save_provider_key("anthropic")
+    # 2026-11-12: tek "Sağlayıcı ekle" ekranı (ui/connections.py) — Anthropic satırı anahtar yokken listede yok
+    from evren_studio.ui import connections
+
+    sec = page.connections
+    assert "anthropic" not in sec.row_widgets
+    dlg = connections.ConnectionDialog(w.ctx, "anthropic")
+    dlg.key.setText(ANT_KEY)
+    dlg.save()
+    assert dlg.result_id == "anthropic"
     assert secrets.load_api_key("anthropic") == ANT_KEY
     assert w.ctx.has_provider_key("anthropic")
-    assert ANT_KEY not in p["key_label"].text() and "sk-ant-a" in p["key_label"].text()
-    assert p["input"].text() == ""
+    sec.refresh()
+    sub = " ".join(lab.text() for lab in sec.row_widgets["anthropic"].findChildren(type(page.spend_label)))
+    assert ANT_KEY not in sub and "sk-ant-a" in sub                         # maskeli
     # bütçe kaydı
     page.budget.setValue(12.5)
     page._collect(w.ctx.settings)
     assert w.ctx.settings.monthly_budget_usd == 12.5
     # silme
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
-    page.delete_provider_key("anthropic")
+    assert sec.remove("anthropic")
     assert secrets.load_api_key("anthropic") is None and not w.ctx.has_provider_key("anthropic")
+    assert "anthropic" not in sec.row_widgets
 
 
-def test_ayarlar_baglanti_dogrulama(win):
+def test_ayarlar_baglanti_dogrulama(win, monkeypatch, fake_keyring):
+    """Satırdaki "Dene": model listesi istenir (ücretsiz); sonuç satırda gösterilir (Kilo Code gibi)."""
+    from evren_studio.api.anthropic_client import AnthropicClient
+
     app, w = win
     page = w.pages["settings"]
-    w.ctx._provider_keys["anthropic"] = ANT_KEY
+    secrets.save_api_key(ANT_KEY, "anthropic")
+    w.ctx.provider_key("anthropic", refresh=True)
+    page.connections.refresh()
     rec = Recorder([httpx.Response(200, json={"data": [{"id": "claude-haiku-5-5"}]})])
-    w.ctx.make_client_for = lambda provider, log_sink=None: ant(rec)
-    page.verify_provider("anthropic")
-    st = page._prov["anthropic"]["status"]
-    assert _wait(app, lambda: "Bağlantı başarılı" in st.text() or "başarısız" in st.text())
-    assert "claude-haiku-5-5" in st.text()
+    seen_keys = []
+    real_init = AnthropicClient.__init__
+
+    def init(self, api_key, *a, **kw):
+        seen_keys.append(api_key)
+        kw["transport"] = httpx.MockTransport(rec)
+        real_init(self, api_key, *a, **kw)
+
+    monkeypatch.setattr(AnthropicClient, "__init__", init)
+    page.connections.test("anthropic")
+    st = page.connections.row_widgets["anthropic"].status_label
+    assert _wait(app, lambda: "Bağlandı" in st.text() or "✗" in st.text())
+    assert "✓ Bağlandı" in st.text() and seen_keys == [ANT_KEY]
 
 
 def _haiku_text_stream(text="Merhaba!"):

@@ -15,15 +15,14 @@ BEKLENEN = {
     "update_check": "genel", "progress_critic": "ajan", "auto_backup": "gizlilik",
     "theme": "gorunum", "font_size": "gorunum", "compact_view": "gorunum", "simple_view": "gorunum",
     "show_reasoning": "gorunum",
-    "key_input": "saglayicilar", "budget": "saglayicilar", "budget_enforce": "saglayicilar",
-    "gateways": "saglayicilar",
+    "connections": "saglayicilar", "budget": "saglayicilar", "budget_enforce": "saglayicilar",
     "plan_first": "ajan", "scope_check": "ajan", "project_map": "ajan", "learnings_suggest": "ajan",
     "suggest_project": "ajan", "auto_test_tools": "ajan", "auto_desktop_tool": "ajan", "edit_diag": "ajan", "test_check": "ajan", "plan_guard": "ajan",
     "tool_protocol": "ajan", "max_steps": "ajan", "cmd_timeout": "ajan", "output_limit": "ajan",
     "autopro_smart": "autopro", "autopro_probe": "autopro", "autopro_architect": "autopro",
     "auto_switch": "autopro", "quota_guard_turns": "autopro", "auto_resume": "autopro",
     "auto_compact": "baglam", "compact_percent": "baglam", "compact_max": "baglam", "compact_model": "baglam",
-    "tavily_input": "web", "web_tools_chat": "web",
+    "tavily_manage_btn": "web", "web_tools_chat": "web",
     "mcp_card": "baglayicilar",
     "install_mode": "bilgisayar", "data_dir": "bilgisayar", "game_card": "bilgisayar",
     "untrusted_list": "bilgisayar",
@@ -87,9 +86,9 @@ def test_menu_secince_yalniz_o_sayfa_gorunur(win):
     page = w.pages["settings"]
     page.open_category("web")
     assert page.current_category() == "web"
-    assert page.tavily_input.isVisible() and not page.theme.isVisible()
+    assert page.tavily_manage_btn.isVisible() and not page.theme.isVisible()
     page.open_category("gorunum")
-    assert page.theme.isVisible() and not page.tavily_input.isVisible()
+    assert page.theme.isVisible() and not page.tavily_manage_btn.isVisible()
 
 
 def test_bos_menuler_gizli_dolu_menuler_gorunur(win):

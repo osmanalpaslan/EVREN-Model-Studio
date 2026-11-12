@@ -519,6 +519,13 @@ QPushButton#SuggestionCard {{ background: {glass}; border: 1px solid {p.rim}; bo
                               text-align: left; padding: 12px 14px; color: {p.text_dim}; }}
 QPushButton#SuggestionCard:hover {{ border-color: {p.accent}; color: {p.text}; background: {p.surface}; }}
 QTextBrowser[md="true"] {{ background: transparent; border: none; padding: 0; }}
+/* ---- Sağlayıcılar ve anahtarlar (tek ekran, 2026-11-12) ---- */
+QFrame#ConnRow {{ background: {p.surface2}; border: 1px solid {p.border}; border-radius: 12px; }}
+QLabel#ConnBadge {{ background: {p.accent_soft}; color: {p.text}; border: 1px solid {p.rim}; border-radius: 17px;
+                    font-weight: 700; }}
+QPushButton#ProviderTile {{ background: {glass}; border: 1px solid {p.rim}; border-radius: {R_CARD}px;
+                            text-align: left; padding: 10px 14px; color: {p.text}; }}
+QPushButton#ProviderTile:hover {{ border-color: {p.accent}; background: {p.surface}; }}
 QPlainTextEdit#CodeView, QPlainTextEdit#DiffView, QPlainTextEdit#TerminalView {{
     background: {p.code_bg}; border: 1px solid {p.code_border}; border-radius: 10px; padding: 6px;
 }}

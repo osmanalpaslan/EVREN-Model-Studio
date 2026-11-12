@@ -104,43 +104,41 @@ def test_baglam_modelleri_anahtarla_gorunur_auto_pro_kullanmaz_ve_kalici(win, fa
 
 
 def test_ekle_penceresi_model_getir_kaydet_sil(win, fake_keyring, monkeypatch):
+    """2026-11-12: ağ geçidi artık tek "Sağlayıcı ekle" ekranından (ui/connections.py) eklenir; davranış aynı."""
     app, w, tmp = win
-    from PySide6.QtWidgets import QDialog, QMessageBox
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QMessageBox
 
-    from evren_studio.ui import gateways_card
+    from evren_studio.ui import connections
 
     monkeypatch.setattr(CompatClient, "list_models", lambda self: [
         type("M", (), {"id": join_model(self.provider_id, "anthropic/claude-x")})(),
         type("M", (), {"id": join_model(self.provider_id, "openai/gpt-y")})()])
-    dlg = gateways_card.GatewayDialog(w.ctx)
-    dlg.kind.setCurrentIndex(dlg.kind.findData("openrouter"))
+    dlg = connections.ConnectionDialog(w.ctx)
+    dlg.open_template("openrouter")
     dlg.key.setText("sk-or-ABCDEF1234567890")
-    dlg.fetch_models()
+    dlg.test()
     end = time.monotonic() + 5
     while dlg.models.count() < 2 and time.monotonic() < end:
         app.processEvents()
     assert dlg.models.count() == 2
     dlg.save()
-    assert dlg.result_gateway is None and "işaretleyin" in dlg.status.text()    # model seçilmeden kaydedilmez
-    from PySide6.QtCore import Qt
-
+    assert dlg.result_id is None and "işaretleyin" in dlg.status.text()       # model seçilmeden kaydedilmez
     dlg.models.item(0).setCheckState(Qt.Checked)
     dlg.save()
-    g = dlg.result_gateway
+    assert dlg.result_id == "gw-openrouter"
+    g = w.ctx.gateways()[0]
     assert g["id"] == "gw-openrouter" and g["models"] == ["anthropic/claude-x"]
     assert fake_keyring.store[("EVREN-Model-Studio", "gw-openrouter_api_key")] == "sk-or-ABCDEF1234567890"
-    assert "sk-or-" not in json.dumps(g)                                     # anahtar ayara yazılmaz
+    assert "sk-or-" not in json.dumps(w.ctx.settings.gateways)               # anahtar ayara yazılmaz
 
-    sec = w.pages["settings"].gateways
-    def fake_exec(self):
-        self.result_gateway = g
-        return QDialog.Accepted
-    monkeypatch.setattr(gateways_card.GatewayDialog, "exec", fake_exec)
-    sec.edit(None)
-    assert [x["id"] for x in w.ctx.gateways()] == ["gw-openrouter"]
+    sec = w.pages["settings"].connections
+    sec.refresh()
+    assert "gw-openrouter" in sec.row_widgets
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
-    sec.remove(w.ctx.gateways()[0])
+    assert sec.remove("gw-openrouter")
     assert w.ctx.gateways() == [] and ("EVREN-Model-Studio", "gw-openrouter_api_key") not in fake_keyring.store
+    assert "gw-openrouter" not in sec.row_widgets
 
 
 def test_tur_akisinda_ag_gecidi_modeline_istek_gider(win, fake_keyring, monkeypatch):

@@ -254,10 +254,26 @@ def test_ayarlar_tavily_kaydet_kota_sil(tmp_path, monkeypatch, fake_keyring):
     assert isinstance(page, SettingsPage)
     val = page.tavily_row.findChildren(QLabel)[1]
     assert val.text().startswith("yok")
-    page.tavily_input.setText("tvly-dev-SAHTEANAHTAR123456")
-    page.save_tavily_key()
+    # 2026-11-12: Tavily anahtarı tek "Sağlayıcılar ve anahtarlar" ekranından girilir; Web araması sayfasındaki düğme
+    # o pencereyi Tavily için açar
+    from PySide6.QtWidgets import QDialog
+
+    from evren_studio.ui import connections
+
+    opened = []
+
+    def fake_exec(dlg):
+        opened.append(dlg.tpl.key)
+        dlg.key.setText("tvly-dev-SAHTEANAHTAR123456")
+        dlg.save()
+        return QDialog.Accepted if dlg.result_id else QDialog.Rejected
+
+    monkeypatch.setattr(connections.ConnectionDialog, "exec", fake_exec)
+    page.manage_tavily_key()
+    assert opened == ["tavily"]
     assert fake_keyring.store[("EVREN-Model-Studio", "tavily_api_key")] == "tvly-dev-SAHTEANAHTAR123456"
     assert "SAHTEANAHTAR" not in val.text() and val.text().startswith("tvly-dev")      # maskeli
+    assert "tavily" in page.connections.row_widgets, "tek listede de görünür"
     monkeypatch.setattr(websearch, "usage", lambda: {"plan": "Researcher", "used": 40, "limit": 1000})
     page.show_tavily_usage()
     end = _t.monotonic() + 5
@@ -265,6 +281,6 @@ def test_ayarlar_tavily_kaydet_kota_sil(tmp_path, monkeypatch, fake_keyring):
         app.processEvents()
     assert "kalan 960" in page.tavily_status.text()
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
-    page.delete_tavily_key()
+    assert page.connections.remove("tavily")                   # tek listeden kaldırılır; Web araması da güncellenir
     assert ("EVREN-Model-Studio", "tavily_api_key") not in fake_keyring.store and val.text().startswith("yok")
     w.close()

@@ -260,6 +260,11 @@ class AppContext:
         for p in ("openai", "anthropic", *(g["id"] for g in self.gateways())):
             if self.has_provider_key(p):
                 out.add(p)
+        # Anahtar istemeyen türler (yerel Ollama/LM Studio, özel sunucu) kayıtlıysa kullanılabilir (2026-11-12: eskiden
+        # anahtarsız kayıtların modelleri seçicide hiç görünmüyordu)
+        from ..api.providers import KEYLESS_KINDS
+
+        out.update(g["id"] for g in self.gateways() if g.get("kind") in KEYLESS_KINDS)
         return out
 
     def chat_models(self) -> list[ModelInfo]:
@@ -448,7 +453,7 @@ class AppContext:
         key = self.api_key()
         if not key:
             raise RuntimeError(
-                "API anahtarı tanımlı değil. Ayarlar > API Anahtarı bölümünden "
+                "API anahtarı tanımlı değil. Ayarlar > Sağlayıcılar ve anahtarlar bölümünden "
                 "girin. Anahtar Windows Credential Manager'da saklanır."
             )
         return EvrenClient(
@@ -639,14 +644,27 @@ class AppContext:
     def has_provider_key(self, provider: str) -> bool:
         return bool(self.provider_key(provider))
 
+    def provider_ready(self, provider: str) -> bool:
+        """Sağlayıcı kullanılabilir mi: anahtarı var ya da anahtar istemeyen türde kayıtlı (yerel Ollama/LM Studio,
+        özel sunucu). Model seçimi, gönderim ve zamanlanmış görev bu denetimi kullanır (2026-11-12)."""
+        if self.has_provider_key(provider):
+            return True
+        from ..api.providers import KEYLESS_KINDS
+
+        return any(g["id"] == provider and g.get("kind") in KEYLESS_KINDS for g in self.gateways())
+
     def make_client_for(self, provider: str, log_sink=None):
         """Sağlayıcının istemcisi. EVREN için make_client (testler bunu değiştirir)."""
         if provider == "evren":
             return self.make_client(log_sink=log_sink)
         key = self.provider_key(provider)
-        if not key:
+        from ..api.providers import KEYLESS_KINDS
+
+        keyless = any(g["id"] == provider and g.get("kind") in KEYLESS_KINDS for g in self.gateways())
+        if not key and not keyless:
             name = PROVIDERS[provider].name if provider in PROVIDERS else provider
-            raise RuntimeError(f"{name} API anahtarı tanımlı değil. Ayarlar > Sağlayıcılar bölümünden girin.")
+            raise RuntimeError(f"{name} API anahtarı tanımlı değil. Ayarlar > Sağlayıcılar ve anahtarlar bölümünden girin.")
+        key = key or ""                         # anahtarsız yerel/özel sunucu: kimlik başlığı gönderilmez
         timeout = max(self.settings.timeout_seconds, 180.0)
         if provider == "openai":
             from ..api.openai_client import OpenAIClient
@@ -657,7 +675,7 @@ class AppContext:
 
             info = PROVIDERS.get(provider)
             if info is None or not info.base_url:
-                raise RuntimeError("Ağ geçidinin adresi tanımlı değil. Ayarlar > Sağlayıcılar'dan düzenleyin.")
+                raise RuntimeError("Ağ geçidinin adresi tanımlı değil. Ayarlar > Sağlayıcılar ve anahtarlar'dan düzenleyin.")
             return CompatClient(info.base_url, key, provider, timeout=timeout, max_retries=self.settings.max_retries,
                                 log_sink=log_sink)
         if provider == "anthropic":

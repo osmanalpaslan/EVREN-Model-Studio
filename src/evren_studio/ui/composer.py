@@ -376,7 +376,7 @@ class Composer(QWidget):
             act.setCheckable(True)
             act.setChecked(mid == current)
             if not enabled:
-                act.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar")
+                act.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar ve anahtarlar")
             elif provider != "evren":
                 act.setToolTip("Ücretli model; harcama aylık bütçeye sayılır (tahmini)")
             else:
@@ -544,7 +544,7 @@ class Composer(QWidget):
             it = QListWidgetItem(icons.icon("cpu", size=16), text)
             it.setData(ROLE_VALUE, mid)
             it.setData(ROLE_KIND, "model")
-            it.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar" if not enabled
+            it.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar ve anahtarlar" if not enabled
                           else ("Ücretli model" if provider != "evren"
                                 else ("Yerel araç çağrısı destekli" if tools else "Metin protokolü ile çalışır")))
             self.popup.addItem(it)

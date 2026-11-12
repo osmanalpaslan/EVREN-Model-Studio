@@ -13,6 +13,15 @@
   bellek artışı 80 → 35 MB. Kapalı araç kartlarının ayrıntıları ve boş yanıt parçaları gerektiğinde kurulur; tek bir
   uzun ajan turu artık tamamı birden çizilmez. Sağ paneldeki Değişiklikler listesi yalnız açıkken hesaplanır ve ajan
   çalışırken her dosya değişikliğinde tüm farkları baştan hesaplamaz.
+- **Tüm API anahtarları ve motorlar tek ekranda (Kilo Code gibi)**: Ayarlar > "Sağlayıcılar ve anahtarlar". OpenAI,
+  Claude ve diğerleri için ayrı ayrı alanlar kalktı: tek liste + "Sağlayıcı ekle". Popüler sağlayıcılar (EVREN, OpenAI,
+  Anthropic/Claude, Google Gemini, DeepSeek, OpenRouter) kutu olarak, diğerleri aranabilir listede (Mistral, Groq, xAI,
+  Together, Fireworks, Moonshot, Hugging Face, Vercel, Kilo), bilgisayarınızdaki Ollama / LM Studio (anahtarsız,
+  ücretsiz) ve "Özel sağlayıcı" (adres + model adı). "Bağlantıyı dene" modelleri getirir; hata satırda nedeniyle
+  gösterilir (anahtar reddedildi, ulaşılamadı, kredi bitti…). Web araması (Tavily) anahtarı da aynı yerde. Eski
+  anahtarlarınız kendiliğinden listede. Karşılamadaki "Anahtar gir" doğrudan EVREN penceresini açar.
+- **Düzeltme — anahtarsız yerel/özel sunucu modelleri görünmüyordu**: anahtar istemeyen sunucu eklenince modelleri
+  seçicide çıkmıyordu; anahtarsız istekte sunucuya geçersiz kimlik başlığı gidiyordu.
 - **Ekran geçişlerinde yumuşak animasyon**: sayfalar arası (oturum ↔ Ayarlar/Modeller/…), başka oturum açılınca, yeni
   oturumda, sağ panel sekmelerinde, Ayarlar bölümlerinde ve zamanlanmış görev listesi ↔ ayrıntıda eski ekran 0,2 sn'de
   yumuşakça kaybolur, yeni sayfa birkaç piksel aşağıdan yerine oturur. Sayfa anında kullanılabilir (geçiş tıklamayı

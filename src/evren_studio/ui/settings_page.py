@@ -38,14 +38,13 @@ from ..agent.permissions import MODE_HINTS, MODES
 from ..config import Settings, default_data_dir
 from ..api.providers import PRICES_AS_OF, PROVIDERS
 from ..budget import current_state, format_usd
-from ..secrets import delete_api_key, load_api_key, mask_api_key, save_api_key
+from ..secrets import load_api_key, mask_api_key
 from .base_page import BasePage, card, kv_row
 from .mcp_settings import McpSettingsCard
 from .gametools_card import GameToolsCard
 from . import transitions
 from .workers import Task
 
-PAID_PROVIDERS = ("openai", "anthropic")
 
 DEFAULTS = Settings()
 # Varsayılana dönerken KORUNAN alanlar (kullanıcının verisi/konumu)
@@ -123,8 +122,6 @@ def kv_row_widget(label: str, widget: QWidget, default: str | None = None) -> QW
 def link(text: str, url: str) -> str:
     # QSS uygulanınca QLabel bağlantıları paletin Link rengini değil Qt'nin koyu mavisini alıyor;
     # koyu temada okunmuyordu → tema vurgu rengi (koyu temada beyaz) + alt çizgi açıkça verilir.
-    from . import theme
-
     # Renk YAZILMAZ: QLabel bağlantıyı uygulama paletinin Link rengiyle (= tema vurgusu) çizer; tema değişince
     # yazılı renk eski temada kalıyordu (2026-11-07 çalışırken tema geçişi denetimi: 1,21 kontrast)
     return f'<a href="{url}" style="text-decoration: underline;">{text}</a>'
@@ -157,7 +154,7 @@ class SettingsPage(BasePage):
     CATEGORIES = (
         ("genel", "Genel", "settings", "Varsayılan model, çalışma modu ve yazma kutusu"),
         ("gorunum", "Görünüm", "eye", "Tema, yazı boyutu ve sohbet görünümü"),
-        ("saglayicilar", "Hesap ve sağlayıcılar", "plug", "EVREN anahtarı, diğer sağlayıcılar ve bütçe"),
+        ("saglayicilar", "Sağlayıcılar ve anahtarlar", "plug", "Tüm API anahtarları ve motorlar tek yerde; aylık bütçe"),
         ("ajan", "Kod ajanı", "terminal", "Ajanın nasıl çalıştığı, bekçiler ve sınırlar"),
         ("autopro", "Auto Pro", "spark", "Motor seçimi, yoklama ve kota davranışı"),
         ("baglam", "Bağlam ve özet", "list", "Uzun konuşmaların otomatik özetlenmesi"),
@@ -299,51 +296,22 @@ class SettingsPage(BasePage):
         l.addWidget(self.show_reasoning)
         self._add("gorunum", c)
 
-        # ================= Hesap ve sağlayıcılar =================
-        c, l = card()
-        l.addWidget(section("EVREN API Anahtarı (Windows Credential Manager)"))
-        l.addWidget(hint(
-            "Anahtar kaynak koda, ayar dosyasına veya loglara yazılmaz; Windows'un kimlik "
-            "bilgisi kasasında saklanır ve maskeli gösterilir. “Varsayılanlara döndür” "
-            "anahtarı silmez."
-        ))
-        self.key_row = kv_row("Kayıtlı anahtar:", mask_api_key(load_api_key()) or "yok")
-        l.addWidget(self.key_row)
-        row = QHBoxLayout()
-        self.key_input = QLineEdit()
-        self.key_input.setEchoMode(QLineEdit.Password)
-        self.key_input.setPlaceholderText("Yeni anahtar (yapıştırın)…")
-        show_btn = QPushButton("Göster/Gizle")
-        show_btn.clicked.connect(
-            lambda: self.key_input.setEchoMode(
-                QLineEdit.Normal if self.key_input.echoMode() == QLineEdit.Password
-                else QLineEdit.Password))
-        save_btn = QPushButton("Anahtarı kaydet")
-        save_btn.clicked.connect(self.save_key)
-        del_btn = QPushButton("Anahtarı sil")
-        del_btn.setProperty("variant", "danger")
-        del_btn.clicked.connect(self.delete_key)
-        row.addWidget(self.key_input, 1)
-        row.addWidget(show_btn)
-        row.addWidget(save_btn)
-        row.addWidget(del_btn)
-        l.addLayout(row)
-        self._add("saglayicilar", c)
+        # ================= Sağlayıcılar ve anahtarlar (tek ekran, 2026-11-12) =================
+        # Kullanıcı: OpenAI ve Claude için ayrı ayrı alanlar olmasın; Kilo Code gibi TÜM API anahtarları ve motorlar
+        # için tek, sade bir alan. EVREN, ücretli sağlayıcılar, ağ geçitleri, yerel sunucular ve araç anahtarları
+        # (Tavily) aynı listede, tek "Sağlayıcı ekle" akışıyla (ui/connections.py).
+        from .connections import ConnectionsSection
 
-        self._prov: dict[str, dict] = {}
         c, l = card()
-        l.addWidget(section("Sağlayıcılar (isteğe bağlı)"))
+        l.addWidget(section("Yapay zekâ sağlayıcıları ve anahtarlar"))
+        self.connections = ConnectionsSection(ctx)
+        self.connections.changed.connect(self._connections_changed)
+        l.addWidget(self.connections)
         l.addWidget(hint(
-            "EVREN ücretsizdir. Başka modeller için anahtar ekleyin: OpenAI, Anthropic ya da tek anahtarla "
-            "çok model sunan ağ geçitleri (OpenRouter, Kilo, OpenAI uyumlu sunucu). Anahtarlar yalnız Windows "
-            "Credential Manager'da saklanır; mesajlar ve dosya içerikleri o şirketin sunucularına gider. "
-            "Gerçek anahtarla henüz doğrulanmadı."))
-        for pid in PAID_PROVIDERS:
-            l.addWidget(self._provider_block(pid))
-        from .gateways_card import GatewaysSection
-
-        self.gateways = GatewaysSection(ctx, on_changed=self.settings_saved.emit)
-        l.addWidget(self.gateways)
+            "Anahtarlar yalnız Windows Credential Manager'da saklanır; kaynak koda, ayar dosyasına ve loglara "
+            "yazılmaz, ekranda maskeli görünür. “Varsayılanlara döndür” anahtarları silmez. Ücretli sağlayıcılarda "
+            "mesajlar ve dosya içerikleri o şirketin sunucularına gider; ücretli sağlayıcılar gerçek anahtarla henüz "
+            "doğrulanmadı."))
         self._add("saglayicilar", c)
 
         c, l = card()
@@ -491,20 +459,16 @@ class SettingsPage(BasePage):
         self.tavily_row = kv_row("Kayıtlı Tavily anahtarı:", "yok")
         l.addWidget(self.tavily_row)
         row = QHBoxLayout()
-        self.tavily_input = QLineEdit()
-        self.tavily_input.setEchoMode(QLineEdit.Password)
-        self.tavily_input.setPlaceholderText("Tavily API anahtarı (tvly-…) yapıştırın")
-        tv_save = QPushButton("Kaydet")
-        tv_save.clicked.connect(self.save_tavily_key)
+        # Anahtar tek ekranda yönetilir (Sağlayıcılar ve anahtarlar); burada yalnız durum ve kota
+        self.tavily_manage_btn = QPushButton("Anahtarı ekle / değiştir")
+        self.tavily_manage_btn.setToolTip("Sağlayıcılar ve anahtarlar ekranında Tavily anahtarını açar")
+        self.tavily_manage_btn.clicked.connect(lambda _=None: self.manage_tavily_key())
         self.tavily_quota_btn = QPushButton("Kalan kotayı göster")
         self.tavily_quota_btn.setToolTip("Tavily'den bu ayki kullanımı okur (arama kredisi harcamaz)")
         self.tavily_quota_btn.clicked.connect(self.show_tavily_usage)
-        tv_del = QPushButton("Sil")
-        tv_del.setProperty("variant", "danger")
-        tv_del.clicked.connect(self.delete_tavily_key)
-        row.addWidget(self.tavily_input, 1)
-        for b in (tv_save, self.tavily_quota_btn, tv_del):
+        for b in (self.tavily_manage_btn, self.tavily_quota_btn):
             row.addWidget(b)
+        row.addStretch(1)
         l.addLayout(row)
         self.web_tools_chat = QCheckBox("Klasörsüz sohbette de internette arama ve sayfa okuma kullanılsın")
         self.web_tools_chat.setToolTip("Proje klasörü bağlı olmayan sohbette yalnız web_search ve web_fetch sunulur; "
@@ -831,7 +795,8 @@ class SettingsPage(BasePage):
         self.schedule_max.setValue(int(s.schedule_max_minutes))
         self.desktop_blocked.setText(", ".join(str(k) for k in (s.desktop_blocked_keys or [])))
         self.desktop_skip.setText(", ".join(str(k) for k in (s.desktop_skip_processes or [])))
-        self._refresh_provider_rows()
+        self.connections.refresh()
+        self._refresh_tavily_row()
         self._refresh_spend(s)
         self.mcp_card.load(s)
 
@@ -931,107 +896,20 @@ class SettingsPage(BasePage):
         QMessageBox.information(self, "Varsayılanlar yüklendi",
                                 "Ayarlar varsayılan değerlere döndürüldü ve kaydedildi.")
 
-    def save_key(self) -> None:
-        key = self.key_input.text().strip()
-        if not key:
-            QMessageBox.warning(self, "Boş Anahtar", "Yeni anahtar alanı boş.")
-            return
-        try:
-            save_api_key(key)
-        except Exception as exc:
-            QMessageBox.critical(
-                self, "Güvenli Saklama Başarısız",
-                f"Anahtar Windows Credential Manager'a yazılamadı:\n{exc}\n\n"
-                "Düz metin dosyaya geçilmez; lütfen Windows kimlik bilgisi "
-                "hizmetinin çalıştığını kontrol edin."
-            )
-            return
-        self.ctx.api_key(refresh=True)
-        self.key_input.clear()
-        self.key_row.findChildren(QLabel)[1].setText(mask_api_key(load_api_key()) + " (güncellendi)")
+    # ---- sağlayıcılar ve anahtarlar (tek ekran: ui/connections.py) --------------------------------------
+
+    def _connections_changed(self) -> None:
+        """Bir sağlayıcı/anahtar eklenip silinince: model listeleri, sağlayıcıya özel sayfalar, Tavily durumu."""
+        self._refresh_tavily_row()
         self.settings_saved.emit()
 
-    def delete_key(self) -> None:
-        if QMessageBox.question(
-            self, "Anahtarı Sil", "API anahtarı Windows Credential Manager'dan silinsin mi?",
-        ) == QMessageBox.Yes:
-            delete_api_key()
-            self.ctx.api_key(refresh=True)
-            self.key_row.findChildren(QLabel)[1].setText("yok")
-
-    # ---- ücretli sağlayıcılar ----------------------------------------------
-
-    def _provider_block(self, pid: str) -> QWidget:
-        info = PROVIDERS[pid]
-        box = QWidget()
-        v = QVBoxLayout(box)
-        v.setContentsMargins(0, 6, 0, 6)
-        v.setSpacing(6)
-        badge = "" if info.verified else "  ·  doğrulanmadı"
-        # sabit renk yok: "ücretli" etiketi temanın uyarı rengini alır (açık temada da okunur, R-33)
-        head = QHBoxLayout()
-        head.addWidget(QLabel(f"<b>{info.name}</b>"))
-        paid = QLabel(f"ücretli{badge}")
-        paid.setProperty("role", "warning")
-        head.addWidget(paid)
-        head.addStretch(1)
-        v.addLayout(head)
-        # Sade görünüm (Madde 9): anahtar alma adımları, bağlantılar ve notlar "Nasıl alınır?" ile açılır
-        more = QPushButton("Nasıl alınır?")
-        more.setProperty("variant", "ghost")
-        more.setCheckable(True)
-        head.insertWidget(head.count() - 1, more)
-        details = QWidget()
-        dv = QVBoxLayout(details)
-        dv.setContentsMargins(0, 0, 0, 0)
-        steps = "".join(f"<li>{s}</li>" for s in info.steps)
-        how = QLabel(f"Anahtar nasıl alınır:<ol style='margin-top:2px'>{steps}</ol>")
-        how.setWordWrap(True)
-        how.setProperty("role", "dim")
-        dv.addWidget(how)
-        links = QLabel(" · ".join([
-            link("API anahtarları", info.keys_url),
-            link("Kredi / faturalama", info.billing_url),
-            link("Kullanım", info.usage_url),
-            link("Belgeler", info.docs_url),
-        ]))
-        links.setOpenExternalLinks(True)
-        dv.addWidget(links)
-        for n in info.notes:
-            dv.addWidget(hint("• " + n))
-        details.setVisible(False)
-        more.toggled.connect(details.setVisible)
-        v.addWidget(details)
-        key_row = kv_row(f"Kayıtlı {info.name} anahtarı:", "yok")
-        v.addWidget(key_row)
-        row = QHBoxLayout()
-        inp = QLineEdit()
-        inp.setEchoMode(QLineEdit.Password)
-        inp.setPlaceholderText(f"{info.name} API anahtarı ({info.key_prefix}…) yapıştırın")
-        save_btn = QPushButton("Kaydet")
-        save_btn.clicked.connect(lambda _=False, p=pid: self.save_provider_key(p))
-        test_btn = QPushButton("Bağlantıyı doğrula")
-        test_btn.setToolTip("Model listesini ister (ücretsiz bir istek; token harcamaz)")
-        test_btn.clicked.connect(lambda _=False, p=pid: self.verify_provider(p))
-        del_btn = QPushButton("Sil")
-        del_btn.setProperty("variant", "danger")
-        del_btn.clicked.connect(lambda _=False, p=pid: self.delete_provider_key(p))
-        row.addWidget(inp, 1)
-        for b in (save_btn, test_btn, del_btn):
-            row.addWidget(b)
-        v.addLayout(row)
-        status = QLabel("")
-        status.setWordWrap(True)
-        status.setProperty("role", "dim")
-        v.addWidget(status)
-        self._prov[pid] = {"key_label": key_row.findChildren(QLabel)[1], "input": inp,
-                           "status": status, "test": test_btn}
-        return box
-
-    def _refresh_provider_rows(self) -> None:
-        for pid, w in self._prov.items():
-            key = self.ctx.provider_key(pid, refresh=True)
-            w["key_label"].setText(mask_api_key(key) if key else "yok")
+    def open_connection(self, target: str | None = None) -> str | None:
+        """Sağlayıcılar menüsünü açar ve pencereyi gösterir: şablon (evren/openai/…) → ekleme; kayıtlı ağ geçidi
+        (gw-…) → düzenleme (ör. karşılamadaki "Anahtar gir", anahtarsız ücretli model seçimi)."""
+        self.open_category("saglayicilar")
+        if target and target.startswith("gw-") and any(g["id"] == target for g in self.ctx.gateways()):
+            return self.connections.edit(target)
+        return self.connections.add(target)
 
     def _refresh_spend(self, s: Settings | None = None) -> None:
         s = s or self.ctx.settings
@@ -1040,74 +918,6 @@ class SettingsPage(BasePage):
         per = ", ".join(f"{PROVIDERS[p].name} {format_usd(v)}" for p, v in spend.items() if p in PROVIDERS)
         self.spend_label.setText(f"<b>Bu ayki tahmini harcama:</b> {st.text().replace('bu ay tahmini ', '')}"
                                  + (f"  ({per})" if per else ""))
-
-    def save_provider_key(self, pid: str) -> None:
-        w = self._prov[pid]
-        key = w["input"].text().strip()
-        name = PROVIDERS[pid].name
-        if not key:
-            QMessageBox.warning(self, "Boş Anahtar", f"{name} anahtar alanı boş.")
-            return
-        if not key.startswith(PROVIDERS[pid].key_prefix):
-            if QMessageBox.question(
-                self, "Anahtar biçimi",
-                f"{name} anahtarları genellikle “{PROVIDERS[pid].key_prefix}” ile başlar. "
-                "Yine de kaydedilsin mi?",
-            ) != QMessageBox.Yes:
-                return
-        try:
-            save_api_key(key, pid)
-        except Exception as exc:
-            QMessageBox.critical(
-                self, "Güvenli Saklama Başarısız",
-                f"{name} anahtarı Windows Credential Manager'a yazılamadı:\n{exc}\n\n"
-                "Düz metin dosyaya geçilmez.")
-            return
-        w["input"].clear()
-        self._refresh_provider_rows()
-        w["key_label"].setText(w["key_label"].text() + " (güncellendi)")
-        w["status"].setText("Kaydedildi. “Bağlantıyı doğrula” ile deneyebilirsiniz.")
-        self.settings_saved.emit()       # model seçicide bu sağlayıcının modelleri açılır
-
-    def delete_provider_key(self, pid: str) -> None:
-        name = PROVIDERS[pid].name
-        if QMessageBox.question(
-            self, "Anahtarı Sil", f"{name} API anahtarı Windows Credential Manager'dan silinsin mi?",
-        ) != QMessageBox.Yes:
-            return
-        delete_api_key(pid)
-        self._refresh_provider_rows()
-        self._prov[pid]["status"].setText("")
-        self.settings_saved.emit()
-
-    def verify_provider(self, pid: str) -> None:
-        w = self._prov[pid]
-        name = PROVIDERS[pid].name
-        if not self.ctx.has_provider_key(pid):
-            w["status"].setText(f"Önce {name} anahtarını kaydedin.")
-            return
-        w["status"].setText("Bağlanılıyor…")
-        w["test"].setEnabled(False)
-
-        def job():
-            client = self.ctx.make_client_for(pid)
-            try:
-                return client.list_models()
-            finally:
-                close = getattr(client, "close", None)
-                if close:
-                    close()
-
-        def done(models):
-            w["test"].setEnabled(True)
-            ids = ", ".join(m.id for m in models[:6]) or "katalogdaki model bulunamadı"
-            w["status"].setText(f"✓ Bağlantı başarılı — kullanılabilir modeller: {ids}")
-
-        def fail(exc):
-            w["test"].setEnabled(True)
-            w["status"].setText(f"✗ Bağlantı başarısız: {exc}")
-
-        Task(job, on_done=done, on_error=fail).start()
 
     # ---- web araması (Tavily) ------------------------------------------------
 
@@ -1119,33 +929,19 @@ class SettingsPage(BasePage):
         self.tavily_row.findChildren(QLabel)[1].setText(
             mask_api_key(key) if key else "yok (anahtarsız arama kullanılır)")
 
-    def save_tavily_key(self) -> None:
-        key = self.tavily_input.text().strip()
-        if not key:
-            QMessageBox.warning(self, "Boş Anahtar", "Tavily anahtar alanı boş.")
-            return
-        if not key.startswith("tvly-") and QMessageBox.question(
-                self, "Anahtar biçimi", "Tavily anahtarları genellikle “tvly-” ile başlar. Yine de kaydedilsin mi?",
-        ) != QMessageBox.Yes:
-            return
-        try:
-            save_api_key(key, "tavily")
-        except Exception as exc:
-            QMessageBox.critical(self, "Güvenli Saklama Başarısız",
-                                 f"Tavily anahtarı Windows Credential Manager'a yazılamadı:\n{exc}\n\n"
-                                 "Düz metin dosyaya geçilmez.")
-            return
-        self.tavily_input.clear()
+    def manage_tavily_key(self) -> str | None:
+        """Tavily anahtarı tek ekrandan (Sağlayıcılar ve anahtarlar) eklenir/değiştirilir."""
+        has = any(c.id == "tavily" for c in self._connections_list())
+        res = self.connections.edit("tavily") if has else self.connections.add("tavily")
         self._refresh_tavily_row()
-        self.tavily_status.setText("Kaydedildi. “Kalan kotayı göster” ile anahtarı deneyebilirsiniz.")
+        if res:
+            self.tavily_status.setText("Kaydedildi. “Kalan kotayı göster” ile anahtarı deneyebilirsiniz.")
+        return res
 
-    def delete_tavily_key(self) -> None:
-        if QMessageBox.question(self, "Anahtarı Sil",
-                                "Tavily API anahtarı Windows Credential Manager'dan silinsin mi?") != QMessageBox.Yes:
-            return
-        delete_api_key("tavily")
-        self._refresh_tavily_row()
-        self.tavily_status.setText("Silindi. Web araması anahtarsız yollarla sürer.")
+    def _connections_list(self):
+        from .connections import connections
+
+        return connections(self.ctx)
 
     def show_tavily_usage(self) -> None:
         from ..agent import websearch
