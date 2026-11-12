@@ -4,11 +4,11 @@ baslik: Arka plan görevi hata verdi: OperationalError
 tur: gorev_hatasi
 onem: yuksek
 alan: genel
-durum: acik                # acik | cozuldu | kabul-edildi
+durum: cozuldu                # acik | cozuldu | kabul-edildi
 kaynak: uygulama
 ilk_gorulme: 2026-11-12T18:27:29+00:00
-cozuldu_tarih:
-cozum_kaydi:
+cozuldu_tarih: 2026-11-12T23:02:25+00:00
+cozum_kaydi: 2026-11-13-arka-plan-gorevi-hata-verdi-operationalerror
 ---
 
 # Arka plan görevi hata verdi: OperationalError
