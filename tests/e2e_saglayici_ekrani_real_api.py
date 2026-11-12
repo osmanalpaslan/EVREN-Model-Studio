@@ -14,13 +14,15 @@ from __future__ import annotations
 
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-os.environ.setdefault("EVREN_STUDIO_DATA_DIR", tempfile.mkdtemp(prefix="evren-e2e-saglayici-"))
+sys.path.insert(0, str(ROOT / "tools"))
+from gecici import klasor  # noqa: E402 — geçici veri klasörü çıkışta silinir (test_gecici_klasor bekçisi)
+os.environ.setdefault("EVREN_STUDIO_DATA_DIR", str(klasor("evren-e2e-saglayici-")))
 os.environ.setdefault("EVREN_STUDIO_NO_PROBE", "1")
+os.environ.setdefault("EVREN_GOZLEM_KAYNAK", "e2e")   # gözlem ajanı: bu koşunun kayıtları "e2e" kaynaklı
 
 from evren_studio import secrets  # noqa: E402
 from evren_studio.ui.app_context import AppContext  # noqa: E402
