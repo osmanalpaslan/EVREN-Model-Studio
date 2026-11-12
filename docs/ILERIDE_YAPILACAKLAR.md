@@ -297,7 +297,7 @@ Açık kalanlar / ileride:
       beklenirken 20-30 sn'lik yoklama.
 - [ ] gemma-4-31b için maraton ölçümü (kısa görevlerde en hızlı; uzun işte döngü geçmişi var).
 
-## 7. Toplu yapılacaklar listesi — BEKLİYOR (kullanıcı "toplu yap" diyene kadar BAŞLAMA; 2026-10-23)
+## 7. Toplu yapılacaklar listesi — YAPILDI (F1-F7, 2026-10-24; aşağıdaki §7.5 tablosu). Tek açık: ücretli sağlayıcıların gerçek anahtarla doğrulanması (ücretli → kullanıcı kararı)
 
 Kullanıcı kararı: maddeler biriktirilir, sonra toplu uygulanır. Rakip/açık kaynak analizi ve Auto Pro analizi
 `docs/knowledge/RAKIP_VE_AUTOPRO_ANALIZI.md`'de; oradan kullanıcının ONAYLADIĞI maddeler buraya eklenir.
