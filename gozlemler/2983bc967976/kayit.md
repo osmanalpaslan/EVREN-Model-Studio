@@ -4,11 +4,11 @@ baslik: Zorluk paketi görevi düştü: girdi
 tur: e2e_basarisiz
 onem: orta
 alan: test
-durum: acik                # acik | cozuldu | kabul-edildi
+durum: cozuldu                # acik | cozuldu | kabul-edildi
 kaynak: e2e
 ilk_gorulme: 2026-11-06T19:36:54+00:00
-cozuldu_tarih:
-cozum_kaydi:
+cozuldu_tarih: 2026-11-12T18:16:00+00:00
+cozum_kaydi: 2026-11-12-zorluk-paketi-gorevi-dustu-girdi
 ---
 
 # Zorluk paketi görevi düştü: girdi
