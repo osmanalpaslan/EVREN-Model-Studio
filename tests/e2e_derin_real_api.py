@@ -165,10 +165,15 @@ def main() -> int:
                                            marker=marker, gate=gate, runner_kw={"project_map": harita})
                 finally:
                     c.close()
+            def merge(messages):            # uygulamadaki gibi (deep_ui): tekrar eden sorular kısa iç istekle birleşir
+                text, _m = ctx.ai_chat("inceleme", messages, max_tokens=120, evren_only=True)
+                return text
+            notes: list[str] = []
             t0 = time.monotonic()
-            dp.understand(ast, sub_amb, gate, gate.max_parallel, lambda t: None)
-            print(f"1b ANLA (eksik veri, belirsiz): {len(ast.questions)} soru · {time.monotonic() - t0:.0f} sn",
-                  flush=True)
+            dp.understand(ast, sub_amb, gate, gate.max_parallel, notes.append,
+                          merge=None if "--birlestirmesiz" in sys.argv else merge)
+            print(f"1b ANLA (eksik veri, belirsiz): {len(ast.questions)} soru · {time.monotonic() - t0:.0f} sn"
+                  + "".join(f" · {n}" for n in notes if "birleştirildi" in n), flush=True)
             for q in ast.questions:
                 print("     ?", q[:160], flush=True)
             ok &= len(ast.questions) >= 1

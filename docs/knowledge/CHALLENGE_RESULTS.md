@@ -23,6 +23,20 @@
 | plan | Plan modunda özellik isteği | dosya değişmez, plan yazılır |
 | girdi | `input()` bekleyen betiği çalıştır | girdi beklediğini açıklar (takılmaz) |
 
+## 0.5.1 toplu ölçüm (2026-11-13 01:40-02:14, dal `surum/0.5.1-istekler`, auto)
+
+- Zorluk paketi **12/12, 520 sn** (önceki 928 / 1444 sn). mini_proje **5/5, 163 sn** (önce 362-363 sn ve 6 dk sınırında
+  kesilme). "Kısa kod" kuralının etkisi süreden bağımsız: modelin yazdığı kod+test 6034 karakter, test dosyası 102 satır
+  (önceki üç koşu 6862-9831 kar, 117-172 satır → ~%30 az); EVREN bu gece 58 kar/sn (önce 24-39) → süre kazancının bir
+  kısmı dış etken (değişmeyen planlama da 235 → 131 sn).
+- R-13: API E2E_OK · ajan 5/6 (düşen deepseek-v4.1-flash metin protokolü — bilinen aralıklı) · arayüz 14/15 → açılış
+  yükü düzeltmesinden sonra **15/15** (pencereyi doğrudan kuran testler canlı model listesini yüklemiyordu).
+- Proje (`--hedef paralel --paralel 3`): kabul **8/8**, 336 sn (plan 105 + yürütme 230; önce 9-12 dk).
+- Web QA (`tests/e2e_qa_real_api.py`, Playwright build/mcp_data'ya yeniden kuruldu): **9/9, bilinen hata 3/3**, 855 sn
+  (paralel yükte; 4. senaryo 501 sn).
+- Derin Mod (02:09): soru birleştirme 5 → 3 ("2 soru aynı kararı soruyordu"); önceden düşen ilgisiz testte 0 sorun. GEÇTİ.
+- Sağlayıcı ekranı (`tests/e2e_saglayici_ekrani_real_api.py`): 14/14.
+
 ## Derin Mod kanıt + soru ayıklama (2026-11-13 00:56-01:09, dal `surum/0.5.1-istekler`, `tests/e2e_derin_real_api.py`)
 
 - Yeni davranış (harita + gerçek test kanıtı, 00:56): Anla 37 sn (3/3 bulgu, 12 araç çağrısı) · belirsiz istek 50 sn,

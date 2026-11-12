@@ -235,6 +235,67 @@ def test_farkli_kararlar_birlesmez():
     assert dp.collect_questions([{"data": {"sorular": qs}}], limit=99) == qs
 
 
+# 2026-11-13 01:50 gerçek koşu: sözcük ayıklaması bu ikişer tekrarı ayıramadı (farklı sözcükler, ortak kök az)
+GERCEK_SORULAR_3 = [
+    "satislar.xlsx ve bolgeler.tsv proje klasörüne eklenecek mi, yoksa başka bir yerde mi? Eklenmeyecekse kurala aykırı "
+    "olacağı için örnek veriyle mi ilerleyeyim?",
+    "Raporda hangi ay (ya da tüm aylar ayrı sütun/satır olarak) raporlanacak ve çıktı dosyasının adı/konuğu ne olsun?",
+    "satislar.xlsx ve bolgeler.tsv projede yok: bu dosyaları sen mi ekleyeceksin, yoksa örnek/temsili veriyle mi "
+    "üretilsin?",
+    "Rapor tek bir ay mı içersin (hangi ay), yoksa eldeki tüm tarih aralığı mı raporlansın?",
+]
+
+
+def _ask(reply):
+    def ask(messages):
+        ask.seen.append(messages[-1]["content"])
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+    ask.seen = []
+    return ask
+
+
+def test_model_gruplamasi_ayni_karari_birlestirir_en_kapsamliyi_tutar():
+    assert len(dp.collect_questions([{"data": {"sorular": GERCEK_SORULAR_3}}])) == 4      # sözcükle ayrılamıyor
+    ask = _ask('{"gruplar": [[1, 3], [2, 4]]}')                                       # gerçek modelin yanıtı (3/3)
+    assert dp.merge_questions(GERCEK_SORULAR_3, ask) == GERCEK_SORULAR_3[:2]         # her gruptan en uzunu, sıra korunur
+    assert "KARARA göre grupla" in ask.seen[0] and "4. Rapor tek bir ay" in ask.seen[0]
+
+
+@pytest.mark.parametrize("reply", ['{"gruplar": [[1, 2]]}',                           # eksik numara
+                                   '{"gruplar": [[1, 2], [2, 3, 4]]}',                # tekrarlı numara
+                                   '{"gruplar": [["a"], [2, 3, 4]]}',                 # sayı değil
+                                   '{"gruplar": [[1, 2, 3, 4, 5]]}',                  # olmayan numara
+                                   "anlamadım", "", RuntimeError("ağ yok")])
+def test_gecersiz_gruplama_sorulari_degistirmez(reply):
+    """Tetiklenmeyen durum (R-22/R-26): güvenilmez yanıtta sözcük ayıklamasının sonucu AYNEN kalır."""
+    assert dp.merge_questions(GERCEK_SORULAR_3, _ask(reply)) == GERCEK_SORULAR_3
+
+
+def test_tek_soruda_ya_da_istek_yoksa_model_cagrilmaz():
+    ask = _ask('{"gruplar": [[1]]}')
+    assert dp.merge_questions(GERCEK_SORULAR_3[:1], ask) == GERCEK_SORULAR_3[:1] and ask.seen == []
+    assert dp.merge_questions(GERCEK_SORULAR_3, None) == GERCEK_SORULAR_3
+
+
+def test_anla_birlestirmeyi_dorde_kirpmadan_once_yapar():
+    """Tekrar yüzünden ayrı bir karar (5. soru) 4'e kırpılırken düşmemeli."""
+    qs = ["satislar.xlsx klasörde yok; ekler misiniz?", "Satış verisi dosyası nerede, siz mi vereceksiniz?",
+          "KDV oranı %18 mi %20 mi alınsın?", "Negatif tutarlı satırlar iade mi sayılsın?",
+          "Rapor hangi biçimde olsun (xlsx mi csv mi)?", "Tarih sütunu silinsin mi?"]
+    by_angle = {"anla-yapi": qs[0:2], "anla-kod": qs[2:4], "anla-test": qs[4:6]}
+
+    def sub(prompt, marker, label=""):
+        import json
+        return dp.SubResult("<bulgu>" + json.dumps({"ozet": "-", "sorular": by_angle[label]}) + "</bulgu>", "done")
+    st = dp.DeepState(goal="satış raporu üret")
+    logs = []
+    dp.understand(st, sub, log=logs.append, merge=_ask('{"gruplar": [[1, 2], [3], [4], [5], [6]]}'))
+    assert st.questions == [qs[1], qs[2], qs[3], qs[4]], "birleşince 5. karar listede kaldı"
+    assert any("1 soru aynı kararı soruyordu" in x for x in logs)
+
+
 def test_ayni_dosyanin_iki_ayri_karari_birlesmez_ama_ayni_karar_birlesir():
     """Dosya adı ortak sözcük sayılmaz (çok parçalı ad 4 ortak "sözcük" üretip iki ayrı kararı birleştiriyordu); aynı
     dosyayı anan ve anmayan aynı karar tek soru olur."""

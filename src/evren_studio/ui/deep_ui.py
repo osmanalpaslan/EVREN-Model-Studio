@@ -262,7 +262,12 @@ class DeepController(QObject):
         st = self.state
         st.phase = "anla"
         sub = self._sub(None, "kod")
-        self._bg(lambda: dp.understand(st, sub, self._gate, self._gate.max_parallel, self._log),
+
+        def merge(messages):               # tekrar eden soruları birleştiren kısa iç istek (R-24: ai_chat)
+            text, _m = self.ctx.ai_chat("inceleme", messages, max_tokens=120, session_id=self.view.session_id,
+                                        evren_only=True)
+            return text
+        self._bg(lambda: dp.understand(st, sub, self._gate, self._gate.max_parallel, self._log, merge=merge),
                  lambda _r: self._after_understand())
 
     def _quota_paused(self) -> bool:

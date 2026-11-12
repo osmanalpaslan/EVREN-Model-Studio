@@ -305,6 +305,38 @@ def collect_questions(findings: list[dict], limit: int = 4) -> list[str]:
     return out[:limit]
 
 
+MERGE_QUESTIONS_PROMPT = """Bir kod ajanı kullanıcıya şu soruları sormak istiyor. Soruları farklı incelemeciler yazdı;
+bazıları AYNI kararı farklı sözcüklerle soruyor olabilir.
+{numbered}
+
+Soruları KARARA göre grupla: aynı eksik dosyayı, aynı seçimi ya da aynı belirsizliği soranlar aynı grupta olsun; farklı
+kararlar ayrı gruplarda. Her numara tam olarak bir grupta yer almalı. Yalnız tek satır JSON ver: {{"gruplar": [[1, 3], [2]]}}"""
+
+
+def merge_questions(questions: list[str], ask: Callable[[list[dict]], str] | None) -> list[str]:
+    """Anlamca aynı soruları modelle tek soruya indirir (2026-11-13: 3 gerçek koşuda sözcük ayıklaması "klasörüne
+    eklenecek mi / projede yok", "hangi ay / tek bir ay mı" gibi ikişer tekrarı kaçırdı). Model soruları KARARA göre
+    gruplar; her gruptan en uzun (en kapsamlı) soruyu kod seçer — model soruyu yeniden yazamaz, uyduramaz. Her numara tam
+    bir grupta değilse ya da yanıt bozuksa sözcük ayıklamasının sonucu aynen kalır. Gerçek EVREN ölçümü (5 küme × 3):
+    "tut numaraları" biçimi 8/10, gruplama 13/15 doğru; ikisi de farklı kararları HİÇ birleştirmedi."""
+    if ask is None or len(questions) < 2:
+        return questions
+    numbered = "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1))
+    try:
+        from . import jsonfix
+
+        text = ask([{"role": "user", "content": MERGE_QUESTIONS_PROMPT.format(numbered=numbered)}]) or ""
+        m = re.search(r"\{.*\}", text, re.S)
+        data = (jsonfix.obj(m.group(0)) if m else None) or {}
+        groups = [[int(i) for i in g] for g in (data.get("gruplar") or [])]
+    except Exception:
+        return questions
+    if sorted(i for g in groups for i in g) != list(range(1, len(questions) + 1)):
+        return questions                                   # eksik/tekrarlı numara → güvenme
+    keep = sorted(max(g, key=lambda i: len(questions[i - 1])) for g in groups if g)
+    return [questions[i - 1] for i in keep]
+
+
 def answers_text(st: "DeepState") -> str:
     if not st.questions:
         return ""
@@ -501,8 +533,10 @@ def run_parallel(jobs: list[Callable[[], Any]], gate=None, max_parallel: int = 2
 
 
 def understand(st: DeepState, sub: Callable[[str, str], SubResult], gate=None, max_parallel: int = 2,
-               log: Callable[[str], None] = lambda t: None) -> None:
-    """ANLA: açılar paralel; her alt ajan <bulgu> verir (yoksa bir kez daha istenir — R-26)."""
+               log: Callable[[str], None] = lambda t: None,
+               merge: Callable[[list[dict]], str] | None = None) -> None:
+    """ANLA: açılar paralel; her alt ajan <bulgu> verir (yoksa bir kez daha istenir — R-26). merge: kısa iç model
+    çağrısı (ai_chat) — anlamca aynı sorular 4'e kırpılmadan ÖNCE birleşir (tekrar yüzünden ayrı karar düşmesin)."""
     angles = ANGLES if st.kind == "is" else ANGLES[:2]
 
     def one(key, angle):
@@ -514,7 +548,13 @@ def understand(st: DeepState, sub: Callable[[str, str], SubResult], gate=None, m
     ok = sum(1 for f in st.findings if f.get("data"))
     log(f"Anla: {ok}/{len(angles)} inceleme bulgu verdi")
     if st.kind == "is":
-        st.questions = collect_questions(st.findings)
+        qs = collect_questions(st.findings, limit=6)
+        if merge is not None and len(qs) >= 2:
+            merged = merge_questions(qs, merge)
+            if len(merged) < len(qs):
+                log(f"Anla: {len(qs) - len(merged)} soru aynı kararı soruyordu, birleştirildi")
+            qs = merged
+        st.questions = qs[:4]
 
 
 def plan(st: DeepState, sub_with_model: Callable[[str, str, str], SubResult], models: list[str],

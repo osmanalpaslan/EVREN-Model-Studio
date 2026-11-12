@@ -14,7 +14,8 @@
   test düşerse, denetçilerin yorumundan bağımsız olarak "yüksek" sorun sayılır ve düzeltme turu açılır (gerçek test
   çıktısı denetçilere kanıt olarak gider). Projede işten ÖNCE de düşen testler varsa bunlar bu değişikliğin hatası
   sayılmaz; ilgisiz eski hata için düzeltme turu açılmaz. Alt ajanlar proje haritasını kullanır. Aynı kararı farklı sözcüklerle soran tekrar eden sorular tek
-  soruya iner (gerçek koşuda 4 sorudan 2'si tekrardı).
+  soruya iner: önce sözcük benzerliği, sonra kısa bir model isteği soruları karara göre gruplar ve her gruptan en kapsamlı
+  soru kalır (gerçek koşuda 5 soru → 3; farklı kararlar hiç birleştirilmedi).
 - **Ajan daha kısa ve odaklı kod/test yazar**: EVREN saniyede ~10-20 token yazdığı için gereksiz uzun test dosyaları
   dakikalar sürüyordu (171 satırlık tek dosya 5 dk); her davranış ve kenar durum için bir test kuralı korunur.
 - **Düzenleme hatası daha hızlı toparlanır**: ajanın değiştirmek istediği metin dosyada birebir bulunamazsa dosyadaki
