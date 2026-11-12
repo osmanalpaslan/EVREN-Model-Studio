@@ -86,6 +86,11 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   OpenConsole.exe spec datas (`winpty/`; PyInstaller kancası yok), duman `terminal=var` + check_smoke. Ajanın
   komutları bu kabukta ÇALIŞMAZ (ajan kendi yalıtılmış komutlarını kullanır).
 
+- TAM TAKIM (C dalı + master birleşik, sürüm 0.5.0): 1171/1171, 8 dk 54 sn (2026-11-12 18:51-19:00). İlk deneme
+  01:36'da başlatılmıştı: 1 dk sonra Windows Modern Bekleme'ye geçti, 06:59'da Windows Update yeniden başlattı
+  (olay günlüğü Kernel-Power 506/507, User32 1074) → koşu ve oturum kapandı; kod sorunu değil. Artık uzun
+  işlerden önce `~/.claude/skills/yeni-proje/uyanik_tut.ps1` (SetThreadExecutionState).
+
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.

@@ -1,6 +1,8 @@
 # Değişiklik Günlüğü
 
-## Yayınlanmamış — açık kaynak depolardan gelen geliştirmeler (Madde 20)
+## 0.5.0 — 2026-11-12 (kurulum dosyası `EVREN-Studio-Kurulum-0.5.0.exe`)
+
+Açık kaynak depo taramasından gelen geliştirmeler (Madde 20):
 
 - **Gerçek terminal** (C4): Terminal sekmesinde yeni "Kabuk" görünümü — proje klasöründe sürekli açık PowerShell:
   `cd` ve değişkenler komutlar arasında kalır, soru soran komutlara (onay, ad, şifre değil) yanıt verebilirsiniz,
