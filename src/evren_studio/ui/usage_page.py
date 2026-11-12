@@ -1,7 +1,7 @@
 """Kullanım / kota bilgileri sayfası (API sağlıyorsa)."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import QLabel, QProgressBar, QPushButton
+from PySide6.QtWidgets import QLabel, QProgressBar, QPushButton, QWidget
 
 from .base_page import BasePage, card, kv_row
 from .workers import Task

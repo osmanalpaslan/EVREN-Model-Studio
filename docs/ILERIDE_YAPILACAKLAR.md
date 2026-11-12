@@ -94,19 +94,20 @@ Kurulum sihirbazında "Geliştirme araçları" sayfası (onay kutuları):
 
 ### 1.4 Uygulama tarafında gereken değişiklikler
 
-- [ ] Sürümü tek kaynağa indir (`__version__`; pyproject dinamik sürüm).
-- [ ] Paketlenmiş çalışma (`sys.frozen`) için kaynak yolları: `assets/evren.ico`
+- [x] Sürümü tek kaynağa indir (`__version__`; pyproject dinamik sürüm). (0.4.0; test_kurulum_paketi)
+- [x] Paketlenmiş çalışma (`sys.frozen`) için kaynak yolları (0.4.x paket + duman testi): `assets/evren.ico`
       ve varsa diğer dosyalar `sys._MEIPASS`/uygulama klasöründen okunmalı
       (2026-10-19 itibarıyla kod dosya kaynağına bağımlı değil; simgeler kodla çiziliyor).
-- [ ] `sys.executable` kullanımını tara: paketli uygulamada bu EXE'nin kendisidir;
+- [x] `sys.executable` kullanımını tara (mcp._base_python, 2026-11-07): paketli uygulamada bu EXE'nin kendisidir;
       Python sanıp alt süreç başlatan kod OLMAMALI (2026-10-19 taramasında `src/`
       içinde yok; testler/araçlar etkilenmez).
-- [ ] Tek örnek (single instance) + `AppMutex` adı.
-- [ ] Geliştiriciye özel dosyalar pakete girmez: `tools/ai_memory.py`, `tests/`,
+- [x] Tek örnek (single instance) + `AppMutex` adı. (2026-11-12: önceden mutex YALNIZ kurulum içindi, ikinci açılış
+      ikinci pencere açıyordu → zamanlanmış görevler iki kez çalışıyordu; artık çalışan pencere öne gelir.)
+- [x] Geliştiriciye özel dosyalar pakete girmez (spec datas yalnız uygulama dosyaları): `tools/ai_memory.py`, `tests/`,
       `docs/ai-memory/`, motor talimat dosyaları.
-- [ ] Hakkında/Ayarlar: sürüm ve "Güncellemeleri denetle" (GitHub Releases
+- [x] Hakkında/Ayarlar: sürüm ve "Güncellemeleri denetle" (0.5.0, Madde 20 C2; Yardım + kenar çubuğu düğmesi) (GitHub Releases
       API'den son sürümü okuyup bildirir; otomatik indirip kurmaz — ilk aşamada).
-- [ ] Çökme günlüğü yeri değişmez (`%LOCALAPPDATA%\EVREN-Model-Studio\logs`).
+- [x] Çökme günlüğü yeri değişmez (`%LOCALAPPDATA%\EVREN-Model-Studio\logs`).
 
 ### 1.5 Yapım hattı (build)
 
@@ -139,15 +140,15 @@ Kurulum sihirbazında "Geliştirme araçları" sayfası (onay kutuları):
 
 Temiz bir Windows'ta (Python, Git, Node KURULU OLMAYAN) — en kolayı **Windows
 Sandbox** (Windows 10/11 Pro'da yerleşik) veya sanal makine:
-- [ ] Setup açılır, Türkçe, kullanıcı kapsamında yönetici istemeden kurar.
-- [ ] Geliştirme araçları sayfası: işaretlenenler kurulur, kurulu olanlar atlanır.
-- [ ] Başlat menüsü + masaüstü kısayolu, simge doğru; uygulama açılır.
+- [x] Setup açılır, Türkçe, kullanıcı kapsamında yönetici istemeden kurar. (Sandbox, 0.4.2)
+- [x] Geliştirme araçları sayfası: işaretlenenler kurulur, kurulu olanlar atlanır. (Sandbox internetsiz, 0.4.2)
+- [x] Başlat menüsü + masaüstü kısayolu, simge doğru; uygulama açılır. (Sandbox, 0.4.2)
 - [ ] EVREN anahtarı kaydedilir/okunur (Credential Manager), gerçek istek çalışır.
 - [ ] Görsel yapıştırma, kullanım düğmesi, ajan bir Python projesinde test çalıştırır.
-- [ ] Kullanıcı adında boşluk ve Türkçe harf (ör. `C:\Users\Osman Alpaslan`).
+- [x] Kullanıcı adında boşluk ve Türkçe harf (ör. `C:\Users\Osman Alpaslan`). (geliştirme bilgisayarı)
 - [ ] Eski sürümün üzerine yükseltme: veri ve anahtar korunur.
 - [ ] Kaldırma: "verileri sil = hayır" veri kalır; "evet" veri + anahtarlar silinir.
-- [ ] Tüm kullanıcılar kurulumu (UAC) da çalışır.
+- [ ] Tüm kullanıcılar kurulumu (UAC) da çalışır. — DOĞRULANMADI (yönetici onayı gerekir)
 - [ ] Defender taraması temiz; SmartScreen davranışı belgelenir.
 - [ ] Ekran görüntüleriyle kurulum adımları (R-05), sonuç bu dosyaya ve
       CHANGELOG'a yazılır; doğrulanmayan madde "doğrulanmadı" diye kalır.

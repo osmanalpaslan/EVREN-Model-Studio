@@ -4,6 +4,12 @@
 
 Açık kaynak depo taramasından gelen geliştirmeler (Madde 20):
 
+- **Günlük otomatik yedek**: oturumlarınız her gün veri klasöründeki "yedekler"e kopyalanır (son 7 gün; API
+  anahtarları girmez). Ayarlar > Gizlilik'ten kapatılabilir.
+- **Düzeltme — uygulama ikinci kez açılınca ikinci pencere açılıyordu**: aynı veritabanı iki pencerede kullanılıyor,
+  zamanlanmış görevler iki kez çalışabiliyordu. Artık çalışan pencere öne gelir.
+- **Düzeltme — ajan PowerShell'de çalışmayan bash komut biçimi** (`<<'EOF'`) denediğinde komut boşuna
+  çalıştırılmaz; ne yapması gerektiği söylenir.
 - **Gerçek terminal** (C4): Terminal sekmesinde yeni "Kabuk" görünümü — proje klasöründe sürekli açık PowerShell:
   `cd` ve değişkenler komutlar arasında kalır, soru soran komutlara (onay, ad, şifre değil) yanıt verebilirsiniz,
   Ctrl+C çalışan komutu keser. Eski "Günlük" görünümü (ajanın komutları) aynen duruyor.

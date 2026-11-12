@@ -113,6 +113,17 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   "Her gün otomatik yedek al" (varsayılan açık); testlerde kapalı (EVREN_STUDIO_NO_AUTO_BACKUP). test_otomatik_yedek 3;
   mutasyon 4/4.
 
+- Bulgu 4 — okunurluk: açık temada kenar çubuğundaki "Henüz oturum yok" yazısı 4,39 kontrast (ui_denetim UYARI) →
+  "dim" rolü. Bulgu 5 — statik tarama (ruff F/B/PLE, 6 bulgu): GERÇEK ÇALIŞMA HATASI YOK; tip açıklamasında eksik içe
+  aktarma (usage_page QWidget), C2'de iki kez içe aktarılan sürüm adı temizlendi. Bulgu 6 — belge: ILERIDE §1.4/§1.7
+  kurulum listesi yapılmış maddeleri işaretsiz gösteriyordu → kanıtıyla işaretlendi; doğrulanmayan (tüm kullanıcılar
+  kurulumu/UAC) DOĞRULANMADI olarak kaldı.
+- DÜZELTİLMEYEN / KULLANICI KARARI GEREKTİREN analiz bulguları: (a) OpenAI/Anthropic sağlayıcıları gerçek ücretli
+  anahtarla hiç doğrulanmadı (izleniyor kaydı; ücretli → onay); (b) model davranış riskleri (zayıf model test dosyasını
+  değiştirme, çok fazlı işte faz unutma) izleniyor — bekçiler var; (c) testlerde PySide6 QDragEnterEvent eskimiş kurucu
+  uyarısı (yalnız test kodu); (d) tüm kullanıcılar (UAC) kurulumu ve kaldırmada veri silme seçeneği gerçek ortamda
+  denenmedi.
+
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.

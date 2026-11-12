@@ -200,7 +200,7 @@ class Sidebar(QWidget):
         lay.addWidget(self.list, 1)
 
         self.empty = QLabel("Henüz oturum yok.\n“Yeni oturum” ile başlayın.")
-        self.empty.setProperty("role", "faint")
+        self.empty.setProperty("role", "dim")         # faint açık temada 4,39 kontrast (ui_denetim UYARI)
         self.empty.setAlignment(Qt.AlignCenter)
         lay.addWidget(self.empty)
 
