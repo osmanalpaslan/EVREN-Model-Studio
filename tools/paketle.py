@@ -249,6 +249,8 @@ def check_smoke(lines: list[str]) -> list[str]:
         problems.append("ruff pakette YOK (hata bekçisi Python'da yalnız sözdizimine bakar)")
     if kv.get("json_repair") != "var":
         problems.append("json_repair pakette YOK (bozuk JSON onarımı çalışmaz)")
+    if kv.get("tek_ornek") != "var":
+        problems.append("QtNetwork pakette YOK: ikinci açılış ikinci pencere açar (zamanlanmış görevler çift çalışır)")
     if kv.get("terminal") != "var":
         problems.append(f"etkileşimli terminal pakette eksik: terminal={kv.get('terminal')} (pywinpty/pyte/winpty-agent)")
     if kv.get("harita_dilleri") != "11":

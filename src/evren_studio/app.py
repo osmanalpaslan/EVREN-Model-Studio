@@ -1,6 +1,7 @@
 """Uygulama giriş noktası."""
 from __future__ import annotations
 
+import os
 import sys
 import traceback
 from datetime import datetime
@@ -82,18 +83,80 @@ def _install_qt_message_handler() -> None:
 
 MUTEX_NAME = "EVREN.Studio"          # kurulum sihirbazı (Inno Setup AppMutex) çalışan uygulamayı bununla tanır
 _mutex = None
+ERROR_ALREADY_EXISTS = 183
 
 
-def _hold_mutex() -> None:
+def _hold_mutex() -> bool:
+    """Mutex'i alır. Dönüş: başka bir EVREN Studio ZATEN açık mı (aynı kullanıcı oturumunda)."""
     global _mutex
     if sys.platform != "win32":
-        return
+        return False
     try:
         import ctypes
 
-        _mutex = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
+        k32 = ctypes.windll.kernel32
+        # EVREN_STUDIO_INSTANCE: testler gerçek uygulamayla çakışmasın diye ayrı ad (kurulum sihirbazı sabit adı bilir)
+        _mutex = k32.CreateMutexW(None, False, os.environ.get("EVREN_STUDIO_INSTANCE") or MUTEX_NAME)
+        return k32.GetLastError() == ERROR_ALREADY_EXISTS
     except (AttributeError, OSError):
-        pass
+        return False
+
+
+# Tek örnek (2026-11-12 analiz bulgusu): ikinci açılış eskiden İKİNCİ pencere açıyordu → aynı veritabanı ve ayarlar iki
+# süreçte; zamanlanmış görevler, otomatik devam ve gözlem gönderimi İKİ KEZ çalışıyordu. Artık ikinci açılış çalışan
+# pencereye "öne gel" der ve kapanır. Yerel soket adı kullanıcıya özgüdür (aynı bilgisayardaki başka hesap etkilenmez).
+def instance_server_name() -> str:
+    import getpass
+
+    try:
+        user = getpass.getuser()
+    except Exception:                       # noqa: BLE001
+        user = "kullanici"
+    safe = "".join(ch if ch.isalnum() else "_" for ch in user)
+    return f"{os.environ.get('EVREN_STUDIO_INSTANCE') or 'EVREN.Studio'}.{safe}"
+
+
+def signal_existing(name: str | None = None, timeout_ms: int = 1500) -> bool:
+    """Çalışan örneğe "göster" iletir. Ulaşılamazsa False (o zaman yeni pencere açılır — ör. eski sürüm açık)."""
+    from PySide6.QtNetwork import QLocalSocket
+
+    sock = QLocalSocket()
+    sock.connectToServer(name or instance_server_name())
+    if not sock.waitForConnected(timeout_ms):
+        return False
+    sock.write(b"goster\n")
+    sock.waitForBytesWritten(timeout_ms)
+    sock.disconnectFromServer()
+    return True
+
+
+def listen_for_instances(window, name: str | None = None):
+    """İkinci açılışların "göster" isteğini dinler: pencere küçültülmüşse geri açılır ve öne gelir."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtNetwork import QLocalServer
+
+    name = name or instance_server_name()
+    server = QLocalServer(window)
+    server.setSocketOptions(QLocalServer.UserAccessOption)
+    if not server.listen(name):
+        QLocalServer.removeServer(name)               # önceki çökmeden kalan ad
+        if not server.listen(name):
+            return None
+
+    def on_conn() -> None:
+        sock = server.nextPendingConnection()
+        if sock is None:
+            return
+        sock.readyRead.connect(sock.readAll)
+        sock.disconnected.connect(sock.deleteLater)
+        window.setWindowState((window.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+        window.show()                                  # küçültme yukarıda kaldırıldı; gizliyse görünür olur
+        window.raise_()
+        window.activateWindow()
+        window.instance_pings = getattr(window, "instance_pings", 0) + 1
+    server.newConnection.connect(on_conn)
+    window._instance_server = server
+    return server
 
 
 def smoke_report(window) -> list[str]:
@@ -137,6 +200,12 @@ def smoke_report(window) -> list[str]:
         lines.append(f"harita_dilleri={len(tsmap.available())}")
     except Exception as exc:                # noqa: BLE001
         lines.append(f"harita_dilleri=HATA {type(exc).__name__}")
+    try:                                    # tek örnek (ikinci açılış çalışan pencereyi öne getirir) QtNetwork ister
+        from PySide6.QtNetwork import QLocalServer, QLocalSocket  # noqa: F401
+
+        lines.append("tek_ornek=var")
+    except ImportError:
+        lines.append("tek_ornek=YOK")
     try:                                    # etkileşimli terminal (agent/ptyshell.py, Madde 20 C4): kütüphane + yardımcı exe
         from pathlib import Path as _P
 
@@ -176,7 +245,8 @@ def main() -> int:
     from PySide6.QtWidgets import QApplication
 
     _install_excepthook()
-    _hold_mutex()
+    already = _hold_mutex()
+    smoke = "--duman-testi" in sys.argv or "--ikinci-ornek" in sys.argv
     if getattr(sys, "frozen", False):
         # Kurulum sihirbazı Python/Git/Node'u yeni kurduysa uygulama eski PATH ile açılır (sihirbazın ortamı)
         from .agent.environment import refresh_path
@@ -196,8 +266,12 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("EVREN Studio")
     app.setOrganizationName("EVREN Studio")
+    if already and not smoke and signal_existing():
+        return 0                                  # çalışan pencere öne geldi; ikinci pencere açılmaz
     window = MainWindow()
     window.show()
+    if not smoke:
+        listen_for_instances(window)
     # Kullanım düğmesi açılışta dolsun (testler MainWindow'u doğrudan kurar; ağ isteği yapmaz)
     from PySide6.QtCore import QTimer
 

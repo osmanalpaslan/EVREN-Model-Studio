@@ -98,6 +98,14 @@ geliştirildi (koşu modülleri sonradan yükler; ana klasörde kaynak değişme
   satırda tek başına bitiş kelimesi varsa çalıştırmadan ne yapılacağını söyleyen ToolError (bit kaydırma `x << y`
   etkilenmez). Tetiklenen 4 / tetiklenmeyen 6 (gerçek PowerShell'de çalıştırılarak).
 
+- Bulgu 2 (HATA) — tek örnek koruması YOKTU: `EVREN.Studio` mutex'i yalnız kurulum sihirbazı içindi; uygulama ikinci
+  kez açılınca ikinci pencere açılıyor, aynı veritabanı/ayarlar iki süreçte kullanılıyor, zamanlanmış görevler, otomatik
+  devam ve gözlem gönderimi İKİ KEZ çalışabiliyordu. Düzeltme: app._hold_mutex() 'zaten açık mı' döndürür; ikinci açılış
+  kullanıcıya özgü yerel sokete (QLocalServer, UserAccessOption) "goster" yazar ve 0 ile çıkar; ilk pencere küçültülmüşse
+  açılıp öne gelir. Ulaşamazsa (ör. eski sürüm açık) eskisi gibi pencere açar. Duman testi `tek_ornek=var` (QtNetwork).
+  Testler: mutex, sinyal yok, pencere öne gelir, GERÇEK iki süreç (`python -m evren_studio` ×2 → ikinci 0 ile çıkar, ilk
+  açık kalır); mutasyon 3/4 + gereksiz satır sadeleştirildi.
+
 ## Sorunlar ve kayıtlar
 - R-29 tuzağı bu oturumda iki kez daha: bash heredoc içindeki Python'da `\\n` → gerçek satır sonu oldu (test dosyası
   bozuldu, Edit aracıyla düzeltildi). Kural zaten var; uygulama disiplini: test dosyası yamalarını Edit ile yap.

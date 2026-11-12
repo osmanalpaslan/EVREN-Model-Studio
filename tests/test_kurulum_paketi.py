@@ -114,7 +114,7 @@ def test_surum_tek_kaynak():
 
 GOOD = ["surum=0.3.0", "frozen=True", "pencere=True", "wmcp_baslatici=var", "blender_donustur=var",
         r"python=C:\Py\python.exe", "keyring=WinVaultKeyring", "tls=tamam 401", "json_repair=var", "ruff=var", "belge=var",
-        "harita_dilleri=11", "terminal=var", "TAMAM"]
+        "harita_dilleri=11", "terminal=var", "tek_ornek=var", "TAMAM"]
 
 
 def test_duman_testi_eksikleri_yakalar():
@@ -122,7 +122,8 @@ def test_duman_testi_eksikleri_yakalar():
     for bad, word in (("frozen=False", "frozen"), ("pencere=False", "pencere"), ("wmcp_baslatici=YOK", "wmcp"),
                       ("blender_donustur=YOK", "blender"), ("keyring=fail.Keyring", "anahtar deposu"),
                       ("tls=HATA ConnectError", "SSL"), ("json_repair=YOK", "json_repair"), ("ruff=YOK", "ruff"), ("belge=HATA ImportError", "PDF/Word"),
-                      ("harita_dilleri=3", "dil çözümleyicileri"), ("terminal=EKSIK", "terminal")):
+                      ("harita_dilleri=3", "dil çözümleyicileri"), ("terminal=EKSIK", "terminal"),
+                      ("tek_ornek=YOK", "QtNetwork")):
         key = bad.split("=")[0]
         lines = [x for x in GOOD if not x.startswith(key + "=")] + [bad]
         assert any(word in p for p in paketle.check_smoke(lines)), bad
