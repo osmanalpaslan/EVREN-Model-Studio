@@ -171,6 +171,14 @@ class AppContext:
             for c in CATALOG
         ]
         self._provider_keys: dict[str, str | None] = {}
+        # Açılışta app.py'nin arka planda önceden okuduğu anahtarlar (secrets.preload_keys; yoksa boş → normal yol)
+        from ..secrets import take_preloaded
+
+        for prov, key in take_preloaded().items():
+            if prov == "evren":
+                self._cached_key = key or ""          # "" = kayıtlı anahtar yok (yeniden okunmaz)
+            else:
+                self._provider_keys[prov] = key
         self.gateway_models: list[ModelInfo] = []
         self.sync_gateways()
         self._list_change_listeners: list = []

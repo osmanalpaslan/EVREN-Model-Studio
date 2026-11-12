@@ -35,6 +35,25 @@ PANEL_MIN, PANEL_MAX = 300, 560
 CENTER_MIN = 400
 
 
+class _LazyPages(dict):
+    """Sayfa sözlüğü: `pages[k]` sayfa yoksa kurar, pencereye ekler ve döndürür. `.get(k)`, `in`, `items()` yalnız
+    KURULMUŞ sayfaları görür (kapanışta izleme ajanını durdurmak gibi işler kurulmamış sayfayı boşuna kurmasın).
+    Tüm sayfa adları: `MainWindow.page_keys`."""
+
+    def __init__(self, factories: dict, install) -> None:
+        super().__init__()
+        self._factories = factories
+        self._install = install
+
+    def __missing__(self, key: str):
+        if key not in self._factories:
+            raise KeyError(key)
+        page = self._factories[key]()
+        self[key] = page
+        self._install(key, page)
+        return page
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -68,13 +87,12 @@ class MainWindow(QMainWindow):
         self.session = SessionView(self.ctx, self.panel)
         self.center.addWidget(self.session)
 
-        self.pages: dict[str, QWidget] = {}
         # Zamanlanmış görevler (Madde 12c): motor sayfadan önce kurulur (sayfa onun sinyallerine bağlanır)
         from .schedule_host import ScheduleHost
 
         self.scheduler = ScheduleHost(self.ctx, self)
         self._build_pages()
-        self.sidebar.set_available_pages(self.pages)
+        self.sidebar.set_available_pages(self.page_keys)
 
         self.splitter.addWidget(self.sidebar)
         self.splitter.addWidget(self.center)
@@ -242,38 +260,54 @@ class MainWindow(QMainWindow):
     # ---- sayfalar ----
 
     def _build_pages(self) -> None:
-        def add(key: str, page: QWidget) -> None:
-            self.pages[key] = page
-            self.center.addWidget(page)
-
-        add("home", HomePage(self.ctx))
-        add("models", ModelsPage(self.ctx))
-        add("connection", ConnectionPage(self.ctx))
-        add("usage", UsagePage(self.ctx))
-        add("errors", ErrorsPage(self.ctx))
-        add("monitor", MonitorPage(self.ctx))
-        settings = SettingsPage(self.ctx)
-        settings.settings_saved.connect(self._settings_saved)
-        settings.open_workspace.connect(self.open_workspace)
-        add("settings", settings)
-        add("help", HelpPage(self.ctx))
-        skills = SkillsPage(self.ctx)
-        skills.template_requested.connect(self._use_template)
-        add("skills", skills)
+        """AÇILIŞ HIZI (2026-11-12): sayfalar ilk açıldıklarında kurulur (`pages[k]` kurar; `.get(k)` kurmaz). Ölçüm:
+        pencere kurulumunun yarıdan fazlası Qt'nin stil (QSS) uygulamasıydı; görünmeyen Ayarlar/Yardım/... sayfaları
+        da açılışta kurulup stillendiriliyordu. Modeller sayfası kurulurken canlı model listesini çekiyordu — açılışta
+        aynı listeyi zaten app.py (`session.load_live_models`) çekiyor: çift ağ isteği de kalktı. İzleme sayfası
+        kendiliğinden başlamaz; kapanışta yalnız kurulmuşsa durdurulur (`pages.get`)."""
         from .scheduled_page import ScheduledPage
 
-        scheduled = ScheduledPage(self.ctx, self.scheduler)
-        scheduled.open_session.connect(self.open_session)
-        add("scheduled", scheduled)
+        def settings() -> QWidget:
+            page = SettingsPage(self.ctx)
+            page.settings_saved.connect(self._settings_saved)
+            page.open_workspace.connect(self.open_workspace)
+            return page
+
+        def skills() -> QWidget:
+            page = SkillsPage(self.ctx)
+            page.template_requested.connect(self._use_template)
+            return page
+
+        def scheduled() -> QWidget:
+            page = ScheduledPage(self.ctx, self.scheduler)
+            page.open_session.connect(self.open_session)
+            return page
+
+        factories = {
+            "home": lambda: HomePage(self.ctx),
+            "models": lambda: ModelsPage(self.ctx),
+            "connection": lambda: ConnectionPage(self.ctx),
+            "usage": lambda: UsagePage(self.ctx),
+            "errors": lambda: ErrorsPage(self.ctx),
+            "monitor": lambda: MonitorPage(self.ctx),
+            "settings": settings,
+            "help": lambda: HelpPage(self.ctx),
+            "skills": skills,
+            "scheduled": scheduled,
+        }
+        self.page_keys: tuple[str, ...] = tuple(factories)
+        self.pages = _LazyPages(factories, self._install_page)
+
+    def _install_page(self, key: str, page: QWidget) -> None:
+        self.center.addWidget(page)
         # Uzun açıklama yazıları kaydırılsın: kaydırmasız etiket sayfanın (dolayısıyla orta alanın)
         # en küçük genişliğini 1000+ px'e çıkarıyordu (kenar çubuğu kaybolma hatasının kaynağı).
-        for page in self.pages.values():
-            for lab in page.findChildren(QLabel):
-                if not lab.wordWrap() and len(lab.text()) > 90:
-                    lab.setWordWrap(True)
+        for lab in page.findChildren(QLabel):
+            if not lab.wordWrap() and len(lab.text()) > 90:
+                lab.setWordWrap(True)
 
     def show_page(self, key: str) -> None:
-        page = self.pages.get(key)
+        page = self.pages[key] if key in self.page_keys else None
         if page is None:
             return
         if hasattr(page, "refresh"):

@@ -150,8 +150,9 @@ def test_yardim_sayfasindan_elle_denetim(win, monkeypatch):
     from evren_studio.ui.help_page import HelpPage
 
     app, w = win
+    w.show_page("help")                                  # sayfalar ilk açılışta kurulur (2026-11-12)
     page = w.findChild(HelpPage)
-    assert page is not None
+    assert page is not None and page is w.pages["help"]
     monkeypatch.setattr(updates, "check", lambda cur, skipped="", fetch=None: None)
     page.check_updates()
     assert _wait(app, lambda: "Güncelsiniz" in page.update_label.text())

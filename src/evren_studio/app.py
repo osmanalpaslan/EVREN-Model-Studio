@@ -258,6 +258,10 @@ def main() -> int:
 
         delete_all_api_keys()
         return 0
+    # Açılış hızı (2026-11-12): anahtar kasası Qt ve arayüz modülleri yüklenirken arka planda okunur
+    from .secrets import preload_keys
+
+    preload_keys()
     from PySide6.QtWidgets import QApplication
 
     _install_excepthook()

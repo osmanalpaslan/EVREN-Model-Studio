@@ -363,7 +363,8 @@ def denetle(tema: str, out: Path, goruntu: bool, gecis: bool = False) -> list[di
     _r = db.add_scheduled_run(_tid, "tamamlandi", manual=True)
     db.update_scheduled_run(_r, started_at=_sched.to_utc_iso(_dt.now()), session_id=sid)
     db.add_scheduled_run(_tid, "atlandi", reason="2 çalıştırma kaçırıldı (uygulama kapalıydı)")
-    for key, sayfa in w.pages.items():
+    for key in w.page_keys:                  # sayfalar ilk açılışta kurulur (2026-11-12): hepsini sırayla aç
+        sayfa = w.pages[key]
         w.show_page(key)
         pump(0.6)
         kategoriler = getattr(sayfa, "CATEGORIES", None)
