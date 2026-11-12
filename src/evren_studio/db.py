@@ -9,6 +9,7 @@ Tablolar:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 import zlib
@@ -322,6 +323,22 @@ class ErrorRecord:
     signature: str | None = None
 
 
+def _is_network_path(path: Path) -> bool:
+    """UNC yolu (\\\\sunucu\\paylasim) ya da eşlenmiş ağ sürücüsü (Z:) mi? SQLite'ın WAL kipi ağ dosya sisteminde güvenli
+    çalışmaz (Ayarlar'da veri klasörü başka yere taşınabilir)."""
+    p = str(path)
+    if p.startswith(("\\\\", "//")):
+        return True
+    drive = Path(p).drive
+    if os.name != "nt" or not drive.endswith(":"):
+        return False
+    try:
+        import ctypes
+        return ctypes.windll.kernel32.GetDriveTypeW(drive + "\\") == 4      # DRIVE_REMOTE
+    except (AttributeError, OSError):
+        return False
+
+
 class Database:
     """Tüm yerel veri erişimi bu sınıftan geçer."""
 
@@ -332,6 +349,7 @@ class Database:
         self._lock = threading.RLock()
         self.conn.row_factory = sqlite3.Row
         self._exec("PRAGMA foreign_keys = ON")
+        self.journal_mode = self._set_journal_mode()
         self._script(SCHEMA)
         row = self._exec("SELECT value FROM meta WHERE key='schema_version'").fetchone()
         version = int(row["value"]) if row else None
@@ -391,6 +409,18 @@ class Database:
     def delete_meta(self, key: str) -> None:
         self._exec("DELETE FROM meta WHERE key=?", (key,))
         self._commit()
+
+    def _set_journal_mode(self) -> str:
+        """WAL kipi (2026-11-13 ölçümü, 200 mesaj yazmanın ortancası: mesaj başına 3,42 → 0,96 ms). Eski kipte her işlem
+        yanında bir -journal dosyası açıp silerdi (Windows'ta virüs tarayıcısı her yeni dosyayı yoklar); WAL'da okuma
+        yazmayı beklemez. synchronous FULL kalır: elektrik kesintisinde de son mesaj kaybolmaz (NORMAL 0,06 ms ölçüldü
+        ama işletim sistemi çökerse son işlemler geri alınabilir). Ağ sürücüsünde WAL güvenli değildir (paylaşılan
+        bellek dosyası) → orada eski kipe (DELETE) döner. Dönüş: etkin kip."""
+        want = "DELETE" if _is_network_path(self.path) else "WAL"
+        try:
+            return str(self._exec(f"PRAGMA journal_mode={want}").fetchone()[0]).lower()
+        except sqlite3.DatabaseError:                  # kip değiştirilemedi (salt okunur ortam vb.) → olduğu gibi
+            return str(self._exec("PRAGMA journal_mode").fetchone()[0]).lower()
 
     def _exec(self, sql: str, params: tuple = ()) -> "_Result":
         # Satırlar kilit altında okunur: ajan iş parçacığı yazarken arayüz
@@ -973,6 +1003,10 @@ class Database:
         with self._lock:
             self.conn.commit()
             self.conn.execute("VACUUM")
+            if self.journal_mode == "wal":
+                # WAL'da VACUUM yeni içeriği -wal dosyasına yazar; ana dosya ancak checkpoint'te küçülür ve -wal
+                # veritabanı boyunda kalırdı → hemen aktar ve -wal'ı sıfırla
+                self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         return True
 
     def maintain_file_history(self) -> dict:

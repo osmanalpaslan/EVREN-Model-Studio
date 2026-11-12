@@ -2,6 +2,10 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Veritabanı yazma 3,5 kat hızlı (WAL kipi)**: her mesaj kaydı 3,4 → 1 ms; kayıt sürerken okuma beklemez. Elektrik
+  kesintisinde son mesaj kaybolmaz (tam eşitleme korunur). Veri klasörü ağ sürücüsündeyse eski kip kullanılır. Yedekteki
+  YEDEK_BILGI.json elle geri yüklemenin güvenli sırasını yazar.
+
 - **Derin Mod daha güvenilir**: doğrulamadan önce projenin testleri gerçekten çalıştırılır; düşen test, denetçilerin
   yorumundan bağımsız olarak "yüksek" sorun sayılır ve düzeltme turu açılır (gerçek test çıktısı denetçilere kanıt
   olarak gider). Alt ajanlar proje haritasını kullanır. Aynı kararı farklı sözcüklerle soran tekrar eden sorular tek

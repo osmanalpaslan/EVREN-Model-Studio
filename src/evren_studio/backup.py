@@ -45,7 +45,11 @@ def backup(db_path: Path, data_dir: Path, config_path: Path | None, dest: Path) 
                 names.append("skills/")
             z.writestr("YEDEK_BILGI.json", json.dumps({
                 "olusturma": datetime.now().isoformat(timespec="seconds"), "oturum": n_sess, "mesaj": n_msg,
-                "not": "API anahtarları yedekte yoktur (Windows Credential Manager)."}, ensure_ascii=False, indent=1))
+                "not": "API anahtarları yedekte yoktur (Windows Credential Manager).",
+                # WAL kipi (2026-11-13): eski -wal dosyası geri yüklenen veritabanının yanında kalırsa ona uygulanıp
+                # bozabilir → elle geri yüklemenin güvenli sırası
+                "geri_yukleme": "Uygulamayı kapatın; veri klasöründeki evren.db-wal ve evren.db-shm dosyalarını silin; "
+                                "sonra evren.db'yi bu yedekteki evren.db ile değiştirin."}, ensure_ascii=False, indent=1))
     return {"oturum": n_sess, "mesaj": n_msg, "boyut_kb": max(1, dest.stat().st_size // 1024), "dosyalar": names,
             "yol": str(dest)}
 
