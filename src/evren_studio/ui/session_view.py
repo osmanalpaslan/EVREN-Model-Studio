@@ -810,30 +810,39 @@ class SessionView(QWidget):
         self.tool_widgets.clear()
         hidden = 0
         win = getattr(self, "_history_window", HISTORY_WINDOW)
+        partial = False                     # ilk çizilen tur yarım (başı gizli) → tur toplamı yazılmaz
         if not show_all and len(messages) > win:
             start = len(messages) - win
-            # Araç çağrısı ile sonucu ayrılmasın: bir kullanıcı mesajından başla
+            # Araç çağrısı ile sonucu ayrılmasın: bir kullanıcı mesajından başla. 2026-11-12: tek bir uzun ajan
+            # turunda (gerçek oturumda 144 mesaj) bu, pencereyi anlamsız kılıyordu → geri yürüyüş pencerenin iki
+            # katını aşarsa bir yanıt adımından başlanır (araç sonuçları kendi yanıtının ardından gelir, ayrılmaz).
+            first = start
             while start > 0 and messages[start]["role"] not in ("user", "summary"):
                 start -= 1
+            if first - start > win:
+                start = first
+                while start > 0 and messages[start]["role"] != "assistant":
+                    start -= 1
+                partial = messages[start]["role"] == "assistant"
             hidden = start
             messages = messages[start:]
         if hidden:
             self.transcript.add(self._older_button(hidden))
         agentic = self.workspace is not None
         last_assistant: AssistantMessageWidget | None = None
-        turn = {"total": 0.0, "steps": 0}
+        turn = {"total": 0.0, "steps": 0, "partial": partial}
         try:
             marked = self.ctx.db.marked_bad_messages()      # A5: işaretli yanıt yeniden işaretlenmesin
         except Exception:
             marked = set()
 
         def close_turn() -> None:
-            # Çok adımlı turlarda son yanıtın altına tur toplamını yaz
-            if last_assistant is not None and turn["steps"] > 1 and turn["total"] > 0:
+            # Çok adımlı turlarda son yanıtın altına tur toplamını yaz (başı gizli yarım turda toplam eksik olur: yazma)
+            if last_assistant is not None and turn["steps"] > 1 and turn["total"] > 0 and not turn["partial"]:
                 base = last_assistant.footer.text()
                 last_assistant.set_footer(
                     f"{base}  ·  tur toplamı {format_duration(turn['total'])}, {turn['steps']} adım")
-            turn["total"], turn["steps"] = 0.0, 0
+            turn["total"], turn["steps"], turn["partial"] = 0.0, 0, False
 
         for m in messages:
             role = m["role"]

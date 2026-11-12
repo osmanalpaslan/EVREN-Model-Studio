@@ -3,6 +3,16 @@
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
 - **Kurulum artık soru sormadan yalnız sizin için kurar**: "Kimin için kurulsun?" penceresi ve "tüm kullanıcılar" seçeneği kaldırıldı; yönetici izni istenmez.
+- **Döngü koruması kalıcı çözüm**: tarayıcı gibi dış araçlarla (MCP) çalışırken yersiz "döngü" uyarısı verilmez; ajan
+  gerçekten aynı işi tekrarlarsa yine durdurulur. Proje yürütücüsünün plan/rapor dosyalarını ajan artık bozamaz.
+- **Düzeltme — klavyeden girdi bekleyen program**: ajan, girdi isteyen bir programı girdisiz çalıştırınca durumu size
+  açıklar; uydurma girdiyle çıkan sonucu gerçekmiş gibi sunmaz.
+- **Düzeltme — komutlara aktarılan metnin başına görünmez karakter (BOM) ekleniyordu**: `Get-Content veri.csv | python
+  isle.py` gibi komutlarda ilk satır/sütun sessizce bozuluyordu.
+- **Uzun oturumlar 3 kat hızlı açılır, daha az bellek kullanır**: 716 mesajlık gerçek oturumda açılış 1,0 → 0,34 sn,
+  bellek artışı 80 → 35 MB. Kapalı araç kartlarının ayrıntıları ve boş yanıt parçaları gerektiğinde kurulur; tek bir
+  uzun ajan turu artık tamamı birden çizilmez. Sağ paneldeki Değişiklikler listesi yalnız açıkken hesaplanır ve ajan
+  çalışırken her dosya değişikliğinde tüm farkları baştan hesaplamaz.
 
 ## 0.5.0 — 2026-11-12 (kurulum dosyası `EVREN-Studio-Kurulum-0.5.0.exe`)
 

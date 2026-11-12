@@ -98,10 +98,12 @@ def test_konuşma_içindeki_görünüme_bırakılan_dosya_oturuma_ulaşır(win, 
     s.transcript.add(a)
     t = a.add_tool("1", "edit_file", {"path": "x.py"})
     t.set_result(True, "düzenlendi", {"diff": "--- a\n+++ b\n@@\n-x\n+y\n", "path": "x.py"})
+    t.toggle_details(True)                  # fark görünümü kart açılınca kurulur (2026-11-12 performans)
     a.finalize("Örnek yanıt", None, "stop")
     app.processEvents()
-    targets = [v.viewport() for v in s.transcript.findChildren(MarkdownView) + s.transcript.findChildren(DiffView)]
-    assert targets
+    diffs = s.transcript.findChildren(DiffView)
+    targets = [v.viewport() for v in s.transcript.findChildren(MarkdownView) + diffs]
+    assert targets and diffs
     for i, vp in enumerate(targets):
         f = tmp_path / f"veri{i}.csv"                    # her bırakmada ayrı dosya (aynısı "zaten ekli" uyarısı açar)
         f.write_text("a,b\n1,2\n", encoding="utf-8")

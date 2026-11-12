@@ -872,6 +872,14 @@ class Database:
             "SELECT * FROM file_changes WHERE session_id=? ORDER BY id", (session_id,)
         ).fetchall()
 
+    def list_file_change_meta(self, session_id: int) -> list[sqlite3.Row]:
+        """Dosya içerikleri OLMADAN değişiklik listesi (sağ panel; 2026-11-12: gerçek oturumda 145 değişiklik = 8,3 MB
+        metin her açılışta belleğe alınıyordu). İçerik gerektiğinde `get_file_change` ile tek tek okunur."""
+        return self._exec(
+            "SELECT id, session_id, turn_id, path, reverted, created_at, before_text IS NULL AS is_new,"
+            " after_text IS NULL AS is_deleted FROM file_changes WHERE session_id=? ORDER BY id", (session_id,)
+        ).fetchall()
+
     def get_file_change(self, change_id: int) -> sqlite3.Row | None:
         return self._exec("SELECT * FROM file_changes WHERE id=?", (change_id,)).fetchone()
 

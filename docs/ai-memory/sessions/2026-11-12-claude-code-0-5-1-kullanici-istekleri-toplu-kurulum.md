@@ -30,6 +30,7 @@ Kullanıcı (2026-11-12 20:40): (1) kurulum "yalnız benim için" gibi kursun am
   girdisiz çalışınca ajana ipucu (tools.stdin_hint; Read-Host çıkış 0 olsa da).
 - YENİ HATA (analizde bulundu, kayıt 2026-11-12-ajan-komutlarinda-pipe-edilen-metnin-basina-bom-ekleniyordu): ajan
   komutlarında borulanan metnin başına BOM ekleniyordu ($OutputEncoding BOM'lu UTF8) → BOM'suz UTF-8.
+- (d) Performans analizi + düzeltme (gerçek veritabanının KOPYASIYLA ölçüldü, içerik yazdırılmadı): 716 mesajlık oturum açılışı 1,01 sn + 0,36 sn çizim, +80 MB, akışta 2265 bileşen idi. Kök nedenler: (1) geçmiş penceresi (40) geriye kullanıcı mesajına yürüyordu → tek uzun turda 144 mesaj çiziliyordu; (2) her yanıt boş Markdown görünümü + gizli düşünme bloğu + gizli BusyStar taşıyordu, kapalı araç kartları DiffView/CodeView kuruyordu; (3) sağ panel Değişiklikler her açılışta ve her dosya değişikliğinde 145 farkı baştan hesaplıyordu (0,25 sn, karesel) ve 8,3 MB dosya metnini bellekte tutuyordu. Düzeltme: transcript.py gerekince kurulan parçalar (property + boş düzen yuvaları) ve araç kartı ayrıntısı açılınca kurulur (_pending/_build_details); session_view geri yürüyüş pencerenin iki katını aşarsa yanıt adımından başlar (yarım turda tur toplamı yazılmaz); side_panel liste yalnız görünürken doldurulur, +/− önbellekli, satırlar içeriksiz (db.list_file_change_meta), içerik gerekince get_file_change. Sonuç: açılış 0,34 sn, +35 MB, 418 bileşen.
 
 ## Test sonuçları
 - test_kurulum_paketi 14 (yeni: OverridesAllowed YOK); mutasyon 2/2 (dialog / commandline dialog geri eklenince test düşüyor). Kurulum dosyası bu adımda DERLENMEDİ (kullanıcı: toplu, sonda) — ISCC derlemesi ve Sandbox denemesi 0.5.1 çıktısında.
@@ -38,9 +39,10 @@ Kullanıcı (2026-11-12 20:40): (1) kurulum "yalnız benim için" gibi kursun am
   yapmak masaüstü R-22 testlerini düşürdü → geri alındı (ölçülmüş kural korunur).
 - Girdi + BOM: test_zorluk_denetleyici 15 (gerçek PowerShell dahil); komut/araç risk paketi 71 + 98 geçti; mutasyon
   7/8 + 2/2 (kaçan: PowerShell mesajının iki imzası her zaman birlikte — bilinçli yedeklik).
+- (d) Hedefli: tests/test_oturum_performansi.py 7 (uzun tek tur pencereyi aşmaz + tetiklenmeyen: kısa turlar kullanıcı mesajından başlar/tur toplamı yazılır; görünmez bileşen kurulmaz; canlı akışta yıldız/düşünme/gövde kurulur ve sıra korunur; kart ayrıntısı açılınca; canlı komut çıktısı hemen; Değişiklikler görünürken + önbellek + içeriksiz satır). Risk paketi (transcript/side_panel/open_session/file_change kullanan 28 dosya): 437 geçti. Mutasyon 19/19 (ilk turda 2 kaçış: gereksiz _output_view koşulu sadeleştirildi, yıldız konumu ve sonuçtan gelen canlı çıktı testleri eklendi).
 
 ## Sorunlar ve kayıtlar
-<!-- Karşılaşılan sorunlar → docs/ai-memory/incidents/... kimlikleri. -->
+- Kendi hatam (R-29): side_panel yamasını bir kez bash heredoc ile yazdım; çıktı doğru çıktı (sözdizimi + testler doğruladı), sonrası Write aracıyla.
 
 ## Sonraki motor için notlar
 - Kullanıcı "oluştur + tüm testler" diyene kadar tam takım / gerçek API / paket ÇALIŞTIRMA (Madde 21).
