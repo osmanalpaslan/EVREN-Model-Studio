@@ -2,6 +2,10 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Masaüstü kontrolü hızlı yol**: Ajan artık yalnız hedef pencereyi okuyan bir araçla ve tek çağrıda birden çok eylem
+  (yaz, tıkla, seç, tuş) yapan bir araçla çalışır; tüm masaüstünü taramaz, her tıklama için ayrı tur beklemez. Mümkünse
+  fare yerine Windows'un erişilebilirlik arayüzü kullanılır (farenizle çakışmaz). Windows oturumu kilitliyken masaüstü
+  işi başlamaz, nedeni söylenir.
 - **Yeni hata bekçileri**: Ajan sağlam bir Python/JSON/TOML dosyasını bozacak bir düzenleme gönderirse dosya
   değiştirilmez, hata satırıyla birlikte modele geri döner. Ajan kanıtı olmadan "testler geçti" ya da "dosyayı
   oluşturdum" derse doğrulamaya yönlendirilir. Hata düzeltme isteklerinde önce hatayı gösteren testi çalıştırması

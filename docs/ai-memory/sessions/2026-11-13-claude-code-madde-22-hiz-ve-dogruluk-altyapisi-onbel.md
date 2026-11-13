@@ -56,6 +56,15 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   yeşil" (kuyrukta; plan kipinde/testsiz projede yok). C4 (modele göre düzenleme biçimi) YAPILMADI: düzenleme hatası
   %2,3 ve en yakın bölüm ipucu var; ölçülmüş ihtiyaç yok.
 
+- D masaüstü hız: wmcp_baslatici'ye iki araç — PencereOgeleri (YALNIZ hedef pencerenin etkileşimli öğeleri: no, tür,
+  ad, kimlik, değer, etkin + düz yazılar; salt okunur) ve UIEylem (tek çağrıda yaz/tıkla/seç/tuş/bekle; önce UIA kalıbı
+  — ValuePattern.SetValue, Invoke/Toggle/SelectionItem — yoksa klavye/fare; ilk hatada durur; sonunda pencerenin son
+  hâli). Hedef: "#no", ad (Türkçe harf duyarsız: ı/i ş/s ğ/g ü/u ö/o ç/c), kimlik, içerik; boş hedef reddedilir (testle
+  bulundu: kimliği boş ilk düğmeye basılıyordu); aynı adda etkin öğe seçilir; tuşlar yalnız ASCII, End engelli.
+  DESKTOP_PROMPT önce hızlı yolu söyler. D4 kilit: mcp.session_locked() = giriş masaüstü Default değil VE LogonUI
+  çalışıyor (tek belirti yanlış alarm verirdi; canlı açık oturumda False doğrulandı) → _call_desktop çağrı yapmadan
+  LOCKED_TEXT + user_paused.
+
 ## Test sonuçları
 - A: test_attachments_usage +1 (gerçek _usage_snapshot yolu + panel satırı, önbelleksiz satır yok), test_onbellek_raporu
   (oranlar + tur başı + komut satırı). Mutasyon 4/4.
@@ -71,6 +80,10 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   kanıtlı/bekçi geçirdi → yok, 7 olumsuz/iddiasız cümle, dosya yok → dürt, akışta bir kez + tekrar iddiada döngü yok,
   gerçek pytest'le test bekçisi geçirince yok, plan kipinde yok; C3 tetiklenen + 3 tetiklenmeyen). Mutasyon 15/16 +
   1 eşdeğer (dosya türü süzgeci yalnız hız; alt denetim türü zaten seçiyor). Risk paketi 377 geçti.
+- D: tests/test_masaustu_hizli.py (sahte UIA: tek çağrıda yaz-yaz-tıkla + son hâl, kalıp yoksa fare + ilk hatada dur,
+  devre dışı / engelli tuş, bekle sınırı, pencere yok, listeleme salt okunur, hedef bulma sırası + Türkçe + ikiz ad,
+  9 tuş çevirisi, kayda ekleme + config + istem, kilit 4 durum + hata → engellemez + kilitliyken çağrı yok/açılınca
+  çalışır). Mutasyon 12/13 + 1 eşdeğer (End zaten tabloda yok; ikinci koruma). Masaüstü/MCP/QA paketi 105 geçti.
 
 ## Sorunlar ve kayıtlar
 - Kendi hatam (R-29, yine): DEVIR tablosuna madde 22 satırını eklerken Python'u bash heredoc ile çalıştırdım (içerik

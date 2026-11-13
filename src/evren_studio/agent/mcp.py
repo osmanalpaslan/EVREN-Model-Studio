@@ -437,12 +437,14 @@ WINDOWS_MCP_PYTHON = "3.14"
 # "Screenshot" ajana SUNULMAZ: metin modeli görseli göremez ve sonuç uydurur (2026-11-05 gerçek deneme); görünüm denetimi
 # QA'da visual_check ile (görüntü görsel modele sorulur, DesktopQaTools sunucuyu doğrudan çağırır).
 WINDOWS_TOOLS = ["Snapshot", "Click", "Type", "Scroll", "Move", "Shortcut", "Wait", "WaitFor", "App",
-                 "MultiSelect", "MultiEdit", "DisplayInventory", "ControlStatus", "WindowText"]
+                 "MultiSelect", "MultiEdit", "DisplayInventory", "ControlStatus", "WindowText",
+                 "PencereOgeleri", "UIEylem"]
 WINDOWS_EXCLUDED = ["PowerShell", "FileSystem", "Registry", "Process", "Clipboard", "Scrape", "Notification"]
 # Ekranı yalnız OKUYANLAR sorulmadan çalışır; tıklama/yazma/uygulama açma çalışma moduna göre onaya tabidir
 # WindowText: uygulamanın başlatıcısının eklediği salt-okunur araç (wmcp_baslatici.py; 0.8.8 Snapshot masaüstü
 # uygulamasında düz yazıyı — etiket, sonuç metni — vermiyor)
-WINDOWS_READ_ONLY = ["Snapshot", "Wait", "WaitFor", "DisplayInventory", "ControlStatus", "WindowText"]
+WINDOWS_READ_ONLY = ["Snapshot", "Wait", "WaitFor", "DisplayInventory", "ControlStatus", "WindowText",
+                     "PencereOgeleri"]
 
 
 # MCP sonucundaki görsel modele METİN olarak gitmez. 2026-11-05 gerçek deneme: model aldığı ekran görüntüsünü göremediği
@@ -456,6 +458,12 @@ DESKTOP_NOTE = ("Masaüstü kontrolü açık: ajan bu turda fareyi ve klavyeyi k
                 "yanar). Kontrolü geri almak için fareyi belirgin oynatın ya da Ctrl+Alt+Shift+Backspace'e basın; "
                 "durdurmak için EVREN Studio'da Durdur.")
 DESKTOP_PROMPT = (
+    "- HIZLI YOL (önce bunu dene): pencerenin adını biliyorsan `PencereOgeleri` (window_name) YALNIZ o pencerenin "
+    "kutularını, düğmelerini, değerlerini ve yazılarını verir; sonra yapılacak TÜM eylemleri TEK `UIEylem` çağrısında "
+    "gönder (ör. actions=[{\"yaz\": \"Sayı 1\", \"metin\": \"2\"}, {\"yaz\": \"Sayı 2\", \"metin\": \"3\"}, "
+    "{\"tikla\": \"Topla\"}]); UIEylem pencerenin SON hâlini (değerler + yazılar) döndürür, ayrıca okuma yapma. Hedef "
+    "adı yoksa \"#no\" kullan. Yalnız pencere bulunamazsa, UIEylem bir adımda DURDU derse ya da başka uygulama "
+    "açman gerekirse aşağıdaki yavaş yolu kullan.\n"
     "- `mcp__masaustu__*` Windows masaüstünü kullanır (gerçek fare ve klavye). Önce `Snapshot` ile ekrandaki "
     "pencereleri ve etkileşimli öğeleri (adı, türü, koordinatı) oku; tıklama/yazmayı YALNIZ Snapshot'ta gördüğün "
     "koordinatlarla yap — koordinatı koddan, pencere boyutundan ya da tahminle UYDURMA. Sonucu mutlaka DENETLE: "
@@ -581,6 +589,69 @@ def _name_from_snapshot(pid: int) -> str:
     finally:
         k32.CloseHandle(snap)
     return ""
+
+
+def _process_running(exe: str) -> bool:
+    """Bu adla çalışan süreç var mı (süreç listesinin anlık görüntüsü; süreci açmaz)."""
+    import ctypes
+    import ctypes.wintypes as wt
+
+    k32 = ctypes.windll.kernel32
+
+    class ENTRY(ctypes.Structure):
+        _fields_ = [("dwSize", wt.DWORD), ("cntUsage", wt.DWORD), ("th32ProcessID", wt.DWORD),
+                    ("th32DefaultHeapID", ctypes.c_size_t), ("th32ModuleID", wt.DWORD), ("cntThreads", wt.DWORD),
+                    ("th32ParentProcessID", wt.DWORD), ("pcPriClassBase", ctypes.c_long), ("dwFlags", wt.DWORD),
+                    ("szExeFile", ctypes.c_wchar * 260)]
+
+    snap = k32.CreateToolhelp32Snapshot(0x2, 0)
+    if snap in (0, -1, ctypes.c_void_p(-1).value):
+        return False
+    try:
+        e = ENTRY()
+        e.dwSize = ctypes.sizeof(ENTRY)
+        ok = k32.Process32FirstW(snap, ctypes.byref(e))
+        while ok:
+            if e.szExeFile.lower() == exe.lower():
+                return True
+            ok = k32.Process32NextW(snap, ctypes.byref(e))
+    finally:
+        k32.CloseHandle(snap)
+    return False
+
+
+def _input_desktop_is_default() -> bool | None:
+    """Klavye/fare girdisini alan masaüstü 'Default' mı? Kilit ekranında 'Winlogon' olur ya da açılamaz (None: bilinmiyor)."""
+    import ctypes
+
+    u = ctypes.windll.user32
+    h = u.OpenInputDesktop(0, False, 0x0001)              # DESKTOP_READOBJECTS
+    if not h:
+        return False
+    try:
+        buf = ctypes.create_unicode_buffer(256)
+        need = ctypes.c_ulong()
+        if not u.GetUserObjectInformationW(h, 2, buf, ctypes.sizeof(buf), ctypes.byref(need)):   # UOI_NAME
+            return None
+        return buf.value.lower() == "default"
+    finally:
+        u.CloseDesktop(h)
+
+
+def session_locked() -> bool:
+    """Windows oturumu kilitli mi? (Madde 22 D4, 2026-11-13: gece masaüstü testi kilit ekranında 'engellendi' bitti.) İKİ
+    belirti birlikte: giriş masaüstü Default değil VE kilit ekranı süreci (LogonUI) çalışıyor — tek belirtiyle yanlış alarm
+    masaüstü kontrolünü boşuna kapatırdı. Denetlenemezse False (engelleme)."""
+    if os.name != "nt":
+        return False
+    try:
+        return _input_desktop_is_default() is False and _process_running("LogonUI.exe")
+    except Exception:
+        return False
+
+
+LOCKED_TEXT = ("Windows oturumu KİLİTLİ (kilit ekranı açık): masaüstü kontrolü kilitli ekranda çalışamaz ve bu araç "
+               "çağrısı yapılmadı. Turu burada bitir; kullanıcıya oturumun kilidini açıp 'Devam et' demesini söyle.")
 
 
 def parse_control_block(text: str) -> tuple[str, float, int] | None:
@@ -1298,7 +1369,13 @@ class McpToolset:
     def _call_desktop(self, cfg: McpServerConfig, tool: str, arguments: dict[str, Any]) -> tuple[str, bool]:
         """Kullanıcı fareyi/klavyeyi kullanırken: modele hata göstermeden bekle, kontrol dönünce AYNI çağrıyı
         tekrarla (reddedilen çağrı hiçbir şey yapmamıştır). Yarıda kesilen işlem tekrarlanmaz: model ekranı yeniden
-        okur. TAKEOVER_WAIT_LIMIT aşılırsa `user_paused` → koşucu turu güvenli noktada duraklatır."""
+        okur. TAKEOVER_WAIT_LIMIT aşılırsa `user_paused` → koşucu turu güvenli noktada duraklatır. Oturum kilitliyse
+        (D4) çağrı yapılmaz, tur duraklatılır."""
+        if session_locked():
+            self.user_paused = True
+            if self.status:
+                self.status("Windows oturumu kilitli: masaüstü işi duraklatıldı (kilidi açıp 'Devam et' deyin).")
+            return LOCKED_TEXT, True
         t0 = self._clock()
         noted = False
         retried = False
