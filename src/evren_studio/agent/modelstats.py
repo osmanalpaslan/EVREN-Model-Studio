@@ -37,6 +37,7 @@ QUALITY_WEIGHTS = {
     "test_edit": 2.0,           # istenmeden değiştirilen test dosyası tur sonunda öyle kaldı
     "test_break": 1.0,          # değişiklikten sonra testler düştü (test bekçisi dürttü)
     "plan_stall": 1.0,          # plan bekçisi: açık madde varken ilerlemeden durdu
+    "unverified_claim": 1.0,    # iddia bekçisi: kanıtsız "testler geçti / dosya oluşturuldu" (Madde 22 C2)
 }
 QUALITY_FLOOR = 0.6             # puan bunun altındaysa model sıranın gerisine alınır
 QUALITY_MIN_CALLS = MIN_SAMPLES  # puanı hesaplamak için en az çağrı (az örnekle kimse cezalanmaz)

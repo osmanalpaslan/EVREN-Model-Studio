@@ -433,6 +433,35 @@ def nearest_region(text: str, old: str, max_chars: int = 1500) -> str:
     return show(best_i, f"Dosyadaki en yakın bölüm (benzerlik %{int(best * 100)})")
 
 
+BREAK_GUARD_EXTS = (".py", ".pyw", ".json", ".toml")
+
+
+def guard_breakage(rel: str, before: str | None, after: str) -> None:
+    """Bozma koruması (Madde 22 C1, 2026-11-13; SWE-agent: lint'li düzenleme çıkarılınca çözülen iş %18 → %10,3): ÖNCEDEN
+    sağlam olan Python/JSON/TOML dosyasını bozan değişiklik YAZILMAZ; hata ve önerilen sonucun ilgili satırları modele
+    döner, model düzeltip yeniden gönderir. Yeni dosya ve zaten bozuk dosya (düzeltme denemesi) engellenmez — yazıldıktan
+    sonra hata bekçisi (diagnostics) bildirir."""
+    if before is None or os.path.splitext(rel)[1].lower() not in BREAK_GUARD_EXTS:
+        return
+    from .diagnostics import builtin_problems
+
+    if builtin_problems(rel, before):
+        return
+    problems = builtin_problems(rel, after)
+    if not problems:
+        return
+    snippet = ""
+    m = re.match(r"satır (\d+)", problems[0])
+    if m:
+        lines = after.split("\n")
+        n = int(m.group(1))
+        lo, hi = max(1, n - 3), min(len(lines), n + 3)
+        snippet = "\nÖnerilen sonucun ilgili satırları:\n```\n" + "\n".join(
+            f"{i:>5}{'>' if i == n else '|'} {lines[i - 1]}" for i in range(lo, hi + 1)) + "\n```"
+    raise ToolError(f"Bu değişiklik {rel} dosyasını BOZARDI ({problems[0]}); dosya DEĞİŞTİRİLMEDİ. Hatayı (girinti, "
+                    f"parantez, tırnak, virgül) düzeltip yeniden gönder." + snippet)
+
+
 def make_diff(before: str | None, after: str | None, rel_path: str,
               context: int = 3) -> str:
     a = (before or "").splitlines(keepends=True)
@@ -916,6 +945,7 @@ class ToolBox:
         if before is not None and before == after:
             raise ToolError("Yeni içerik mevcut dosyayla aynı; değişiklik yok.")
         rel = self.ws.rel(p)
+        guard_breakage(rel, before, after)
         return FileChange(rel, p, before, after, make_diff(before, after, rel), meta)
 
     def prepare_edit(self, path: str, old_string: str, new_string: str,
@@ -945,6 +975,7 @@ class ToolBox:
             )
         after = meta.text.replace(old, new) if replace_all else meta.text.replace(old, new, 1)
         rel = self.ws.rel(p)
+        guard_breakage(rel, meta.text, after)
         return FileChange(rel, p, meta.text, after, make_diff(meta.text, after, rel), meta)
 
     def apply_change(self, change: FileChange) -> None:

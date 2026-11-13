@@ -883,13 +883,14 @@ class AgentRunner:
                 from . import websearch
 
                 web = websearch.HINT if websearch.needs_web(text) else ""
+            repro = self._repro_hint(text)
             try:
                 from .scope import missing_hint, missing_mentions
 
                 missing = missing_mentions(text, self.workspace.root)
             except OSError:
-                return web
-            return "\n\n".join(h for h in (missing_hint(missing) if missing else "", web) if h)
+                return "\n\n".join(h for h in (repro, web) if h)
+            return "\n\n".join(h for h in (missing_hint(missing) if missing else "", repro, web) if h)
         return ""
 
     def _record(self, **rec: Any) -> None:
@@ -1092,6 +1093,7 @@ class AgentRunner:
         self._test_orig: dict[str, str | None] = {}     # yol → turdaki ilk hâli
         self._test_cmd_orig: dict[str, bytes] = {}      # komutla değişen test dosyası → komuttan önceki içerik
         self._wrote = False
+        self._gate_passed = False                # iddia bekçisi: bu turda test bekçisi testleri geçirdi mi
         self._test_baseline = None
         self._history_ref = history
         plan_nudges = 0
@@ -1300,6 +1302,14 @@ class AgentRunner:
                         self._quality("test_break")
                         nudged.add("tests")
                         self._nudge = gate
+                        continue
+                if "claims" not in nudged and step < self.max_steps and not self._cancelled():
+                    claim = self._claim_gate(content, history)
+                    if claim:
+                        nudged.add("claims")                          # tur başına bir kez
+                        self._quality("unverified_claim")
+                        self.events.status("İddia bekçisi: yanıttaki iddianın kanıtı yok; model doğrulamaya yönlendirildi.")
+                        self._nudge = claim
                         continue
                 outcome.stopped = "done"
                 break
@@ -1968,12 +1978,46 @@ class AgentRunner:
         self.events.status(f"Test bekçisi: proje testleri çalıştırılıyor ({cmd})…")
         state, code, out = testcheck.run(self.toolbox, cmd, cancel=self.cancel)
         if state == "gecti":
+            self._gate_passed = True                # iddia bekçisi: testlerin geçtiği uygulama tarafından doğrulandı
             self.events.status(f"Test bekçisi: testler geçti ({cmd}).")
             return ""
         if state != "dustu":
             return ""
         self.events.status("Test bekçisi: değişiklikten sonra testler düştü; model düzeltmesi için uyarıldı.")
         return testcheck.NUDGE.format(cmd=cmd, code=code, tail=testcheck.tail(out))
+
+    REPRO_HINT = ("# Hata düzeltme (bu tur)\nBu bir hata düzeltme isteği ve projenin testleri var: önce hatayı GÖSTEREN "
+                  "bir test yaz ya da var olanı çalıştır (kırmızı), sonra kodu düzelt, sonra AYNI testi yeniden çalıştır "
+                  "(yeşil). Testi geçirmek için testin beklentisini değiştirme.")
+
+    def _repro_hint(self, text: str) -> str:
+        """Madde 22 C3 (Derin Mod'daki B1 kuralı normal turda; Agentless/SWE-bench: önce yeniden üret): istek hata
+        düzeltmesiyse VE projede otomatik test varsa tur ipucu (kuyrukta). Plan kipinde ve testsiz projede yok (R-22)."""
+        if normalize_mode(self.mode) == "plan" or self.workspace is None:
+            return ""
+        from . import testcheck
+        from .project import is_bugfix
+
+        if not is_bugfix(text):
+            return ""
+        try:
+            has_tests = bool(testcheck._py_tests(self.workspace.root)) or testcheck.detect_command(
+                self.workspace.root) is not None
+        except OSError:
+            return ""
+        return self.REPRO_HINT if has_tests else ""
+
+    def _claim_gate(self, content: str, history: list[dict]) -> str:
+        """İddia bekçisi (Madde 22 C2, 2026-11-13): son yanıt "testler geçti" ya da "`X` dosyasını oluşturdum" diyor ama bu
+        turda kanıtı yoksa modele bir kez söylenir (zayıf modellerin en sık hatası: doğrulamadan "bitti"). Kanıt: son
+        yazmadan sonra başarılı bir test komutu ya da test bekçisinin geçişi; dosya için dosyanın varlığı. Olumsuz
+        cümleler ("testler çalıştırılmadı/geçmedi") iddia sayılmaz (R-22)."""
+        from . import claims
+
+        if not self.agentic or self.workspace is None or normalize_mode(self.mode) == "plan":
+            return ""
+        turn = claims.current_turn(history)
+        return claims.check(content, turn, self.workspace.root, gate_passed=getattr(self, "_gate_passed", False))
 
     def _test_baseline_once(self) -> None:
         """İlk yazmadan ÖNCE testlerin durumu (yalnız tur başında geçenler korunur)."""

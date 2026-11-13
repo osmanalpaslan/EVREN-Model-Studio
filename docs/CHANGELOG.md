@@ -2,6 +2,10 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Yeni hata bekçileri**: Ajan sağlam bir Python/JSON/TOML dosyasını bozacak bir düzenleme gönderirse dosya
+  değiştirilmez, hata satırıyla birlikte modele geri döner. Ajan kanıtı olmadan "testler geçti" ya da "dosyayı
+  oluşturdum" derse doğrulamaya yönlendirilir. Hata düzeltme isteklerinde önce hatayı gösteren testi çalıştırması
+  hatırlatılır.
 - **Uzun oturumlar daha hızlı ve kota dostu**: Ajan isteklerinin sabit başı oturum boyunca aynı tutulur, değişen notlar
   sona eklenir. Önceki turların geçmişi artık sunucu önbelleğinden okunur (gerçek ölçüm: tur başında önbellek %45 → %96,
   3 turluk oturum 155/65 sn → 72/45 sn). Önbellekten okunan kısım günlük kotadan düşmez.

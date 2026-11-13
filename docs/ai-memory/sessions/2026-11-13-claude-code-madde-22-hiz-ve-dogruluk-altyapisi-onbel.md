@@ -47,6 +47,15 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   sonra yenilenir) — eskiden her turda yeniden hesaplanıp değişince tüm geçmişin önbelleğini bozuyordu. A/B için
   EVREN_STUDIO_ONBELLEK_ESKI=1. Yeni gerçek API betiği tests/e2e_onbellek_real_api.py (3 tur; tur başı oranı).
 
+- C bekçiler: C1 bozma koruması (tools.guard_breakage: önceden sağlam .py/.json/.toml'u bozan edit_file/write_file
+  YAZILMAZ, hata + önerilen sonucun ilgili satırları döner; yeni dosya ve zaten bozuk dosya serbest). Tanımsız ad
+  denetimi ruff ile ZATEN vardı (Madde 20 A2) — analizdeki öneri kodda doğrulandı, tekrar yazılmadı. C2 iddia bekçisi
+  (agent/claims.py: "testler geçti" → son yazmadan sonra çıkış 0 test komutu ya da test bekçisi geçişi; "`x` oluşturuldu"
+  → dosya var mı; olumsuz/soru/öneri cümleleri iddia değil; tur başına bir kez; kalite olayı unverified_claim ağırlık 1).
+  C3 hata düzeltme isteğinde (project.is_bugfix) ve testli projede tur ipucu "önce kırmızı test, sonra düzelt, aynı test
+  yeşil" (kuyrukta; plan kipinde/testsiz projede yok). C4 (modele göre düzenleme biçimi) YAPILMADI: düzenleme hatası
+  %2,3 ve en yakın bölüm ipucu var; ölçülmüş ihtiyaç yok.
+
 ## Test sonuçları
 - A: test_attachments_usage +1 (gerçek _usage_snapshot yolu + panel satırı, önbelleksiz satır yok), test_onbellek_raporu
   (oranlar + tur başı + komut satırı). Mutasyon 4/4.
@@ -57,6 +66,11 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   Risk paketi (ajan/derin/proje/plan/web/skill/MCP 20 dosya) 354 geçti. GERÇEK EVREN (deepseek-v4.1-flash, aynı saatte
   ikişer): ESKİ tur başı %45/%46, tüm %69/%65, süre 155/65 sn → YENİ tur başı %96/%96, tüm %87/%86, süre 72/45 sn;
   görev 4/4 GEÇTİ.
+- C: tests/test_bekciler_c.py 21 (C1: bozan düzenleme yazılmaz + satır, zaten bozuk/adım adım düzeltme serbest, JSON
+  üstüne bozuk yazma reddedilir, yeni dosya/metin serbest, akışta model düzeltir; C2: kanıtsız/önce/düşen test → dürt,
+  kanıtlı/bekçi geçirdi → yok, 7 olumsuz/iddiasız cümle, dosya yok → dürt, akışta bir kez + tekrar iddiada döngü yok,
+  gerçek pytest'le test bekçisi geçirince yok, plan kipinde yok; C3 tetiklenen + 3 tetiklenmeyen). Mutasyon 15/16 +
+  1 eşdeğer (dosya türü süzgeci yalnız hız; alt denetim türü zaten seçiyor). Risk paketi 377 geçti.
 
 ## Sorunlar ve kayıtlar
 - Kendi hatam (R-29, yine): DEVIR tablosuna madde 22 satırını eklerken Python'u bash heredoc ile çalıştırdım (içerik
