@@ -25,11 +25,13 @@ class Ctx:
     """AppContext'in ai_chat'i için gereken en küçük yüzey (gerçek yöntemler bağlanır)."""
 
     _ai_attempt = ac.AppContext._ai_attempt
+    _ai_record = ac.AppContext._ai_record
     _ai_chat_hedged = ac.AppContext._ai_chat_hedged
     ai_chat = ac.AppContext.ai_chat
 
     def __init__(self, chain, behave, providers=None):
         self.chain, self.behave, self.calls, self.events = chain, behave, [], []
+        self.records: list[dict] = []          # Madde 23 b: iç çağrı kayıtları (olay değil)
         self.providers = providers or {}
         self.lock = threading.Lock()
 
@@ -43,7 +45,7 @@ class Ctx:
         return None
 
     def record_model_call(self, rec):
-        self.events.append(rec)
+        (self.events if rec.get("event") else self.records).append(rec)
 
     def make_client_for(self, provider):
         ctx = self

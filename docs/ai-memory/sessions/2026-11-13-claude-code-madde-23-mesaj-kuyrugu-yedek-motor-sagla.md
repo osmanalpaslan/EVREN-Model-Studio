@@ -35,6 +35,16 @@ Ek (R-36): açık gözlem c9b5c1591110 (mini_proje: modelin ortama bağlı testi
   metin "…" ile kısalır, durum notu "çalışan işe iletilecek" / "iş bitince gönderilecek", "Geri çek" düğmesi);
   `theme.py` QueueBar stili (surface + rim).
 
+### (b) Bozulan motordan yedeğe geçiş (auto dışındaki işler)
+- `modelstats.failing`: son 2 saatte ≥3 başarısız (sunucu hatası, boş yanıt, damlayan akış) VE oran ≥ %50 → zayıf.
+  `AppContext.model_weak` artık bunu HER ZAMAN içerir (motor karnesi rafta olsa da) → `ai_route` (iç işler, Derin/Proje/QA
+  rolleri, auto güvenlik ağı) zayıfı sağlam yedeklerin arkasına alır; zincirden çıkarmaz; pencere geçince eski sıraya
+  döner. Modeller sayfası gerekçeyi zaten gösteriyor.
+- İç işlerin (`ai_chat`, paralel yedek dahil) her çağrısı `ic:<rol>` rolüyle kaydedilir (kota/anahtar hatası hariç).
+  `ic:` kayıtları A5 kalite puanına ve A3 normal hızına GİRMEZ (kısa iç çağrılar ajan olaylarını sulandırmasın).
+- `router.choose`: tabloda tek/hiç motor kalmadıysa (EVREN listeden kaldırdı, ağ geçidi) erişilebilir diğer motorlar en
+  çok 3 yedek olur; `prefer` (kullanıcının seçtiği motor) önce. Tabloda ≥2 motor varsa davranış aynı.
+
 ## Test sonuçları
 - (a) tests/test_mesaj_kuyrugu.py 15 test (kuyruk sırası/geri çekme/parti; 60 turlu eşzamanlı alma-geri çekme yarışı
   switchinterval 1 µs; koşucu: adım arası, tur sonu, yok/hatalı kaynak, iptal; iddia turu; arayüz R-31: çalışırken
@@ -45,6 +55,10 @@ Ek (R-36): açık gözlem c9b5c1591110 (mini_proje: modelin ortama bağlı testi
   yazdığı için olumsuz denetim hiç eşleşmiyordu) → 18/18 + akış bekçisi 1/1. Alan paketi 79 geçti.
   Görsel (R-05/R-33): sıra paneli iki temada (QT_QPA_PLATFORM=windows) bakıldı; ilk görüntüde uzun metin nota
   taşıyordu → `_ElidedLabel` ("…") ile düzeltildi.
+- (b) tests/test_yedek_motor.py 12 test (tetiklenen + 3 tetiklenmeyen durum R-22; iç çağrı kalite puanını sulandırmaz;
+  zayıf motor arkaya, çıkarılmaz; tek motorda yedek + seçilen önce; model_weak karne kapalıyken; iç işte başarı/hata/boş
+  kaydı; kota hatası sayılmaz; paralel yolda kayıt; gerçek AppContext'te bozulan motor başka rolde de geri alınır).
+  test_yedek_istek kaydı ayıracak biçimde uyarlandı. Mutasyon 14/14. Yönlendirme paketi 168 geçti.
 
 ## Sorunlar ve kayıtlar
 - Yeni testte oturumsuz `_note` modal QMessageBox açtı → test 10 dk asıldı (mutasyon koşucusu zaman aşımı); faulthandler

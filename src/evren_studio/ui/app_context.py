@@ -6,6 +6,7 @@ Windows Credential Manager'dan okunur ve bellekte tutulur.
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 from .. import __version__
@@ -329,15 +330,22 @@ class AppContext:
             return {}
 
     def model_weak(self) -> dict[str, str]:
-        """Bugünkü hafif yoklamada zayıf motorlar → gerekçe (hata → boş). Karne RAFTA → boş."""
-        from ..agent import karne
+        """Şu an zayıf motorlar → gerekçe (yönlendirici sağlam yedekleri öne alır). İki kaynak: (1) Madde 23 b — son
+        saatlerin GERÇEK çağrılarında çoğunlukla başarısız olanlar (her zaman açık; bakımdaki/bozulan motor); (2) motor
+        karnesi açıksa bugünkü hafif yoklamada zayıf olanlar. Okunamazsa boş (sıra değişmez)."""
+        from ..agent import karne, modelstats
 
-        if not getattr(self.settings, "motor_karnesi", False):
-            return {}
+        out: dict[str, str] = {}
         try:
-            return karne.weak_models(self.db.recent_model_calls(24 * self.db.MODEL_CALLS_KEEP_DAYS))
+            out.update(modelstats.failing(self.db.recent_model_calls(modelstats.FAIL_HOURS)))
         except Exception:
-            return {}
+            pass
+        if getattr(self.settings, "motor_karnesi", False):
+            try:
+                out.update(karne.weak_models(self.db.recent_model_calls(24 * self.db.MODEL_CALLS_KEEP_DAYS)))
+            except Exception:
+                pass
+        return out
 
     def qa_readiness(self) -> tuple[bool, str]:
         """QA'dan önce: QA zincirindeki EVREN motorlarının HEPSİ bugün zayıf/sorunluysa (False, açıklama).
@@ -353,41 +361,63 @@ class AppContext:
         return False, ("QA motorları şu an yavaş ya da sorunlu görünüyor (son hafif yoklama — " + why + "). Test "
                        "uzun sürebilir ya da yarıda kalabilir; motorlar düzelince denemeniz önerilir.")
 
-    def _ai_attempt(self, model: str, messages: list[dict], max_tokens: int) -> str:
+    def _ai_record(self, model: str, role: str, t0: float, exc: BaseException | None = None,
+                   empty: bool = False) -> None:
+        """Madde 23 b: iç işin model çağrısı da gerçek kullanım kaydına girer — bozulan motor iç işlerde de görülür ve
+        yönlendirici (model_weak) onu yedeklerin arkasına alır. Kota/anahtar gibi motor dışı hatalar sayılmaz."""
+        from ..api.errors import ApiError
+
+        if exc is not None and isinstance(exc, ApiError) and exc.kind.value not in _AI_FAILOVER:
+            return
+        from ..agent import modelstats
+
+        rec = {"model": model, "role": modelstats.INTERNAL_PREFIX + role, "ok": exc is None,
+               "duration_s": round(time.monotonic() - t0, 1), "empty": empty}
+        if exc is not None:
+            rec["error_kind"] = exc.kind.value if isinstance(exc, ApiError) else "hata"
+            rec["detail"] = str(exc)[:200]
+        self.record_model_call(rec)
+
+    def _ai_attempt(self, model: str, messages: list[dict], max_tokens: int, role: str = "ic") -> str:
         """Tek EVREN modeliyle kısa iç istek (düşünme kapalı); boş/başarısızsa hata."""
         client = self.make_client_for(self.provider_of(model))
         kwargs = {}
         info = self.model_info(model)
         if info is not None and (info.capabilities or {}).get("reasoning_effort"):
             kwargs["extra_body"] = {"reasoning_effort": "none"}
+        t0 = time.monotonic()
         try:
             result = client.chat(model, messages, stream=False, max_tokens=max_tokens, **kwargs)
+        except Exception as exc:
+            self._ai_record(model, role, t0, exc)
+            raise
         finally:
             close = getattr(client, "close", None)
             if close:
                 close()
         text = (result.content or "").strip()
+        self._ai_record(model, role, t0, empty=not text)
         if not text:
             raise RuntimeError(f"{model} boş yanıt verdi")
         return text
 
     def _ai_chat_hedged(self, pair: list[str], messages: list[dict], max_tokens: int,
-                        session_id: int | None) -> tuple[str, str]:
+                        session_id: int | None, role: str = "ic") -> tuple[str, str]:
         """İlk model; HEDGE_AFTER_S'de yanıt yoksa ikinci model paralel. Önce başarılı olan kazanır; kaybedenin isteği
         arka planda biter (beklenmez). İkisi de başarısızsa son hata."""
         from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
         ex = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ai-hedge")
         try:
-            futs = {ex.submit(self._ai_attempt, pair[0], messages, max_tokens): pair[0]}
+            futs = {ex.submit(self._ai_attempt, pair[0], messages, max_tokens, role): pair[0]}
             done, _ = wait(list(futs), timeout=HEDGE_AFTER_S)
             if not done:
-                futs[ex.submit(self._ai_attempt, pair[1], messages, max_tokens)] = pair[1]
+                futs[ex.submit(self._ai_attempt, pair[1], messages, max_tokens, role)] = pair[1]
                 self.record_model_call({"model": pair[0], "role": "ic", "ok": True, "event": "hedge",
                                         "detail": f"{HEDGE_AFTER_S:.0f} sn yanıt yok → {pair[1]} paralel"})
             elif next(iter(done)).exception() is not None:   # hızlı başarısız: sıradaki tek başına denensin
                 _raise_if_final(next(iter(done)).exception())
-                futs[ex.submit(self._ai_attempt, pair[1], messages, max_tokens)] = pair[1]
+                futs[ex.submit(self._ai_attempt, pair[1], messages, max_tokens, role)] = pair[1]
             last: BaseException | None = None
             pending = set(futs)
             while pending:
@@ -426,7 +456,7 @@ class AppContext:
         if (HEDGE_AFTER_S > 0 and len(chain) >= 2
                 and all(self.provider_of(m) == "evren" for m in chain[:2])):
             try:
-                return self._ai_chat_hedged(chain[:2], messages, max_tokens, session_id)
+                return self._ai_chat_hedged(chain[:2], messages, max_tokens, session_id, role)
             except Exception as exc:              # ikisi de olmadı → kalan zincir (kota/anahtar hatası hemen yükselir)
                 _raise_if_final(exc)
                 last = exc
@@ -451,10 +481,12 @@ class AppContext:
             info = self.model_info(model)
             if provider == "evren" and info is not None and (info.capabilities or {}).get("reasoning_effort"):
                 kwargs["extra_body"] = {"reasoning_effort": "none"}
+            t0 = time.monotonic()
             try:
                 result = client.chat(model, messages, stream=False, max_tokens=max_tokens, **kwargs)
             except ApiError as exc:
                 last = exc
+                self._ai_record(model, role, t0, exc)
                 if exc.kind.value in _AI_FAILOVER:
                     continue
                 raise
@@ -462,6 +494,7 @@ class AppContext:
                 close = getattr(client, "close", None)
                 if close:
                     close()
+            self._ai_record(model, role, t0, empty=not (result.content or "").strip())
             if provider != "evren":
                 usage = result.token_usage() if hasattr(result, "token_usage") else {}
                 try:
