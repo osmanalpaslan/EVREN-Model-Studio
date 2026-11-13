@@ -69,10 +69,11 @@ SLASH_COMMANDS = {
     "/derin-durdur": "Çalışan Derin Mod akışını durdur",
     "/profil": "Ajan profili seç: /profil <ad> · /profil yok (kaldır) · /profil (liste)",
     "/betiklestir": "Bu oturumdaki işi tekrar çalıştırılabilir betiğe çevir: /betiklestir [dosya.py]",
+    "/hafiza-olustur": "Proje hafızası EVREN.md'yi oluştur/güncelle (en çok 40 satır: komutlar + projeye özgü kurallar)",
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
-    "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/clear": "refresh", "/temizle": "refresh", "/disa-aktar": "download",
+    "/init": "spark", "/hafiza-olustur": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/clear": "refresh", "/temizle": "refresh", "/disa-aktar": "download",
     "/yardim": "help", "/proje": "list", "/proje-duzelt": "pencil", "/proje-devam": "refresh",
     "/proje-durdur": "stop", "/qa": "check", "/qa-masaustu": "cpu", "/qa-duzelt": "pencil", "/qa-devam": "refresh",
     "/qa-durdur": "stop", "/derin": "spark", "/derin-durdur": "stop",

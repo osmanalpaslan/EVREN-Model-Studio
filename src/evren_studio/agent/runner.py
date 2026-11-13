@@ -749,7 +749,9 @@ class AgentRunner:
             hint = getattr(self, "_turn_hint", "")
             return system + "\n\n" + hint if hint else system
         if not self.agentic:
-            return build_chat_system(web=self.chat_tools, brief=self.brief_answers)
+            system = build_chat_system(web=self.chat_tools, brief=self.brief_answers)
+            # kalıcı rol + profil (+ kişisel kurallar) talimatı sohbette de (2026-11-13: B bölmesinde düşmüştü)
+            return system + "\n\n" + self.extra_hint if self.extra_hint else system
         return self._frozen_static()
 
     def _frozen_key(self) -> tuple | None:

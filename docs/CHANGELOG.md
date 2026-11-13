@@ -2,6 +2,9 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Kişisel kurallar**: Ayarlar > Kod ajanı'nda her işte geçerli kısa kurallarınızı (ör. "yanıtları kısa yaz") bir kez
+  yazarsınız; sohbette ve ajanda uygulanır. `/hafiza-olustur` (eski adı `/init`) projeye özgü kısa EVREN.md hazırlar:
+  yalnız doğrulanmış komutlar ve projeye özgü kurallar, en çok 40 satır (uzun talimat zayıf modelleri yavaşlatır).
 - **Takılan kısa isteklerde yedek**: Uygulamanın kısa iç işleri (başlık, yargıç, soru birleştirme gibi) bir EVREN modeli
   12 saniyede yanıt vermezse sıradaki modele paralel olarak da sorulur, önce gelen yanıt kullanılır (EVREN'de aynı istek
   arada 50 saniyeye kadar takılabiliyor). Ücretli sağlayıcılarda yapılmaz.

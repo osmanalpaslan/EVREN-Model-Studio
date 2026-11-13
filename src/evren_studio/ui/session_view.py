@@ -1707,10 +1707,10 @@ class SessionView(QWidget):
                 self.apply_profile(name)
         elif cmd == "/betiklestir":
             self.scriptify(arg.strip())
-        elif cmd == "/init":
+        elif cmd in ("/init", "/hafiza-olustur"):
             ws = self.workspace if self.session_id else self.welcome.workspace
             if not ws:
-                self._note("/init için bir proje klasörü seçin.")
+                self._note(f"{cmd} için bir proje klasörü seçin.")
             else:
                 self.send(prompts.INIT_PROMPT)
         elif cmd in ("/ozet", "/compact"):
@@ -2016,10 +2016,18 @@ class SessionView(QWidget):
         return self.ctx.skills_for(str(ws_root), self.profile) if ws_root is not None else []
 
     def _profile_hint(self) -> str:
+        """Kalıcı kullanıcı talimatları (sabit sistem isteminde → önbellekte): Ayarlar'daki kişisel kurallar (Madde 22 F,
+        kısa tutulur — ETH 2026: uzun bağlam dosyası başarıyı düşürür) + seçili profilin talimatı."""
+        from ..config import PERSONAL_RULES_MAX
+
+        parts = []
+        rules = (self.ctx.settings.personal_rules or "").strip()
+        if rules:
+            parts.append(f"# Kullanıcının kişisel kuralları (her işte uy)\n{rules[:PERSONAL_RULES_MAX]}")
         prof = self.ctx.profile(self.profile)
-        if not prof or not (prof.get("instructions") or "").strip():
-            return ""
-        return f"# Profil talimatı ({prof['name']}; kullanıcı tanımladı)\n{prof['instructions'].strip()[:4000]}"
+        if prof and (prof.get("instructions") or "").strip():
+            parts.append(f"# Profil talimatı ({prof['name']}; kullanıcı tanımladı)\n{prof['instructions'].strip()[:4000]}")
+        return "\n\n".join(parts)
 
     def scriptify(self, name: str = "") -> None:
         """F4 #14: oturumdaki işi tekrar çalıştırılabilir betiğe çevirme turu."""

@@ -155,12 +155,18 @@ def build_chat_system(today: date | None = None, web: bool = False, brief: bool 
             + (CHAT_WEB_NOTE if web else ""))
 
 
+# Madde 22 F (2026-11-13; ETH "Evaluating AGENTS.md", ICLR 2026): uzun / klasör özeti içeren bağlam dosyası başarıyı
+# düşürüp maliyeti %20+ artırıyor; işe yarayan yalnız standart dışı, doğrulanmış bilgiler. Bu dosya HER istekte gider.
 INIT_PROMPT = (
-    "Bu projeyi incele ve proje kökünde EVREN.md dosyası oluştur (varsa "
-    "güncelle). İçerik kısa ve işe yarar olsun: projenin amacı, kullanılan "
-    "teknolojiler, klasör yapısı, kurulum/çalıştırma/test komutları, kod "
-    "yazım kuralları ve dikkat edilmesi gerekenler. Bu dosya sonraki "
-    "oturumlarda sana proje hafızası olarak verilecek."
+    "Bu projeyi incele ve proje kökünde EVREN.md oluştur (varsa GÜNCELLE; kullanıcının yazdığı bölümleri silme). "
+    "Bu dosya sonraki her istekte sana verilecek, bu yüzden EN ÇOK 40 satır ve yalnız şunlar:\n"
+    "1. Bir cümleyle projenin amacı.\n"
+    "2. Kurulum, çalıştırma ve test için TAM komutlar — kısa süren test/çalıştırma komutunu gerçekten çalıştırıp "
+    "doğrula; doğrulamadığını '(doğrulanmadı)' diye işaretle.\n"
+    "3. Bu projeye ÖZGÜ, koddan kolay anlaşılmayan kurallar ve tuzaklar (ör. özel kodlama, yasak klasör, dikkat "
+    "edilecek yan etki).\n"
+    "YAZMA: klasör/dosya listesi ya da yapı özeti (dosyaları zaten kendin bulursun), genel iyi uygulama tavsiyesi, "
+    "dilin/çatının herkesçe bilinen kuralları. Yazmadan önce taslağı kullanıcıya göster; Otomatik mod değilse onay iste."
 )
 
 COMPACT_PROMPT = (

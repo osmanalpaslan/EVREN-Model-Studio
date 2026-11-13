@@ -73,6 +73,12 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   yamalar YAPILMADI: en uzun aşamayı (uygula) ve kotayı ikiye katlar; Derin Mod'da gerçek test kanıtı + düzeltme
   turları + başlangıç ölçümü zaten var.
 
+- F talimatlar: Ayarlar > Kod ajanı "Kişisel kurallar" (personal_rules, en çok 1500 karakter) → session_view._profile_hint
+  → extra_hint → SABİT sistem istemi (önbellekte). /init şablonu ETH bulgusuna göre yeniden yazıldı (en çok 40 satır;
+  yalnız amaç, DOĞRULANMIŞ kurulum/çalıştırma/test komutları, projeye özgü kurallar; klasör özeti ve genel tavsiye YOK;
+  kullanıcının bölümlerini silme; önce taslağı göster) + Türkçe adı /hafiza-olustur. Bu sırada bulunan GERİLEME: B
+  bölmesinden sonra sohbet kipinde (klasörsüz) kalıcı rol/profil talimatı sistem istemine girmiyordu → düzeltildi + test.
+
 ## Test sonuçları
 - A: test_attachments_usage +1 (gerçek _usage_snapshot yolu + panel satırı, önbelleksiz satır yok), test_onbellek_raporu
   (oranlar + tur başı + komut satırı). Mutasyon 4/4.
@@ -96,6 +102,13 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   hızlı başarısız + boş → kalan zincir; kota → hemen yükselir, zincire geçmez; ücretli → yok; eşik 0 → kapalı) +
   ai_chat kullanan 5 dosya: 88 geçti. Mutasyon 6/6. Gerçek EVREN: eşik 0,5 sn'de 3/3 paralel yol hatasız (olay
   kaydedildi), 12 sn'de yedek yok; yanıt 1,0-1,7 sn.
+- Zorluk TAMAMI (B+C sonrası, 2026-11-13 21:10-21:33, auto): 11/12, 1362 sn — düşen mini_proje 4/5 (6 dk sınırı).
+  Kanıt: dünkü ile aynı miktar kod (6.756 / 6.034 kar), daha az adım (6 / 8); EVREN bu akşam 22 kar/sn (dün 58),
+  2.867 karakterlik dosya tek yanıtta 177 sn → dış etken, gerileme değil; tek başına tekrar koşuldu (aşağıda).
+  Önbellek %47 (dün %54; tek turlu görevlerde tur başı yok — B'nin kazancı çok turlu oturumda).
+- F: tests/test_kisisel_kurallar.py 3 (sohbette + ajanda sistem isteminde, boşsa yok; Ayarlar kaydeder + sınırlar +
+  diskten okunur; /hafiza-olustur kısa doğrulanmış hafıza ister). Mutasyon 6/6. ui_denetim iki tema 0/0/0 (Kod ajanı
+  sayfası görüntüsüne bakıldı).
 
 ## Sorunlar ve kayıtlar
 - Kendi hatam (R-29, yine): DEVIR tablosuna madde 22 satırını eklerken Python'u bash heredoc ile çalıştırdım (içerik

@@ -346,6 +346,21 @@ class SettingsPage(BasePage):
                          "tek tıkla geri alabilirsiniz. Onay istemez, işi yavaşlatmaz (hızlı modelle denetlenir)."))
         self.project_map = QCheckBox("Proje haritası: ajana dosya ağacını ve fonksiyon/sınıf adlarını baştan ver (daha az keşif adımı)")
         l.addWidget(self.project_map)
+        # Madde 22 F: her işte geçerli kısa kişisel kurallar (sabit sistem istemine girer → önbellekte, ek gecikme yok)
+        from PySide6.QtWidgets import QPlainTextEdit
+
+        from ..config import PERSONAL_RULES_MAX
+
+        l.addWidget(QLabel("Kişisel kurallar (her işte geçerli, kısa tutun):"))
+        self.personal_rules = QPlainTextEdit()
+        self.personal_rules.setObjectName("PersonalRules")
+        self.personal_rules.setPlaceholderText("ör. Yanıtları Türkçe ve kısa yaz.\nHer değişiklikten sonra testleri çalıştır.")
+        self.personal_rules.setFixedHeight(84)
+        l.addWidget(self.personal_rules)
+        self.personal_rules_hint = hint(f"En çok {PERSONAL_RULES_MAX} karakter (~15 satır). Uzun talimat zayıf modelleri "
+                                        "asıl işten uzaklaştırır; yalnız projeye bağlı olmayan kalıcı tercihlerinizi yazın. "
+                                        "Projeye özgü kurallar proje klasöründeki EVREN.md'ye (/hafiza-olustur).")
+        l.addWidget(self.personal_rules_hint)
         self.learnings_suggest = QCheckBox("Proje hafızası: ajan bir ders çıkarınca (çalışan komut, tuzak) EVREN.md'ye eklemeyi öner")
         l.addWidget(self.learnings_suggest)
         self.suggest_project = QCheckBox("Çok aşamalı uzun istemde Proje ajanını öner")
@@ -766,6 +781,7 @@ class SettingsPage(BasePage):
         self.autopro_architect.setChecked(s.autopro_architect)
         self.quota_guard_turns.setChecked(s.quota_guard_turns)
         self.project_map.setChecked(s.project_map)
+        self.personal_rules.setPlainText(s.personal_rules or "")
         self.learnings_suggest.setChecked(s.learnings_suggest)
         self.suggest_project.setChecked(s.suggest_project)
         self.auto_test_tools.setChecked(s.auto_test_tools)
@@ -832,6 +848,9 @@ class SettingsPage(BasePage):
         s.autopro_architect = self.autopro_architect.isChecked()
         s.quota_guard_turns = self.quota_guard_turns.isChecked()
         s.project_map = self.project_map.isChecked()
+        from ..config import PERSONAL_RULES_MAX
+
+        s.personal_rules = self.personal_rules.toPlainText().strip()[:PERSONAL_RULES_MAX]
         s.learnings_suggest = self.learnings_suggest.isChecked()
         s.suggest_project = self.suggest_project.isChecked()
         s.auto_test_tools = self.auto_test_tools.isChecked()
