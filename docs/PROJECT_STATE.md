@@ -1,7 +1,7 @@
 # Proje Durumu
 
 > Oturum kesilirse çalışmaya bu dosyadan devam edilir.
-> Son güncelleme: 2026-11-14 — 0.5.1 master'da (PR #61; kurulum dosyası hazır, GitHub yayını kullanıcı onayı bekliyor):
+> Son güncelleme: 2026-11-14 — 0.5.1 YAYINDA (GitHub Releases v0.5.1, PR #61):
 > iş sürerken mesaj kuyruğu + ara mesaj + geri çekme, bozulan motordan yedeğe geçiş, EVREN dışındaki API'de tam otomatik
 > çalışma, önbellek dostu istek düzeni, bozma/iddia bekçileri, hızlı masaüstü kontrolü; ayrıca Madde 21 (performans 2–3 kat,
 > iOS 27 tasarım dili, Türk bayrağına sadık yeni logo/animasyonlar, tüm API anahtarları/motorlar tek "Sağlayıcılar ve
