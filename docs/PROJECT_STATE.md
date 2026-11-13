@@ -1,7 +1,9 @@
 # Proje Durumu
 
 > Oturum kesilirse çalışmaya bu dosyadan devam edilir.
-> Son güncelleme: 2026-11-13 — 0.5.0 yayında; 0.5.1 istekleri `surum/0.5.1-istekler` dalında (performans 2–3 kat,
+> Son güncelleme: 2026-11-14 — 0.5.1 master'da (PR #61; kurulum dosyası hazır, GitHub yayını kullanıcı onayı bekliyor):
+> iş sürerken mesaj kuyruğu + ara mesaj + geri çekme, bozulan motordan yedeğe geçiş, EVREN dışındaki API'de tam otomatik
+> çalışma, önbellek dostu istek düzeni, bozma/iddia bekçileri, hızlı masaüstü kontrolü; ayrıca Madde 21 (performans 2–3 kat,
 > iOS 27 tasarım dili, Türk bayrağına sadık yeni logo/animasyonlar, tüm API anahtarları/motorlar tek "Sağlayıcılar ve
 > anahtarlar" ekranında, Derin Mod gerçek test kanıtı + başlangıç ölçümü + soru birleştirme, SQLite WAL; analiz:
 > docs/knowledge/ANALIZ_2026-11-12.md, son çalışma raporu: docs/knowledge/RAPOR_2026-11-13.md). Güncel iş ve plan:
