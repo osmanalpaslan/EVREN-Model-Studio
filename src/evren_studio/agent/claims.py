@@ -34,10 +34,11 @@ FILE_NUDGE = ("⚠ İDDİA BEKÇİSİ: Yanıtında şu dosyaları oluşturduğun
 
 
 def current_turn(history: list[dict]) -> list[dict]:
-    """Son GERÇEK kullanıcı mesajından (otomatik devam değil) sonraki mesajlar."""
+    """Son GERÇEK kullanıcı mesajından (otomatik devam ve çalışırken gönderilen ara mesaj değil) sonraki mesajlar."""
     for i in range(len(history) - 1, -1, -1):
         m = history[i]
-        if m.get("role") == "user" and not (m.get("meta") or {}).get("auto_continue"):
+        meta = m.get("meta") or {}
+        if m.get("role") == "user" and not meta.get("auto_continue") and not meta.get("steer"):
             return history[i + 1:]
     return list(history)
 

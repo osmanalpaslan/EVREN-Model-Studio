@@ -120,7 +120,7 @@ def test_proje_akisi_plan_onay_yurutme_rapor(win, tmp_path):
     assert any(d.startswith("Proje görevi 2/2") for d in disp)
 
 
-def test_proje_surerken_mesaj_engellenir_durdur_ve_devam(win, tmp_path):
+def test_proje_surerken_mesaj_siraya_alinir_durdur_ve_devam(win, tmp_path):
     app, w = win
     client = FakeClient(slow=0.6)
     s, proj, PlanCard = _start(w, tmp_path, client)
@@ -129,8 +129,15 @@ def test_proje_surerken_mesaj_engellenir_durdur_ve_devam(win, tmp_path):
     assert _wait(app, lambda: s.running)
     s.composer.set_text("ara mesaj")
     s.composer._submit()
-    assert s.composer.edit.toPlainText() == "ara mesaj"                 # engellendi, metin geri kondu
+    # Madde 23 a: reddedilmez, sıraya alınır; proje görev turuna İLETİLMEZ (görevi yürütücü yönetir)
+    assert s.composer.edit.toPlainText() == "" and [p.text for p in s.inbox.items()] == ["ara mesaj"]
+    n0 = len(client.calls)
+    assert _wait(app, lambda: len(client.calls) >= n0 + 1)          # görev turu en az bir adım daha attı
+    assert [p.text for p in s.inbox.items()] == ["ara mesaj"]       # ...ama mesajı almadı
+    assert not [m for m in w.ctx.db.get_session_messages(s.session_id) if (m.get("meta") or {}).get("steer")]
     s.send("/proje-durdur")
+    # kullanıcı durdurdu → sıradaki mesaj kendiliğinden gönderilmez, yazma kutusuna döner
+    assert s.composer.edit.toPlainText() == "ara mesaj" and not s.inbox
     assert _wait(app, lambda: not s.project.active)
     assert s.project.state.status == "duraklatildi"
     assert w.ctx.db.latest_project_run(s.session_id)["status"] == "duraklatildi"

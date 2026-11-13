@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QPlainTextEdit,
     QPushButton,
+    QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -181,9 +182,29 @@ class ComposerEdit(QPlainTextEdit):
         self.setFocus()
 
 
+class _ElidedLabel(QLabel):
+    """Tek satır; sığmayan metin sonda "…" ile kısalır (yanındaki nota taşmaz). Tam metin ipucunda."""
+
+    def __init__(self, text: str):
+        super().__init__()
+        self._full = " ".join((text or "").split())
+        self.setToolTip(text)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.setMinimumWidth(40)
+        self.setText(self._full)
+
+    def full_text(self) -> str:
+        return self._full
+
+    def resizeEvent(self, e) -> None:
+        super().resizeEvent(e)
+        self.setText(self.fontMetrics().elidedText(self._full, Qt.ElideRight, max(10, self.width())))
+
+
 class Composer(QWidget):
     submitted = Signal(str)
     stop_requested = Signal()
+    withdraw_requested = Signal(int)    # Madde 23 a: sıradaki mesajı geri çek (inbox kimliği)
     mode_changed = Signal(str)
     deep_toggled = Signal(bool)
     model_changed = Signal(str)
@@ -218,6 +239,16 @@ class Composer(QWidget):
         self.popup_title.setVisible(False)
         outer.insertWidget(0, self.popup_title)
 
+        # ---- Madde 23 a: sıradaki mesajlar (iş sürerken gönderilen; işlenene kadar geri çekilebilir) ----
+        self.queue_bar = QFrame()
+        self.queue_bar.setObjectName("QueueBar")
+        self._queue_layout = QVBoxLayout(self.queue_bar)
+        self._queue_layout.setContentsMargins(12, 6, 8, 6)
+        self._queue_layout.setSpacing(4)
+        self._queue_rows: list[QWidget] = []
+        self.queue_bar.setVisible(False)
+        outer.addWidget(self.queue_bar)
+
         # ---- çalışma durum çubuğu: model + süre ----
         self.run_bar = QFrame()
         self.run_bar.setObjectName("RunBar")
@@ -229,7 +260,7 @@ class Composer(QWidget):
         rl.addWidget(self.run_dot)
         self.run_text = QLabel()
         rl.addWidget(self.run_text, 1)
-        self.run_hint = QLabel("Esc ile durdur")
+        self.run_hint = QLabel("Esc ile durdur · yazıp Enter: sıraya al")
         self.run_hint.setProperty("role", "faint")
         rl.addWidget(self.run_hint)
         self.run_bar.setVisible(False)
@@ -342,9 +373,51 @@ class Composer(QWidget):
     def set_agentic(self, agentic: bool) -> None:
         self._agentic = agentic
         self.mode_btn.setVisible(agentic)
-        self.edit.setPlaceholderText(
-            "EVREN'e bir görev verin veya soru sorun…  (/ komutlar, @ dosya)" if agentic
-            else "Mesajınızı yazın…  (/ komutlar)")
+        self._update_placeholder()
+
+    def _update_placeholder(self) -> None:
+        if self._running:
+            text = ("Çalışıyor — yazın ve Enter'a basın: mesaj sıraya alınır, uygun anda işe iletilir  "
+                    "(Esc: durdur)")
+        elif self._agentic:
+            text = "EVREN'e bir görev verin veya soru sorun…  (/ komutlar, @ dosya)"
+        else:
+            text = "Mesajınızı yazın…  (/ komutlar)"
+        self.edit.setPlaceholderText(text)
+
+    def set_queue(self, items: list[tuple[int, str, str]]) -> None:
+        """Sıradaki mesajlar: (kimlik, metin, durum notu). Her satırda "Geri çek" — mesaj işlenmeden önce kutuya döner."""
+        for w in self._queue_rows:
+            w.hide()
+            w.deleteLater()                # R-33: önce gizle, sonra sil (liste yenilenirken titreme olmasın)
+        self._queue_rows = []
+        for item_id, text, note in items:
+            row = QWidget()
+            hl = QHBoxLayout(row)
+            hl.setContentsMargins(0, 0, 0, 0)
+            hl.setSpacing(8)
+            ic = QLabel()
+            ic.setPixmap(icons.icon("clock", "muted", 14).pixmap(14, 14))
+            hl.addWidget(ic)
+            label = _ElidedLabel(text)
+            label.setObjectName("QueueText")
+            hl.addWidget(label, 1)
+            hint = QLabel(note)
+            hint.setProperty("role", "faint")
+            hl.addWidget(hint)
+            btn = QPushButton("Geri çek")
+            btn.setObjectName("QueueWithdraw")
+            btn.setProperty("variant", "chip")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setToolTip("Bu mesaj henüz işlenmedi: yazma kutusuna geri alınır (düzenleyebilir ya da silebilirsiniz)")
+            btn.clicked.connect(lambda _=None, i=item_id: self.withdraw_requested.emit(i))
+            hl.addWidget(btn)
+            self._queue_layout.addWidget(row)
+            self._queue_rows.append(row)
+        self.queue_bar.setVisible(bool(items))
+
+    def queue_count(self) -> int:
+        return len(self._queue_rows)
 
     def set_mode(self, mode: str, emit: bool = False) -> None:
         mode = normalize_mode(mode)
@@ -432,6 +505,7 @@ class Composer(QWidget):
         if not running:
             self.set_run_status(None)
         self._update_send()
+        self._update_placeholder()
 
     def set_run_status(self, text: str | None) -> None:
         """Yazma kutusunun üstündeki durum çubuğu: 'glm-5.3 çalışıyor · 0:12 · adım 2'."""
@@ -485,7 +559,7 @@ class Composer(QWidget):
         self.send_btn.style().polish(self.send_btn)
         if self._running:
             self.send_btn.setIcon(icons.icon("stop", "bg", 18))
-            self.send_btn.setToolTip("Durdur (Esc)")
+            self.send_btn.setToolTip("Durdur (Esc) — yazıp Enter'a basarsanız mesaj sıraya alınır")
             self.send_btn.setEnabled(True)
         else:
             has_text = bool(self.edit.toPlainText().strip()) or bool(self.attachments.items())
@@ -636,8 +710,8 @@ class Composer(QWidget):
             self._submit()
 
     def _submit(self) -> None:
-        if self._running and not self.edit.toPlainText().strip().startswith("/"):
-            return
+        # Madde 23 a: iş sürerken de gönderilebilir — oturum mesajı sıraya alır (çalışan işe iletir ya da iş bitince
+        # gönderir). Gönder düğmesi bu sırada "Durdur"dur; Enter gönderir.
         text = self.edit.toPlainText().strip()
         if not text and not self.attachments.items():
             return

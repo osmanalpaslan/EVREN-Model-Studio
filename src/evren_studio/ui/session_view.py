@@ -379,6 +379,7 @@ class SessionView(QWidget):
     toggle_sidebar = Signal()
     toggle_panel = Signal()
     notify = Signal(str, str)              # (başlık, metin) → ana pencere Windows bildirimi
+    inbox_changed = Signal()               # Madde 23 a: sıra değişti (koşucu iş parçacığından da gelir)
 
     def __init__(self, ctx, panel, parent=None):
         super().__init__(parent)
@@ -431,6 +432,17 @@ class SessionView(QWidget):
         self._run_timer = QTimer(self)
         self._run_timer.setInterval(500)
         self._run_timer.timeout.connect(self._tick_run)
+        # Madde 23 a: iş sürerken gönderilen mesajlar. Koşucu adım arasında iletilebilir olanları alır; kalanlar iş
+        # bitince (hiçbir akış çalışmıyorken) yeni tur olarak gönderilir. Kuyruk iş parçacığı güvenlidir; değişim
+        # bildirimi sinyalle ana iş parçacığına taşınır (R-11).
+        from ..agent.inbox import Inbox
+
+        self.inbox = Inbox()
+        self.inbox.on_change = self.inbox_changed.emit
+        self.inbox_changed.connect(self._refresh_queue)
+        self._inbox_timer = QTimer(self)
+        self._inbox_timer.setInterval(600)
+        self._inbox_timer.timeout.connect(self._flush_inbox)
         self._auto_resumes = 0          # bu kullanıcı mesajından beri otomatik devam sayısı
         self._plan_continues = 0        # plan bekçisi: adım sınırından sonra otomatik devam sayısı
         self._project_offered: set[int] = set()   # Proje ajanı önerisi gösterilen metinler (hash)
@@ -492,6 +504,7 @@ class SessionView(QWidget):
         self._usage_timer.setInterval(5 * 60 * 1000)
         self._usage_timer.timeout.connect(self.refresh_usage)
         self.composer.stop_requested.connect(self.stop)
+        self.composer.withdraw_requested.connect(self.withdraw_queued)
         self.composer.mode_changed.connect(self.set_mode)
         self.composer.model_changed.connect(self.set_model)
         self.composer.attach_requested.connect(self.attach_files)
@@ -699,6 +712,8 @@ class SessionView(QWidget):
         if self.running:
             QMessageBox.information(self, "Ajan çalışıyor", "Önce çalışan işlemi durdurun (Esc).")
             return
+        if self.inbox:                              # Madde 23 a: sıradaki mesaj başka oturuma gitmesin → kutuya
+            self._return_to_composer(self.inbox.take_all())
         snap = transitions.begin(self.stack)       # yumuşak geçiş: akış temizlenmeden önceki görüntü
         self.session_id = None
         self.workspace = None
@@ -765,6 +780,8 @@ class SessionView(QWidget):
             return
         # Yumuşak geçiş yalnız başka oturuma geçerken (aynı oturumun içten yeniden çizimi titremesin)
         switching = session_id != self.session_id
+        if switching and self.inbox:                # Madde 23 a: sıradaki mesaj başka oturuma gitmesin → kutuya
+            self._return_to_composer(self.inbox.take_all())
         snap = transitions.begin(self.stack) if switching else None
         if session_id != self.session_id:
             self._kolay_fail, self._last_route_role = False, ""
@@ -1411,6 +1428,16 @@ class SessionView(QWidget):
         if text.startswith("/") and not atts:
             if self._command(text):
                 return
+        if self.deep.awaiting_answers and not atts:
+            self.composer.set_text("")
+            self.deep.answer(text)                  # soru kartının yanıtı mesaj kutusundan da verilebilir
+            return
+        if self._busy():
+            # Madde 23 a (kullanıcı 2026-11-13): iş sürerken mesaj REDDEDİLMEZ; sıraya alınır. Normal ajan/sohbet
+            # turunda adım arasında çalışan işe iletilir; QA/Proje/Derin akışında ya da ekli mesajda iş bitince yeni
+            # tur olur. İşlenene kadar "Geri çek" ile yazma kutusuna döner.
+            self._enqueue(text, atts)
+            return
         son_tur, self._gozlem_son_tur = getattr(self, "_gozlem_son_tur", None), None
         if son_tur is not None and self.session_id and son_tur[4] == self.session_id and not atts:
             from .. import gozlem
@@ -1421,28 +1448,6 @@ class SessionView(QWidget):
         pending = self._pending_plan()
         if pending is not None and pending.session_id == self.session_id:
             self.cancel_auto_resume()       # kullanıcı kendisi sürdürüyor: bekleyen otomatik devam iptal
-        if self.qa.active or self.qa.planning:
-            self._note("QA ajanı çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için "
-                       "/qa-durdur yazın (veya Esc).", "alert")
-            back()
-            return
-        if self.project.active or self.project.planning:
-            self._note("Proje ajanı çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için "
-                       "/proje-durdur yazın.", "alert")
-            back()
-            return
-        if self.deep.awaiting_answers and not atts:
-            self.composer.set_text("")
-            self.deep.answer(text)                  # soru kartının yanıtı mesaj kutusundan da verilebilir
-            return
-        if self.deep.active:
-            self._note("Derin Mod çalışıyor; şu an ayrı mesaj gönderilemez. Durdurmak için Esc veya "
-                       "/derin-durdur.", "alert")
-            back()
-            return
-        if self.running:
-            back()
-            return
         if self.deep_on and not atts and self.edit_from is None:
             reason = self.deep.unavailable_reason()
             if not reason:
@@ -1535,6 +1540,68 @@ class SessionView(QWidget):
         self.transcript.scroll_to_bottom()
         self.sessions_changed.emit()
         self.start_run()
+
+    # ---- Madde 23 a: iş sürerken gönderilen mesajlar (sıra, çalışan işe iletme, geri çekme) ----
+
+    def _busy(self) -> bool:
+        """Yeni tur başlatılamaz: ajan turu, özet, QA, Proje ya da Derin akışı sürüyor."""
+        return bool(self.running or self.qa.active or self.qa.planning or self.project.active
+                    or self.project.planning or self.deep.active)
+
+    def _steering_run(self) -> bool:
+        """Şu anki çalışma, ara mesajın iletilebileceği normal kullanıcı turu mu (Proje/QA/Derin görev turu değil)."""
+        return bool(self.running and getattr(self, "_steer_ok", False))
+
+    def _enqueue(self, text: str, atts: list) -> None:
+        content = text if text.startswith("/") else self._expand_mentions(text, self.workspace)
+        self.inbox.add(text, atts, content=content)
+        self.composer.set_text("")
+        self._inbox_timer.start()
+
+    def _queue_note(self, item) -> str:
+        if item.steerable and self._steering_run():
+            return "çalışan işe iletilecek"
+        return "iş bitince gönderilecek"
+
+    def _refresh_queue(self) -> None:
+        items = self.inbox.items()
+        self.composer.set_queue([(p.id, p.text, self._queue_note(p)) for p in items])
+        if not items:
+            self._inbox_timer.stop()
+
+    def withdraw_queued(self, item_id: int) -> None:
+        """Henüz işlenmemiş mesajı yazma kutusuna geri al (kutuda yazı varsa altına eklenir)."""
+        item = self.inbox.withdraw(item_id)
+        if item is None:
+            self._note("Bu mesaj az önce ajana iletildi; artık geri çekilemez. Ajana yeni bir mesajla "
+                       "vazgeçtiğinizi yazabilir ya da Esc ile durdurabilirsiniz.", "alert")
+            return
+        self._return_to_composer([item])
+
+    def _return_to_composer(self, items: list) -> None:
+        current = self.composer.edit.toPlainText().strip()
+        texts = [current] if current else []
+        texts += [p.text for p in items if p.text.strip()]
+        self.composer.set_text("\n\n".join(texts))
+        for p in items:
+            self._restore_attachments(p.attachments)
+
+    def _steer_items(self) -> list[dict]:
+        """KOŞUCU İŞ PARÇACIĞINDA çağrılır: çalışan işe iletilecek mesajlar (yalnız kuyruk ve sinyal; arayüze dokunmaz)."""
+        return [{"content": p.body, "meta": {"steer": True, "shown": p.text}} for p in self.inbox.take_steerable()]
+
+    def _flush_inbox(self) -> None:
+        """Hiçbir akış çalışmıyorken sıradakileri yeni tur olarak gönderir (komut tek başına, diğerleri birlikte)."""
+        if not self.inbox:
+            self._inbox_timer.stop()
+            return
+        if self._busy() or self.deep.awaiting_answers:          # özet de `running` sayılır
+            return
+        from ..agent.inbox import merge
+
+        text, atts = merge(self.inbox.take_batch())
+        if text or atts:
+            self.send(text, atts)
 
     def edit_message(self, message_id: int, text: str) -> None:
         if self.running or not message_id:
@@ -1658,6 +1725,9 @@ class SessionView(QWidget):
         cmd = cmd.lower()
         if cmd not in SLASH_COMMANDS and cmd not in MODE_COMMANDS:
             return False
+        if cmd.endswith("-durdur") and self.inbox:
+            # Madde 23 a: kullanıcı akışı durduruyor → sıradaki mesajlar kendiliğinden gönderilmesin, kutuya dönsün
+            self._return_to_composer(self.inbox.take_all())
         if cmd.startswith("/proje"):
             self.project.command(cmd, arg)
             return True
@@ -1783,6 +1853,8 @@ class SessionView(QWidget):
             except ToolError as exc:
                 self.transcript.add(ErrorCard("Proje klasörüne erişilemiyor", [str(exc)]))
                 return
+        steer_ok = model_override is None and self._turn_hook is None and not self.unattended
+        self._steer_ok = steer_ok
         # EVREN Akıllı: bu tur için rol + gerçek model + yedekler (tur boyunca sabit)
         self._run_route = None
         api_model, fallbacks = self.model, []
@@ -1924,10 +1996,15 @@ class SessionView(QWidget):
             game_tools=self._wants_game_tools(ws.root if ws is not None else None, run_role, history),
             critic=critic,                  # B4: yalnız Proje görevi turunda (project_ui verir)
             protected_files=protected_files,  # Proje görevi: yürütücünün EVREN_PLAN.md / EVREN_RAPOR.md'si yazılmaz
+            # Madde 23 a: yalnız NORMAL kullanıcı turunda ara mesaj iletilir; Proje/QA/Derin görev turunda mesaj sırada
+            # bekler (görevi onların yürütücüsü yönetir), gözetimsiz kipte (zamanlanmış görev) yoktur.
+            steer_source=self._steer_items if steer_ok else None,
         )
         runner = self.runner
         self.running = True
         self.composer.set_running(True)
+        if self.inbox:
+            self._refresh_queue()       # durum notu: "çalışan işe iletilecek" / "iş bitince gönderilecek"
         self._pending_approvals.clear()
         self.run_model = api_model
         self._run_t0 = time.monotonic()
@@ -2183,6 +2260,10 @@ class SessionView(QWidget):
             b.sig_status.emit(f"Planlayıcı plan bloğu vermedi ({took:.0f} sn); iş plansız sürüyor.")
 
     def stop(self) -> None:
+        if self.inbox and self._busy():
+            # Madde 23 a: kullanıcı durdurdu → sıradaki (işlenmemiş) mesajlar kendiliğinden gönderilmez, yazma
+            # kutusuna döner (Claude Code da Esc'te sıradakini kutuya geri koyar)
+            self._return_to_composer(self.inbox.take_all())
         if self.deep.active or getattr(self.deep, "_resume_timer", None) is not None:
             self.deep.stop()
             if self.running and not self.project.active:
@@ -2296,6 +2377,17 @@ class SessionView(QWidget):
             if not self.current.has_visible_content():
                 self.current.status.setText("(boş yanıt — model içerik üretmedi)")
                 self.current.status.setVisible(True)
+        elif role == "user" and (msg.get("meta") or {}).get("steer"):
+            # Madde 23 a: çalışırken gönderilen mesaj ajana iletildi → konuşmada kullanıcı balonu olarak görünür
+            if self.current is not None and not self.current.has_visible_content():
+                self.current.setVisible(False)
+            shown = (msg.get("meta") or {}).get("shown") or msg.get("content") or ""
+            w = UserMessageWidget(shown, msg.get("id"))
+            w.text = shown
+            w.edit_requested.connect(self.edit_message)
+            w.rewind_requested.connect(self.rewind_to)
+            self.transcript.add(w)
+            self.transcript.scroll_to_bottom()
         elif role == "tool" and msg.get("name") == "arac_cagrisi":
             self.transcript.add(NoteWidget(msg.get("content", "")[:300], "alert"))
         elif role == "tool":
@@ -2469,6 +2561,10 @@ class SessionView(QWidget):
         self._pending_approvals.clear()
         self.panel.changes.refresh()
         self.sessions_changed.emit()
+        self._steer_ok = False
+        if self.inbox:                  # Madde 23 a: sırada kalan → iş bitince yeni tur (zamanlayıcı boşta gönderir)
+            self._refresh_queue()
+            self._inbox_timer.start()
         self._update_header()
         self._update_context()
 

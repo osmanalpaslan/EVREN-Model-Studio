@@ -22,7 +22,7 @@ import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from ..api.errors import ApiError, ErrorKind
 from . import modelstats, planguard, textproto
@@ -157,6 +157,11 @@ NUDGE_REPEAT = ("[Otomatik hatırlatma] Son yanıtın aynı cümleleri tekrar te
                 "çağırmadın. Tekrarı bırak: yapacağın işin aracını ŞİMDİ çağır; iş bittiyse kısa bir "
                 "özet yaz, bitmediyse neyin eksik olduğunu açıkça söyle.")
 REPEAT_COLLAPSED = "\n\n[Tekrar eden metin kısaltıldı.]"
+# Madde 23 a: kullanıcı ajan çalışırken mesaj gönderdi (agent/inbox.py). Mesaj kayda GERÇEK kullanıcı mesajı olarak
+# girer (meta steer); bu not yalnız o mesajın hemen ardındaki çağrıda kuyruk notuna eklenir (Claude Code düzeni).
+STEER_NOTE = ("# Kullanıcıdan ara mesaj\nKullanıcı sen çalışırken yukarıdaki mesajı gönderdi. Yarım kalan adımı "
+              "güvenle bitir, sonra bu mesajı dikkate alarak sürdür. Mesaj işi değiştiriyor ya da durdurmanı "
+              "istiyorsa ona uy; bir soruysa kısaca yanıtla ve işe devam et.")
 _INTENT_RE = None
 
 
@@ -581,9 +586,13 @@ class AgentRunner:
                  base_body: dict[str, Any] | None = None, extra_hint: str = "",
                  project_map: bool = False, skills: list | None = None, untrusted: list[str] | None = None,
                  user_rules: Any = None, game_tools: bool = False, test_tools: Any = None,
-                 critic: Any = None, protected_files: tuple[str, ...] = ()):
+                 critic: Any = None, protected_files: tuple[str, ...] = (),
+                 steer_source: Callable[[], list[dict]] | None = None):
         self.client = client
         self.model = model
+        # Madde 23 a: çalışırken gönderilen mesajlar. Her adım arasında ve tur bitmeden önce çağrılır; dönen her öğe
+        # {"content": str, "meta": dict} kayda kullanıcı mesajı olarak eklenir. None → kapalı (Proje/QA görev turları).
+        self.steer_source = steer_source
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
         # Yalnız proje klasörlü oturumda kullanılır; okuma dışındaki araçlar izinden geçer.
         self.mcp = mcp
@@ -1011,6 +1020,21 @@ class AgentRunner:
         self.events.message_saved(msg)
         return msg
 
+    def _take_steer(self, history: list[dict]) -> bool:
+        """Madde 23 a: kullanıcının çalışırken gönderdiği mesajları kayda ekler (yalnız araç sonuçları tamamken —
+        adım başı ya da tur sonu — çağrılır: araç çağrısı ile sonucu arasına kullanıcı mesajı girmez). Eklendi mi."""
+        if self.steer_source is None:
+            return False
+        try:
+            items = self.steer_source() or []
+        except Exception:
+            return False
+        for it in items:
+            self._save(history, "user", it.get("content") or "", meta={**(it.get("meta") or {}), "steer": True})
+        if items:
+            self.events.status("Çalışırken gönderdiğiniz mesaj ajana iletildi.")
+        return bool(items)
+
     def _slow_switch_possible(self) -> bool:
         """Yavaşlık yüzünden yedeğe geçilebilir mi (görev başına bir kez; zayıf modele değil)."""
         if not self.fallback_models or self._slow.used:
@@ -1036,7 +1060,9 @@ class AgentRunner:
         first = next((m for m in history_after_summary(visible)), None)
         self._summary_anchor = first.get("id") if first else None       # özetten sonra sabit istem yenilenir
         messages = to_api_messages(self._system(), visible, self.protocol)
-        append_tail(messages, self._tail())
+        last = visible[-1] if visible else {}
+        steer = STEER_NOTE if last.get("role") == "user" and (last.get("meta") or {}).get("steer") else ""
+        append_tail(messages, "\n\n".join(t for t in (self._tail(), steer) if t))
         if self._nudge:
             # Geçici: kayda yazılmaz, yalnız bu çağrıda gider.
             messages.append({"role": "user", "content": self._nudge})
@@ -1126,6 +1152,7 @@ class AgentRunner:
                 if self._switch_model(outcome, None, slow_reason=pending_slow):
                     self._slow.used = True
                 pending_slow = ""
+            self._take_steer(history)                    # Madde 23 a: araç sonuçları tamam → ara mesaj girebilir
             step += 1
             outcome.steps = step
             if self.before_model_call is not None:
@@ -1313,6 +1340,9 @@ class AgentRunner:
                         self.events.status("İddia bekçisi: yanıttaki iddianın kanıtı yok; model doğrulamaya yönlendirildi.")
                         self._nudge = claim
                         continue
+                # Madde 23 a: yanıt bitti ama kullanıcı bu arada mesaj gönderdi → aynı turda sürdür (bağlam korunur)
+                if step < self.max_steps and not self._cancelled() and self._take_steer(history):
+                    continue
                 outcome.stopped = "done"
                 break
 

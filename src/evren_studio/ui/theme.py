@@ -496,6 +496,8 @@ QListWidget#CommandPopup::item {{ padding: 5px 9px; border-radius: 8px; min-heig
 QListWidget#CommandPopup::item:hover {{ background: {p.hover}; }}
 QListWidget#CommandPopup::item:selected {{ background: {p.accent_soft}; color: {p.text}; }}
 QFrame#RunBar {{ background: {p.accent_soft}; border: 1px solid {p.rim}; border-radius: 14px; }}
+/* Madde 23 a: iş sürerken gönderilen, henüz işlenmemiş mesajlar (geri çekilebilir) */
+QFrame#QueueBar {{ background: {p.surface}; border: 1px solid {p.rim}; border-radius: 14px; }}
 /* Yazma kutusu: içeriğin üstünde yüzen cam kapsül */
 QFrame#Composer {{ background: {glass}; border: 1px solid {p.rim}; border-radius: {R_COMPOSER}px; }}
 QFrame#Composer[focus="true"] {{ border-color: {p.accent}; }}

@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 118 · Açık/izlenen: 8 · Oturum: 47 · Kural: 36
+Kayıt: 118 · Açık/izlenen: 8 · Oturum: 48 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -144,6 +144,7 @@ Kayıt: 118 · Açık/izlenen: 8 · Oturum: 47 · Kural: 36
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-11-13 | [2026-11-13-claude-code-madde-23-mesaj-kuyrugu-yedek-motor-sagla](sessions/2026-11-13-claude-code-madde-23-mesaj-kuyrugu-yedek-motor-sagla.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 23 mesaj kuyrugu yedek motor saglayicidan bagimsiz otomatik isler ve 0.5.1 cikti |
 | 2026-11-13 | [2026-11-13-claude-code-madde-22-hiz-ve-dogruluk-altyapisi-onbel](sessions/2026-11-13-claude-code-madde-22-hiz-ve-dogruluk-altyapisi-onbel.md) | Claude Code / claude-opus-5-5 | tamamlandi | Madde 22 hiz ve dogruluk altyapisi (onbellek, bekciler, masaustu, arka plan, talimatlar) |
 | 2026-11-12 | [2026-11-12-claude-code-madde-20-c-asamasi-tree-sitter-harita-gu](sessions/2026-11-12-claude-code-madde-20-c-asamasi-tree-sitter-harita-gu.md) | Claude Code / claude-opus-5-5 | tamamlandi | Madde 20 C asamasi: tree-sitter harita, guncelleme, ses, terminal |
 | 2026-11-12 | [2026-11-12-claude-code-0-5-1-kullanici-istekleri-toplu-kurulum](sessions/2026-11-12-claude-code-0-5-1-kullanici-istekleri-toplu-kurulum.md) | Claude Code / claude-opus-5-5 | devam-ediyor | 0.5.1 kullanici istekleri (toplu): kurulum yalniz kullanici |
