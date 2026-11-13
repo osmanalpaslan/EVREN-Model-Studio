@@ -2,6 +2,9 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Takılan kısa isteklerde yedek**: Uygulamanın kısa iç işleri (başlık, yargıç, soru birleştirme gibi) bir EVREN modeli
+  12 saniyede yanıt vermezse sıradaki modele paralel olarak da sorulur, önce gelen yanıt kullanılır (EVREN'de aynı istek
+  arada 50 saniyeye kadar takılabiliyor). Ücretli sağlayıcılarda yapılmaz.
 - **Masaüstü kontrolü hızlı yol**: Ajan artık yalnız hedef pencereyi okuyan bir araçla ve tek çağrıda birden çok eylem
   (yaz, tıkla, seç, tuş) yapan bir araçla çalışır; tüm masaüstünü taramaz, her tıklama için ayrı tur beklemez. Mümkünse
   fare yerine Windows'un erişilebilirlik arayüzü kullanılır (farenizle çakışmaz). Windows oturumu kilitliyken masaüstü

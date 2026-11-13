@@ -52,6 +52,18 @@ AUTO_PRO_INFO = ModelInfo(id="auto-pro", task="chat", modalities=["text", "image
                           provider="evren")
 AKILLI_INFO = AUTO_PRO_INFO          # eski ad
 # Yapay zekâ çağrısında sıradaki modele geçmeyi gerektiren hatalar (kota/yetki hariç)
+# Madde 22 E2: kısa iç istekte ilk EVREN modeli bu kadar saniyede yanıtlamazsa sıradakine paralel yedek istek (0: kapalı)
+HEDGE_AFTER_S = float(os.environ.get("EVREN_STUDIO_HEDGE_S", "12") or 0)
+
+
+def _raise_if_final(exc: BaseException | None) -> None:
+    """Kota/anahtar gibi hesap düzeyi hatalar (yedeğe geçilmeyen) hemen yükselir — eski sıralı davranışla aynı."""
+    from ..api.errors import ApiError
+
+    if isinstance(exc, ApiError) and exc.kind.value not in _AI_FAILOVER:
+        raise exc
+
+
 _AI_FAILOVER = {"sunucu_kullanılamıyor", "sunucu_hatası", "zaman_aşımı", "bulunamadı", "ağ_hatası",
                 "geçersiz_istek"}
 
@@ -341,6 +353,55 @@ class AppContext:
         return False, ("QA motorları şu an yavaş ya da sorunlu görünüyor (son hafif yoklama — " + why + "). Test "
                        "uzun sürebilir ya da yarıda kalabilir; motorlar düzelince denemeniz önerilir.")
 
+    def _ai_attempt(self, model: str, messages: list[dict], max_tokens: int) -> str:
+        """Tek EVREN modeliyle kısa iç istek (düşünme kapalı); boş/başarısızsa hata."""
+        client = self.make_client_for(self.provider_of(model))
+        kwargs = {}
+        info = self.model_info(model)
+        if info is not None and (info.capabilities or {}).get("reasoning_effort"):
+            kwargs["extra_body"] = {"reasoning_effort": "none"}
+        try:
+            result = client.chat(model, messages, stream=False, max_tokens=max_tokens, **kwargs)
+        finally:
+            close = getattr(client, "close", None)
+            if close:
+                close()
+        text = (result.content or "").strip()
+        if not text:
+            raise RuntimeError(f"{model} boş yanıt verdi")
+        return text
+
+    def _ai_chat_hedged(self, pair: list[str], messages: list[dict], max_tokens: int,
+                        session_id: int | None) -> tuple[str, str]:
+        """İlk model; HEDGE_AFTER_S'de yanıt yoksa ikinci model paralel. Önce başarılı olan kazanır; kaybedenin isteği
+        arka planda biter (beklenmez). İkisi de başarısızsa son hata."""
+        from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+
+        ex = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ai-hedge")
+        try:
+            futs = {ex.submit(self._ai_attempt, pair[0], messages, max_tokens): pair[0]}
+            done, _ = wait(list(futs), timeout=HEDGE_AFTER_S)
+            if not done:
+                futs[ex.submit(self._ai_attempt, pair[1], messages, max_tokens)] = pair[1]
+                self.record_model_call({"model": pair[0], "role": "ic", "ok": True, "event": "hedge",
+                                        "detail": f"{HEDGE_AFTER_S:.0f} sn yanıt yok → {pair[1]} paralel"})
+            elif next(iter(done)).exception() is not None:   # hızlı başarısız: sıradaki tek başına denensin
+                _raise_if_final(next(iter(done)).exception())
+                futs[ex.submit(self._ai_attempt, pair[1], messages, max_tokens)] = pair[1]
+            last: BaseException | None = None
+            pending = set(futs)
+            while pending:
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                for f in done:
+                    if f.exception() is None:
+                        return f.result(), futs[f]
+                    last = f.exception()
+                    if not pending:
+                        _raise_if_final(last)
+            raise last if last else RuntimeError("yanıt yok")
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
+
     def ai_chat(self, role: str, messages: list[dict], max_tokens: int = 800,
                 session_id: int | None = None, evren_only: bool = False) -> tuple[str, str]:
         """Uygulamanın kendi yapay zekâ işleri (özet hariç: özet akışlıdır) için tek giriş:
@@ -359,6 +420,17 @@ class AppContext:
             raise RuntimeError("Yapay zekâ işi için API anahtarı yok (Ayarlar)."
                                if not evren_only else "Bu iş yalnız EVREN ile yapılır: EVREN anahtarı gerekli.")
         last: Exception | None = None
+        # Madde 22 E2 (2026-11-13 ölçümü: aynı kısa istek çoğunlukla 1,5-4 sn, arada 50-53 sn takılıyor): YALNIZ EVREN
+        # zincirinde ilk model HEDGE_AFTER_S içinde yanıtlamazsa sıradaki EVREN modeline paralel yedek istek; önce gelen
+        # (boş olmayan) yanıt alınır. Ücretli sağlayıcıda asla (maliyet). Kalan zincir eskisi gibi sırayla denenir.
+        if (HEDGE_AFTER_S > 0 and len(chain) >= 2
+                and all(self.provider_of(m) == "evren" for m in chain[:2])):
+            try:
+                return self._ai_chat_hedged(chain[:2], messages, max_tokens, session_id)
+            except Exception as exc:              # ikisi de olmadı → kalan zincir (kota/anahtar hatası hemen yükselir)
+                _raise_if_final(exc)
+                last = exc
+                chain = chain[2:]
         for model in chain:
             provider = self.provider_of(model)
             if provider != "evren":

@@ -65,6 +65,14 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   çalışıyor (tek belirti yanlış alarm verirdi; canlı açık oturumda False doğrulandı) → _call_desktop çağrı yapmadan
   LOCKED_TEXT + user_paused.
 
+- E arka plan: E1 yapılandırılmış çıktı gerçek API'de ölçüldü (json_schema 6/6 şemaya uygun ama qwen 2 kat yavaş) →
+  varsayılan DEĞİL (istem + jsonfix + yedek yeterli; MODEL_CAPABILITIES'e işlendi). E2 yedek istek (app_context.ai_chat:
+  zincirin ilk iki EVREN modeli; ilki HEDGE_AFTER_S=12 sn'de yanıtlamazsa ikincisi paralel, önce başarılı olan; hızlı
+  başarısızlıkta sıradaki; kota/anahtar hatası hemen yükselir; ücretli sağlayıcıda asla; olay modelstats'a "hedge";
+  EVREN_STUDIO_HEDGE_S ile ayar/kapatma). Kanıt: kısa istek 1,5-4 sn ama arada 50-53 sn takılıyor. E3 Derin Mod aday
+  yamalar YAPILMADI: en uzun aşamayı (uygula) ve kotayı ikiye katlar; Derin Mod'da gerçek test kanıtı + düzeltme
+  turları + başlangıç ölçümü zaten var.
+
 ## Test sonuçları
 - A: test_attachments_usage +1 (gerçek _usage_snapshot yolu + panel satırı, önbelleksiz satır yok), test_onbellek_raporu
   (oranlar + tur başı + komut satırı). Mutasyon 4/4.
@@ -84,6 +92,10 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   devre dışı / engelli tuş, bekle sınırı, pencere yok, listeleme salt okunur, hedef bulma sırası + Türkçe + ikiz ad,
   9 tuş çevirisi, kayda ekleme + config + istem, kilit 4 durum + hata → engellemez + kilitliyken çağrı yok/açılınca
   çalışır). Mutasyon 12/13 + 1 eşdeğer (End zaten tabloda yok; ikinci koruma). Masaüstü/MCP/QA paketi 105 geçti.
+- E: tests/test_yedek_istek.py 7 (zamanında → yedek yok; takılan → yedek kazanır < 0,6 sn; ikisi yavaş → önce biten;
+  hızlı başarısız + boş → kalan zincir; kota → hemen yükselir, zincire geçmez; ücretli → yok; eşik 0 → kapalı) +
+  ai_chat kullanan 5 dosya: 88 geçti. Mutasyon 6/6. Gerçek EVREN: eşik 0,5 sn'de 3/3 paralel yol hatasız (olay
+  kaydedildi), 12 sn'de yedek yok; yanıt 1,0-1,7 sn.
 
 ## Sorunlar ve kayıtlar
 - Kendi hatam (R-29, yine): DEVIR tablosuna madde 22 satırını eklerken Python'u bash heredoc ile çalıştırdım (içerik

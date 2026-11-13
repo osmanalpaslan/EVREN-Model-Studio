@@ -115,8 +115,14 @@ gönderildi; kare rengi ve CSV toplamı doğru yanıtlandı.
   gerçek modellerle ayrıca denenmedi (okuma ve düzenleme denendi).
 - OCR, ASR, embedding, rerank, guard, systemone: uç noktalar şemada var;
   gerçek istekle test EDİLMEDİ.
-- `response_format` (yapılandırılmış çıktı): bayraklar kayıtta var; test
-  EDİLMEDİ.
+- `response_format` (yapılandırılmış çıktı): GERÇEK API ile test edildi (2026-11-13, düşünme kapalı, model başına 3):
+  `json_schema` (strict) qwen3.8-flash-next ve deepseek-v4.1-flash'te 6/6 şemaya uygun; `json_object` geçerli JSON ama
+  anahtarlar modelin seçimi; hiç verilmezse uzun yanıtta kesik/bozuk JSON görüldü. Bedeli: qwen'de json_schema 2 kat
+  yavaş (12-27 sn), deepseek'te belirgin fark yok. Uygulama iç işlerde istemde biçimi açıkça yazıyor + jsonfix + güvenli
+  yedek (25 gerçek denemede bozulma yok) → varsayılan olarak KULLANILMIYOR.
+- Önek önbelleği (prefix caching): VAR (2026-11-13). usage.prompt_tokens_details.cached_tokens bildirilir; qwen 1600,
+  deepseek 64 token'lık bloklarla. Aynı başlı istek 4-7 kat hızlı; önbellekten okunan token GÜNLÜK KOTADAN DÜŞMEZ.
+- Kuyruk gecikmesi: aynı kısa istek çoğunlukla 1,5-4 sn, arada 50-53 sn (2026-11-13) → kısa iç işlerde yedek istek.
 
 ## Fiyat (2026-10-15 snapshot)
 
