@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 119 · Açık/izlenen: 8 · Oturum: 48 · Kural: 36
+Kayıt: 120 · Açık/izlenen: 8 · Oturum: 48 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -21,6 +21,7 @@ Kayıt: 119 · Açık/izlenen: 8 · Oturum: 48 · Kural: 36
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-14 | [2026-11-14-duman-testi-yolu-qtimer-ice-aktarmasi-silinince-cokuyordu](incidents/2026-11-14-duman-testi-yolu-qtimer-ice-aktarmasi-silinince-cokuyordu.md) | hata | yuksek | cozuldu | Claude Code | Duman testi yolu QTimer içe aktarması silinince çöküyordu |
 | 2026-11-13 | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje-2](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje-2.md) | hata | orta | cozuldu | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: mini_proje (ikinci kök neden: kontrolün yarım UTF-8 ortamı) |
 | 2026-11-13 | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje.md) | risk | orta | izleniyor | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: mini_proje |
 | 2026-11-13 | [2026-11-13-test-bekcisi-bayat-pyc-ile-eski-kodu-kosturuyordu](incidents/2026-11-13-test-bekcisi-bayat-pyc-ile-eski-kodu-kosturuyordu.md) | hata | yuksek | cozuldu | Claude Code | Test bekcisi bayat pyc ile eski kodu kosturuyordu |

@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-13 23:50 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. 0.5.0 yayında. Dal `surum/0.5.1-istekler`. Madde 23 (a-d) kodu YAPILDI ve gönderildi; sürüm 0.5.1'e çıkarıldı. SÜRÜYOR: çıktı adımları — tam takım → zorluk tamamı + R-13 + değişen alan e2e (ara mesaj gerçek API, proje, derin, sağlayıcı ekranı) → paket + duman → PR + master'a birleştirme → GitHub yayını (kullanıcı onayıyla). Kullanıcı "çıktıyı oluşturup dalları birleştirelim" dedi. Koşucu değişti → madde sonunda zorluk paketi TAMAMI (R-21) + R-13. Madde 21 (k)-(r) YAPILDI; masaüstü QA kullanıcı başındayken yeniden koşulacak. Paket/yayın İSTENMEDİ.
+- **Güncelleme:** 2026-11-13 23:50 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. 0.5.0 yayında. Dal `surum/0.5.1-istekler`. Madde 23 (a-d) kodu YAPILDI ve gönderildi; sürüm 0.5.1'e çıkarıldı. SÜRÜYOR: çıktı adımları (testler TAMAM; paket duman testi QTimer hatası yakaladı, düzeltildi → tam takım + paket yeniden) — tam takım → zorluk tamamı + R-13 + değişen alan e2e (ara mesaj gerçek API, proje, derin, sağlayıcı ekranı) → paket + duman → PR + master'a birleştirme → GitHub yayını (kullanıcı onayıyla). Kullanıcı "çıktıyı oluşturup dalları birleştirelim" dedi. Koşucu değişti → madde sonunda zorluk paketi TAMAMI (R-21) + R-13. Madde 21 (k)-(r) YAPILDI; masaüstü QA kullanıcı başındayken yeniden koşulacak. Paket/yayın İSTENMEDİ.
 - **Aktif dal:** `surum/0.5.1-istekler` (master 9ba3543 üstünde; 0.5.1 istekleri burada birikir).
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı

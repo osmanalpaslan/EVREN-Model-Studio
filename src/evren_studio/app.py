@@ -296,6 +296,10 @@ def main() -> int:
     # testleri de aynı yöntemi çağırır)
     window.start_background_loads()
     if "--duman-testi" in sys.argv:
+        # 2026-11-14: c824b26 (açılış hızlandırma) üstteki QTimer içe aktarmasını kaldırınca bu yol NameError ile
+        # çöküyordu; yalnız paket duman testi yakaladı → tests/test_duman_kaynak.py kaynaktan da çalıştırır.
+        from PySide6.QtCore import QTimer
+
         i = sys.argv.index("--duman-testi")
         out = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
 

@@ -92,6 +92,12 @@ Ek (R-36): açık gözlem c9b5c1591110 (mini_proje: modelin ortama bağlı testi
   `_prefer` yoktu ((c) paketinde bu dosya yoktu); sahte bağlam tamamlandı, dosya 31/31. Son tam koşu yayın öncesi.
 - Kullanıcı sorusu (2026-11-14): EVREN web araması — `tests/e2e_evren_tools_real_api.py` yeniden: `evren_tools` açıkken
   de canlı veri YOK (kur yok, tarih "7 Mayıs 2026", python.org başlığı açık/kapalı aynı). API_COMPATIBILITY güncellendi.
+- Gerçek API (2026-11-14): ara mesaj 8/8 33 sn · zorluk 11/12 1218 sn (mini_proje: yeni sıkı kontrol modelin
+  testindeki gerçek taşınabilirlik hatasını yakaladı) · R-13 E2E_OK, arayüz 15/15, ajan 5/6 (glm 503 "model dolu") ·
+  sağlayıcı ekranı 14/14 · proje paralel 8/8 · derin GEÇTİ. Tam takım 2 (00:47): 1454 geçti, 8 dk 51 sn.
+- PAKET duman testi çöktü: `app.py` `--duman-testi` dalı QTimer kullanıyordu, c824b26 (Madde 21 e) içe aktarmayı
+  silmişti (kendi hatam). Düzeltildi + tests/test_duman_kaynak.py (duman yolu kaynaktan + ruff F821 tüm src);
+  mutasyon: düzeltmesiz düşüyor. Kayıt 2026-11-14-duman-testi-yolu-qtimer-ice-aktarmasi-silinince-cokuyordu.
 - Kullanıcı yeni istek kaydettirdi (şimdi yapılmayacak): Madde 24 — web araması için kullanıcının kendi arama API alanı
   (ILERIDE_YAPILACAKLAR + DEVIR).
 
