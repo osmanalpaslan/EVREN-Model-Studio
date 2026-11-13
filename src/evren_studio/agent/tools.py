@@ -377,6 +377,24 @@ def decode_bytes(data: bytes) -> TextFile:
 PS_SCRIPT_SUFFIXES = {".ps1", ".psm1", ".psd1"}
 
 
+def drop_pycache(path: Path) -> None:
+    """Yazılan .py dosyasının __pycache__ kopyalarını siler (her Python sürümü). Python .pyc'yi kaynağın mtime'ı (saniye)
+    + boyutuyla doğrular: aynı saniyede aynı boyutta düzenleme (`a + b` → `a - b`) bayat .pyc'yi geçerli sayar ve testler
+    ESKİ kodla koşar — test bekçisi bozuk kodu "geçti" gördü (2026-11-13, tam takımda ara sıra düşen test)."""
+    if path.suffix != ".py":
+        return
+    cache = path.parent / "__pycache__"
+    if not cache.is_dir():
+        return
+    import glob as _glob
+
+    for f in cache.glob(_glob.escape(path.stem) + ".*.pyc"):
+        try:
+            f.unlink()
+        except OSError:
+            pass
+
+
 def needs_ps_bom(path: Path, text: str | None) -> bool:
     """Windows PowerShell 5.1 BOM'suz .ps1'i ANSI okur ve Türkçe harfleri bozar: ASCII dışı karakter
     içeren PowerShell betiği UTF-8 BOM ile yazılır (2026-10-21: ajan bu yüzden betikleri ASCII'ye
@@ -995,6 +1013,7 @@ class ToolBox:
             meta = TextFile(meta.text, "utf-8", meta.newline, bom=True)
         change.abs_path.parent.mkdir(parents=True, exist_ok=True)
         change.abs_path.write_bytes(meta.to_disk(change.after))
+        drop_pycache(change.abs_path)
 
     # -- komut ------------------------------------------------------------------------
 
@@ -1094,8 +1113,10 @@ def revert_file(root: Path, rel_path: str, before: str | None, after: str | None
     if before is None:
         if p.exists():
             p.unlink()
+        drop_pycache(p)
         return f"{rel_path} silindi (ajan tarafından oluşturulmuştu)."
     meta = meta or TextFile("", "utf-8", "\n")
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_bytes(meta.to_disk(before))
+    drop_pycache(p)
     return f"{rel_path} önceki haline döndürüldü."

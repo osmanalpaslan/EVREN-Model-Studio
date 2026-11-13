@@ -227,7 +227,24 @@ def test_bekci_sozdizimi_hatasini_ayni_turda_modele_bildirir(db, proj):
     runner, history, _ = make_runner(db, client, proj, mode="auto")
     runner.run(history)
     msg = _tool_msg(client)
-    assert "HATA BEKÇİSİ" in msg and "sözdizimi" in msg
+    # Madde 22 C1: sağlam dosyayı bozan düzenleme artık YAZILMADAN geri çevrilir (bozma bekçisi); model aynı turda
+    # sözdizimi hatasını ve satırı görür, dosya değişmez. Zaten bozuk dosyada sonraki HATA BEKÇİSİ yolu sürer.
+    assert "BOZARDI" in msg and "sözdizimi" in msg and "DEĞİŞTİRİLMEDİ" in msg
+    assert (proj / "app.py").read_text(encoding="utf-8") == "def f():\n    return 1\n"
+
+
+def test_zaten_bozuk_dosyada_hata_bekcisi_sozdizimini_bildirir(db, proj):
+    # Bozma bekçisi yalnız SAĞLAM dosyayı korur; dosya baştan bozuksa düzenleme yazılır ve HATA BEKÇİSİ bildirir.
+    (proj / "app.py").write_text("def f(:\n    return 1\n", encoding="utf-8")
+    client = FakeClient([
+        ChatResult(tool_calls=[call("edit_file", path="app.py", old_string="return 1", new_string="return 2")]),
+        ChatResult(content="tamam", finish_reason="stop"),
+    ])
+    runner, history, _ = make_runner(db, client, proj, mode="auto")
+    runner.run(history)
+    msg = _tool_msg(client)
+    assert "HATA BEKÇİSİ" in msg and "sözdizimi" in msg and "BOZARDI" not in msg
+    assert "return 2" in (proj / "app.py").read_text(encoding="utf-8")
 
 
 def test_bekci_gecerli_duzenlemede_sessiz_ve_kapatilabilir(db, proj):

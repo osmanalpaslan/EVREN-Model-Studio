@@ -26,7 +26,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..agent.tools import ToolBox, ToolError, Workspace, decode_bytes, diff_stats, make_diff, revert_file
+from ..agent.tools import (ToolBox, ToolError, Workspace, decode_bytes, diff_stats, drop_pycache, make_diff,
+                           revert_file)
 from . import icons, theme, transitions
 from .transcript import CodeView, DiffView, faint_label, icon_button
 from .workers import Task
@@ -528,6 +529,7 @@ class FilesTab(QWidget):
             return
         try:
             self.current.write_bytes(self._meta.to_disk(self.preview.toPlainText()))
+            drop_pycache(self.current)          # aynı saniye/aynı boyut düzenlemede bayat .pyc kalmasın
             self._meta = decode_bytes(self.current.read_bytes())
             self.file_label.setText(f"Kaydedildi: {self.current.name}")
             self.edit_btn.setChecked(False)

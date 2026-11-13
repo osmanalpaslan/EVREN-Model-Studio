@@ -20,10 +20,12 @@ class Script:
     def __init__(self, seq):
         self.seq = list(seq)
         self.systems: list[str] = []
+        self.lasts: list[str] = []
         self.tool_names: list[list[str]] = []
 
     def chat(self, model, messages, stream=False, cancel=None, on_delta=None, on_reasoning=None, tools=None, **kw):
         self.systems.append(messages[0]["content"])
+        self.lasts.append(str(messages[-1]["content"]))  # Madde 22 B: tura özel ipucu kuyruk notunda (son mesaj)
         self.tool_names.append([t["function"]["name"] for t in tools or []])
         return self.seq.pop(0) if self.seq else ChatResult(content="yanıt", finish_reason="stop")
 
@@ -104,7 +106,9 @@ def test_manuel_modda_arama_sorulur(db, sahte_arama):
 ])
 def test_sohbette_ipucu_tetiklenir_tetiklenmez(db, metin, beklenen):
     c, _t, _o = run(db, [], text=metin)
-    assert ("# Web araması (bu tur)" in c.systems[0]) is beklenen
+    # Madde 22 B: ipucu sabit sistem isteminde DEĞİL, son mesajın kuyruk notunda (önek önbelleği bozulmasın)
+    assert ("# Web araması (bu tur)" in c.lasts[0]) is beklenen
+    assert "# Web araması (bu tur)" not in c.systems[0]
 
 
 # ---- gerçek tur akışı: oturum ekranı → koşucu (R-31) ----------------------------------------------

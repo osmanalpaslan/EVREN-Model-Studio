@@ -41,6 +41,31 @@ def test_zaten_bozuk_dosyayi_duzeltme_ve_saglam_degisiklik_engellenmez(tmp_path)
     assert "return -x * 1" in box2.prepare_edit("b.py", "return -x", "return -x * 1").after
 
 
+def test_ayni_saniye_ayni_boyut_duzenleme_bayat_pyc_ile_eski_kodu_kosturmaz(tmp_path):
+    # 2026-11-13 tam takımda ara sıra düşen test bekçisi: tur başı test koşusu .pyc üretti, `a + b` → `a - b` aynı
+    # saniyede aynı boyutta yazıldı; Python bayat .pyc'yi geçerli saydı → bozuk kod "testler geçti" göründü.
+    import os
+    import subprocess
+    import sys
+
+    (tmp_path / "hesap.py").write_text("def topla(a, b):\n    return a + b\n", encoding="utf-8")
+    box = tools.ToolBox(tools.Workspace(tmp_path))
+    prog = "import hesap, sys; sys.exit(0 if hesap.topla(1, 2) == 3 else 1)"
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+    st = (tmp_path / "hesap.py").stat()
+    assert subprocess.run([sys.executable, "-c", prog], cwd=tmp_path, env=env).returncode == 0   # .pyc oluştu
+    assert list((tmp_path / "__pycache__").glob("hesap.*.pyc"))
+    box.apply_change(box.prepare_edit("hesap.py", "a + b", "a - b"))
+    os.utime(tmp_path / "hesap.py", ns=(st.st_atime_ns, st.st_mtime_ns))  # en kötü durum: mtime + boyut aynı
+    assert not list((tmp_path / "__pycache__").glob("hesap.*.pyc"))
+    assert subprocess.run([sys.executable, "-c", prog], cwd=tmp_path, env=env).returncode == 1   # YENİ kod koştu
+    # .py olmayan aynı adlı dosya (hesap.txt) .py'nin önbelleğine dokunmaz; önbelleği olmayan klasör sorun çıkarmaz
+    assert subprocess.run([sys.executable, "-c", prog], cwd=tmp_path, env=env).returncode == 1   # yeniden .pyc
+    tools.drop_pycache(tmp_path / "hesap.txt")
+    assert list((tmp_path / "__pycache__").glob("hesap.*.pyc"))
+    tools.drop_pycache(tmp_path / "yok" / "x.py")
+
+
 def test_json_ustune_bozuk_yazma_reddedilir_yeni_dosya_ve_metin_serbest(tmp_path):
     box = _box(tmp_path, name="ayar.json", text='{"a": 1}\n')
     with pytest.raises(tools.ToolError, match="BOZARDI"):
