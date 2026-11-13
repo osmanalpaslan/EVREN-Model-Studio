@@ -410,6 +410,14 @@ Kullanıcı onayı gereken anlar: program/şablon indirme (Godot şablonları, M
 - ~~Akışlı yanıtta auto'nun yönlendirdiği modeli kaydetme~~ — YAPILDI 2026-10-24: EVREN akışta da veriyormuş
   (`X-Evren-Routed-Model` başlığı); önceki "vermiyor" iddiası yanlıştı.
 - ~~Ayarlar'da "oyun araçlarını kur" düğmesi~~ — YAPILDI 2026-10-24 (onaylı indirme + gömülü sağlama toplamı).
+- **Madde 24 — web araması için kullanıcının kendi API'si (kullanıcı 2026-11-14: "şimdi yapmayalım, kaydet, sonra
+  planlarız")**: Web erişimi olmayan API'lerde (EVREN dahil — 2026-11-14 ölçümü: `evren_tools` açıkken de canlı veri
+  yok) web sorgusu için kullanıcının kendi arama API'sini gireceği belirgin bir alan; bu alandaki ücretsiz Tavily gibi
+  arama API'leri, arama yapamayan tüm motorlara hizmet etsin. Bugünkü durum (doğrulandı): Tavily alanı "Sağlayıcılar ve
+  anahtarlar" ekranında var, anahtar yalnız o bilgisayarın Credential Manager'ında (pakete GİRMEZ); anahtarı olmayan
+  kullanıcı anahtarsız Tavily → DuckDuckGo'ya düşer. Planlanacaklar: ilk kurulumda/ilk aramada "arama anahtarı ekle"
+  yönlendirmesi, birden çok arama sağlayıcısı (Brave, Serper, Exa vb. ücretsiz katmanlar) arasında seçim ve yedek
+  zinciri, kalan kota göstergesi, sağlayıcının kendi web araması varsa (ör. OpenAI/Anthropic) onu kullanma seçeneği.
 - Madde 22 sonrası adaylar (2026-11-13, onay bekler): (1) test bekçisi testleri ikinci kez `PYTHONIOENCODING=utf-8`
   ile koşsun — modelin yazdığı ortama bağlı (kodlama) testi yakalar (zorluk mini_proje kanıtı); (2) `json_schema`
   yapılandırılmış çıktıyı deepseek'te ölç (qwen'de 2 kat yavaştı), hızlıysa yalnız o modelde aç.

@@ -88,6 +88,12 @@ Ek (R-36): açık gözlem c9b5c1591110 (mini_proje: modelin ortama bağlı testi
 
 ### Çıktı 0.5.1
 - Sürüm 0.5.1 (`__init__.__version__`), CHANGELOG 0.5.1 bölümü (Madde 21-23).
+- Tam takım 1 (23:46, 7 dk 1 sn): 1453 geçti, 1 düştü — test_motor_karnesi `_Ctx` sahte bağlamında `auto_providers`/
+  `_prefer` yoktu ((c) paketinde bu dosya yoktu); sahte bağlam tamamlandı, dosya 31/31. Son tam koşu yayın öncesi.
+- Kullanıcı sorusu (2026-11-14): EVREN web araması — `tests/e2e_evren_tools_real_api.py` yeniden: `evren_tools` açıkken
+  de canlı veri YOK (kur yok, tarih "7 Mayıs 2026", python.org başlığı açık/kapalı aynı). API_COMPATIBILITY güncellendi.
+- Kullanıcı yeni istek kaydettirdi (şimdi yapılmayacak): Madde 24 — web araması için kullanıcının kendi arama API alanı
+  (ILERIDE_YAPILACAKLAR + DEVIR).
 
 ## Sorunlar ve kayıtlar
 - Yeni testte oturumsuz `_note` modal QMessageBox açtı → test 10 dk asıldı (mutasyon koşucusu zaman aşımı); faulthandler

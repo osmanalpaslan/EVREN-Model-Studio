@@ -182,6 +182,12 @@ class _Ctx:
     def provider_of(self, m):
         return "evren"
 
+    def auto_providers(self):              # Madde 23 c: otomatik işler kuralı (EVREN varken yalnız EVREN)
+        return {"evren"}
+
+    def _prefer(self):
+        return []
+
 
 def test_qa_hazirlik_hepsi_zayifsa_uygun_degil_biri_saglamsa_uygun():
     from evren_studio.ui.app_context import AppContext
