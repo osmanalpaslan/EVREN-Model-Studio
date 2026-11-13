@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 118 · Açık/izlenen: 8 · Oturum: 48 · Kural: 36
+Kayıt: 119 · Açık/izlenen: 8 · Oturum: 48 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -21,6 +21,7 @@ Kayıt: 118 · Açık/izlenen: 8 · Oturum: 48 · Kural: 36
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-13 | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje-2](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje-2.md) | hata | orta | cozuldu | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: mini_proje (ikinci kök neden: kontrolün yarım UTF-8 ortamı) |
 | 2026-11-13 | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje.md) | risk | orta | izleniyor | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: mini_proje |
 | 2026-11-13 | [2026-11-13-test-bekcisi-bayat-pyc-ile-eski-kodu-kosturuyordu](incidents/2026-11-13-test-bekcisi-bayat-pyc-ile-eski-kodu-kosturuyordu.md) | hata | yuksek | cozuldu | Claude Code | Test bekcisi bayat pyc ile eski kodu kosturuyordu |
 | 2026-11-13 | [2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib](incidents/2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib.md) | hata | dusuk | cozuldu | EVREN Studio gözlem ajanı | Qt warning: qfontdatabase: cannot find font directory .venv/lib/site-packages/pyside#/lib/fo… |

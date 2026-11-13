@@ -292,9 +292,9 @@ class QaController(QObject):
         if not self._ws():
             what = "masaüstü uygulamasının" if target == "masaustu" else "web projesinin"
             return f"QA ajanı bir proje klasöründe çalışır: önce “Proje klasörü bağla” ile {what} klasörünü seçin."
-        if "evren" not in self.ctx.available_providers():
-            return ("QA ajanı yalnız ücretsiz EVREN modelleriyle çalışır (ücretli sağlayıcıyla çalışmaz). "
-                    "Ayarlar'dan EVREN API anahtarını girin.")
+        if not self.ctx.available_providers():
+            # Madde 23 c: EVREN varsa yalnız EVREN (ücretsiz); yoksa kullanıcının API'si (aylık bütçe sınırıyla)
+            return "QA ajanı için bir API anahtarı gerekli: Ayarlar > Sağlayıcılar ve anahtarlar."
         if target == "masaustu":
             if self._desk_config() is None:
                 return ("Masaüstü QA, masaüstü kontrolü gerektirir: Ayarlar > Bağlayıcılar (MCP) > “Masaüstü "

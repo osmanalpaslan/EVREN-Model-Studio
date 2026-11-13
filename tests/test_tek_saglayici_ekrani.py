@@ -186,7 +186,12 @@ def test_ag_gecidi_kaydi_anahtarsiz_ayar_modeller_secicide_auto_pro_disi(win, fa
     assert "AIzaSAHTE" not in json.dumps(ctx.settings.gateways)
     assert fake_keyring.store[(SVC, "gw-gemini_api_key")] == "AIzaSAHTE123456"
     ids = {m.id for m in ctx.chat_models()}
-    assert "gw-gemini::gemini-pro-x" in ids and "gw-gemini::gemini-pro-x" not in ctx.available_model_ids()
+    assert "gw-gemini::gemini-pro-x" in ids
+    # Madde 23 c (kullanıcı 2026-11-13): EVREN yokken ağ geçidi otomatik işlere girer; EVREN varken girmez (eski karar)
+    assert "gw-gemini::gemini-pro-x" in ctx.available_model_ids()
+    ctx._cached_key = "evren_llm_SAHTE_ANAHTAR_123456"
+    assert "gw-gemini::gemini-pro-x" not in ctx.available_model_ids()
+    ctx._cached_key = None
     pid2 = cn.save_connection(ctx, "gemini", "AIzaIKINCI", models=["m"])
     assert pid2 == "gw-gemini-2", "aynı türden ikinci kayıt ayrı kimlik alır"
     # düzenleme: anahtar boş → eski anahtar korunur, modeller değişir
@@ -432,7 +437,11 @@ def test_anahtarsiz_yerel_sunucu_modelleri_secicide_ve_kullanilir(win, fake_keyr
     assert pid == "gw-ollama" and not ctx.has_provider_key(pid)
     assert pid in ctx.available_providers() and ctx.provider_ready(pid)
     assert "gw-ollama::qwen-yerel" in {m.id for m in ctx.chat_models()}
-    assert "gw-ollama::qwen-yerel" not in ctx.available_model_ids(), "Auto Pro'ya yine girmez"
+    # Madde 23 c: EVREN yokken yerel sunucu iç işleri ve otomatik işleri de yapar; EVREN varken otomatik sıraya girmez
+    assert "gw-ollama::qwen-yerel" in ctx.available_model_ids()
+    ctx._cached_key = "evren_llm_SAHTE_ANAHTAR_123456"
+    assert "gw-ollama::qwen-yerel" not in ctx.available_model_ids(), "EVREN varken Auto Pro'ya girmez"
+    ctx._cached_key = None
     c = ctx.make_client_for(pid)
     assert isinstance(c, CompatClient) and c.api_key == ""
     assert providers.PROVIDERS[pid].paid is False

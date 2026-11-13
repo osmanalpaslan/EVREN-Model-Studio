@@ -170,12 +170,17 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
                  marker: str, gate=None, cancel=None, mcp=None, max_steps: int = SUB_MAX_STEPS,
                  context_tokens: int | None = None, base_body: dict | None = None,
                  progress: Callable[[str], None] | None = None, mode: str = "plan",
-                 test_check: bool = False, runner_kw: dict | None = None) -> SubResult:
+                 test_check: bool = False, runner_kw: dict | None = None,
+                 cost_sink: Callable[[str, dict], None] | None = None,
+                 budget_stop: Callable[[], bool] | None = None) -> SubResult:
     """Salt okunur (Plan modu) arayüzsüz alt ajan. Son yanıt metnini döndürür.
     R-26: blok ilk turda yoksa koşucu bir kez dürter (final_marker); tur yine bloksuz biterse aynı
     bağlamla kısa "yalnız sonucu ver" turu açılır (2026-10-21: ikinci planlayıcı plan vermemişti).
     runner_kw: ek AgentRunner ayarları (B3 paralel proje görevi: proje kuralları, güvenilmeyen klasörler, kurulum
-    kipi, komut süre sınırı… oturum ajanıyla aynı)."""
+    kipi, komut süre sınırı… oturum ajanıyla aynı).
+    Madde 23 c (EVREN yokken kullanıcının ücretli API'si): `cost_sink(model, usage)` her yanıtın token kullanımını
+    maliyet kaydına yazar (alt ajan ekranda görünmez, oturum turunun maliyet kaydına girmez); `budget_stop()` True ise
+    sıradaki model çağrısı yapılmaz (aylık bütçe doldu → "budget")."""
     store = MemoryStore()
     history = [{"id": 0, "role": "user", "content": prompt}]
     store.messages.append(history[0])
@@ -183,10 +188,23 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
     t0 = time.monotonic()
 
     def before(_step):
+        if budget_stop is not None and budget_stop():
+            return "budget"
         if gate is None:
             return None
         r = gate.before_call(cancel=cancel)
         return {"daily": "quota_daily", "cancelled": "cancelled"}.get(r) if r else None
+
+    def bill() -> None:
+        if cost_sink is None:
+            return
+        for m in history:
+            usage = (m.get("meta") or {}).get("usage") if m.get("role") == "assistant" else None
+            if usage:
+                try:
+                    cost_sink(m.get("model") or model, usage)
+                except Exception:
+                    pass                     # kayıt hatası alt ajanı düşürmesin
     def make(steps):
         return AgentRunner(client, model, session_id=0, store=store, events=events,
                            workspace=Workspace(root), mode=mode, stream=False, cancel=cancel,
@@ -213,8 +231,10 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
             out = runner.run(history)
             used = runner.model
     except Exception as exc:  # alt ajan hatası tüm Derin koşuyu düşürmesin
+        bill()
         return SubResult("", "error", f"{type(exc).__name__}: {exc}", events.tools, time.monotonic() - t0,
                          transcript_of(history), used)
+    bill()
     text = (getattr(out, "critic_reason", "") or "gözetmen durdurdu") if out.stopped == "critic" else last_text()
     return SubResult(text, out.stopped, "", events.tools, time.monotonic() - t0, transcript_of(history), used)
 

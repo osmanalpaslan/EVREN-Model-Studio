@@ -111,8 +111,11 @@ def test_on_kosullar_klasor_evren_playwright(win, tmp_path):
     assert "proje klasöründe" in sv.qa.precheck()
     sv.welcome.workspace = str(tmp_path)
     w.ctx._cached_key = ""
+    w.ctx._provider_keys = {"anthropic": None, "openai": None}
+    assert "API anahtarı gerekli" in sv.qa.precheck()                 # hiç anahtar yok
     w.ctx._provider_keys = {"anthropic": "sk-ant-api03-SAHTE1234567890abcdef", "openai": None}
-    assert "yalnız ücretsiz EVREN" in sv.qa.precheck()                # ücretli anahtarla QA yok
+    # Madde 23 c (kullanıcı 2026-11-13): EVREN yokken QA kullanıcının API'siyle çalışır → anahtar engeli yok
+    assert "EVREN" not in sv.qa.precheck() and "Playwright" in sv.qa.precheck()
     w.ctx._cached_key = "evren_llm_SAHTE_123456789"
     assert "Playwright" in sv.qa.precheck()
     from evren_studio.agent import mcp
@@ -131,12 +134,28 @@ def test_qa_modeli_her_zaman_evren(win):
         assert w.ctx.provider_of(model) == "evren" and all(w.ctx.provider_of(m) == "evren" for m in fallbacks)
 
 
-def test_ai_chat_evren_only_ucretliye_gitmez(win, monkeypatch):
+def test_ai_chat_otomatik_is_ucretliye_yalniz_evren_yokken(win, monkeypatch):
+    from evren_studio.api.client import ChatResult
+
     _app, w = win
-    w.ctx._cached_key = ""
+    used = []
+
+    class C:
+        def chat(self, model, messages, **kw):
+            used.append(model)
+            return ChatResult(content="tamam")
+
+        def close(self):
+            pass
+    monkeypatch.setattr(w.ctx, "make_client_for", lambda provider, log_sink=None: C())   # ağ YOK
+    w.ctx._cached_key = "evren_llm_SAHTE_123456789"
     w.ctx._provider_keys = {"anthropic": "sk-ant-api03-SAHTE1234567890abcdef", "openai": None}
-    with pytest.raises(RuntimeError, match="yalnız EVREN"):
-        w.ctx.ai_chat("gorsel", [{"role": "user", "content": "x"}], evren_only=True)
+    w.ctx.ai_chat("gorsel", [{"role": "user", "content": "x"}], evren_only=True)
+    assert used and w.ctx.provider_of(used[-1]) == "evren"            # EVREN varken: yalnız EVREN
+    w.ctx._cached_key = ""
+    w.ctx.api_key = lambda refresh=False: None
+    w.ctx.ai_chat("gorsel", [{"role": "user", "content": "x"}], evren_only=True)
+    assert w.ctx.provider_of(used[-1]) == "anthropic"                 # Madde 23 c: EVREN yokken kullanıcının API'si
 
 
 def test_plan_ve_bitis_kartlari(win):

@@ -109,7 +109,7 @@ class _Ctx:
     def __init__(self, chain, behave):
         self.chain, self.behave, self.records = chain, behave, []
 
-    def ai_route(self, role):
+    def ai_route(self, role, **_kw):
         return _Route(self.chain)
 
     def provider_of(self, model):

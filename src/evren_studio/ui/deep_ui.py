@@ -92,7 +92,7 @@ class DeepController(QObject):
         if not quiet:
             self.view._note(
                 "Derin Mod açık: işler anla → planla → uygula → çekişmeli doğrula → düzelt akışıyla, birden "
-                "çok EVREN ajanıyla yürür (daha yavaş, daha çok token; yalnız ücretsiz EVREN)." if on
+                f"çok ajanla yürür (daha yavaş, daha çok token; motorlar: {self.ctx.auto_label()})." if on
                 else "Derin Mod kapandı: mesajlar normal ajan turuyla yürür.", "spark" if on else "dot")
 
     def _set_label(self, text: str) -> None:
@@ -120,15 +120,18 @@ class DeepController(QObject):
     def unavailable_reason(self) -> str:
         if not self._ws():
             return "Derin Mod bir proje klasöründe çalışır: önce “Proje klasörü bağla” ile klasör seçin."
-        if "evren" not in self.ctx.available_providers():
-            return "Derin Mod yalnız EVREN (ücretsiz) ile çalışır: Ayarlar'dan EVREN API anahtarı girin."
+        if not self.ctx.available_providers():
+            return "Derin Mod için bir API anahtarı gerekli: Ayarlar > Sağlayıcılar ve anahtarlar."
         return ""
 
     def _evren_chain(self, role: str) -> list[str]:
-        r = self.ctx.ai_route(role)
-        return [m for m in [r.model] + r.fallbacks if m and self.ctx.provider_of(m) == "evren"]
+        """Rolün motor zinciri — Madde 23 c: EVREN varsa yalnız EVREN (ücretsiz), yoksa kullanıcının API'si."""
+        r = self.ctx.ai_route(role, evren_only=True)
+        return [m for m in [r.model] + r.fallbacks if m and self.ctx.auto_ok(self.ctx.provider_of(m))]
 
     def _quota(self):
+        if not self.ctx.auto_ok("evren"):
+            return None                      # kota ucu yalnız EVREN'de; diğer API'de kota kapısı beklemez
         client = self.ctx.make_client()
         try:
             return client.get_quota()
@@ -146,9 +149,10 @@ class DeepController(QObject):
 
         def run(prompt: str, marker: str, label: str = "") -> dp.SubResult:
             if not chain:
-                return dp.SubResult("", "error", "EVREN modeli yok")
-            client = self.ctx.make_client()
+                return dp.SubResult("", "error", "kullanılabilir model yok (API anahtarı)")
+            client = self.ctx.make_client_for(self.ctx.provider_of(chain[0]))
             info = self.ctx.model_info(chain[0])
+            sink, stop = self.ctx.headless_billing(chain[0], self.view.session_id)   # ücretli API: maliyet + bütçe
             name = label or role
             phase = self.state.phase if self.state else ""
 
@@ -163,7 +167,8 @@ class DeepController(QObject):
                                       prompt=prompt, marker=marker, gate=self._gate, cancel=self._cancel,
                                       context_tokens=getattr(info, "context_length", None),
                                       base_body=self._effort_body(role, chain[0]), progress=progress,
-                                      runner_kw={"project_map": bool(self.ctx.settings.project_map)})
+                                      runner_kw={"project_map": bool(self.ctx.settings.project_map)},
+                                      cost_sink=sink, budget_stop=stop)
             finally:
                 client.close()
             if res.stopped == "quota_daily":
@@ -433,7 +438,8 @@ class DeepController(QObject):
         a, b = self._evren_chain("inceleme"), self._evren_chain("kod")
         m1 = a[0] if a else (b[0] if b else None)
         info = self.ctx.model_info(DEEP_VERIFIER2)
-        if (info is not None and self.ctx.provider_of(DEEP_VERIFIER2) == "evren" and DEEP_VERIFIER2 != m1
+        if (info is not None and self.ctx.provider_of(DEEP_VERIFIER2) == "evren" and self.ctx.auto_ok("evren")
+                and DEEP_VERIFIER2 != m1
                 and (info.capabilities or {}).get("tools")):
             return m1, DEEP_VERIFIER2              # Madde 8 ölçümü; yoksa eski davranış
         m2 = next((m for m in b + a if m != m1), m1)

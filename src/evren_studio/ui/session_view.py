@@ -381,6 +381,16 @@ class SessionView(QWidget):
     notify = Signal(str, str)              # (başlık, metin) → ana pencere Windows bildirimi
     inbox_changed = Signal()               # Madde 23 a: sıra değişti (koşucu iş parçacığından da gelir)
 
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @model.setter
+    def model(self, value: str) -> None:
+        # Madde 23 c: uygulamanın otomatik işleri (EVREN yokken) ve yedek seçimi kullanıcının seçtiği motoru bilsin
+        self._model = value
+        self.ctx.current_model = value or ""
+
     def __init__(self, ctx, panel, parent=None):
         super().__init__(parent)
         self.ctx = ctx

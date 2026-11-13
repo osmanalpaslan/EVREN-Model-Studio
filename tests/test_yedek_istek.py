@@ -35,7 +35,7 @@ class Ctx:
         self.providers = providers or {}
         self.lock = threading.Lock()
 
-    def ai_route(self, role):
+    def ai_route(self, role, **_kw):
         return Route(self.chain)
 
     def provider_of(self, model):

@@ -45,6 +45,26 @@ Ek (R-36): açık gözlem c9b5c1591110 (mini_proje: modelin ortama bağlı testi
 - `router.choose`: tabloda tek/hiç motor kalmadıysa (EVREN listeden kaldırdı, ağ geçidi) erişilebilir diğer motorlar en
   çok 3 yedek olur; `prefer` (kullanıcının seçtiği motor) önce. Tabloda ≥2 motor varsa davranış aynı.
 
+### (c) Sağlayıcıdan bağımsız otomatik işleyiş
+- Kural (`AppContext.auto_providers`): EVREN anahtarı varken otomatik işler yalnız EVREN (2026-10-19 kararı korunur:
+  ücretli sağlayıcıya otomatik iş yok); EVREN yoksa kullanıcının seçili motorunun API'si (`current_model`,
+  SessionView.model özelliği günceller); hiç anahtar yoksa EVREN varsayılır. `auto_ok`, `auto_label`.
+- `available_model_ids`: EVREN yokken izinli ağ geçidi / yerel sunucu modelleri de (eskiden yalnız OpenRouter/Ollama
+  kullanan kişide iç işler "API anahtarı yok"); EVREN varken ağ geçidi otomatik sıraya girmez (eski karar).
+- `ai_route(prefer=seçili motor)`, `evren_only` = otomatik iş kuralı; `ai_chat`, `qa_readiness`, `test_tools`,
+  `mcp_toolset`, Derin (`unavailable_reason`, `_evren_chain`, `_quota`, `_sub` istemcisi, 2. denetçi), Proje
+  (`_model_for`, gözetmen, `_free_chain`, paralel görev istemcisi, `_fetch_quota`), QA (`precheck`) bu kurala geçti.
+- Ücretli API'de arayüzsüz alt ajan (Derin alt ajanları, paralel görev) maliyet kaydı tutmuyordu → bütçe sınırını
+  aşabilirdi. `deep.run_subagent(cost_sink, budget_stop)` + `AppContext.headless_billing`: her yanıtın kullanımı
+  `usage_costs`'a yazılır, aylık bütçe dolunca sıradaki çağrı yapılmaz ("budget"). Ücretsizde (EVREN, yerel) kapalı.
+- Bekçiler (test, iddia, bozma, döngü, plan) zaten koşucuda ve sağlayıcıdan bağımsız.
+
+### (d) Gözlem c9b5c1591110 (mini_proje "kendi testleri")
+- Kök neden ölçüm ortamı: zorluk kontrolü YARIM UTF-8 ortamında (yalnız PYTHONIOENCODING) koşuyordu; modelin testi
+  ajanın ortamında da düz ortamda da geçiyor. `unittest_ok` artık ajanın gerçek ortamı (project_env) + düz ortamda koşar,
+  ikisinde de geçmeli (yalnız UTF-8 kipinde geçen test artık yakalanır). R-25 bilinen doğru/yanlış/ortama bağlı: 3/3.
+  Kayıt 2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje-2, gözlem kapatıldı.
+
 ## Test sonuçları
 - (a) tests/test_mesaj_kuyrugu.py 15 test (kuyruk sırası/geri çekme/parti; 60 turlu eşzamanlı alma-geri çekme yarışı
   switchinterval 1 µs; koşucu: adım arası, tur sonu, yok/hatalı kaynak, iptal; iddia turu; arayüz R-31: çalışırken
@@ -59,6 +79,12 @@ Ek (R-36): açık gözlem c9b5c1591110 (mini_proje: modelin ortama bağlı testi
   zayıf motor arkaya, çıkarılmaz; tek motorda yedek + seçilen önce; model_weak karne kapalıyken; iç işte başarı/hata/boş
   kaydı; kota hatası sayılmaz; paralel yolda kayıt; gerçek AppContext'te bozulan motor başka rolde de geri alınır).
   test_yedek_istek kaydı ayıracak biçimde uyarlandı. Mutasyon 14/14. Yönlendirme paketi 168 geçti.
+- (c) tests/test_saglayicidan_bagimsiz.py 9 test (kural matrisi; EVREN yokken iç/otomatik iş kullanıcının API'si +
+  maliyet; EVREN varken ücretliye gitmez + MCP/test aracı yok; Derin/QA/paralel EVREN yokken açık; yalnız yerel sunucu +
+  seçilen önce + iki API'de seçili olan; EVREN varken ağ geçidi sıraya girmez; alt ajan maliyeti + bütçe durdurması;
+  EVREN yokken kota sorgusu yok). Eski "yalnız EVREN" beklentili 4 test yeni karara çevrildi (biri gerçek ağa 401'lik
+  istek atıyordu → sahte istemci). Mutasyon 18/18 (bir gereksiz koşul kaldırıldı). Geniş alan paketi 384 + sağlayıcı
+  ekranı 30 geçti.
 
 ## Sorunlar ve kayıtlar
 - Yeni testte oturumsuz `_note` modal QMessageBox açtı → test 10 dk asıldı (mutasyon koşucusu zaman aşımı); faulthandler

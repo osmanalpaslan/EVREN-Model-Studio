@@ -293,15 +293,74 @@ class AppContext:
         return [m for m in self.models if m.supports_chat]
 
     def available_model_ids(self) -> set[str]:
-        """Auto Pro'nun seçebileceği gerçek modeller (anahtarı olan sağlayıcılar)."""
+        """Uygulamanın kendi işleri ve Auto Pro'nun seçebileceği gerçek modeller (anahtarı olan sağlayıcılar).
+        Madde 23 c: EVREN YOKKEN kullanıcının ağ geçidi / yerel sunucu modelleri de (eskiden yalnız OpenRouter/Ollama
+        kullanan kişide iç işler "API anahtarı yok" diye çalışmıyordu). EVREN varken ağ geçidi modelleri otomatik sıraya
+        girmez (doğrulanmamış fiyat/yetenek; eski karar korunur)."""
         provs = self.available_providers()
         ids = {m.id for m in self.models if m.supports_chat} if "evren" in provs else set()
         ids |= {m.id for m in self.paid_models if m.provider in provs}
+        allowed = self.auto_providers()          # EVREN varken {"evren"} → ağ geçidi girmez
+        ids |= {m.id for m in self.gateway_models if m.provider in provs and m.provider in allowed}
         return ids
 
+    # ---- Madde 23 c: sağlayıcıdan bağımsız otomatik işleyiş --------------------------------------------------------
+    # Kullanıcı 2026-11-13: "her zaman evren apisi de kullanılmayabilir. farklı bir api kullanıldığında oluşturduğun
+    # agentları/bekçileri, kısaca bütün otomatik işleyişi mevcut apinin agentları yapabilmeli."
+    # Kural: EVREN anahtarı varken otomatik/arka plan işleri (Derin Mod, QA, paralel Proje görevleri, MCP/test araçları)
+    # yine YALNIZ EVREN ile yapılır (kullanıcı kararı 2026-10-19: ücretli sağlayıcıya otomatik iş yok). EVREN yoksa bu
+    # işler kullanıcının kullandığı API ile yürür (aylık bütçe sınırı geçerli). Bekçiler (test, iddia, bozma, döngü, plan)
+    # zaten sağlayıcıdan bağımsız koşucuda çalışır.
+
+    current_model: str = ""          # oturumun seçili motoru (SessionView.set_model günceller)
+
+    def auto_providers(self) -> set[str]:
+        provs = self.available_providers()
+        if "evren" in provs or not provs:
+            return {"evren"}            # hiç anahtar yoksa da EVREN varsayılır (provider_of(auto-pro) ile aynı)
+        cur = self.provider_of(self.current_model) if self.current_model else ""
+        if cur in provs:
+            return {cur}
+        return provs
+
+    def auto_ok(self, provider: str) -> bool:
+        return provider in self.auto_providers()
+
+    def auto_label(self) -> str:
+        """Otomatik işlerin yürüdüğü API'nin adı (bildirimlerde)."""
+        provs = sorted(self.auto_providers())
+        if not provs:
+            return "API"
+        return ", ".join(PROVIDERS[p].name if p in PROVIDERS else p for p in provs)
+
+    def headless_billing(self, model: str, session_id: int | None = None):
+        """Arayüzsüz alt ajanın (Derin Mod, paralel Proje görevi) ücretli kullanımı için (maliyet_kaydı, bütçe_durdur).
+        Ücretsiz sağlayıcıda (EVREN, yerel sunucu) (None, None). Bütçe sınırı ayarı kapalıysa durdurmaz, yine kaydeder."""
+        provider = self.provider_of(model)
+        if provider not in PROVIDERS or not PROVIDERS[provider].paid:
+            return None, None
+        from ..api.providers import estimate_cost
+        from ..budget import current_state
+
+        def sink(m: str, usage: dict) -> None:
+            self.db.add_usage_cost(self.provider_of(m), m, usage, estimate_cost(m, usage), session_id)
+
+        def stop() -> bool:
+            try:
+                return current_state(self.db, self.settings.monthly_budget_usd, self.settings.budget_enforce).exceeded
+            except Exception:
+                return False
+        return sink, stop
+
+    def _prefer(self) -> list[str]:
+        from ..agent import router
+
+        m = self.current_model or ""
+        return [m] if m and not router.is_auto_pro(m) and m != router.USER_DEFAULT_ID else []
+
     def ai_route(self, role: str, reason: str = "", evren_only: bool = False):
-        """Uygulamanın kendi yapay zekâ işi veya Auto Pro turu için rota (router.choose). `evren_only`: yalnız EVREN
-        modelleri (ör. QA — oturum ücretli modelde olsa bile)."""
+        """Uygulamanın kendi yapay zekâ işi veya Auto Pro turu için rota (router.choose). `evren_only`: otomatik/arka
+        plan işi (ör. QA, Derin) — EVREN varsa yalnız EVREN, yoksa kullanıcının API'si (auto_providers, Madde 23 c)."""
         from ..agent import router
 
         health = {}
@@ -311,10 +370,11 @@ class AppContext:
             pass
         avail = self.available_model_ids()
         if evren_only:
-            avail = {m for m in avail if self.provider_of(m) == "evren"}
+            allowed = self.auto_providers()
+            avail = {m for m in avail if self.provider_of(m) in allowed}
         return router.choose(role, available=avail or None, health=health, reason=reason,
                              penalties=self.model_penalties(), speeds=self.model_speeds(),
-                             scores=self.model_scores(), weak=self.model_weak())
+                             scores=self.model_scores(), weak=self.model_weak(), prefer=self._prefer())
 
     # ---- Madde 14: motor karnesi ---------------------------------------------------------------
 
@@ -353,8 +413,9 @@ class AppContext:
         from ..agent import router
 
         weak = self.model_weak()
-        avail = {m for m in self.available_model_ids() if self.provider_of(m) == "evren"}
-        chain = router.chain_for("qa", avail or None)
+        allowed = self.auto_providers()
+        avail = {m for m in self.available_model_ids() if self.provider_of(m) in allowed}
+        chain = router.chain_for("qa", avail or None, self._prefer())
         if not chain or not all(m in weak for m in chain):
             return True, ""
         why = "; ".join(f"{m}: {weak[m]}" for m in chain)
@@ -442,13 +503,13 @@ class AppContext:
         from ..api.providers import estimate_cost
         from ..budget import current_state
 
-        r = self.ai_route(role)
+        r = self.ai_route(role, evren_only=evren_only)
         chain = [m for m in [r.model] + r.fallbacks if m]
-        if evren_only:                      # QA/MCP işleri: ücretli sağlayıcıya ASLA (kullanıcı kararı)
-            chain = [m for m in chain if self.provider_of(m) == "evren"]
+        if evren_only:                      # otomatik işler: EVREN varken ücretli sağlayıcıya ASLA (Madde 23 c)
+            allowed = self.auto_providers()
+            chain = [m for m in chain if self.provider_of(m) in allowed]
         if not chain:
-            raise RuntimeError("Yapay zekâ işi için API anahtarı yok (Ayarlar)."
-                               if not evren_only else "Bu iş yalnız EVREN ile yapılır: EVREN anahtarı gerekli.")
+            raise RuntimeError("Yapay zekâ işi için API anahtarı yok (Ayarlar).")
         last: Exception | None = None
         # Madde 22 E2 (2026-11-13 ölçümü: aynı kısa istek çoğunlukla 1,5-4 sn, arada 50-53 sn takılıyor): YALNIZ EVREN
         # zincirinde ilk model HEDGE_AFTER_S içinde yanıtlamazsa sıradaki EVREN modeline paralel yedek istek; önce gelen
@@ -925,19 +986,19 @@ class AppContext:
 
     def test_tools(self, project_root, message: str = "", provider: str = "evren", status=None):
         """Ajanın gerektiğinde test aracını kendisinin açması (Madde 13, kullanıcı 2026-11-05). None → araç sunulmaz:
-        özellik kapalı, proje klasörü yok ya da ücretli sağlayıcı (MCP yalnız EVREN'de)."""
-        if provider != "evren" or project_root is None or not self.settings.auto_test_tools:
+        özellik kapalı, proje klasörü yok ya da sağlayıcı otomatik işlere açık değil (auto_providers)."""
+        if not self.auto_ok(provider) or project_root is None or not self.settings.auto_test_tools:
             return None
         return TestTools(self, Path(project_root), message, status)
 
     def mcp_toolset(self, project_root, message: str = "", provider: str = "evren", status=None):
         """Ajan turu için tembel araç kümesi; gerekmiyorsa None (davranış değişmez).
 
-        - Yalnız EVREN modellerinde (kullanıcı kararı 2026-10-19: uygulamanın amacı ücretsiz
-          hizmet; ücretli sağlayıcıyla MCP KESİNLİKLE çalışmaz).
+        - EVREN varken yalnız EVREN modellerinde (kullanıcı kararı 2026-10-19: ücretli sağlayıcıyla MCP çalışmaz);
+          EVREN anahtarı yoksa kullanıcının kullandığı API'de (Madde 23 c, auto_providers).
         - Sunucu yalnız gerektiği projede/görevde sunulur (McpServerConfig.when) ve ilk araç
           çağrısında, ajanın ARKA PLAN iş parçacığında açılır (R-04)."""
-        if provider != "evren":
+        if not self.auto_ok(provider):
             return None
         configs = self.mcp_configs()
         if not configs or project_root is None:

@@ -55,8 +55,25 @@ def run(cmd: list[str], cwd: Path, timeout: int = 120) -> tuple[int, str]:
 
 
 def unittest_ok(proj: Path) -> tuple[bool, str]:
-    c, o = run([PY, "-m", "unittest", "discover", "-s", "tests"], proj)
-    return c == 0, (o.strip().splitlines() or [""])[-1][:80]
+    """Modelin KENDİ testleri — uygulamanın ajana verdiği ortamla (agent/tools.project_env: PYTHONUTF8=1 +
+    PYTHONIOENCODING=utf-8) VE ortam değişkeni eklenmemiş düz Windows ortamıyla; ikisinde de geçmeli.
+    2026-11-13 (gözlem c9b5c1591110): eski kontrol yalnız PYTHONIOENCODING veren YARIM ortamda koşuyordu — alt süreç
+    UTF-8 yazıp test cp1254 okuyunca, ajanın ortamında da düz ortamda da geçen test burada düşüyordu."""
+    from evren_studio.agent.tools import project_env
+
+    plain = {k: v for k, v in os.environ.items() if k not in ("PYTHONIOENCODING", "PYTHONUTF8")}
+    last = ""
+    for env in (project_env(proj), plain):
+        try:
+            r = subprocess.run([PY, "-m", "unittest", "discover", "-s", "tests"], cwd=proj, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace", timeout=120, env=env)
+        except subprocess.TimeoutExpired:
+            return False, "zaman aşımı"
+        last = ((r.stdout or "") + (r.stderr or "")).strip().splitlines()[-1:] or [""]
+        last = last[0][:80]
+        if r.returncode != 0:
+            return False, ("düz ortamda: " if env is plain else "") + last
+    return True, last
 
 
 # ---- görevler: kur(proje) → durum, mesaj; kontrol(proje, durum, yanıt) → [(ad, geçti, ayrıntı)] ----
