@@ -377,12 +377,107 @@ def decode_bytes(data: bytes) -> TextFile:
 PS_SCRIPT_SUFFIXES = {".ps1", ".psm1", ".psd1"}
 
 
+def drop_pycache(path: Path) -> None:
+    """Yazılan .py dosyasının __pycache__ kopyalarını siler (her Python sürümü). Python .pyc'yi kaynağın mtime'ı (saniye)
+    + boyutuyla doğrular: aynı saniyede aynı boyutta düzenleme (`a + b` → `a - b`) bayat .pyc'yi geçerli sayar ve testler
+    ESKİ kodla koşar — test bekçisi bozuk kodu "geçti" gördü (2026-11-13, tam takımda ara sıra düşen test)."""
+    if path.suffix != ".py":
+        return
+    cache = path.parent / "__pycache__"
+    if not cache.is_dir():
+        return
+    import glob as _glob
+
+    for f in cache.glob(_glob.escape(path.stem) + ".*.pyc"):
+        try:
+            f.unlink()
+        except OSError:
+            pass
+
+
 def needs_ps_bom(path: Path, text: str | None) -> bool:
     """Windows PowerShell 5.1 BOM'suz .ps1'i ANSI okur ve Türkçe harfleri bozar: ASCII dışı karakter
     içeren PowerShell betiği UTF-8 BOM ile yazılır (2026-10-21: ajan bu yüzden betikleri ASCII'ye
     zorlayıp metni ayrı dosyalara taşımak zorunda kalıyordu)."""
     return (Path(path).suffix.lower() in PS_SCRIPT_SUFFIXES and text is not None
             and any(ord(ch) > 127 for ch in text))
+
+
+NEAREST_MAX_LINES = 20000          # bu kadar satırdan büyük dosyada en yakın bölüm aranmaz
+NEAREST_MIN_RATIO = 0.6
+
+
+def nearest_region(text: str, old: str, max_chars: int = 1500) -> str:
+    """edit_file "old_string bulunamadı" dediğinde dosyadaki EN YAKIN bölüm (2026-11-12; gerçek kullanımda düzenlemelerin
+    %2,3'ü bu hatayla düştü, ajan dosyayı yeniden okumak için bir adım daha harcıyordu). Boşluk/girinti farkıysa bunu
+    açıkça söyler. Benzer bölüm yoksa "" (ipucu uydurulmaz). Hızlı: önce ilk satıra göre aday seçer."""
+    lines = text.split("\n")
+    old_lines = old.strip("\n").split("\n")
+    if not old.strip() or len(lines) > NEAREST_MAX_LINES or len(old_lines) > 200:
+        return ""
+    n = len(old_lines)
+
+    def show(i: int, why: str) -> str:
+        chunk = "\n".join(f"{i + k + 1:>5}| {lines[i + k]}" for k in range(min(n, len(lines) - i)))
+        if len(chunk) > max_chars:
+            chunk = chunk[:max_chars] + "\n… (kısaltıldı)"
+        return f"\n{why} (satır {i + 1}-{min(i + n, len(lines))}; birebir kopyalayıp yeniden deneyin):\n```\n{chunk}\n```"
+
+    squash = " ".join(old.split())
+    first = next((ln.strip() for ln in old_lines if ln.strip()), "")
+    first_sq = " ".join(first.split())                 # satır içi boşluk farkı da ("total <  0") yakalanır
+    starts = [i for i, ln in enumerate(lines) if first_sq and " ".join(ln.split()) == first_sq]
+    for i in starts:                                   # aynı metin, yalnız boşluk/girinti farklı
+        if " ".join("\n".join(lines[i:i + n]).split()) == squash:
+            return show(i, "Bu metin dosyada VAR ama boşluk/girinti farklı; dosyadaki gerçek hâli")
+    cands = sorted(range(len(lines)), key=lambda i: -difflib.SequenceMatcher(None, first, lines[i].strip()).quick_ratio()
+                   if first else 0)[:30]
+
+    def ratio(a: str, b: str) -> float:
+        # difflib'in "autojunk"u 200+ karakterde sık karakterleri yok sayar; tekrarlı kodda benzerliği yapay düşürüyordu
+        # (150 satırlık neredeyse aynı bölüm bulunamadı). Kısa metin: karakter düzeyi; uzun: satır düzeyi (hızlı).
+        if len(a) <= 600 and len(b) <= 600:
+            return difflib.SequenceMatcher(None, a, b, autojunk=False).ratio()
+        return difflib.SequenceMatcher(None, a.split("\n"), b.split("\n"), autojunk=False).ratio()
+
+    best, best_i = 0.0, -1
+    for i in cands:
+        window = "\n".join(lines[i:i + n])
+        r = ratio(old.strip("\n"), window)
+        if r > best:
+            best, best_i = r, i
+    if best_i < 0 or best < NEAREST_MIN_RATIO:
+        return ""
+    return show(best_i, f"Dosyadaki en yakın bölüm (benzerlik %{int(best * 100)})")
+
+
+BREAK_GUARD_EXTS = (".py", ".pyw", ".json", ".toml")
+
+
+def guard_breakage(rel: str, before: str | None, after: str) -> None:
+    """Bozma koruması (Madde 22 C1, 2026-11-13; SWE-agent: lint'li düzenleme çıkarılınca çözülen iş %18 → %10,3): ÖNCEDEN
+    sağlam olan Python/JSON/TOML dosyasını bozan değişiklik YAZILMAZ; hata ve önerilen sonucun ilgili satırları modele
+    döner, model düzeltip yeniden gönderir. Yeni dosya ve zaten bozuk dosya (düzeltme denemesi) engellenmez — yazıldıktan
+    sonra hata bekçisi (diagnostics) bildirir."""
+    if before is None or os.path.splitext(rel)[1].lower() not in BREAK_GUARD_EXTS:
+        return
+    from .diagnostics import builtin_problems
+
+    if builtin_problems(rel, before):
+        return
+    problems = builtin_problems(rel, after)
+    if not problems:
+        return
+    snippet = ""
+    m = re.match(r"satır (\d+)", problems[0])
+    if m:
+        lines = after.split("\n")
+        n = int(m.group(1))
+        lo, hi = max(1, n - 3), min(len(lines), n + 3)
+        snippet = "\nÖnerilen sonucun ilgili satırları:\n```\n" + "\n".join(
+            f"{i:>5}{'>' if i == n else '|'} {lines[i - 1]}" for i in range(lo, hi + 1)) + "\n```"
+    raise ToolError(f"Bu değişiklik {rel} dosyasını BOZARDI ({problems[0]}); dosya DEĞİŞTİRİLMEDİ. Hatayı (girinti, "
+                    f"parantez, tırnak, virgül) düzeltip yeniden gönder." + snippet)
 
 
 def make_diff(before: str | None, after: str | None, rel_path: str,
@@ -615,6 +710,24 @@ def unwrap_powershell(command: str) -> str:
 _HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1[^\n]*\n(.*)", re.S)
 
 
+# Programın klavyeden girdi bekleyip girdisiz (stdin kapalı) çalıştırıldığı için kapandığını gösteren İMZALAR. Yalnız
+# bunlar: "unexpected EOF while parsing" (sözdizimi hatası) gibi başka EOF hataları tetiklemez.
+_STDIN_SIGNS = ("EOFError: EOF when reading a line",                     # Python input()
+                "NonInteractive mode",                                   # PowerShell Read-Host (-NonInteractive)
+                "Read and Prompt functionality is not available")
+STDIN_HINT = ("\n\n[İpucu] Program klavyeden girdi bekledi ama komutlar girdisiz çalışır (stdin kapalı), bu yüzden "
+              "durdu. Kullanıcıya programın girdi beklediğini ve NE beklediğini açıkça söyle; gerekiyorsa girdiyi "
+              "komutla ver (PowerShell: `'örnek' | python program.py`) ve bunu yaptığını belirt — kendi uydurduğun "
+              "girdinin çıktısını programın gerçek çıktısıymış gibi sunma.")
+
+
+def stdin_hint(output: str) -> str:
+    """2026-11-12 analiz ("girdi" görevi): girdi bekleyen program girdisiz çalışınca ajana durumu açıkça söyler; böylece
+    her model kullanıcıya "program girdi bekliyor" diye açıklar. Boş dize → ilgisiz çıktı."""
+    text = output or ""
+    return STDIN_HINT if any(s in text for s in _STDIN_SIGNS) else ""
+
+
 def heredoc_hint(command: str) -> str:
     """Windows PowerShell'de bash heredoc'u (`python - <<'PY'` …) yoktur; komut hiç çalışmaz. Gerçek kullanımda ajan bunu
     deneyip bir adım kaybediyordu (2026-11-12 analiz). Heredoc sayılması için işaret kelimesinin SONRAKİ bir satırda
@@ -632,8 +745,10 @@ def heredoc_hint(command: str) -> str:
 def shell_argv(command: str) -> list[str]:
     if os.name == "nt":
         prefix = (
-            "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; "
-            "$OutputEncoding=[System.Text.Encoding]::UTF8; "
+            # BOM'SUZ UTF-8 (2026-11-12 analiz): [Text.Encoding]::UTF8 BOM'lu → `'Ali' | python x.py` programa
+            # "﻿Ali" veriyordu; borulanan (pipe) her metnin başı sessizce bozuluyordu.
+            "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false); "
+            "$OutputEncoding=[System.Text.UTF8Encoding]::new($false); "
         )
         return ["powershell.exe", "-NoProfile", "-NonInteractive",
                 "-Command", prefix + unwrap_powershell(command)]
@@ -848,6 +963,7 @@ class ToolBox:
         if before is not None and before == after:
             raise ToolError("Yeni içerik mevcut dosyayla aynı; değişiklik yok.")
         rel = self.ws.rel(p)
+        guard_breakage(rel, before, after)
         return FileChange(rel, p, before, after, make_diff(before, after, rel), meta)
 
     def prepare_edit(self, path: str, old_string: str, new_string: str,
@@ -868,7 +984,7 @@ class ToolBox:
         if count == 0:
             raise ToolError(
                 "old_string dosyada bulunamadı. Dosyayı read_file ile yeniden "
-                "okuyup metni birebir (girinti dahil) kopyalayın."
+                "okuyup metni birebir (girinti dahil) kopyalayın." + nearest_region(meta.text, old)
             )
         if count > 1 and not replace_all:
             raise ToolError(
@@ -877,6 +993,7 @@ class ToolBox:
             )
         after = meta.text.replace(old, new) if replace_all else meta.text.replace(old, new, 1)
         rel = self.ws.rel(p)
+        guard_breakage(rel, meta.text, after)
         return FileChange(rel, p, meta.text, after, make_diff(meta.text, after, rel), meta)
 
     def apply_change(self, change: FileChange) -> None:
@@ -896,6 +1013,7 @@ class ToolBox:
             meta = TextFile(meta.text, "utf-8", meta.newline, bom=True)
         change.abs_path.parent.mkdir(parents=True, exist_ok=True)
         change.abs_path.write_bytes(meta.to_disk(change.after))
+        drop_pycache(change.abs_path)
 
     # -- komut ------------------------------------------------------------------------
 
@@ -995,8 +1113,10 @@ def revert_file(root: Path, rel_path: str, before: str | None, after: str | None
     if before is None:
         if p.exists():
             p.unlink()
+        drop_pycache(p)
         return f"{rel_path} silindi (ajan tarafından oluşturulmuştu)."
     meta = meta or TextFile("", "utf-8", "\n")
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_bytes(meta.to_disk(before))
+    drop_pycache(p)
     return f"{rel_path} önceki haline döndürüldü."

@@ -155,6 +155,7 @@ def main() -> int:
     from evren_studio.ui.project_ui import PlanCard
 
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.resize(1440, 900)
     w.show()
     notes: list[tuple[str, str]] = []

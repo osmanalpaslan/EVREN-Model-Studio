@@ -360,6 +360,41 @@ def test_derin_sorulari_planlamadan_once_sorar_yanit_gorevlere_iner(win, tmp_pat
     assert len({m for k, m in client.calls if k == "dogrula"}) == 2
 
 
+def test_anlamca_ayni_sorular_modelle_birlesir_kartta_tek_soru(win, tmp_path, monkeypatch):
+    """Gerçek akış (R-31): iki incelemeci AYNI kararı farklı sözcüklerle sorar (sözcük ayıklaması ayıramaz) → kısa iç
+    istek (ai_chat) soruları gruplar → kullanıcıya tek, en kapsamlı soru gider (2026-11-13 gerçek koşu bulgusu)."""
+    q_a = "CRS verisi yok: CRS sayfası atlansın mı?"
+    q_b = "CRS aktivasyon tablosu bulunamadı; bu bölüm rapordan çıkarılsın mı, boş mu bırakılsın?"
+
+    class Ikili(FakeClient):
+        n = 0
+
+        def chat(self, model, messages, stream=False, cancel=None, on_delta=None, tools=None, **kw):
+            users = [m for m in messages if m["role"] == "user"]
+            first = users[0]["content"] if users else ""
+            if "KARARA göre grupla" in first:
+                with self.lock:
+                    self.calls.append(("birlestir", model))
+                return ChatResult(content='{"gruplar": [[1, 2]]}', finish_reason="stop")
+            if "DERİN MOD · ANLA" in first:
+                with self.lock:
+                    Ikili.n += 1
+                    q = q_b if Ikili.n == 2 else q_a
+                    self.calls.append(("anla", model))
+                return ChatResult(content="İnceledim.\n" + BULGU_SORU.replace(
+                    "CRS verisi yok: CRS sayfası atlansın mı?", q), finish_reason="stop")
+            return super().chat(model, messages, stream, cancel, on_delta, tools, **kw)
+
+    app, w = win
+    client = Ikili()
+    s, _proj = _session(w, tmp_path, client, monkeypatch)
+    s.send("/derin hesap kapama raporunu excel olarak oluştur")
+    assert _wait(app, lambda: s.deep.awaiting_answers)
+    assert ("birlestir", ) == tuple(k for k, _m in client.calls if k == "birlestir")
+    assert s.deep.state.questions == [q_b], "iki ifade tek (en kapsamlı) soruya indi"
+    assert any("aynı kararı soruyordu, birleştirildi" in x for x in s.deep.state.log)
+
+
 def test_soru_yoksa_kart_cikmaz_sormadan_devam_da_calisir(win, tmp_path, monkeypatch):
     from evren_studio.ui.project_ui import PlanCard
 

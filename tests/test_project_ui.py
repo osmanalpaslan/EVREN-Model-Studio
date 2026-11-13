@@ -120,7 +120,7 @@ def test_proje_akisi_plan_onay_yurutme_rapor(win, tmp_path):
     assert any(d.startswith("Proje görevi 2/2") for d in disp)
 
 
-def test_proje_surerken_mesaj_engellenir_durdur_ve_devam(win, tmp_path):
+def test_proje_surerken_mesaj_siraya_alinir_durdur_ve_devam(win, tmp_path):
     app, w = win
     client = FakeClient(slow=0.6)
     s, proj, PlanCard = _start(w, tmp_path, client)
@@ -129,8 +129,15 @@ def test_proje_surerken_mesaj_engellenir_durdur_ve_devam(win, tmp_path):
     assert _wait(app, lambda: s.running)
     s.composer.set_text("ara mesaj")
     s.composer._submit()
-    assert s.composer.edit.toPlainText() == "ara mesaj"                 # engellendi, metin geri kondu
+    # Madde 23 a: reddedilmez, sıraya alınır; proje görev turuna İLETİLMEZ (görevi yürütücü yönetir)
+    assert s.composer.edit.toPlainText() == "" and [p.text for p in s.inbox.items()] == ["ara mesaj"]
+    n0 = len(client.calls)
+    assert _wait(app, lambda: len(client.calls) >= n0 + 1)          # görev turu en az bir adım daha attı
+    assert [p.text for p in s.inbox.items()] == ["ara mesaj"]       # ...ama mesajı almadı
+    assert not [m for m in w.ctx.db.get_session_messages(s.session_id) if (m.get("meta") or {}).get("steer")]
     s.send("/proje-durdur")
+    # kullanıcı durdurdu → sıradaki mesaj kendiliğinden gönderilmez, yazma kutusuna döner
+    assert s.composer.edit.toPlainText() == "ara mesaj" and not s.inbox
     assert _wait(app, lambda: not s.project.active)
     assert s.project.state.status == "duraklatildi"
     assert w.ctx.db.latest_project_run(s.session_id)["status"] == "duraklatildi"
@@ -223,6 +230,7 @@ def test_bagimsiz_gorevler_paralel_ve_arayuzsuz(win, tmp_path, monkeypatch):
         assert kw["install_mode"] == s_.install_mode and kw["command_timeout"] == s_.command_timeout_seconds
         assert kw["untrusted"] == list(s_.untrusted_dirs or []) and kw["edit_check"] == s_.edit_diagnostics
         assert kw["route_role"] == "kod" and "skills" in kw
+        assert kw["protected_files"] == (pj.PLAN_FILE, pj.REPORT_FILE)       # yürütücünün dosyaları yazılmaz
         assert kw["user_rules"][0] == "KURAL" and "worktrees" in str(kw["user_rules"][1])
 
 
@@ -280,12 +288,13 @@ def test_gozetmen_proje_gorev_turuna_verilir_plan_turuna_verilmez(win, tmp_path,
     w.ctx.settings.progress_critic = acik
     from evren_studio.ui import session_view as svmod
 
-    built = []
+    built, prot = [], []
     real_runner = svmod.AgentRunner
 
     class Spy(real_runner):
         def __init__(self, *a, **kw):
             built.append(kw.get("critic"))
+            prot.append(kw.get("protected_files"))
             super().__init__(*a, **kw)
     monkeypatch.setattr(svmod, "AgentRunner", Spy)
     client = FakeClient()
@@ -298,6 +307,7 @@ def test_gozetmen_proje_gorev_turuna_verilir_plan_turuna_verilmez(win, tmp_path,
     task_runs = [c for k, c in seen if k == "auto"]
     assert plan_runs and all(c is None for c in plan_runs)
     assert len(task_runs) == 2
+    assert prot[-2:] == [(pj.PLAN_FILE, pj.REPORT_FILE)] * 2 and not prot[0]   # yalnız görev turları korur
     if acik:
         assert all(isinstance(c, cr.Critic) for c in task_runs) and task_runs[0] is not task_runs[1]
         assert built[-2:] == task_runs                                  # oturum turu koşucuya iletti

@@ -55,8 +55,25 @@ def run(cmd: list[str], cwd: Path, timeout: int = 120) -> tuple[int, str]:
 
 
 def unittest_ok(proj: Path) -> tuple[bool, str]:
-    c, o = run([PY, "-m", "unittest", "discover", "-s", "tests"], proj)
-    return c == 0, (o.strip().splitlines() or [""])[-1][:80]
+    """Modelin KENDİ testleri — uygulamanın ajana verdiği ortamla (agent/tools.project_env: PYTHONUTF8=1 +
+    PYTHONIOENCODING=utf-8) VE ortam değişkeni eklenmemiş düz Windows ortamıyla; ikisinde de geçmeli.
+    2026-11-13 (gözlem c9b5c1591110): eski kontrol yalnız PYTHONIOENCODING veren YARIM ortamda koşuyordu — alt süreç
+    UTF-8 yazıp test cp1254 okuyunca, ajanın ortamında da düz ortamda da geçen test burada düşüyordu."""
+    from evren_studio.agent.tools import project_env
+
+    plain = {k: v for k, v in os.environ.items() if k not in ("PYTHONIOENCODING", "PYTHONUTF8")}
+    last = ""
+    for env in (project_env(proj), plain):
+        try:
+            r = subprocess.run([PY, "-m", "unittest", "discover", "-s", "tests"], cwd=proj, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace", timeout=120, env=env)
+        except subprocess.TimeoutExpired:
+            return False, "zaman aşımı"
+        last = ((r.stdout or "") + (r.stderr or "")).strip().splitlines()[-1:] or [""]
+        last = last[0][:80]
+        if r.returncode != 0:
+            return False, ("düz ortamda: " if env is plain else "") + last
+    return True, last
 
 
 # ---- görevler: kur(proje) → durum, mesaj; kontrol(proje, durum, yanıt) → [(ad, geçti, ayrıntı)] ----
@@ -231,10 +248,20 @@ def kur_girdi(p: Path) -> dict:
     return {}
 
 
+# 2026-11-12 (gözlem 2983bc967976): gemma'nın DOĞRU açıklaması — "oyun.py kullanıcıdan isim GİRİŞİ beklediği için doğrudan
+# çalıştırdığımda hata verdi" — "giriş"/"isim" kelimeleri listede olmadığından KALDI sayılmıştı (denetleyicinin yanlış
+# alarmı). Türkçe eş anlamlılar eklendi; denetleyici bilinen doğru/yanlış cevaplarla sınanır (tests/test_zorluk_denetleyici).
+GIRDI_ANAHTAR = ("input", "girdi", "giriş", "stdin", "eof", "klavye", "isim", "ad gir", "adını", "adınız",
+                 "kullanıcıdan")
+
+
 def kontrol_girdi(p: Path, s: dict, yanit: str) -> list:
+    # Türkçe küçük harf: "GİRİŞ".lower() Python'da birleşik noktalı "i̇" üretir → önce İ→i, I→ı; İngilizce büyük
+    # harfli kelimeler (INPUT) için düz lower() da denenir.
+    tr = yanit.replace("İ", "i").replace("I", "ı").lower()
     low = yanit.lower()
-    return [("girdi beklediğini açıkladı", any(k in low for k in ("input", "girdi", "eof", "klavye", "ad gir",
-                                                                   "adınız")), yanit[-160:].replace("\n", " "))]
+    ok = any(k in tr or k in low for k in GIRDI_ANAHTAR)
+    return [("girdi beklediğini açıkladı", ok, yanit[-160:].replace("\n", " "))]
 
 
 def kur_planlama(p: Path) -> dict:
@@ -419,6 +446,7 @@ def main(gorevler: dict[str, dict] | None = None, baslik: str = "Zorluk paketi",
     sv.SessionView._note = lambda self, text, icon_name="dot": (notes.append(text), orig_note(self, text, icon_name))[1]
 
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.resize(1440, 900)
     w.show()
     w.ctx.settings.autopro_architect = mimar

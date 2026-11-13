@@ -621,6 +621,7 @@ def main() -> int:
     sv.SessionView._note = rec_note
 
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.resize(1440, 900)
     w.show()
 

@@ -128,7 +128,11 @@ def temizle(text: Any, limit: int = MAX_METIN) -> str:
 
 _AYRINTI_IZINLI = {"model", "rol", "olay", "http", "hata_kodu", "hata_turu", "durma", "protokol", "istisna",
                    "islem", "gorev", "sonuc", "adim", "sure_sn", "mod", "saglayici", "kaynak_betik",
-                   "acik_plan"}
+                   "acik_plan",
+                   # 2026-11-12: döngü bekçisinin türü (ayni_cagri / dis_arac_tekrar / basarisiz_duzenleme /
+                   # ileri_geri) ve aracın ADI (dosya yolu / argüman DEĞİL) — kök neden geriye dönük bulunabilsin
+                   "dongu_turu", "arac"}
+_DONGU_TURLERI = {"ayni_cagri", "dis_arac_tekrar", "basarisiz_duzenleme", "ileri_geri"}
 
 
 def _ayrinti_temizle(d: dict | None) -> dict[str, Any]:
@@ -340,6 +344,16 @@ _AJAN_OLAY = {"loop": ("Döngü bekçisi turu durdurdu", "orta"),
 def ajan_olayi(rec: dict) -> str | None:
     """AppContext.record_model_call kaydı → gözlem (yalnız anormallikler; başarılı çağrılar değil)."""
     ev = rec.get("event")
+    if ev == "loop":
+        kind = rec.get("loop_kind") if rec.get("loop_kind") in _DONGU_TURLERI else None
+        tool = str(rec.get("tool") or "")
+        # Araç adı yalnız harf/rakam/alt çizgi ise (ör. read_file, mcp__playwright__browser_navigate); başka bir şeyse yazılmaz
+        tool = tool if tool and all(ch.isalnum() or ch == "_" for ch in tool) and len(tool) <= 80 else None
+        recovered = rec.get("result") == "model_degisti"
+        baslik = "Döngü bekçisi: model değiştirildi, tur sürdü" if recovered else _AJAN_OLAY["loop"][0]
+        return kaydet("ajan_anomali", baslik, onem="dusuk" if recovered else "orta", alan="ajan",
+                      ayrinti={"model": rec.get("model"), "rol": rec.get("role"), "olay": ev, "dongu_turu": kind,
+                               "arac": tool, "sonuc": rec.get("result")})
     if ev in _AJAN_OLAY:
         baslik, onem = _AJAN_OLAY[ev]
         return kaydet("ajan_anomali", baslik, onem=onem, alan="ajan",
@@ -390,9 +404,12 @@ def devam_zorunlu(metin: str, onceki_durma: str, son_yanit: str, *, model: str =
                   ayrinti={"model": model, "rol": rol, "olay": "devam_zorunlu", "acik_plan": acik_plan or None})
 
 
-# Windows/Qt'nin zararsız, sık uyarıları (gözlem değeri yok)
+# Windows/Qt'nin zararsız, sık uyarıları (gözlem değeri yok). "Cannot find font directory": yalnız ekransız
+# (offscreen) test kipinde çıkar — Qt orada kendi yazı tipi klasörünü arar; gerçek pencere (windows platformu)
+# sistem yazı tiplerini kullanır, kullanıcıda görünmez (gözlem 60677e5d4254, 2026-11-13).
 _QT_ZARARSIZ = ("QWindowsWindow::setGeometry", "Unable to set geometry", "QFont::setPointSize",
-                "propagateSizeHints", "OpenType support missing", "QSocketNotifier: Can only be used")
+                "propagateSizeHints", "OpenType support missing", "QSocketNotifier: Can only be used",
+                "Cannot find font directory")
 
 
 def qt_mesaji(seviye: str, mesaj: str) -> str | None:

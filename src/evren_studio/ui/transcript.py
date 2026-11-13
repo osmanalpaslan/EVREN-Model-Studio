@@ -349,7 +349,7 @@ class AssistantMessageWidget(QWidget):
         head = QHBoxLayout()
         head.setSpacing(6)
         logo = QLabel()
-        logo.setPixmap(brand.pixmap(16))
+        logo.setPixmap(brand.tile_pixmap(18))         # cam karo (önbellekli; her yanıtta yeniden çizilmez)
         head.addWidget(logo)
         name = QLabel("EVREN")
         name.setStyleSheet("font-weight: 600;")
@@ -368,20 +368,24 @@ class AssistantMessageWidget(QWidget):
         head.addWidget(self.bad_btn)
         lay.addLayout(head)
 
-        self.thinking = ThinkingBlock()
-        self.thinking.setVisible(False)
-        lay.addWidget(self.thinking)
-        self.body = MarkdownView()
-        self.body.setVisible(False)
-        lay.addWidget(self.body)
+        # PERFORMANS (2026-11-12): düşünme bloğu, Markdown gövdesi ve canlı yıldız GEREKİNCE kurulur (yer tutucu
+        # boş düzenler sırayı korur; boş düzen boşluk almaz). Gerçek 716 mesajlık oturumda 61 yanıtın 37'si yalnız
+        # araç adımıydı; her biri boş bir QTextBrowser + gizli düşünme bloğu + gizli yıldız taşıyordu.
+        self._think_slot = QVBoxLayout()
+        self._think_slot.setContentsMargins(0, 0, 0, 0)
+        lay.addLayout(self._think_slot)
+        self._body_slot = QVBoxLayout()
+        self._body_slot.setContentsMargins(0, 0, 0, 0)
+        lay.addLayout(self._body_slot)
+        self._thinking: ThinkingBlock | None = None
+        self._body: MarkdownView | None = None
+        self._busy: brand.BusyStar | None = None
         # Bekleme satırı: canlı yıldız (model çalışırken döner) + durum metni
         self.status_row = QWidget()
         sr = QHBoxLayout(self.status_row)
         sr.setContentsMargins(0, 0, 0, 0)
         sr.setSpacing(8)
-        self.busy = brand.BusyStar(14)
-        self.busy.setVisible(False)
-        sr.addWidget(self.busy)
+        self._status_lay = sr
         self.status = faint_label("")
         sr.addWidget(self.status, 1)
         lay.addWidget(self.status_row)
@@ -411,6 +415,32 @@ class AssistantMessageWidget(QWidget):
         self._wait_timer = QTimer(self)
         self._wait_timer.setInterval(400)
         self._wait_timer.timeout.connect(self._tick)
+
+    # -- gerekince kurulan parçalar --
+
+    @property
+    def thinking(self) -> ThinkingBlock:
+        if self._thinking is None:
+            self._thinking = ThinkingBlock()
+            self._thinking.setVisible(False)
+            self._think_slot.addWidget(self._thinking)
+        return self._thinking
+
+    @property
+    def body(self) -> MarkdownView:
+        if self._body is None:
+            self._body = MarkdownView()
+            self._body.setVisible(False)
+            self._body_slot.addWidget(self._body)
+        return self._body
+
+    @property
+    def busy(self) -> brand.BusyStar:
+        if self._busy is None:
+            self._busy = brand.BusyStar(14)
+            self._busy.setVisible(False)
+            self._status_lay.insertWidget(0, self._busy)
+        return self._busy
 
     def enterEvent(self, e) -> None:
         self.copy_btn.setVisible(bool(self._raw))
@@ -488,7 +518,8 @@ class AssistantMessageWidget(QWidget):
 
     def stop_waiting(self) -> None:
         self._wait_timer.stop()
-        self.busy.setVisible(False)
+        if self._busy is not None:
+            self._busy.setVisible(False)
         self.status.setVisible(False)
 
     def append_text(self, delta: str) -> None:
@@ -528,12 +559,13 @@ class AssistantMessageWidget(QWidget):
             self._has_thinking = True
             self.thinking.setVisible(not VIEW["simple"])
             self.thinking.set_text(reasoning)
-        self.thinking.finish()
+        if self._thinking is not None:
+            self._thinking.finish()
         if self._raw.strip():
             self.body.setVisible(True)
             self.body.set_markdown(self._raw)
-        else:
-            self.body.setVisible(False)
+        elif self._body is not None:
+            self._body.setVisible(False)
         note = ""
         if finish_reason == "length":
             note = "Yanıt uzunluk sınırında kesildi (finish_reason: length)."
@@ -564,7 +596,8 @@ class AssistantMessageWidget(QWidget):
                 hidden += hide
         self.tool_summary.setText(f"{hidden} araç adımı gizli (sade görünüm — Ctrl+Shift+H ile ayrıntı)")
         self.tool_summary.setVisible(hidden > 0)
-        self.thinking.setVisible(not simple and getattr(self, "_has_thinking", False))
+        if self._thinking is not None:
+            self._thinking.setVisible(not simple and getattr(self, "_has_thinking", False))
 
 
 # ---- araç kartı ve onay ----------------------------------------------------------------------
@@ -651,6 +684,7 @@ class ToolCallWidget(QFrame):
         self.args = args
         self.finished = False
         self._output_view: CodeView | None = None
+        self._pending: list[tuple[str, Any]] | None = None     # kapalı kartın henüz kurulmamış ayrıntıları
         lay = QVBoxLayout(self)
         lay.setContentsMargins(10, 6, 8, 6)
         lay.setSpacing(6)
@@ -720,6 +754,8 @@ class ToolCallWidget(QFrame):
 
     def toggle_details(self, force: bool | None = None) -> None:
         show = (not self.details.isVisible()) if force is None else force
+        if show and self._pending is not None:
+            self._build_details()
         self.details.setVisible(show)
         self.expand.setIcon(icons.icon("chevron-down" if show else "chevron-right", size=14))
 
@@ -768,19 +804,15 @@ class ToolCallWidget(QFrame):
             self.set_state("denied")
         else:
             self.set_state("ok" if ok else "error")
-        # Ayrıntılar: diff, komut çıktısı, okuma çıktısı veya hata
-        for i in reversed(range(self.details_lay.count())):
-            w = self.details_lay.itemAt(i).widget()
-            if w is not None and w is not self._output_view:
-                w.deleteLater()
+        # Ayrıntılar: diff, komut çıktısı, okuma çıktısı veya hata. PERFORMANS (2026-11-12): kapalı kartın
+        # ayrıntı görünümleri (her biri kaydırma çubuklu bir metin kutusu) kart AÇILINCA kurulur; geçmiş
+        # yüklenirken yüzlerce görünmez görünüm oluşmaz. Canlı komut çıktısı (açık kart) hemen işlenir.
+        spec: list[tuple[str, Any]] = []
         if meta.get("diff"):
-            self.details_lay.addWidget(DiffView(meta["diff"]))
-            self.expand.setVisible(True)
+            spec.append(("diff", meta["diff"]))
         elif self.name == "run_command":
             out = meta.get("output")
-            view = self._ensure_output()
-            if out is not None and not view.toPlainText().strip():
-                view.setPlainText(out.strip() or "(çıktı yok)")
+            spec.append(("command", None if out is None else (out.strip() or "(çıktı yok)")))
             code = meta.get("exit_code")
             if code is not None:
                 self.state.setText(f"çıkış {code}" + (f" · {meta.get('duration')} sn" if meta.get("duration") else ""))
@@ -794,16 +826,36 @@ class ToolCallWidget(QFrame):
             for t in meta["todos"]:
                 mark = {"completed": "✓", "in_progress": "◐"}.get(t["status"], "○")
                 lines.append(f"{mark} {t['content']}")
-            self.details_lay.addWidget(CodeView("\n".join(lines), max_lines=12))
-            self.expand.setVisible(True)
+            spec.append(("code", ("\n".join(lines), 12)))
         elif meta.get("output"):
-            self.details_lay.addWidget(CodeView(meta["output"], max_lines=14))
-            self.expand.setVisible(True)
+            spec.append(("code", (meta["output"], 14)))
         if not ok and meta.get("error_text"):
-            lab = faint_label(meta["error_text"], "dim")
-            lab.setWordWrap(True)
-            self.details_lay.addWidget(lab)
+            spec.append(("error", meta["error_text"]))
+        self._pending = spec
+        if spec:
             self.expand.setVisible(True)
+        if not self.details.isHidden():          # açık kart (canlı komut kartı çalışırken açılır)
+            self._build_details()
+
+    def _build_details(self) -> None:
+        spec, self._pending = self._pending or [], None
+        for i in reversed(range(self.details_lay.count())):
+            w = self.details_lay.itemAt(i).widget()
+            if w is not None and w is not self._output_view:
+                w.deleteLater()
+        for kind, data in spec:
+            if kind == "diff":
+                self.details_lay.addWidget(DiffView(data))
+            elif kind == "command":
+                view = self._ensure_output()
+                if data is not None and not view.toPlainText().strip():
+                    view.setPlainText(data)
+            elif kind == "code":
+                self.details_lay.addWidget(CodeView(data[0], max_lines=data[1]))
+            elif kind == "error":
+                lab = faint_label(data, "dim")
+                lab.setWordWrap(True)
+                self.details_lay.addWidget(lab)
 
 
 # ---- bilgi ve hata kartları ---------------------------------------------------------------------

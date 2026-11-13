@@ -174,6 +174,9 @@ def test_tur_sonu_ve_qt_uyarisi(gz):
     assert gozlem.tur_sonu("max_steps", model="m", adim=80) is not None
     assert gozlem.qt_mesaji("warning", "QWindowsWindow::setGeometry: Unable to set geometry 100x100") is None
     assert gozlem.qt_mesaji("info", "bilgi") is None
+    # gözlem 60677e5d4254: ekransız test kipinin yazı tipi uyarısı kullanıcıda görünmez → kaydedilmez
+    assert gozlem.qt_mesaji("warning", "QFontDatabase: Cannot find font directory C:/x/.venv/Lib/site-packages/"
+                                       "PySide6/lib/fonts. Note that Qt no longer ships fonts.") is None
     i = gozlem.qt_mesaji("warning", "QObject::setParent: Cannot set parent, new parent is in a different thread")
     assert _items(gz)[i].onem == "dusuk"
 

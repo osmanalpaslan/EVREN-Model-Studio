@@ -92,7 +92,7 @@ class DeepController(QObject):
         if not quiet:
             self.view._note(
                 "Derin Mod açık: işler anla → planla → uygula → çekişmeli doğrula → düzelt akışıyla, birden "
-                "çok EVREN ajanıyla yürür (daha yavaş, daha çok token; yalnız ücretsiz EVREN)." if on
+                f"çok ajanla yürür (daha yavaş, daha çok token; motorlar: {self.ctx.auto_label()})." if on
                 else "Derin Mod kapandı: mesajlar normal ajan turuyla yürür.", "spark" if on else "dot")
 
     def _set_label(self, text: str) -> None:
@@ -120,15 +120,18 @@ class DeepController(QObject):
     def unavailable_reason(self) -> str:
         if not self._ws():
             return "Derin Mod bir proje klasöründe çalışır: önce “Proje klasörü bağla” ile klasör seçin."
-        if "evren" not in self.ctx.available_providers():
-            return "Derin Mod yalnız EVREN (ücretsiz) ile çalışır: Ayarlar'dan EVREN API anahtarı girin."
+        if not self.ctx.available_providers():
+            return "Derin Mod için bir API anahtarı gerekli: Ayarlar > Sağlayıcılar ve anahtarlar."
         return ""
 
     def _evren_chain(self, role: str) -> list[str]:
-        r = self.ctx.ai_route(role)
-        return [m for m in [r.model] + r.fallbacks if m and self.ctx.provider_of(m) == "evren"]
+        """Rolün motor zinciri — Madde 23 c: EVREN varsa yalnız EVREN (ücretsiz), yoksa kullanıcının API'si."""
+        r = self.ctx.ai_route(role, evren_only=True)
+        return [m for m in [r.model] + r.fallbacks if m and self.ctx.auto_ok(self.ctx.provider_of(m))]
 
     def _quota(self):
+        if not self.ctx.auto_ok("evren"):
+            return None                      # kota ucu yalnız EVREN'de; diğer API'de kota kapısı beklemez
         client = self.ctx.make_client()
         try:
             return client.get_quota()
@@ -146,9 +149,10 @@ class DeepController(QObject):
 
         def run(prompt: str, marker: str, label: str = "") -> dp.SubResult:
             if not chain:
-                return dp.SubResult("", "error", "EVREN modeli yok")
-            client = self.ctx.make_client()
+                return dp.SubResult("", "error", "kullanılabilir model yok (API anahtarı)")
+            client = self.ctx.make_client_for(self.ctx.provider_of(chain[0]))
             info = self.ctx.model_info(chain[0])
+            sink, stop = self.ctx.headless_billing(chain[0], self.view.session_id)   # ücretli API: maliyet + bütçe
             name = label or role
             phase = self.state.phase if self.state else ""
 
@@ -157,10 +161,14 @@ class DeepController(QObject):
                 self.sig_label.emit(f"Derin · {PHASE_LABELS.get(phase, phase)} · {name}: {title[:70]}")
             self.sig_label.emit(f"Derin · {PHASE_LABELS.get(phase, phase)} · {name}: {chain[0]} düşünüyor")
             try:
+                # Proje haritası (2026-11-12): alt ajanlar dosya ağacını + sembolleri baştan alır, her biri aynı
+                # yapıyı yeniden keşfetmez (oturum ajanıyla aynı ayar; EVREN'de her keşif adımı 15-80 sn)
                 res = dp.run_subagent(client=client, model=chain[0], fallbacks=chain[1:], root=root,
                                       prompt=prompt, marker=marker, gate=self._gate, cancel=self._cancel,
                                       context_tokens=getattr(info, "context_length", None),
-                                      base_body=self._effort_body(role, chain[0]), progress=progress)
+                                      base_body=self._effort_body(role, chain[0]), progress=progress,
+                                      runner_kw={"project_map": bool(self.ctx.settings.project_map)},
+                                      cost_sink=sink, budget_stop=stop)
             finally:
                 client.close()
             if res.stopped == "quota_daily":
@@ -259,7 +267,12 @@ class DeepController(QObject):
         st = self.state
         st.phase = "anla"
         sub = self._sub(None, "kod")
-        self._bg(lambda: dp.understand(st, sub, self._gate, self._gate.max_parallel, self._log),
+
+        def merge(messages):               # tekrar eden soruları birleştiren kısa iç istek (R-24: ai_chat)
+            text, _m = self.ctx.ai_chat("inceleme", messages, max_tokens=120, session_id=self.view.session_id,
+                                        evren_only=True)
+            return text
+        self._bg(lambda: dp.understand(st, sub, self._gate, self._gate.max_parallel, self._log, merge=merge),
                  lambda _r: self._after_understand())
 
     def _quota_paused(self) -> bool:
@@ -343,9 +356,19 @@ class DeepController(QObject):
             text, _m = self.ctx.ai_chat("inceleme", messages, max_tokens=600, session_id=self.view.session_id,
                                         evren_only=True)
             return text
-        self._bg(lambda: dp.plan(st, lambda m, p, k: subs[m](p, k, f"plan-{m}"), models[:2], judge, self._gate,
-                                 self._gate.max_parallel, self._log),
-                 self._after_plan)
+        ws, cancel = self._ws(), self._cancel
+
+        def job():
+            tasks = dp.plan(st, lambda m, p, k: subs[m](p, k, f"plan-{m}"), models[:2], judge, self._gate,
+                            self._gate.max_parallel, self._log)
+            # Başlangıç ölçümü (2026-11-13): Anla/Planla salt okunur → dosyalar henüz değişmedi. Testler ÖNCEDEN de
+            # düşüyorsa doğrulama bunu bu değişikliğin sorunu saymaz (Proje ajanının test bekçisiyle aynı ilke, R-20)
+            if ws:
+                st.baseline_tests = dp.project_tests(Path(ws), cancel=cancel)
+                if st.baseline_tests and st.baseline_tests.get("durum") == "dustu":
+                    self._log("Planla: projenin testleri değişiklikten ÖNCE de düşüyor (doğrulamada ayrılır)")
+            return tasks
+        self._bg(job, self._after_plan)
 
     def _after_plan(self, tasks) -> None:
         st = self.state
@@ -415,7 +438,8 @@ class DeepController(QObject):
         a, b = self._evren_chain("inceleme"), self._evren_chain("kod")
         m1 = a[0] if a else (b[0] if b else None)
         info = self.ctx.model_info(DEEP_VERIFIER2)
-        if (info is not None and self.ctx.provider_of(DEEP_VERIFIER2) == "evren" and DEEP_VERIFIER2 != m1
+        if (info is not None and self.ctx.provider_of(DEEP_VERIFIER2) == "evren" and self.ctx.auto_ok("evren")
+                and DEEP_VERIFIER2 != m1
                 and (info.capabilities or {}).get("tools")):
             return m1, DEEP_VERIFIER2              # Madde 8 ölçümü; yoksa eski davranış
         m2 = next((m for m in b + a if m != m1), m1)
@@ -424,8 +448,8 @@ class DeepController(QObject):
     def _verify(self) -> None:
         st = self.state
         st.phase = "dogrula"
-        self._log(f"4/5 DOĞRULA: iki bağımsız denetçi değişikliği isteğe karşı çürütmeye çalışıyor"
-                  + (f" (düzeltme turu {st.fix_round})" if st.fix_round else ""))
+        self._log("4/5 DOĞRULA: önce testler gerçekten çalışır, sonra iki bağımsız denetçi değişikliği isteğe karşı "
+                  "çürütmeye çalışır" + (f" (düzeltme turu {st.fix_round})" if st.fix_round else ""))
         self.sig_label.emit("Derin · doğrula")
         m1, m2 = self._verifier_models()
         subs = [self._sub(m1, "inceleme"), self._sub(m2, "kod")]
@@ -438,13 +462,18 @@ class DeepController(QObject):
         fix_round = st.fix_round
         tasks = self._tasks_text
 
+        cancel = self._cancel
+
         def job():
             if base and commit:
                 git = pj.Git(Path(ws))
                 if git.dirty():
                     git.commit_all(f"Derin Mod: doğrulama düzeltmeleri (tur {fix_round})")
             diff = pj.Git(Path(ws)).diff_since(base) if base else diff_now
-            return dp.verify(st, diff or "", sub, self._gate, self._gate.max_parallel, self._log, tasks)
+            # Önce testler GERÇEKTEN çalışır (2026-11-12): sonuç denetçilere kanıt, düşen test onaylı sorun
+            tests = dp.project_tests(ws, cancel=cancel) if (diff or "").strip() else None
+            return dp.verify(st, diff or "", sub, self._gate, self._gate.max_parallel, self._log, tasks,
+                             tests=tests, with_tests=True)
         self._bg(job, self._after_verify)
 
     def _after_verify(self, issues) -> None:

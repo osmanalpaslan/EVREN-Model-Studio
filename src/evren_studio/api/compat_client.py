@@ -45,6 +45,11 @@ class CompatClient(EvrenClient):
             path = path[3:]
         return super()._request(method, path, **kw)
 
+    def _headers(self, auth: bool) -> dict[str, str]:
+        # Anahtarsız (yerel Ollama/LM Studio, herkese açık liste) istekte kimlik başlığı GÖNDERİLMEZ: eskiden
+        # "Bearer yok" gidiyordu; Vercel AI Gateway bunu reddetti (2026-11-12 gerçek deneme), başlıksız istek 200.
+        return super()._headers(auth and bool((self.api_key or "").strip()))
+
     def list_models(self) -> list[ModelInfo]:
         out = []
         for m in super().list_models():

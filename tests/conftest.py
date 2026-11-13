@@ -102,6 +102,10 @@ def _yoklama_kapali(monkeypatch):
     # C2 güncelleme denetimi açılıştan 20 sn sonra GitHub'a gider; uzun arayüz testlerinde tetiklenmesin
     monkeypatch.setenv("EVREN_STUDIO_NO_UPDATE_CHECK", "1")
     monkeypatch.setenv("EVREN_STUDIO_NO_AUTO_BACKUP", "1")     # uzun testte veri klasörüne yedek yazılmasın
+    monkeypatch.setenv("EVREN_STUDIO_NO_DB_MAINT", "1")        # dosya geçmişi bakımı (sıkıştırma) arka planda koşmasın
+    # Marka animasyonları (karşılama logosu 60/12 fps, çalışma yıldızı) testte oynamaz: son hâl çizilir, zamanlayıcı
+    # işlemci harcamaz, zamanlamaya bağlı testler etkilenmez. Animasyonu sınayan testler değişkeni kaldırır.
+    monkeypatch.setenv("EVREN_STUDIO_NO_ANIM", "1")
 
 
 @pytest.fixture(autouse=True)

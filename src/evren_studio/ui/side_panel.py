@@ -26,8 +26,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..agent.tools import ToolBox, ToolError, Workspace, decode_bytes, make_diff, revert_file
-from . import icons, theme
+from ..agent.tools import (ToolBox, ToolError, Workspace, decode_bytes, diff_stats, drop_pycache, make_diff,
+                           revert_file)
+from . import icons, theme, transitions
 from .transcript import CodeView, DiffView, faint_label, icon_button
 from .workers import Task
 
@@ -122,6 +123,8 @@ class ChangesTab(QWidget):
                             "her birini tek tıkla geri alabilirsiniz.")
         lay.addWidget(self.empty)
         self.rows: list = []
+        self._stats: dict[int, tuple[int, int]] = {}     # değişiklik kimliği → (+, −)
+        self._dirty = False
         self.refresh()
 
     def set_session(self, session_id: int | None, workspace: str | None) -> None:
@@ -130,34 +133,63 @@ class ChangesTab(QWidget):
         self.refresh()
 
     def refresh(self) -> None:
-        self.list.clear()
-        self.rows = list(self.ctx.db.list_file_changes(self.session_id)) if self.session_id else []
-        p = theme.current()
-        files = set()
-        for r in self.rows:
-            diff = make_diff(r["before_text"], r["after_text"], r["path"])
-            add = sum(1 for ln in diff.splitlines() if ln.startswith("+") and not ln.startswith("+++"))
-            rem = sum(1 for ln in diff.splitlines() if ln.startswith("-") and not ln.startswith("---"))
-            label = f"{r['path']}   +{add} −{rem}"
-            if r["reverted"]:
-                label += "   (geri alındı)"
-            elif r["before_text"] is None:
-                label += "   (yeni)"
-            it = QListWidgetItem(icons.icon("file", "muted" if r["reverted"] else "text_dim", 15), label)
-            self.list.addItem(it)
-            files.add(r["path"])
+        """PERFORMANS (2026-11-12): liste, sekme GÖRÜNÜRKEN doldurulur ve her değişikliğin +/− sayısı kimliğine göre
+        önbellekte tutulur (kayıt değişmez; yalnız "geri alındı" bayrağı değişir). Eskiden her oturum açılışında ve
+        ajanın HER dosya değişikliğinde oturumdaki tüm farklar baştan hesaplanıyordu (146 değişiklikte ~0,25 sn,
+        uzun işte karesel büyüme)."""
+        self.rows = list(self.ctx.db.list_file_change_meta(self.session_id)) if self.session_id else []
+        files = {r["path"] for r in self.rows}
         active = [r for r in self.rows if not r["reverted"]]
         self.summary.setText(f"{len(files)} dosya, {len(self.rows)} değişiklik" if self.rows else "")
         self.revert_all_btn.setEnabled(bool(active))
         self.empty.setVisible(not self.rows)
         self.split.setVisible(bool(self.rows))
+        self._dirty = True
+        if self.isVisible():
+            self._fill()
+
+    def showEvent(self, e) -> None:
+        super().showEvent(e)
+        if getattr(self, "_dirty", False):
+            self._fill()
+
+    def _full(self, r):
+        """İçerikli satır: panelin hafif satırı (içeriksiz) ise veritabanından okunur; dışarıdan tam satır da gelebilir."""
+        if "before_text" in r.keys():
+            return r
+        return self.ctx.db.get_file_change(r["id"]) or r
+
+    @staticmethod
+    def _is_new(r) -> bool:
+        return bool(r["is_new"]) if "is_new" in r.keys() else r["before_text"] is None
+
+    def _stat(self, r) -> tuple[int, int]:
+        key = r["id"]
+        if key not in self._stats:
+            f = self._full(r)
+            self._stats[key] = diff_stats(make_diff(f["before_text"], f["after_text"], f["path"]))
+        return self._stats[key]
+
+    def _fill(self) -> None:
+        self._dirty = False
+        self.list.clear()
+        for r in self.rows:
+            add, rem = self._stat(r)
+            label = f"{r['path']}   +{add} −{rem}"
+            if r["reverted"]:
+                label += "   (geri alındı)"
+            elif self._is_new(r):
+                label += "   (yeni)"
+            it = QListWidgetItem(icons.icon("file", "muted" if r["reverted"] else "text_dim", 15), label)
+            self.list.addItem(it)
         if self.rows:
             self.list.setCurrentRow(len(self.rows) - 1)
 
     def _show(self, row: int) -> None:
         if 0 <= row < len(self.rows):
             r = self.rows[row]
-            self.diff.set_diff(make_diff(r["before_text"], r["after_text"], r["path"]))
+            f = self._full(r)
+            self.diff.set_diff(make_diff(f["before_text"], f["after_text"], f["path"]))
             self.revert_btn.setEnabled(not r["reverted"])
         else:
             self.diff.set_diff("")
@@ -166,6 +198,7 @@ class ChangesTab(QWidget):
     def _revert(self, r, ask_force: bool = True) -> bool:
         if not self.workspace:
             return False
+        r = self._full(r)
         try:
             msg = revert_file(Path(self.workspace), r["path"], r["before_text"], r["after_text"])
         except ToolError as exc:
@@ -186,7 +219,7 @@ class ChangesTab(QWidget):
         if not (0 <= row < len(self.rows)):
             return
         r = self.rows[row]
-        if r["before_text"] is None:
+        if self._is_new(r):
             q = f"{r['path']} ajan tarafından oluşturulmuştu. Geri almak dosyayı SİLER. Devam edilsin mi?"
         else:
             q = f"{r['path']} bu değişiklikten önceki haline döndürülsün mü?"
@@ -496,6 +529,7 @@ class FilesTab(QWidget):
             return
         try:
             self.current.write_bytes(self._meta.to_disk(self.preview.toPlainText()))
+            drop_pycache(self.current)          # aynı saniye/aynı boyut düzenlemede bayat .pyc kalmasın
             self._meta = decode_bytes(self.current.read_bytes())
             self.file_label.setText(f"Kaydedildi: {self.current.name}")
             self.edit_btn.setChecked(False)
@@ -988,6 +1022,12 @@ class SidePanel(QWidget):
         self.git = GitTab(ctx)
         self._titles: list[str] = []
         self._buttons: list = []
+        # iOS bölümlü denetim (2026-11-12): bölüm düğmeleri tek bir iz içinde, seçili parça yükseltilmiş
+        self.segments = QFrame()
+        self.segments.setObjectName("Segmented")
+        seg_lay = QHBoxLayout(self.segments)
+        seg_lay.setContentsMargins(2, 2, 2, 2)
+        seg_lay.setSpacing(1)
         group = QButtonGroup(self)
         group.setExclusive(True)
         for i, (widget, icon_name, label) in enumerate((
@@ -1002,16 +1042,17 @@ class SidePanel(QWidget):
             b = icon_button(icon_name, label, 17, checkable=True)
             b.clicked.connect(lambda _=False, idx=i: self.set_index(idx))
             group.addButton(b)
-            hl.addWidget(b)
+            seg_lay.addWidget(b)
             self._titles.append(label)
             self._buttons.append(b)
+        hl.addWidget(self.segments)
         lay.addWidget(head)
         lay.addWidget(self.stack, 1)
         self.set_index(0)
 
     def set_index(self, index: int) -> None:
         if 0 <= index < len(self._titles):
-            self.stack.setCurrentIndex(index)
+            transitions.switch(self.stack, index, ms=140, rise=0)       # yumuşak sekme geçişi
             self.tab_title.setText(self._titles[index])
             self._buttons[index].setChecked(True)
             if self.stack.widget(index) is self.git:

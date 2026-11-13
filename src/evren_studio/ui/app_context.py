@@ -6,6 +6,7 @@ Windows Credential Manager'dan okunur ve bellekte tutulur.
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 from .. import __version__
@@ -52,6 +53,18 @@ AUTO_PRO_INFO = ModelInfo(id="auto-pro", task="chat", modalities=["text", "image
                           provider="evren")
 AKILLI_INFO = AUTO_PRO_INFO          # eski ad
 # Yapay zekâ çağrısında sıradaki modele geçmeyi gerektiren hatalar (kota/yetki hariç)
+# Madde 22 E2: kısa iç istekte ilk EVREN modeli bu kadar saniyede yanıtlamazsa sıradakine paralel yedek istek (0: kapalı)
+HEDGE_AFTER_S = float(os.environ.get("EVREN_STUDIO_HEDGE_S", "12") or 0)
+
+
+def _raise_if_final(exc: BaseException | None) -> None:
+    """Kota/anahtar gibi hesap düzeyi hatalar (yedeğe geçilmeyen) hemen yükselir — eski sıralı davranışla aynı."""
+    from ..api.errors import ApiError
+
+    if isinstance(exc, ApiError) and exc.kind.value not in _AI_FAILOVER:
+        raise exc
+
+
 _AI_FAILOVER = {"sunucu_kullanılamıyor", "sunucu_hatası", "zaman_aşımı", "bulunamadı", "ağ_hatası",
                 "geçersiz_istek"}
 
@@ -171,6 +184,14 @@ class AppContext:
             for c in CATALOG
         ]
         self._provider_keys: dict[str, str | None] = {}
+        # Açılışta app.py'nin arka planda önceden okuduğu anahtarlar (secrets.preload_keys; yoksa boş → normal yol)
+        from ..secrets import take_preloaded
+
+        for prov, key in take_preloaded().items():
+            if prov == "evren":
+                self._cached_key = key or ""          # "" = kayıtlı anahtar yok (yeniden okunmaz)
+            else:
+                self._provider_keys[prov] = key
         self.gateway_models: list[ModelInfo] = []
         self.sync_gateways()
         self._list_change_listeners: list = []
@@ -252,6 +273,11 @@ class AppContext:
         for p in ("openai", "anthropic", *(g["id"] for g in self.gateways())):
             if self.has_provider_key(p):
                 out.add(p)
+        # Anahtar istemeyen türler (yerel Ollama/LM Studio, özel sunucu) kayıtlıysa kullanılabilir (2026-11-12: eskiden
+        # anahtarsız kayıtların modelleri seçicide hiç görünmüyordu)
+        from ..api.providers import KEYLESS_KINDS
+
+        out.update(g["id"] for g in self.gateways() if g.get("kind") in KEYLESS_KINDS)
         return out
 
     def chat_models(self) -> list[ModelInfo]:
@@ -267,15 +293,74 @@ class AppContext:
         return [m for m in self.models if m.supports_chat]
 
     def available_model_ids(self) -> set[str]:
-        """Auto Pro'nun seçebileceği gerçek modeller (anahtarı olan sağlayıcılar)."""
+        """Uygulamanın kendi işleri ve Auto Pro'nun seçebileceği gerçek modeller (anahtarı olan sağlayıcılar).
+        Madde 23 c: EVREN YOKKEN kullanıcının ağ geçidi / yerel sunucu modelleri de (eskiden yalnız OpenRouter/Ollama
+        kullanan kişide iç işler "API anahtarı yok" diye çalışmıyordu). EVREN varken ağ geçidi modelleri otomatik sıraya
+        girmez (doğrulanmamış fiyat/yetenek; eski karar korunur)."""
         provs = self.available_providers()
         ids = {m.id for m in self.models if m.supports_chat} if "evren" in provs else set()
         ids |= {m.id for m in self.paid_models if m.provider in provs}
+        allowed = self.auto_providers()          # EVREN varken {"evren"} → ağ geçidi girmez
+        ids |= {m.id for m in self.gateway_models if m.provider in provs and m.provider in allowed}
         return ids
 
+    # ---- Madde 23 c: sağlayıcıdan bağımsız otomatik işleyiş --------------------------------------------------------
+    # Kullanıcı 2026-11-13: "her zaman evren apisi de kullanılmayabilir. farklı bir api kullanıldığında oluşturduğun
+    # agentları/bekçileri, kısaca bütün otomatik işleyişi mevcut apinin agentları yapabilmeli."
+    # Kural: EVREN anahtarı varken otomatik/arka plan işleri (Derin Mod, QA, paralel Proje görevleri, MCP/test araçları)
+    # yine YALNIZ EVREN ile yapılır (kullanıcı kararı 2026-10-19: ücretli sağlayıcıya otomatik iş yok). EVREN yoksa bu
+    # işler kullanıcının kullandığı API ile yürür (aylık bütçe sınırı geçerli). Bekçiler (test, iddia, bozma, döngü, plan)
+    # zaten sağlayıcıdan bağımsız koşucuda çalışır.
+
+    current_model: str = ""          # oturumun seçili motoru (SessionView.set_model günceller)
+
+    def auto_providers(self) -> set[str]:
+        provs = self.available_providers()
+        if "evren" in provs or not provs:
+            return {"evren"}            # hiç anahtar yoksa da EVREN varsayılır (provider_of(auto-pro) ile aynı)
+        cur = self.provider_of(self.current_model) if self.current_model else ""
+        if cur in provs:
+            return {cur}
+        return provs
+
+    def auto_ok(self, provider: str) -> bool:
+        return provider in self.auto_providers()
+
+    def auto_label(self) -> str:
+        """Otomatik işlerin yürüdüğü API'nin adı (bildirimlerde)."""
+        provs = sorted(self.auto_providers())
+        if not provs:
+            return "API"
+        return ", ".join(PROVIDERS[p].name if p in PROVIDERS else p for p in provs)
+
+    def headless_billing(self, model: str, session_id: int | None = None):
+        """Arayüzsüz alt ajanın (Derin Mod, paralel Proje görevi) ücretli kullanımı için (maliyet_kaydı, bütçe_durdur).
+        Ücretsiz sağlayıcıda (EVREN, yerel sunucu) (None, None). Bütçe sınırı ayarı kapalıysa durdurmaz, yine kaydeder."""
+        provider = self.provider_of(model)
+        if provider not in PROVIDERS or not PROVIDERS[provider].paid:
+            return None, None
+        from ..api.providers import estimate_cost
+        from ..budget import current_state
+
+        def sink(m: str, usage: dict) -> None:
+            self.db.add_usage_cost(self.provider_of(m), m, usage, estimate_cost(m, usage), session_id)
+
+        def stop() -> bool:
+            try:
+                return current_state(self.db, self.settings.monthly_budget_usd, self.settings.budget_enforce).exceeded
+            except Exception:
+                return False
+        return sink, stop
+
+    def _prefer(self) -> list[str]:
+        from ..agent import router
+
+        m = self.current_model or ""
+        return [m] if m and not router.is_auto_pro(m) and m != router.USER_DEFAULT_ID else []
+
     def ai_route(self, role: str, reason: str = "", evren_only: bool = False):
-        """Uygulamanın kendi yapay zekâ işi veya Auto Pro turu için rota (router.choose). `evren_only`: yalnız EVREN
-        modelleri (ör. QA — oturum ücretli modelde olsa bile)."""
+        """Uygulamanın kendi yapay zekâ işi veya Auto Pro turu için rota (router.choose). `evren_only`: otomatik/arka
+        plan işi (ör. QA, Derin) — EVREN varsa yalnız EVREN, yoksa kullanıcının API'si (auto_providers, Madde 23 c)."""
         from ..agent import router
 
         health = {}
@@ -285,10 +370,11 @@ class AppContext:
             pass
         avail = self.available_model_ids()
         if evren_only:
-            avail = {m for m in avail if self.provider_of(m) == "evren"}
+            allowed = self.auto_providers()
+            avail = {m for m in avail if self.provider_of(m) in allowed}
         return router.choose(role, available=avail or None, health=health, reason=reason,
                              penalties=self.model_penalties(), speeds=self.model_speeds(),
-                             scores=self.model_scores(), weak=self.model_weak())
+                             scores=self.model_scores(), weak=self.model_weak(), prefer=self._prefer())
 
     # ---- Madde 14: motor karnesi ---------------------------------------------------------------
 
@@ -304,15 +390,22 @@ class AppContext:
             return {}
 
     def model_weak(self) -> dict[str, str]:
-        """Bugünkü hafif yoklamada zayıf motorlar → gerekçe (hata → boş). Karne RAFTA → boş."""
-        from ..agent import karne
+        """Şu an zayıf motorlar → gerekçe (yönlendirici sağlam yedekleri öne alır). İki kaynak: (1) Madde 23 b — son
+        saatlerin GERÇEK çağrılarında çoğunlukla başarısız olanlar (her zaman açık; bakımdaki/bozulan motor); (2) motor
+        karnesi açıksa bugünkü hafif yoklamada zayıf olanlar. Okunamazsa boş (sıra değişmez)."""
+        from ..agent import karne, modelstats
 
-        if not getattr(self.settings, "motor_karnesi", False):
-            return {}
+        out: dict[str, str] = {}
         try:
-            return karne.weak_models(self.db.recent_model_calls(24 * self.db.MODEL_CALLS_KEEP_DAYS))
+            out.update(modelstats.failing(self.db.recent_model_calls(modelstats.FAIL_HOURS)))
         except Exception:
-            return {}
+            pass
+        if getattr(self.settings, "motor_karnesi", False):
+            try:
+                out.update(karne.weak_models(self.db.recent_model_calls(24 * self.db.MODEL_CALLS_KEEP_DAYS)))
+            except Exception:
+                pass
+        return out
 
     def qa_readiness(self) -> tuple[bool, str]:
         """QA'dan önce: QA zincirindeki EVREN motorlarının HEPSİ bugün zayıf/sorunluysa (False, açıklama).
@@ -320,13 +413,85 @@ class AppContext:
         from ..agent import router
 
         weak = self.model_weak()
-        avail = {m for m in self.available_model_ids() if self.provider_of(m) == "evren"}
-        chain = router.chain_for("qa", avail or None)
+        allowed = self.auto_providers()
+        avail = {m for m in self.available_model_ids() if self.provider_of(m) in allowed}
+        chain = router.chain_for("qa", avail or None, self._prefer())
         if not chain or not all(m in weak for m in chain):
             return True, ""
         why = "; ".join(f"{m}: {weak[m]}" for m in chain)
         return False, ("QA motorları şu an yavaş ya da sorunlu görünüyor (son hafif yoklama — " + why + "). Test "
                        "uzun sürebilir ya da yarıda kalabilir; motorlar düzelince denemeniz önerilir.")
+
+    def _ai_record(self, model: str, role: str, t0: float, exc: BaseException | None = None,
+                   empty: bool = False) -> None:
+        """Madde 23 b: iç işin model çağrısı da gerçek kullanım kaydına girer — bozulan motor iç işlerde de görülür ve
+        yönlendirici (model_weak) onu yedeklerin arkasına alır. Kota/anahtar gibi motor dışı hatalar sayılmaz."""
+        from ..api.errors import ApiError
+
+        if exc is not None and isinstance(exc, ApiError) and exc.kind.value not in _AI_FAILOVER:
+            return
+        from ..agent import modelstats
+
+        rec = {"model": model, "role": modelstats.INTERNAL_PREFIX + role, "ok": exc is None,
+               "duration_s": round(time.monotonic() - t0, 1), "empty": empty}
+        if exc is not None:
+            rec["error_kind"] = exc.kind.value if isinstance(exc, ApiError) else "hata"
+            rec["detail"] = str(exc)[:200]
+        self.record_model_call(rec)
+
+    def _ai_attempt(self, model: str, messages: list[dict], max_tokens: int, role: str = "ic") -> str:
+        """Tek EVREN modeliyle kısa iç istek (düşünme kapalı); boş/başarısızsa hata."""
+        client = self.make_client_for(self.provider_of(model))
+        kwargs = {}
+        info = self.model_info(model)
+        if info is not None and (info.capabilities or {}).get("reasoning_effort"):
+            kwargs["extra_body"] = {"reasoning_effort": "none"}
+        t0 = time.monotonic()
+        try:
+            result = client.chat(model, messages, stream=False, max_tokens=max_tokens, **kwargs)
+        except Exception as exc:
+            self._ai_record(model, role, t0, exc)
+            raise
+        finally:
+            close = getattr(client, "close", None)
+            if close:
+                close()
+        text = (result.content or "").strip()
+        self._ai_record(model, role, t0, empty=not text)
+        if not text:
+            raise RuntimeError(f"{model} boş yanıt verdi")
+        return text
+
+    def _ai_chat_hedged(self, pair: list[str], messages: list[dict], max_tokens: int,
+                        session_id: int | None, role: str = "ic") -> tuple[str, str]:
+        """İlk model; HEDGE_AFTER_S'de yanıt yoksa ikinci model paralel. Önce başarılı olan kazanır; kaybedenin isteği
+        arka planda biter (beklenmez). İkisi de başarısızsa son hata."""
+        from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+
+        ex = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ai-hedge")
+        try:
+            futs = {ex.submit(self._ai_attempt, pair[0], messages, max_tokens, role): pair[0]}
+            done, _ = wait(list(futs), timeout=HEDGE_AFTER_S)
+            if not done:
+                futs[ex.submit(self._ai_attempt, pair[1], messages, max_tokens, role)] = pair[1]
+                self.record_model_call({"model": pair[0], "role": "ic", "ok": True, "event": "hedge",
+                                        "detail": f"{HEDGE_AFTER_S:.0f} sn yanıt yok → {pair[1]} paralel"})
+            elif next(iter(done)).exception() is not None:   # hızlı başarısız: sıradaki tek başına denensin
+                _raise_if_final(next(iter(done)).exception())
+                futs[ex.submit(self._ai_attempt, pair[1], messages, max_tokens, role)] = pair[1]
+            last: BaseException | None = None
+            pending = set(futs)
+            while pending:
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                for f in done:
+                    if f.exception() is None:
+                        return f.result(), futs[f]
+                    last = f.exception()
+                    if not pending:
+                        _raise_if_final(last)
+            raise last if last else RuntimeError("yanıt yok")
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
 
     def ai_chat(self, role: str, messages: list[dict], max_tokens: int = 800,
                 session_id: int | None = None, evren_only: bool = False) -> tuple[str, str]:
@@ -338,14 +503,25 @@ class AppContext:
         from ..api.providers import estimate_cost
         from ..budget import current_state
 
-        r = self.ai_route(role)
+        r = self.ai_route(role, evren_only=evren_only)
         chain = [m for m in [r.model] + r.fallbacks if m]
-        if evren_only:                      # QA/MCP işleri: ücretli sağlayıcıya ASLA (kullanıcı kararı)
-            chain = [m for m in chain if self.provider_of(m) == "evren"]
+        if evren_only:                      # otomatik işler: EVREN varken ücretli sağlayıcıya ASLA (Madde 23 c)
+            allowed = self.auto_providers()
+            chain = [m for m in chain if self.provider_of(m) in allowed]
         if not chain:
-            raise RuntimeError("Yapay zekâ işi için API anahtarı yok (Ayarlar)."
-                               if not evren_only else "Bu iş yalnız EVREN ile yapılır: EVREN anahtarı gerekli.")
+            raise RuntimeError("Yapay zekâ işi için API anahtarı yok (Ayarlar).")
         last: Exception | None = None
+        # Madde 22 E2 (2026-11-13 ölçümü: aynı kısa istek çoğunlukla 1,5-4 sn, arada 50-53 sn takılıyor): YALNIZ EVREN
+        # zincirinde ilk model HEDGE_AFTER_S içinde yanıtlamazsa sıradaki EVREN modeline paralel yedek istek; önce gelen
+        # (boş olmayan) yanıt alınır. Ücretli sağlayıcıda asla (maliyet). Kalan zincir eskisi gibi sırayla denenir.
+        if (HEDGE_AFTER_S > 0 and len(chain) >= 2
+                and all(self.provider_of(m) == "evren" for m in chain[:2])):
+            try:
+                return self._ai_chat_hedged(chain[:2], messages, max_tokens, session_id, role)
+            except Exception as exc:              # ikisi de olmadı → kalan zincir (kota/anahtar hatası hemen yükselir)
+                _raise_if_final(exc)
+                last = exc
+                chain = chain[2:]
         for model in chain:
             provider = self.provider_of(model)
             if provider != "evren":
@@ -366,10 +542,12 @@ class AppContext:
             info = self.model_info(model)
             if provider == "evren" and info is not None and (info.capabilities or {}).get("reasoning_effort"):
                 kwargs["extra_body"] = {"reasoning_effort": "none"}
+            t0 = time.monotonic()
             try:
                 result = client.chat(model, messages, stream=False, max_tokens=max_tokens, **kwargs)
             except ApiError as exc:
                 last = exc
+                self._ai_record(model, role, t0, exc)
                 if exc.kind.value in _AI_FAILOVER:
                     continue
                 raise
@@ -377,6 +555,7 @@ class AppContext:
                 close = getattr(client, "close", None)
                 if close:
                     close()
+            self._ai_record(model, role, t0, empty=not (result.content or "").strip())
             if provider != "evren":
                 usage = result.token_usage() if hasattr(result, "token_usage") else {}
                 try:
@@ -440,7 +619,7 @@ class AppContext:
         key = self.api_key()
         if not key:
             raise RuntimeError(
-                "API anahtarı tanımlı değil. Ayarlar > API Anahtarı bölümünden "
+                "API anahtarı tanımlı değil. Ayarlar > Sağlayıcılar ve anahtarlar bölümünden "
                 "girin. Anahtar Windows Credential Manager'da saklanır."
             )
         return EvrenClient(
@@ -631,14 +810,27 @@ class AppContext:
     def has_provider_key(self, provider: str) -> bool:
         return bool(self.provider_key(provider))
 
+    def provider_ready(self, provider: str) -> bool:
+        """Sağlayıcı kullanılabilir mi: anahtarı var ya da anahtar istemeyen türde kayıtlı (yerel Ollama/LM Studio,
+        özel sunucu). Model seçimi, gönderim ve zamanlanmış görev bu denetimi kullanır (2026-11-12)."""
+        if self.has_provider_key(provider):
+            return True
+        from ..api.providers import KEYLESS_KINDS
+
+        return any(g["id"] == provider and g.get("kind") in KEYLESS_KINDS for g in self.gateways())
+
     def make_client_for(self, provider: str, log_sink=None):
         """Sağlayıcının istemcisi. EVREN için make_client (testler bunu değiştirir)."""
         if provider == "evren":
             return self.make_client(log_sink=log_sink)
         key = self.provider_key(provider)
-        if not key:
+        from ..api.providers import KEYLESS_KINDS
+
+        keyless = any(g["id"] == provider and g.get("kind") in KEYLESS_KINDS for g in self.gateways())
+        if not key and not keyless:
             name = PROVIDERS[provider].name if provider in PROVIDERS else provider
-            raise RuntimeError(f"{name} API anahtarı tanımlı değil. Ayarlar > Sağlayıcılar bölümünden girin.")
+            raise RuntimeError(f"{name} API anahtarı tanımlı değil. Ayarlar > Sağlayıcılar ve anahtarlar bölümünden girin.")
+        key = key or ""                         # anahtarsız yerel/özel sunucu: kimlik başlığı gönderilmez
         timeout = max(self.settings.timeout_seconds, 180.0)
         if provider == "openai":
             from ..api.openai_client import OpenAIClient
@@ -649,7 +841,7 @@ class AppContext:
 
             info = PROVIDERS.get(provider)
             if info is None or not info.base_url:
-                raise RuntimeError("Ağ geçidinin adresi tanımlı değil. Ayarlar > Sağlayıcılar'dan düzenleyin.")
+                raise RuntimeError("Ağ geçidinin adresi tanımlı değil. Ayarlar > Sağlayıcılar ve anahtarlar'dan düzenleyin.")
             return CompatClient(info.base_url, key, provider, timeout=timeout, max_retries=self.settings.max_retries,
                                 log_sink=log_sink)
         if provider == "anthropic":
@@ -794,19 +986,19 @@ class AppContext:
 
     def test_tools(self, project_root, message: str = "", provider: str = "evren", status=None):
         """Ajanın gerektiğinde test aracını kendisinin açması (Madde 13, kullanıcı 2026-11-05). None → araç sunulmaz:
-        özellik kapalı, proje klasörü yok ya da ücretli sağlayıcı (MCP yalnız EVREN'de)."""
-        if provider != "evren" or project_root is None or not self.settings.auto_test_tools:
+        özellik kapalı, proje klasörü yok ya da sağlayıcı otomatik işlere açık değil (auto_providers)."""
+        if not self.auto_ok(provider) or project_root is None or not self.settings.auto_test_tools:
             return None
         return TestTools(self, Path(project_root), message, status)
 
     def mcp_toolset(self, project_root, message: str = "", provider: str = "evren", status=None):
         """Ajan turu için tembel araç kümesi; gerekmiyorsa None (davranış değişmez).
 
-        - Yalnız EVREN modellerinde (kullanıcı kararı 2026-10-19: uygulamanın amacı ücretsiz
-          hizmet; ücretli sağlayıcıyla MCP KESİNLİKLE çalışmaz).
+        - EVREN varken yalnız EVREN modellerinde (kullanıcı kararı 2026-10-19: ücretli sağlayıcıyla MCP çalışmaz);
+          EVREN anahtarı yoksa kullanıcının kullandığı API'de (Madde 23 c, auto_providers).
         - Sunucu yalnız gerektiği projede/görevde sunulur (McpServerConfig.when) ve ilk araç
           çağrısında, ajanın ARKA PLAN iş parçacığında açılır (R-04)."""
-        if provider != "evren":
+        if not self.auto_ok(provider):
             return None
         configs = self.mcp_configs()
         if not configs or project_root is None:

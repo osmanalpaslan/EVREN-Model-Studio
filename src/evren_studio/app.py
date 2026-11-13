@@ -258,6 +258,10 @@ def main() -> int:
 
         delete_all_api_keys()
         return 0
+    # Açılış hızı (2026-11-12): anahtar kasası Qt ve arayüz modülleri yüklenirken arka planda okunur
+    from .secrets import preload_keys
+
+    preload_keys()
     from PySide6.QtWidgets import QApplication
 
     _install_excepthook()
@@ -288,14 +292,14 @@ def main() -> int:
     window.show()
     if not smoke:
         listen_for_instances(window)
-    # Kullanım düğmesi açılışta dolsun (testler MainWindow'u doğrudan kurar; ağ isteği yapmaz)
-    from PySide6.QtCore import QTimer
-
-    QTimer.singleShot(1500, window, window.session.refresh_usage)
-    # Canlı EVREN model listesi (yetenek bayrakları, yeni modeller) açılışta arka planda yüklenir;
-    # önceden yalnız Modeller sayfası açılınca yükleniyordu.
-    QTimer.singleShot(1000, window, window.session.load_live_models)
+    # Kullanım düğmesi + canlı EVREN model listesi açılışta arka planda (pencere kurulumu ağ isteği yapmaz; gerçek API
+    # testleri de aynı yöntemi çağırır)
+    window.start_background_loads()
     if "--duman-testi" in sys.argv:
+        # 2026-11-14: c824b26 (açılış hızlandırma) üstteki QTimer içe aktarmasını kaldırınca bu yol NameError ile
+        # çöküyordu; yalnız paket duman testi yakaladı → tests/test_duman_kaynak.py kaynaktan da çalıştırır.
+        from PySide6.QtCore import QTimer
+
         i = sys.argv.index("--duman-testi")
         out = sys.argv[i + 1] if i + 1 < len(sys.argv) else ""
 

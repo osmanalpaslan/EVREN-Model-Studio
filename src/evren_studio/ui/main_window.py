@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from .. import __version__
-from . import brand, icons, theme, transcript, wheel_guard, workers
+from . import brand, icons, theme, transcript, transitions, wheel_guard, workers
 from .app_context import AppContext
 from .connection_page import ConnectionPage
 from .errors_page import ErrorsPage
@@ -33,6 +33,25 @@ from .usage_page import UsagePage
 SIDEBAR_MIN, SIDEBAR_MAX = 220, 420
 PANEL_MIN, PANEL_MAX = 300, 560
 CENTER_MIN = 400
+
+
+class _LazyPages(dict):
+    """Sayfa sözlüğü: `pages[k]` sayfa yoksa kurar, pencereye ekler ve döndürür. `.get(k)`, `in`, `items()` yalnız
+    KURULMUŞ sayfaları görür (kapanışta izleme ajanını durdurmak gibi işler kurulmamış sayfayı boşuna kurmasın).
+    Tüm sayfa adları: `MainWindow.page_keys`."""
+
+    def __init__(self, factories: dict, install) -> None:
+        super().__init__()
+        self._factories = factories
+        self._install = install
+
+    def __missing__(self, key: str):
+        if key not in self._factories:
+            raise KeyError(key)
+        page = self._factories[key]()
+        self[key] = page
+        self._install(key, page)
+        return page
 
 
 class MainWindow(QMainWindow):
@@ -68,13 +87,12 @@ class MainWindow(QMainWindow):
         self.session = SessionView(self.ctx, self.panel)
         self.center.addWidget(self.session)
 
-        self.pages: dict[str, QWidget] = {}
         # Zamanlanmış görevler (Madde 12c): motor sayfadan önce kurulur (sayfa onun sinyallerine bağlanır)
         from .schedule_host import ScheduleHost
 
         self.scheduler = ScheduleHost(self.ctx, self)
         self._build_pages()
-        self.sidebar.set_available_pages(self.pages)
+        self.sidebar.set_available_pages(self.page_keys)
 
         self.splitter.addWidget(self.sidebar)
         self.splitter.addWidget(self.center)
@@ -127,16 +145,48 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(20 * 1000, self, self._auto_update_check)
         # Günlük otomatik yerel yedek (açılıştan 60 sn sonra, arka planda; açılışı yavaşlatmaz)
         QTimer.singleShot(60 * 1000, self, self._auto_backup)
+        QTimer.singleShot(15 * 1000, self, self._maintain_history)
 
     update_info = None
     last_auto_backup = None
+    last_history_maintenance = None
+    # Pencere kapandı (closeEvent: bağlam ve veritabanı kapalı). Gecikmeli işler (yedek 60 sn, bakım 15 sn, güncelleme
+    # 20 sn, gözlem gönderimi) bundan sonra çalışmaz — gözlem b8efe202e31e (2026-11-12, 7 kez): aynı süreçte ikinci
+    # pencere açan araçta kapanmış pencerenin yedeği silinmiş klasördeki veritabanını açmaya çalışıyordu.
+    _closed = False
+
+    def start_background_loads(self) -> None:
+        """Açılıştan sonra arka planda: canlı EVREN model listesi (1 sn; yetenek bayrakları, yeni modeller) ve kullanım
+        düğmesi (1,5 sn). Pencere kurulumu ağ isteği YAPMAZ (açılış hızı, tests/test_acilis_hizi). Uygulama (app.py) ve
+        pencereyi doğrudan kuran gerçek API testleri aynı yolu çağırır — 2026-11-13: e2e_ui_real_api canlı listeyi hiç
+        yüklemiyordu ("canlı model listesi" kontrolü düştü; açılış hızlandırması Modeller sayfasındaki isteği kaldırınca)."""
+        QTimer.singleShot(1500, self, self.session.refresh_usage)
+        QTimer.singleShot(1000, self, self.session.load_live_models)
+
+    def _maintain_history(self) -> None:
+        """Ajanın dosya geçmişini arka planda bir kez sıkıştırır ve gerekiyorsa veritabanını küçültür (2026-11-12,
+        kullanıcı onayı; bkz. db.maintain_file_history). Testte kapalı (EVREN_STUDIO_NO_DB_MAINT)."""
+        import os
+
+        from ..db import PACK_DONE_KEY
+
+        if self._closed:
+            return
+        db = self.ctx.db
+        if os.environ.get("EVREN_STUDIO_NO_DB_MAINT") or db.get_meta(PACK_DONE_KEY) == "1":
+            return
+
+        def done(info) -> None:
+            self.last_history_maintenance = info
+
+        workers.Task(db.maintain_file_history, on_done=done, on_error=lambda _e: None).start()
 
     def _auto_backup(self) -> None:
         import os
 
         from ..backup import auto_backup
 
-        if not self.ctx.settings.auto_backup or os.environ.get("EVREN_STUDIO_NO_AUTO_BACKUP"):
+        if self._closed or not self.ctx.settings.auto_backup or os.environ.get("EVREN_STUDIO_NO_AUTO_BACKUP"):
             return
         ctx = self.ctx
 
@@ -149,7 +199,7 @@ class MainWindow(QMainWindow):
     def _auto_update_check(self) -> None:
         import os
 
-        if not os.environ.get("EVREN_STUDIO_NO_UPDATE_CHECK"):      # testler gerçek GitHub'a gitmesin (conftest)
+        if not self._closed and not os.environ.get("EVREN_STUDIO_NO_UPDATE_CHECK"):   # testler GitHub'a gitmesin
             self.check_updates()
 
     def check_updates(self, force: bool = False) -> None:
@@ -208,6 +258,8 @@ class MainWindow(QMainWindow):
     def _send_gozlem(self) -> None:
         from .. import gozlem
 
+        if self._closed:
+            return
         gozlem.AYAR_ACIK = bool(self.ctx.settings.gozlem_enabled)
         if not gozlem.etkin() or self._gozlem_busy:
             return
@@ -242,47 +294,70 @@ class MainWindow(QMainWindow):
     # ---- sayfalar ----
 
     def _build_pages(self) -> None:
-        def add(key: str, page: QWidget) -> None:
-            self.pages[key] = page
-            self.center.addWidget(page)
-
-        add("home", HomePage(self.ctx))
-        add("models", ModelsPage(self.ctx))
-        add("connection", ConnectionPage(self.ctx))
-        add("usage", UsagePage(self.ctx))
-        add("errors", ErrorsPage(self.ctx))
-        add("monitor", MonitorPage(self.ctx))
-        settings = SettingsPage(self.ctx)
-        settings.settings_saved.connect(self._settings_saved)
-        settings.open_workspace.connect(self.open_workspace)
-        add("settings", settings)
-        add("help", HelpPage(self.ctx))
-        skills = SkillsPage(self.ctx)
-        skills.template_requested.connect(self._use_template)
-        add("skills", skills)
+        """AÇILIŞ HIZI (2026-11-12): sayfalar ilk açıldıklarında kurulur (`pages[k]` kurar; `.get(k)` kurmaz). Ölçüm:
+        pencere kurulumunun yarıdan fazlası Qt'nin stil (QSS) uygulamasıydı; görünmeyen Ayarlar/Yardım/... sayfaları
+        da açılışta kurulup stillendiriliyordu. Modeller sayfası kurulurken canlı model listesini çekiyordu — açılışta
+        aynı listeyi zaten app.py (`session.load_live_models`) çekiyor: çift ağ isteği de kalktı. İzleme sayfası
+        kendiliğinden başlamaz; kapanışta yalnız kurulmuşsa durdurulur (`pages.get`)."""
         from .scheduled_page import ScheduledPage
 
-        scheduled = ScheduledPage(self.ctx, self.scheduler)
-        scheduled.open_session.connect(self.open_session)
-        add("scheduled", scheduled)
+        def settings() -> QWidget:
+            page = SettingsPage(self.ctx)
+            page.settings_saved.connect(self._settings_saved)
+            page.open_workspace.connect(self.open_workspace)
+            return page
+
+        def skills() -> QWidget:
+            page = SkillsPage(self.ctx)
+            page.template_requested.connect(self._use_template)
+            return page
+
+        def scheduled() -> QWidget:
+            page = ScheduledPage(self.ctx, self.scheduler)
+            page.open_session.connect(self.open_session)
+            return page
+
+        factories = {
+            "home": lambda: HomePage(self.ctx),
+            "models": lambda: ModelsPage(self.ctx),
+            "connection": lambda: ConnectionPage(self.ctx),
+            "usage": lambda: UsagePage(self.ctx),
+            "errors": lambda: ErrorsPage(self.ctx),
+            "monitor": lambda: MonitorPage(self.ctx),
+            "settings": settings,
+            "help": lambda: HelpPage(self.ctx),
+            "skills": skills,
+            "scheduled": scheduled,
+        }
+        self.page_keys: tuple[str, ...] = tuple(factories)
+        self.pages = _LazyPages(factories, self._install_page)
+
+    def _install_page(self, key: str, page: QWidget) -> None:
+        self.center.addWidget(page)
         # Uzun açıklama yazıları kaydırılsın: kaydırmasız etiket sayfanın (dolayısıyla orta alanın)
         # en küçük genişliğini 1000+ px'e çıkarıyordu (kenar çubuğu kaybolma hatasının kaynağı).
-        for page in self.pages.values():
-            for lab in page.findChildren(QLabel):
-                if not lab.wordWrap() and len(lab.text()) > 90:
-                    lab.setWordWrap(True)
+        for lab in page.findChildren(QLabel):
+            if not lab.wordWrap() and len(lab.text()) > 90:
+                lab.setWordWrap(True)
 
     def show_page(self, key: str) -> None:
-        page = self.pages.get(key)
+        # "settings:saglayicilar:evren" → Ayarlar, Sağlayıcılar menüsü, EVREN ekleme penceresi (2026-11-12)
+        key, _, rest = key.partition(":")
+        page = self.pages[key] if key in self.page_keys else None
         if page is None:
             return
+        if rest and hasattr(page, "open_category"):
+            cat, _, action = rest.partition(":")
+            page.open_category(cat)
+            if action and hasattr(page, "open_connection"):
+                QTimer.singleShot(0, page, lambda a=action: page.open_connection(a))   # sayfa görünür olduktan sonra
         if hasattr(page, "refresh"):
             try:
                 page.refresh()
             except TypeError:
                 pass
         wheel_guard.protect(page)          # ekranda sonradan eklenen alanlar da korunsun
-        self.center.setCurrentWidget(page)
+        transitions.switch(self.center, page)          # yumuşak geçiş (2026-11-12)
         self.sidebar.set_page(key)
         self.panel.setVisible(False)
 
@@ -296,7 +371,7 @@ class MainWindow(QMainWindow):
         self.session.composer.focus()
 
     def show_sessions(self) -> None:
-        self.center.setCurrentWidget(self.session)
+        transitions.switch(self.center, self.session)
         self.sidebar.set_page(None)
         self.sidebar.set_current(self.session.session_id)
         self.panel.setVisible(self.ctx.settings.panel_visible)
@@ -538,6 +613,10 @@ class MainWindow(QMainWindow):
             self.session.new_session()   # veriler silindiyse
 
     def closeEvent(self, event) -> None:
+        self._closed = True            # gecikmeli yedek/bakım/güncelleme/gözlem işleri artık çalışmaz
+        timer = getattr(self, "_gozlem_timer", None)
+        if timer is not None:
+            timer.stop()
         workers.set_accepting(False)   # kapanırken geç gelen sonuçlar işlenmesin
         self.session.shutdown()
         self.scheduler.shutdown()

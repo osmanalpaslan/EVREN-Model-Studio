@@ -1,7 +1,11 @@
 # Proje Durumu
 
 > Oturum kesilirse çalışmaya bu dosyadan devam edilir.
-> Son güncelleme: 2026-11-04 (PR #30-#35 birleşti; güncel iş ve plan: docs/DEVIR_NOTU.md "Şu an")
+> Son güncelleme: 2026-11-13 — 0.5.0 yayında; 0.5.1 istekleri `surum/0.5.1-istekler` dalında (performans 2–3 kat,
+> iOS 27 tasarım dili, Türk bayrağına sadık yeni logo/animasyonlar, tüm API anahtarları/motorlar tek "Sağlayıcılar ve
+> anahtarlar" ekranında, Derin Mod gerçek test kanıtı + başlangıç ölçümü + soru birleştirme, SQLite WAL; analiz:
+> docs/knowledge/ANALIZ_2026-11-12.md, son çalışma raporu: docs/knowledge/RAPOR_2026-11-13.md). Güncel iş ve plan:
+> docs/DEVIR_NOTU.md "Şu an".
 
 ## Konum ve sınırlar
 
@@ -24,7 +28,7 @@
 | 1 — Çalışan MVP | ✅ TAMAMLANDI |
 | 2 — Kod ajanı çalışma alanı | ✅ UYGULANDI; gerçek EVREN ile araç turu 8 modelde doğrulandı (2026-10-16) |
 | 3 — Özel görev modelleri | ⬜ BAŞLAMADI |
-| 4 — Paketleme | ⬜ BAŞLAMADI |
+| 4 — Paketleme | ✅ UYGULANDI — Inno Setup kurulum paketi (`tools/paketle.py`); 0.5.0 GitHub'da yayında |
 
 ## Aşama 2'de çalışan ve test edilenler (sahte model istemcisiyle)
 

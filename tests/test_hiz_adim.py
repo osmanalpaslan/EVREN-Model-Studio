@@ -315,3 +315,15 @@ def test_istem_bagimsiz_okumalari_tek_yanitta_ister_bagimliyi_ayirir():
     rules = prompts.AGENT_RULES
     assert "BAĞIMSIZ okuma/inceleme" in rules and "birden çok araç çağrısıyla" in rules
     assert "ayrı yanıtta" in rules, "bağımlı işler (düzenle → test) ayrı adımda kalmalı"
+
+
+def test_istem_kisa_kod_ister_ama_kenar_durum_testini_birakmaz(tmp_path):
+    """2026-11-12 ölçümü: mini_proje görevinde 171 satırlık tek test dosyası tek yanıtta 322 sn sürdü (EVREN ~10-20
+    token/sn). Kural kısa yazmayı ister; doğruluğu korumak için her davranış/kenar durum testini ve istek kapsamını
+    korur. Kural gerçekten ajana giden sistem istemine girmeli."""
+    rules = prompts.AGENT_RULES
+    assert "Yazdığın her satır da bekleme demektir" in rules and "KISA yaz" in rules
+    assert "her davranış ve kenar durum için bir test" in rules, "kısalık kenar durum testini düşürmemeli"
+    assert "Kapsamı istek belirler" in rules
+    system = prompts.build_agent_system(Workspace(tmp_path), "auto", [], text_protocol=False)
+    assert "KISA yaz" in system

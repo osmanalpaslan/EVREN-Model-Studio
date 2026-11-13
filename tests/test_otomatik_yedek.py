@@ -85,3 +85,37 @@ def test_uygulama_acilista_arka_planda_yedek_alir_ayar_kapaliysa_almaz(win, monk
     w._auto_backup()
     assert _wait(app, lambda: w.last_auto_backup is not None)
     assert w.last_auto_backup.parent == w.ctx.data_dir() / "yedekler" and w.last_auto_backup.is_file()
+
+
+def test_kapanan_pencerenin_gecikmeli_isleri_calismaz(win, monkeypatch):
+    """Gözlem b8efe202e31e (2026-11-12, 7 kez): aynı süreçte ikinci pencere açan araçta (ui_denetim, iki tema) kapanmış
+    pencerenin 60 sn'lik yedeği silinmiş klasördeki veritabanını açmaya çalışıyordu ("unable to open database file").
+    Kapanınca yedek, bakım, güncelleme denetimi ve gözlem gönderimi başlamaz; gözlem zamanlayıcısı durur."""
+    app, w = win
+    monkeypatch.delenv("EVREN_STUDIO_NO_AUTO_BACKUP")
+    monkeypatch.delenv("EVREN_STUDIO_NO_DB_MAINT")
+    monkeypatch.delenv("EVREN_STUDIO_NO_UPDATE_CHECK", raising=False)
+    w.ctx.settings.auto_backup = True
+    started = []
+    from evren_studio import gozlem
+    from evren_studio.ui import workers
+
+    monkeypatch.setattr(gozlem, "etkin", lambda: True)          # gözlem açık olsa da gönderim başlamamalı
+    monkeypatch.setattr(workers.Task, "start", lambda self: started.append(self))
+    monkeypatch.setattr(w, "check_updates", lambda force=False: started.append("guncelleme"))
+    w.close()
+    assert w._closed and not w._gozlem_timer.isActive()
+    for fn in (w._auto_backup, w._maintain_history, w._auto_update_check, w._send_gozlem):
+        fn()
+    assert started == [], "kapanmış pencerede gecikmeli iş başladı"
+
+
+def test_eksik_veritabaninin_yedegi_bos_dosya_olusturmaz(tmp_path):
+    yok = tmp_path / "silinmis" / "evren.db"
+    with pytest.raises(FileNotFoundError):
+        backup.backup(yok, tmp_path, None, tmp_path / "y.zip")
+    assert not yok.exists() and not (tmp_path / "y.zip").exists()
+    (tmp_path / "silinmis").mkdir()
+    with pytest.raises(FileNotFoundError):                      # klasör var, dosya yok → sqlite boş dosya açardı
+        backup.backup(yok, tmp_path, None, tmp_path / "y.zip")
+    assert not yok.exists()

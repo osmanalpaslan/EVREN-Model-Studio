@@ -23,6 +23,57 @@
 | plan | Plan modunda özellik isteği | dosya değişmez, plan yazılır |
 | girdi | `input()` bekleyen betiği çalıştır | girdi beklediğini açıklar (takılmaz) |
 
+## 0.5.1 çıktı öncesi (Madde 23 sonrası, 2026-11-14 00:06-00:26, dal `surum/0.5.1-istekler`, auto)
+
+- Zorluk paketi **11/12, 1218 sn** (önceki 1362 sn). Düşen mini_proje 4/5, süre içinde (310 sn): YENİ sıkı kontrol
+  (modelin testleri ajanın ortamı + DÜZ Windows ortamında) gerçek bir taşınabilirlik hatası yakaladı — modelin testi
+  alt süreç çıktısını `encoding="utf-8"` ile okuyor, düz konsolda program cp1254 yazıyor → UnicodeDecodeError (2 hata).
+  Kullanıcı testleri kendi terminalinde çalıştırsa düşerdi; eski (yarım ortamlı) kontrol bunu kaçırıyordu. Uygulama
+  gerilemesi değil (önceki koşu da 11/12). İyileştirme adayı (ILERIDE): test bekçisi testleri düz ortamda da koşsun.
+- R-13: E2E_OK · arayüz 15/15 · ajan 5/6 (glm-5.3 native: sunucu 503 "model şu anda dolu", geçici kapasite).
+- Ara mesaj (`tests/e2e_ara_mesaj_real_api.py`, auto): **8/8, 33 sn** — ara mesaj aynı turda uygulandı (c.txt),
+  geri çekilen mesaj hiçbir yere gitmedi.
+
+## Madde 22 (önbellek düzeni + bekçiler) sonrası (2026-11-13 21:10-21:33, dal `surum/0.5.1-istekler`, auto)
+
+- Zorluk paketi **11/12, 1362 sn**. Düşen mini_proje 4/5 (6 dk sınırı). Modelin yazdığı kod miktarı dünkü ile aynı
+  (6.756 / 6.034 kar), adım daha az (6 / 8). EVREN bu akşam 22 kar/sn (dün 58 kar/sn) → süre dış etken.
+- mini_proje tek başına tekrar: 4/5, 325 sn, süre içinde bitti. Program 4 kabul ölçütünü geçti. Modelin testleri kendi
+  ortamında geçti, kontrolde düştü: testler alt süreç çıktısını cp1254 okuyor, kontrol `PYTHONIOENCODING=utf-8` veriyor
+  (değişken olmadan 8/8 geçiyor). Önbellek/bekçi gerilemesi değil; modelin ortama bağımlı test yazması.
+- Önbellek A/B (`tests/e2e_onbellek_real_api.py`, deepseek, 3 tur): tur başı önbellek %45/46 → **%96/96**, toplam
+  %69/65 → %87/86, süre 155/65 sn → 72/45 sn.
+
+## 0.5.1 toplu ölçüm (2026-11-13 01:40-02:14, dal `surum/0.5.1-istekler`, auto)
+
+- Zorluk paketi **12/12, 520 sn** (önceki 928 / 1444 sn). mini_proje **5/5, 163 sn** (önce 362-363 sn ve 6 dk sınırında
+  kesilme). "Kısa kod" kuralının etkisi süreden bağımsız: modelin yazdığı kod+test 6034 karakter, test dosyası 102 satır
+  (önceki üç koşu 6862-9831 kar, 117-172 satır → ~%30 az); EVREN bu gece 58 kar/sn (önce 24-39) → süre kazancının bir
+  kısmı dış etken (değişmeyen planlama da 235 → 131 sn).
+- R-13: API E2E_OK · ajan 5/6 (düşen deepseek-v4.1-flash metin protokolü — bilinen aralıklı) · arayüz 14/15 → açılış
+  yükü düzeltmesinden sonra **15/15** (pencereyi doğrudan kuran testler canlı model listesini yüklemiyordu).
+- Proje (`--hedef paralel --paralel 3`): kabul **8/8**, 336 sn (plan 105 + yürütme 230; önce 9-12 dk).
+- Web QA (`tests/e2e_qa_real_api.py`, Playwright build/mcp_data'ya yeniden kuruldu): **9/9, bilinen hata 3/3**, 855 sn
+  (paralel yükte; 4. senaryo 501 sn).
+- Derin Mod (02:09): soru birleştirme 5 → 3 ("2 soru aynı kararı soruyordu"); önceden düşen ilgisiz testte 0 sorun. GEÇTİ.
+- Sağlayıcı ekranı (`tests/e2e_saglayici_ekrani_real_api.py`): 14/14.
+- Masaüstü QA (`tests/e2e_masaustu_real_api.py hepsi --kur`, 02:17-03:03): **GEÇERSİZ** — Windows oturumu gece kilitlendi
+  (kilit ekranı; QA hatalı sürüm 4/4 "engellendi", ajan bölümü 4/5). Uyku engelleyici ekran kilidini engellemez; masaüstü
+  testi kullanıcı başındayken ya da gece sırasının en başında koşulmalı. Masaüstü kodu bu gece değişmedi.
+- Son tam takım (03:04): **1356/1356**, 6 dk 42 sn · ui_denetim iki tema HATA 0 · KESIK 0 · UYARI 0.
+
+## Derin Mod kanıt + soru ayıklama (2026-11-13 00:56-01:09, dal `surum/0.5.1-istekler`, `tests/e2e_derin_real_api.py`)
+
+- Yeni davranış (harita + gerçek test kanıtı, 00:56): Anla 37 sn (3/3 bulgu, 12 araç çağrısı) · belirsiz istek 50 sn,
+  4 soru (eski ayıklama; ikişer tekrar → ayıklama yeniden yapıldı, aynı veride yeni kod 2 soru) · Planla 73 sn ·
+  Doğrula yanlış değişiklik 46 sn, 7 onaylı sorun (ilki gerçek pytest çıktısı: "testler DÜŞÜYOR") · doğru değişiklik
+  35 sn, 0 sorun. SONUÇ: GEÇTİ.
+- Eski davranış aynı saatlerde (`--haritasiz --testsiz`, 01:05): 31 sn / 12 araç · 49 sn · 76 sn · 34 sn (6 yüksek) ·
+  56 sn. SONUÇ: GEÇTİ.
+- İlk "önce" koşusu (00:0x, eski kod): 80 · 139 · 176 · 141 · 439 sn — değişmeyen Planla da 176 → 73 sn hızlandığı
+  için fark EVREN yüküdür (kontrol aşaması). 3 dosyalık projede harita araç sayısını azaltmadı; kazanç doğrulukta
+  (düşen test her zaman onaylı yüksek sorun, gerçek çıktı denetçilere gider).
+
 ## Madde 20 C aşaması + analiz düzeltmeleri sonrası (2026-11-12 akşam, dal `feat/c1-harita`, sürüm 0.5.0, auto)
 
 - Tam paket **11/12**, 1444 sn: düşen **mini_proje 4/5** — kök neden EVREN tarafı yavaşlık: dosyaları yazan TEK model

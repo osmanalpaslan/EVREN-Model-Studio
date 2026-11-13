@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QPlainTextEdit,
     QPushButton,
+    QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -69,10 +70,11 @@ SLASH_COMMANDS = {
     "/derin-durdur": "Çalışan Derin Mod akışını durdur",
     "/profil": "Ajan profili seç: /profil <ad> · /profil yok (kaldır) · /profil (liste)",
     "/betiklestir": "Bu oturumdaki işi tekrar çalıştırılabilir betiğe çevir: /betiklestir [dosya.py]",
+    "/hafiza-olustur": "Proje hafızası EVREN.md'yi oluştur/güncelle (en çok 40 satır: komutlar + projeye özgü kurallar)",
 }
 COMMAND_ICONS = {
     "/model": "cpu", "/plan": "map", "/manuel": "shield", "/kabul": "pencil", "/otomatik": "spark",
-    "/init": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/clear": "refresh", "/temizle": "refresh", "/disa-aktar": "download",
+    "/init": "spark", "/hafiza-olustur": "spark", "/ozet": "refresh", "/compact": "refresh", "/yeni": "plus", "/clear": "refresh", "/temizle": "refresh", "/disa-aktar": "download",
     "/yardim": "help", "/proje": "list", "/proje-duzelt": "pencil", "/proje-devam": "refresh",
     "/proje-durdur": "stop", "/qa": "check", "/qa-masaustu": "cpu", "/qa-duzelt": "pencil", "/qa-devam": "refresh",
     "/qa-durdur": "stop", "/derin": "spark", "/derin-durdur": "stop",
@@ -180,9 +182,29 @@ class ComposerEdit(QPlainTextEdit):
         self.setFocus()
 
 
+class _ElidedLabel(QLabel):
+    """Tek satır; sığmayan metin sonda "…" ile kısalır (yanındaki nota taşmaz). Tam metin ipucunda."""
+
+    def __init__(self, text: str):
+        super().__init__()
+        self._full = " ".join((text or "").split())
+        self.setToolTip(text)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.setMinimumWidth(40)
+        self.setText(self._full)
+
+    def full_text(self) -> str:
+        return self._full
+
+    def resizeEvent(self, e) -> None:
+        super().resizeEvent(e)
+        self.setText(self.fontMetrics().elidedText(self._full, Qt.ElideRight, max(10, self.width())))
+
+
 class Composer(QWidget):
     submitted = Signal(str)
     stop_requested = Signal()
+    withdraw_requested = Signal(int)    # Madde 23 a: sıradaki mesajı geri çek (inbox kimliği)
     mode_changed = Signal(str)
     deep_toggled = Signal(bool)
     model_changed = Signal(str)
@@ -207,6 +229,8 @@ class Composer(QWidget):
         self.popup.setVisible(False)
         self.popup.setMouseTracking(True)
         self.popup.setIconSize(QSize(16, 16))
+        self.popup.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # uzun satır "…" ile kısalır
+        self.popup.setTextElideMode(Qt.ElideRight)
         self.popup.setFocusPolicy(Qt.NoFocus)
         self.popup.itemClicked.connect(self._accept_item)
         outer.addWidget(self.popup)
@@ -214,6 +238,16 @@ class Composer(QWidget):
         self.popup_title.setProperty("role", "faint")
         self.popup_title.setVisible(False)
         outer.insertWidget(0, self.popup_title)
+
+        # ---- Madde 23 a: sıradaki mesajlar (iş sürerken gönderilen; işlenene kadar geri çekilebilir) ----
+        self.queue_bar = QFrame()
+        self.queue_bar.setObjectName("QueueBar")
+        self._queue_layout = QVBoxLayout(self.queue_bar)
+        self._queue_layout.setContentsMargins(12, 6, 8, 6)
+        self._queue_layout.setSpacing(4)
+        self._queue_rows: list[QWidget] = []
+        self.queue_bar.setVisible(False)
+        outer.addWidget(self.queue_bar)
 
         # ---- çalışma durum çubuğu: model + süre ----
         self.run_bar = QFrame()
@@ -226,7 +260,7 @@ class Composer(QWidget):
         rl.addWidget(self.run_dot)
         self.run_text = QLabel()
         rl.addWidget(self.run_text, 1)
-        self.run_hint = QLabel("Esc ile durdur")
+        self.run_hint = QLabel("Esc ile durdur · yazıp Enter: sıraya al")
         self.run_hint.setProperty("role", "faint")
         rl.addWidget(self.run_hint)
         self.run_bar.setVisible(False)
@@ -339,9 +373,51 @@ class Composer(QWidget):
     def set_agentic(self, agentic: bool) -> None:
         self._agentic = agentic
         self.mode_btn.setVisible(agentic)
-        self.edit.setPlaceholderText(
-            "EVREN'e bir görev verin veya soru sorun…  (/ komutlar, @ dosya)" if agentic
-            else "Mesajınızı yazın…  (/ komutlar)")
+        self._update_placeholder()
+
+    def _update_placeholder(self) -> None:
+        if self._running:
+            text = ("Çalışıyor — yazın ve Enter'a basın: mesaj sıraya alınır, uygun anda işe iletilir  "
+                    "(Esc: durdur)")
+        elif self._agentic:
+            text = "EVREN'e bir görev verin veya soru sorun…  (/ komutlar, @ dosya)"
+        else:
+            text = "Mesajınızı yazın…  (/ komutlar)"
+        self.edit.setPlaceholderText(text)
+
+    def set_queue(self, items: list[tuple[int, str, str]]) -> None:
+        """Sıradaki mesajlar: (kimlik, metin, durum notu). Her satırda "Geri çek" — mesaj işlenmeden önce kutuya döner."""
+        for w in self._queue_rows:
+            w.hide()
+            w.deleteLater()                # R-33: önce gizle, sonra sil (liste yenilenirken titreme olmasın)
+        self._queue_rows = []
+        for item_id, text, note in items:
+            row = QWidget()
+            hl = QHBoxLayout(row)
+            hl.setContentsMargins(0, 0, 0, 0)
+            hl.setSpacing(8)
+            ic = QLabel()
+            ic.setPixmap(icons.icon("clock", "muted", 14).pixmap(14, 14))
+            hl.addWidget(ic)
+            label = _ElidedLabel(text)
+            label.setObjectName("QueueText")
+            hl.addWidget(label, 1)
+            hint = QLabel(note)
+            hint.setProperty("role", "faint")
+            hl.addWidget(hint)
+            btn = QPushButton("Geri çek")
+            btn.setObjectName("QueueWithdraw")
+            btn.setProperty("variant", "chip")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setToolTip("Bu mesaj henüz işlenmedi: yazma kutusuna geri alınır (düzenleyebilir ya da silebilirsiniz)")
+            btn.clicked.connect(lambda _=None, i=item_id: self.withdraw_requested.emit(i))
+            hl.addWidget(btn)
+            self._queue_layout.addWidget(row)
+            self._queue_rows.append(row)
+        self.queue_bar.setVisible(bool(items))
+
+    def queue_count(self) -> int:
+        return len(self._queue_rows)
 
     def set_mode(self, mode: str, emit: bool = False) -> None:
         mode = normalize_mode(mode)
@@ -374,7 +450,7 @@ class Composer(QWidget):
             act.setCheckable(True)
             act.setChecked(mid == current)
             if not enabled:
-                act.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar")
+                act.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar ve anahtarlar")
             elif provider != "evren":
                 act.setToolTip("Ücretli model; harcama aylık bütçeye sayılır (tahmini)")
             else:
@@ -429,6 +505,7 @@ class Composer(QWidget):
         if not running:
             self.set_run_status(None)
         self._update_send()
+        self._update_placeholder()
 
     def set_run_status(self, text: str | None) -> None:
         """Yazma kutusunun üstündeki durum çubuğu: 'glm-5.3 çalışıyor · 0:12 · adım 2'."""
@@ -482,7 +559,7 @@ class Composer(QWidget):
         self.send_btn.style().polish(self.send_btn)
         if self._running:
             self.send_btn.setIcon(icons.icon("stop", "bg", 18))
-            self.send_btn.setToolTip("Durdur (Esc)")
+            self.send_btn.setToolTip("Durdur (Esc) — yazıp Enter'a basarsanız mesaj sıraya alınır")
             self.send_btn.setEnabled(True)
         else:
             has_text = bool(self.edit.toPlainText().strip()) or bool(self.attachments.items())
@@ -542,7 +619,7 @@ class Composer(QWidget):
             it = QListWidgetItem(icons.icon("cpu", size=16), text)
             it.setData(ROLE_VALUE, mid)
             it.setData(ROLE_KIND, "model")
-            it.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar" if not enabled
+            it.setToolTip("Bu sağlayıcının API anahtarı yok — Ayarlar > Sağlayıcılar ve anahtarlar" if not enabled
                           else ("Ücretli model" if provider != "evren"
                                 else ("Yerel araç çağrısı destekli" if tools else "Metin protokolü ile çalışır")))
             self.popup.addItem(it)
@@ -560,8 +637,12 @@ class Composer(QWidget):
     def _open_popup(self, title: str) -> None:
         self.popup_title.setText(title)
         self.popup_title.setVisible(True)
-        rows = max(1, min(self.popup.count(), 9))
         row_h = max(self.popup.sizeHintForRow(0), 24) if self.popup.count() else 30
+        # Liste pencereye sığsın (2026-11-12): 9 satır ~420 px; küçük pencerede yazma kutusuyla üst üste biniyordu.
+        # Pay: başlık çubuğu + yazma kutusu + alt bilgi + akıştan görünür kalacak en az ~140 px.
+        avail = self.window().height() - 48 - self.frame.sizeHint().height() - 60 - 140
+        fit = max(3, (avail - 14) // (row_h + 2))
+        rows = max(1, min(self.popup.count(), 9, fit))
         self.popup.setFixedHeight(rows * (row_h + 2) + 14)
         self.popup.setVisible(True)
         if self.popup.currentRow() < 0:
@@ -629,8 +710,8 @@ class Composer(QWidget):
             self._submit()
 
     def _submit(self) -> None:
-        if self._running and not self.edit.toPlainText().strip().startswith("/"):
-            return
+        # Madde 23 a: iş sürerken de gönderilebilir — oturum mesajı sıraya alır (çalışan işe iletir ya da iş bitince
+        # gönderir). Gönder düğmesi bu sırada "Durdur"dur; Enter gönderir.
         text = self.edit.toPlainText().strip()
         if not text and not self.attachments.items():
             return

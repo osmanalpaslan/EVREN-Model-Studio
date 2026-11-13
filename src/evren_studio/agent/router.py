@@ -171,9 +171,10 @@ class Route:
         return f"{AUTO_PRO_LABEL} → {self.model} ({ROLE_LABELS.get(self.role, self.role)})"
 
 
-def chain_for(role: str, available: set[str] | None = None) -> list[str]:
+def chain_for(role: str, available: set[str] | None = None, prefer: tuple[str, ...] | list[str] = ()) -> list[str]:
     """Rol için sıralı model zinciri. `available`: anahtarı olan sağlayıcıların model
-    kimlikleri; None → yalnız EVREN tablosu (geriye uyumluluk / testler)."""
+    kimlikleri; None → yalnız EVREN tablosu (geriye uyumluluk / testler). `prefer` (Madde 23 c): tablolarda hiç model
+    yoksa (yalnız ağ geçidi / yerel sunucu / yeni sağlayıcı) kullanıcının seçtiği motor önce gelir."""
     evren = list(EVREN_ROUTES.get(role) or EVREN_ROUTES["sohbet"])
     paid = list(PAID_ROUTES.get(role) or PAID_ROUTES["sohbet"])
     if available is None:
@@ -181,8 +182,8 @@ def chain_for(role: str, available: set[str] | None = None) -> list[str]:
     ev = [m for m in evren if m in available]
     pd = [m for m in paid if m in available]
     if not ev and not pd:
-        # tabloda olmayan ama erişilebilir bir model varsa (ör. yeni EVREN modeli) onu kullan
-        return sorted(available)[:1]
+        # tabloda olmayan ama erişilebilir bir model varsa (ör. yeni EVREN modeli, ağ geçidi) onu kullan
+        return ([m for m in prefer if m in available] or sorted(available))[:1]
     if not ev:
         return pd
     if not pd:
@@ -229,10 +230,14 @@ def _unhealthy(health: dict[str, dict] | None, model: str, now: datetime) -> boo
     return now - at <= HEALTH_FRESH
 
 
+RESERVE_MAX = 3      # Madde 23 b: rol tablosunda yedek kalmadıysa eklenen en çok yedek sayısı
+
+
 def choose(role: str, *, available: set[str] | None = None, health: dict[str, dict] | None = None,
            reason: str = "", now: datetime | None = None, penalties: dict[str, str] | None = None,
            speeds: dict[str, float] | None = None, speed_factor: float = 2.0,
-           scores: dict[str, float] | None = None, weak: dict[str, str] | None = None) -> Route:
+           scores: dict[str, float] | None = None, weak: dict[str, str] | None = None,
+           prefer: tuple[str, ...] | list[str] = ()) -> Route:
     """Rol için birincil model + yedekler. Son 30 dk'da sağlıksız ölçülenler en sona, kalite puanı düşenler
     (A5, `penalties`: model → gerekçe) sağlamların arkasına alınır; hiçbiri zincirden ÇIKARILMAZ.
 
@@ -247,8 +252,13 @@ def choose(role: str, *, available: set[str] | None = None, health: dict[str, di
     pen = penalties or {}
     wk = weak or {}
     sc = (scores or {}) if role in SCORE_ROLES else {}
-    chain = chain_for(role, available)
+    chain = chain_for(role, available, prefer)
     note = reason
+    if available and len(chain) < 2:
+        # Madde 23 b: tablodaki motorlar listeden kalktı/tek kaldı (bakım, ad değişikliği) ya da tablosuz sağlayıcı →
+        # erişilebilir diğer motorlar yedek olur (önce kullanıcının seçtiği); yoksa birincil bozulunca gidecek yer kalmaz.
+        extra = [m for m in [*(p for p in prefer if p in available), *sorted(available)] if m not in chain]
+        chain += list(dict.fromkeys(extra))[:RESERVE_MAX]
     slots = [i for i, m in enumerate(chain) if m in sc]
     if len(slots) >= 2:
         before = [chain[i] for i in slots]

@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 
 from ..agent import router
 from ..agent import schedule as sched
-from . import icons, theme
+from . import icons, theme, transitions
 from .base_page import BasePage, card
 from .schedule_host import STATUS_LABELS
 
@@ -416,7 +416,7 @@ class ScheduledPage(BasePage):
 
     def show_list(self) -> None:
         self.current_id = None
-        self.stack.setCurrentIndex(0)
+        transitions.switch(self.stack, 0)
         self.refresh()
 
     # ---- ayrıntı ----
@@ -424,7 +424,7 @@ class ScheduledPage(BasePage):
     def show_task(self, task_id: int) -> None:
         self.current_id = int(task_id)
         self._runs_shown = 20
-        self.stack.setCurrentIndex(1)
+        transitions.switch(self.stack, 1)
         self._fill_detail()
 
     def _fill_detail(self) -> None:

@@ -38,8 +38,10 @@ VersionInfoDescription={#AppName} Kurulum
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
+; Yalnız bu kullanıcı için, yönetici izni istemeden kurar. "Kimin için kurulsun?" penceresi ve "tüm kullanıcılar"
+; seçeneği YOK (kullanıcı kararı 2026-11-12): PrivilegesRequiredOverridesAllowed bilerek verilmedi (komut satırındaki
+; /ALLUSERS da etkisizdir).
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763

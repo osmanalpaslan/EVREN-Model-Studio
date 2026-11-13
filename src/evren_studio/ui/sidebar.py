@@ -281,7 +281,7 @@ class Sidebar(QWidget):
     # -- liste --
 
     def refresh_logo(self) -> None:
-        self.logo.setPixmap(brand.pixmap(22))
+        self.logo.setPixmap(brand.tile_pixmap(24))        # uygulama simgesiyle aynı cam karo (2026-11-12)
 
     def refresh(self) -> None:
         rows = self.ctx.db.list_sessions(self.search.text().strip())

@@ -63,6 +63,7 @@ class DeepState:
     answers: str = ""                                     # kullanıcının yanıtı ("" → sorulmadı/yanıtsız)
     log_dir: str = ""                                     # alt ajan dökümlerinin klasörü
     project_note: str = ""                                # Proje sonucu (kısmi ise neden)
+    baseline_tests: dict | None = None                    # uygulamadan ÖNCE testlerin durumu (project_tests)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
@@ -169,12 +170,17 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
                  marker: str, gate=None, cancel=None, mcp=None, max_steps: int = SUB_MAX_STEPS,
                  context_tokens: int | None = None, base_body: dict | None = None,
                  progress: Callable[[str], None] | None = None, mode: str = "plan",
-                 test_check: bool = False, runner_kw: dict | None = None) -> SubResult:
+                 test_check: bool = False, runner_kw: dict | None = None,
+                 cost_sink: Callable[[str, dict], None] | None = None,
+                 budget_stop: Callable[[], bool] | None = None) -> SubResult:
     """Salt okunur (Plan modu) arayüzsüz alt ajan. Son yanıt metnini döndürür.
     R-26: blok ilk turda yoksa koşucu bir kez dürter (final_marker); tur yine bloksuz biterse aynı
     bağlamla kısa "yalnız sonucu ver" turu açılır (2026-10-21: ikinci planlayıcı plan vermemişti).
     runner_kw: ek AgentRunner ayarları (B3 paralel proje görevi: proje kuralları, güvenilmeyen klasörler, kurulum
-    kipi, komut süre sınırı… oturum ajanıyla aynı)."""
+    kipi, komut süre sınırı… oturum ajanıyla aynı).
+    Madde 23 c (EVREN yokken kullanıcının ücretli API'si): `cost_sink(model, usage)` her yanıtın token kullanımını
+    maliyet kaydına yazar (alt ajan ekranda görünmez, oturum turunun maliyet kaydına girmez); `budget_stop()` True ise
+    sıradaki model çağrısı yapılmaz (aylık bütçe doldu → "budget")."""
     store = MemoryStore()
     history = [{"id": 0, "role": "user", "content": prompt}]
     store.messages.append(history[0])
@@ -182,10 +188,23 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
     t0 = time.monotonic()
 
     def before(_step):
+        if budget_stop is not None and budget_stop():
+            return "budget"
         if gate is None:
             return None
         r = gate.before_call(cancel=cancel)
         return {"daily": "quota_daily", "cancelled": "cancelled"}.get(r) if r else None
+
+    def bill() -> None:
+        if cost_sink is None:
+            return
+        for m in history:
+            usage = (m.get("meta") or {}).get("usage") if m.get("role") == "assistant" else None
+            if usage:
+                try:
+                    cost_sink(m.get("model") or model, usage)
+                except Exception:
+                    pass                     # kayıt hatası alt ajanı düşürmesin
     def make(steps):
         return AgentRunner(client, model, session_id=0, store=store, events=events,
                            workspace=Workspace(root), mode=mode, stream=False, cancel=cancel,
@@ -212,8 +231,10 @@ def run_subagent(*, client: Any, model: str, fallbacks: list[str], root: Path, p
             out = runner.run(history)
             used = runner.model
     except Exception as exc:  # alt ajan hatası tüm Derin koşuyu düşürmesin
+        bill()
         return SubResult("", "error", f"{type(exc).__name__}: {exc}", events.tools, time.monotonic() - t0,
                          transcript_of(history), used)
+    bill()
     text = (getattr(out, "critic_reason", "") or "gözetmen durdurdu") if out.stopped == "critic" else last_text()
     return SubResult(text, out.stopped, "", events.tools, time.monotonic() - t0, transcript_of(history), used)
 
@@ -254,21 +275,86 @@ def findings_text(findings: list[dict]) -> str:
     return "\n\n".join(out) or "(bulgu yok)"
 
 
+_FILE_NAME = re.compile(r"[\w\-]+\.[a-z0-9]{2,5}\b")
+# Soru kalıbı sözcükleri (ilk 5 harf): her soruda geçer, iki sorunun AYNI karar olduğunu göstermez.
+_Q_STOP = frozenset({"yoksa", "misin", "mısın", "musun", "müsün", "olara", "için", "veya", "olsun", "gibi", "kadar",
+                     "daha", "bunu", "bunun", "şunu", "bunla", "hangi", "nasıl", "neden", "nedir", "acaba", "lütfe",
+                     "ister", "istiy", "gerek", "olmal"})
+# "X dosyası klasörde yok" kalıbı: aynı dosyaların yokluğunu soran iki soru, sözcükleri farklı da olsa tek karardır.
+_MISSING_FILE = re.compile(r"(klasör\w*|projede|dizin\w*)\s+(yok|bulunm\w*|bulunam\w*|mevcut değil|yer alm\w*|eksik)")
+
+
+def _q_terms(low: str) -> set[str]:
+    """Sorunun anlamlı sözcük kökleri: Türkçe ekleri atlamak için her sözcüğün ilk 5 harfi (klasörde/klasöre,
+    raporlanacak/rapor aynı kök olur), kalıp sözcükleri ve DOSYA ADLARI hariç (dosya adları ayrıca karşılaştırılır;
+    sözcük sayılsalar aynı dosyayla ilgili iki ayrı karar — hangi sayfa okunacak / negatifler iade mi — birleşiyordu).
+    2026-11-13'te 3 gerçek koşunun soruları + kurgu tetiklenmeyen gruplarla denendi: 4 harf farklı kararları
+    birleştirdi ("Rapor hangi biçimde" ≈ "Raporda hangi ay"), 6 harf aynı soruyu kaçırdı."""
+    return {w[:5] for w in re.findall(r"\w{4,}", _FILE_NAME.sub(" ", low))} - _Q_STOP
+
+
+def _same_question(words: set, names: set, s_words: set, s_names: set,
+                   missing: bool = False, s_missing: bool = False) -> bool:
+    """İki soru aynı mı (2026-11-12/13 gerçek ölçümleri: üç alt ajan aynı eksik dosyayı ve aynı ay seçimini farklı
+    sözcüklerle ikişer kez sordu). Farklı dosya adlarını anan sorular hiç birleştirilmez (X.csv ≠ Y.csv); aynı
+    dosyaların klasörde olmadığını soranlar birleşir; diğerlerinde en az 2 ortak kök ve kısa sorunun %60'ı gerekir
+    (%50 gerçek koşuda ay seçimi ile şehir/sayfa eşlemesi sorularını birleştirdi, %67 aynı ay sorusunu kaçırdı)."""
+    if names and s_names and names != s_names:
+        return False
+    if names and names == s_names and missing and s_missing:
+        return True
+    inter = len(words & s_words)
+    return inter >= 2 and inter / max(1, min(len(words), len(s_words))) >= 0.6
+
+
 def collect_questions(findings: list[dict], limit: int = 4) -> list[str]:
     """Alt ajanların sorularını birleştirir (aynı/çok benzer olanlar bir kez)."""
     out: list[str] = []
-    seen: list[set] = []
+    seen: list[tuple[set, set, bool]] = []
     for f in findings:
         for q in ((f.get("data") or {}).get("sorular") or []):
             q = str(q).strip()
             if len(q) < 8:
                 continue
-            words = {w for w in re.findall(r"\w{4,}", q.lower())}
-            if any(len(words & s) >= max(2, len(words) // 2) for s in seen):
+            low = q.lower()
+            key = (_q_terms(low), set(_FILE_NAME.findall(low)), bool(_MISSING_FILE.search(low)))
+            if any(_same_question(key[0], key[1], sw, sn, key[2], sm) for sw, sn, sm in seen):
                 continue
-            seen.append(words)
+            seen.append(key)
             out.append(q[:300])
     return out[:limit]
+
+
+MERGE_QUESTIONS_PROMPT = """Bir kod ajanı kullanıcıya şu soruları sormak istiyor. Soruları farklı incelemeciler yazdı;
+bazıları AYNI kararı farklı sözcüklerle soruyor olabilir.
+{numbered}
+
+Soruları KARARA göre grupla: aynı eksik dosyayı, aynı seçimi ya da aynı belirsizliği soranlar aynı grupta olsun; farklı
+kararlar ayrı gruplarda. Her numara tam olarak bir grupta yer almalı. Yalnız tek satır JSON ver: {{"gruplar": [[1, 3], [2]]}}"""
+
+
+def merge_questions(questions: list[str], ask: Callable[[list[dict]], str] | None) -> list[str]:
+    """Anlamca aynı soruları modelle tek soruya indirir (2026-11-13: 3 gerçek koşuda sözcük ayıklaması "klasörüne
+    eklenecek mi / projede yok", "hangi ay / tek bir ay mı" gibi ikişer tekrarı kaçırdı). Model soruları KARARA göre
+    gruplar; her gruptan en uzun (en kapsamlı) soruyu kod seçer — model soruyu yeniden yazamaz, uyduramaz. Her numara tam
+    bir grupta değilse ya da yanıt bozuksa sözcük ayıklamasının sonucu aynen kalır. Gerçek EVREN ölçümü (5 küme × 3):
+    "tut numaraları" biçimi 8/10, gruplama 13/15 doğru; ikisi de farklı kararları HİÇ birleştirmedi."""
+    if ask is None or len(questions) < 2:
+        return questions
+    numbered = "\n".join(f"{i}. {q}" for i, q in enumerate(questions, 1))
+    try:
+        from . import jsonfix
+
+        text = ask([{"role": "user", "content": MERGE_QUESTIONS_PROMPT.format(numbered=numbered)}]) or ""
+        m = re.search(r"\{.*\}", text, re.S)
+        data = (jsonfix.obj(m.group(0)) if m else None) or {}
+        groups = [[int(i) for i in g] for g in (data.get("gruplar") or [])]
+    except Exception:
+        return questions
+    if sorted(i for g in groups for i in g) != list(range(1, len(questions) + 1)):
+        return questions                                   # eksik/tekrarlı numara → güvenme
+    keep = sorted(max(g, key=lambda i: len(questions[i - 1])) for g in groups if g)
+    return [questions[i - 1] for i in keep]
 
 
 def answers_text(st: "DeepState") -> str:
@@ -309,20 +395,62 @@ def judge_messages(goal: str, plans: list[dict]) -> list[dict]:
 
 
 REPRO_VERIFY = """
-HATA DÜZELTME İŞİ (B1): hatayı yeniden üreten bir test var mı, düzeltmeden sonra GEÇİYOR mu (komutla çalıştır)?
-Test, geçsin diye zayıflatılmış / atlanmış / beklentisi değiştirilmiş mi? Yeniden üretme testi yoksa ya da kalıyorsa
-"yuksek" sorundur."""
+HATA DÜZELTME İŞİ (B1): hatayı yeniden üreten bir test var mı, düzeltmeden sonra GEÇİYOR mu (aşağıdaki GERÇEK test
+sonucuna bak)? Test, geçsin diye zayıflatılmış / atlanmış / beklentisi değiştirilmiş mi? Yeniden üretme testi yoksa ya
+da kalıyorsa "yuksek" sorundur."""
 
 
-def verify_prompt(goal: str, diff: str, lens: str, tasks: str = "") -> str:
+def project_tests(root: Path, cancel=None, timeout: int | None = None) -> dict | None:
+    """Doğrulamadan ÖNCE projenin testlerini GERÇEKTEN çalıştırır (2026-11-12). Denetçiler Plan (salt okunur) kipinde
+    komut çalıştıramıyordu; istem "komutla çalıştır" diyordu ama testler son doğrulamada hiç koşmuyordu → denetim
+    yalnız okuyarak verilen kanaatti. Dönüş: {komut, durum (gecti|dustu|yok), cikis, son} ya da test yoksa None."""
+    from . import testcheck
+    from .tools import ToolBox
+
+    if not root:                       # klasör bağı koparsa (Derin Mod klasörsüz başlamaz ama sürerken kaldırılabilir)
+        return None
+    cmd = testcheck.detect_command(Path(root))
+    if not cmd:
+        return None
+    t = timeout or testcheck.TEST_TIMEOUT
+    state, code, out = testcheck.run(ToolBox(Workspace(Path(root)), command_timeout=t), cmd, timeout=t, cancel=cancel)
+    return {"komut": cmd, "durum": state, "cikis": code, "son": testcheck.tail(out, lines=30, chars=3000)}
+
+
+def pre_failing(tests: dict | None, baseline: dict | None) -> bool:
+    """Testler şimdi düşüyor ve değişiklikten ÖNCE de düşüyordu mu (önceden var olan hata)?"""
+    return bool(tests and baseline and tests.get("durum") == "dustu" and baseline.get("durum") == "dustu")
+
+
+def tests_text(tests: dict | None, baseline: dict | None = None) -> str:
+    if not tests:
+        return "\nGERÇEK TEST SONUCU: projede otomatik test bulunamadı; davranışı kod okuyarak denetle.\n"
+    label = {"gecti": "GEÇTİ", "dustu": "DÜŞTÜ", "yok": "çalışmadı (zaman aşımı/test yok)"}.get(tests["durum"],
+                                                                                                tests["durum"])
+    out = (f"\nGERÇEK TEST SONUCU (uygulama az önce çalıştırdı, `{tests['komut']}`): {label}"
+           f" (çıkış kodu {tests['cikis']})\n```\n{tests['son']}\n```\n"
+           "Bu sonuç kanıttır: testler geçtiyse 'test düşüyor' deme; düştüyse nedenini bul. Testlerin istenen "
+           "davranışı (kenar durumlar dahil) gerçekten sınayıp sınamadığını ayrıca değerlendir.\n")
+    if pre_failing(tests, baseline):
+        out += (f"NOT: Testler bu değişiklikten ÖNCE de düşüyordu (uygulamadan önceki çalıştırma, çıkış "
+                f"{baseline['cikis']}):\n```\n{(baseline.get('son') or '')[-1500:]}\n```\n"
+                "Önceden var olan hatayı bu değişikliğin sorunu sayma, isteğin dışındaysa düzeltilmesini önerme. İki "
+                "çıktıyı karşılaştır: bu değişikliğin YENİ bozduğu test ya da istenen düzeltmenin hâlâ düşen testi "
+                "varsa onu 'yuksek' bildir.\n")
+    return out
+
+
+def verify_prompt(goal: str, diff: str, lens: str, tasks: str = "", tests: dict | None = None,
+                  with_tests: bool = False, baseline: dict | None = None) -> str:
     from .project import is_bugfix
 
     tasks = f"\nProje görevlerinin durumu:\n{tasks}\n" if tasks else ""
     repro = REPRO_VERIFY if is_bugfix(goal) else ""
+    evidence = tests_text(tests, baseline) if (with_tests or tests) else ""
     return f"""DERİN MOD · ÇEKİŞMELİ DOĞRULAMA (salt okunur; dosya değiştirme).
 Kullanıcının isteği: {goal}
 Bakış açın: {lens}
-{tasks}
+{tasks}{evidence}
 ÖNCE istenen nihai çıktının (ör. rapor dosyası, özellik) gerçekten var olduğunu dosyalardan doğrula;
 yoksa bu "yuksek" bir sorundur.{repro}
 
@@ -384,7 +512,7 @@ def answer_prompt(goal: str, findings: list[dict]) -> str:
 
 
 def render_report(st: DeepState) -> str:
-    lines = [f"# EVREN Derin Mod raporu", "", f"- İstek: {st.goal}", f"- Tür: {st.kind}", f"- Başlangıç: {st.started_at}",
+    lines = ["# EVREN Derin Mod raporu", "", f"- İstek: {st.goal}", f"- Tür: {st.kind}", f"- Başlangıç: {st.started_at}",
              f"- Durum: {st.status}" + (f" ({st.pause_reason})" if st.pause_reason else ""), "", "## Anla — bulgular", "",
              findings_text(st.findings), ""]
     if st.questions:
@@ -427,8 +555,10 @@ def run_parallel(jobs: list[Callable[[], Any]], gate=None, max_parallel: int = 2
 
 
 def understand(st: DeepState, sub: Callable[[str, str], SubResult], gate=None, max_parallel: int = 2,
-               log: Callable[[str], None] = lambda t: None) -> None:
-    """ANLA: açılar paralel; her alt ajan <bulgu> verir (yoksa bir kez daha istenir — R-26)."""
+               log: Callable[[str], None] = lambda t: None,
+               merge: Callable[[list[dict]], str] | None = None) -> None:
+    """ANLA: açılar paralel; her alt ajan <bulgu> verir (yoksa bir kez daha istenir — R-26). merge: kısa iç model
+    çağrısı (ai_chat) — anlamca aynı sorular 4'e kırpılmadan ÖNCE birleşir (tekrar yüzünden ayrı karar düşmesin)."""
     angles = ANGLES if st.kind == "is" else ANGLES[:2]
 
     def one(key, angle):
@@ -440,7 +570,13 @@ def understand(st: DeepState, sub: Callable[[str, str], SubResult], gate=None, m
     ok = sum(1 for f in st.findings if f.get("data"))
     log(f"Anla: {ok}/{len(angles)} inceleme bulgu verdi")
     if st.kind == "is":
-        st.questions = collect_questions(st.findings)
+        qs = collect_questions(st.findings, limit=6)
+        if merge is not None and len(qs) >= 2:
+            merged = merge_questions(qs, merge)
+            if len(merged) < len(qs):
+                log(f"Anla: {len(qs) - len(merged)} soru aynı kararı soruyordu, birleştirildi")
+            qs = merged
+        st.questions = qs[:4]
 
 
 def plan(st: DeepState, sub_with_model: Callable[[str, str, str], SubResult], models: list[str],
@@ -487,15 +623,30 @@ def plan(st: DeepState, sub_with_model: Callable[[str, str, str], SubResult], mo
 
 
 def verify(st: DeepState, diff: str, sub: Callable[..., SubResult], gate=None, max_parallel: int = 2,
-           log: Callable[[str], None] = lambda t: None, tasks: str = "") -> list[dict]:
+           log: Callable[[str], None] = lambda t: None, tasks: str = "", tests: dict | None = None,
+           with_tests: bool = False) -> list[dict]:
+    """with_tests: testler çalıştırıldı (tests None ise test bulunamadı). Düşen test, denetçiler görmese de
+    onaylanmış "yuksek" sorundur (kanıt; düzeltme turu açılır) — testler değişiklikten ÖNCE de düşüyorsa
+    (st.baseline_tests) otomatik sorun EKLENMEZ: ilgisiz eski hatayı düzeltme turu kapsamı aşar (2026-11-13; Proje
+    ajanının test bekçisiyle aynı ilke, R-20); iki çıktı denetçilere gider, yeni bozulmayı onlar bildirir."""
     if not diff.strip():
         log("Doğrula: değişiklik bulunamadı")
         st.issues = []
         return []
-    results = run_parallel([lambda i=i, l=l: _block(sub(verify_prompt(st.goal, diff, l, tasks), "<denetim>",
-                                                        f"denetim-{i + 1}").text, "denetim") or {}
+    baseline = st.baseline_tests
+    if with_tests:
+        log("Doğrula: testler " + ({"gecti": "geçti", "dustu": "DÜŞTÜ", "yok": "çalışmadı"}.get(tests["durum"], "?")
+                                   + f" ({tests['komut']})" if tests else "bulunamadı")
+            + (" — değişiklikten önce de düşüyordu, otomatik sorun eklenmedi" if pre_failing(tests, baseline) else ""))
+    results = run_parallel([lambda i=i, l=l: _block(sub(verify_prompt(st.goal, diff, l, tasks, tests, with_tests,
+                                                                      baseline),
+                                                        "<denetim>", f"denetim-{i + 1}").text, "denetim") or {}
                             for i, l in enumerate(VERIFY_LENSES)], gate, max_parallel)
     st.issues = confirmed_issues([r for r in results if isinstance(r, dict)])
+    if tests and tests.get("durum") == "dustu" and not pre_failing(tests, baseline):
+        st.issues.insert(0, {"ciddiyet": "yuksek", "dosya": tests["komut"],
+                             "aciklama": f"Projenin testleri DÜŞÜYOR (gerçek çalıştırma, `{tests['komut']}`, çıkış "
+                                         f"{tests['cikis']}):\n{tests['son'][-1500:]}"})
     log(f"Doğrula: {len(st.issues)} onaylanmış sorun")
     return st.issues
 

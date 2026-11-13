@@ -37,6 +37,7 @@ TASK_LABELS = {
 
 
 SETTINGS_VERSION = 6
+PERSONAL_RULES_MAX = 1500          # kişisel kurallar üst sınırı (karakter; ~15 satır)
 _OLD_FAST_MODEL = "deepseek-v4-flash"
 # Eski sürümün varsayılanı: kullanıcı değiştirmediyse yeni varsayılana taşınır.
 _OLD_DEFAULT_MODEL = "glm-5.3"
@@ -101,6 +102,9 @@ class Settings:
     quota_guard_turns: bool = True
     # F3/E2: ajan sistem istemine otomatik proje haritası (dosya ağacı + semboller, ~3 bin token)
     project_map: bool = True
+    # Madde 22 F (2026-11-13): her işte geçerli kısa kişisel kurallar (dil, üslup, "her işten sonra test et"…); sabit
+    # sistem istemine girer (önbellekte, ek gecikme yok). Kısa tutulur: uzun talimat zayıf modeli işten uzaklaştırır.
+    personal_rules: str = ""
     # F3/E6: ders sinyali olan turdan sonra EVREN.md "Öğrenilenler" için öneri kartı (onaysız yazmaz)
     learnings_suggest: bool = True
     # F6 #15: güvenilmeyen klasörler (mutlak yol). Ajan okur, içindeki program/betiği çalıştıramaz.

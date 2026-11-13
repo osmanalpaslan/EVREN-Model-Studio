@@ -28,6 +28,13 @@ FIRST_CHUNK_MIN_EXTRA_S = 10.0  # ilk parça için: normalin en az bu kadar üst
 WINDOW_HOURS = 6                # "o günkü" hız: son 6 saat; yetmezse son 24 saat
 WINDOW_HOURS_FALLBACK = 24
 PROBE_ROLE = "yoklama"          # A8 hafif yoklama kayıtlarının rolü
+# Madde 23 b: uygulamanın kısa iç işleri (başlık, özet, yargıç…) "ic:<rol>" rolüyle kaydedilir. Yalnız bozulma ölçüsüne
+# (failing) girer; ajan kalite puanını (A5) ve normal hızı (A3) etkilemez — kısa iç çağrılar ajan olaylarını sulandırmasın.
+INTERNAL_PREFIX = "ic:"
+
+
+def _internal(r: dict[str, Any]) -> bool:
+    return str(r.get("role") or "").startswith(INTERNAL_PREFIX)
 
 # A5 kalite puanı: koşucunun ve kullanıcının bildirdiği kalite olayları (model_calls.event). Ağırlık = bir
 # olayın kaç "kötü çağrı" sayıldığı. Puan yalnız SIRALAMAYI etkiler (router.choose), modeli kapatmaz.
@@ -37,6 +44,7 @@ QUALITY_WEIGHTS = {
     "test_edit": 2.0,           # istenmeden değiştirilen test dosyası tur sonunda öyle kaldı
     "test_break": 1.0,          # değişiklikten sonra testler düştü (test bekçisi dürttü)
     "plan_stall": 1.0,          # plan bekçisi: açık madde varken ilerlemeden durdu
+    "unverified_claim": 1.0,    # iddia bekçisi: kanıtsız "testler geçti / dosya oluşturuldu" (Madde 22 C2)
 }
 QUALITY_FLOOR = 0.6             # puan bunun altındaysa model sıranın gerisine alınır
 QUALITY_MIN_CALLS = MIN_SAMPLES  # puanı hesaplamak için en az çağrı (az örnekle kimse cezalanmaz)
@@ -92,7 +100,7 @@ def baselines(rows: Iterable[dict[str, Any]]) -> dict[str, Baseline]:
     bağlamsızdır: ilk parça süresi gerçek işten kısa çıkar, normal hızı çarpıtmasın diye sayılmaz."""
     by: dict[str, list[dict]] = {}
     for r in rows:
-        if r.get("ok") and not r.get("event") and r.get("role") != PROBE_ROLE:
+        if r.get("ok") and not r.get("event") and r.get("role") != PROBE_ROLE and not _internal(r):
             by.setdefault(r["model"], []).append(r)
     out: dict[str, Baseline] = {}
     for model, rs in by.items():
@@ -184,7 +192,7 @@ def quality(rows: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         ev = r.get("event")
         if ev in QUALITY_WEIGHTS:
             s["events"][ev] = s["events"].get(ev, 0) + 1
-        elif not ev and r.get("role") != PROBE_ROLE:
+        elif not ev and r.get("role") != PROBE_ROLE and not _internal(r):
             s["calls"] += 1
     for s in out.values():
         bad = sum(QUALITY_WEIGHTS[k] * n for k, n in s["events"].items())
@@ -202,6 +210,42 @@ def penalized(rows: Iterable[dict[str, Any]]) -> dict[str, str]:
         elif s["calls"] >= QUALITY_MIN_CALLS and s["score"] is not None and s["score"] < QUALITY_FLOOR:
             olay = ", ".join(f"{k} {n}" for k, n in sorted(s["events"].items()))
             out[model] = f"kalite puanı {s['score']:.2f} ({olay})"
+    return out
+
+
+# ---- Madde 23 b: gerçek kullanımda bozulan motor ---------------------------------------------------------------
+# Kullanıcı 2026-11-13: "EVREN motorları geliştirilmeye devam ediyor; bugün iyi olan motor bakımdaysa iyi olmayabilir.
+# auto haricinde kullandığın motorlarda performans düşükse yedek motora geçebilmeli." Motor karnesi (A8 yoklama) RAFTA;
+# bu ölçü ise her zaman açık ve yalnız uygulamanın kendi gerçek çağrılarına bakar (ajan adımları, Proje/Derin/QA
+# görevleri, iç işler): son FAIL_HOURS saatte en az FAIL_MIN çağrı başarısız (sunucu hatası, boş yanıt, damlayan akış)
+# VE başarısızlık oranı FAIL_RATIO'dan büyükse motor o saatler için "zayıf" sayılır → yönlendirici (router.choose)
+# onu sağlam yedeklerin arkasına alır. Model zincirden ÇIKARILMAZ: yedekler de bozuksa yine denenir. Pencere geçince
+# kendiliğinden eski sırasına döner (bakımı biten motor ertesi saatlerde yeniden birincil olur).
+FAIL_HOURS = 2.0
+FAIL_MIN = 3
+FAIL_RATIO = 0.5
+_FAIL_LABELS = {"empty": "boş yanıt", "yavas_akis": "damlayan akış"}
+
+
+def failing(rows: Iterable[dict[str, Any]], *, min_fail: int = FAIL_MIN, ratio: float = FAIL_RATIO) -> dict[str, str]:
+    """Son pencerede gerçek çağrıları çoğunlukla başarısız olan motorlar → gerekçe. Kalite olayları (event) çağrı değildir;
+    yoklama çağrıları gerçek sağlık ölçüsü olduğu için sayılır."""
+    by: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        if r.get("event"):
+            continue
+        s = by.setdefault(r["model"], {"calls": 0, "fails": 0, "kinds": {}})
+        s["calls"] += 1
+        bad = not r.get("ok") or bool(r.get("empty"))
+        if bad:
+            s["fails"] += 1
+            kind = "empty" if r.get("ok") else (r.get("error_kind") or "hata")
+            s["kinds"][kind] = s["kinds"].get(kind, 0) + 1
+    out: dict[str, str] = {}
+    for model, s in by.items():
+        if s["fails"] >= min_fail and s["fails"] / s["calls"] >= ratio:
+            kinds = ", ".join(f"{_FAIL_LABELS.get(k, k)} ×{n}" for k, n in sorted(s["kinds"].items(), key=lambda kv: -kv[1]))
+            out[model] = f"son {FAIL_HOURS:g} saatte {s['fails']}/{s['calls']} çağrı başarısız ({kinds})"
     return out
 
 

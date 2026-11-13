@@ -16,11 +16,13 @@ aynı adım metin protokolüyle bir kez daha denenir.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from ..api.errors import ApiError, ErrorKind
 from . import modelstats, planguard, textproto
@@ -52,6 +54,7 @@ from .tools import (
     ToolSpec,
     Workspace,
     find_project_venv,
+    stdin_hint,
     truncate_middle,
     validate_todos,
 )
@@ -120,6 +123,24 @@ FLIPFLOP_STOP = 2      # 1. kez uyarı, 2. kez tur durur
 DESKTOP_PREFIX = "mcp__masaustu__"
 DESKTOP_ACTION_WARN = 4
 DESKTOP_ACTION_STOP = 6
+# 2026-11-12 (uygulama analizi, kalıcı çözüm): yukarıdaki kural YALNIZ masaüstüne özeldi; kullanıcının gerçek web QA
+# oturumlarında Playwright `browser_navigate` / `browser_console_messages` tekrarları aynı yanlış uyarıyı ("arada dosya
+# değişmedi; sonuç aynı olacak") almaya devam etti. Durumu DIŞARIDA olan TÜM araçlar (MCP: masaüstü, tarayıcı, diğer
+# bağlayıcılar) için genel kural: (1) aynı sunucudaki başarılı bir EYLEM o sunucunun diğer sayaçlarını sıfırlar ve
+# eylemlerin eşiği yüksektir (sayfayı yeniden açmak / aynı düğmeye yeniden basmak meşru); (2) başarılı bir YEREL komut
+# (sunucuyu yeniden başlatmak, derlemek) dış dünyayı değiştirebildiği için TÜM dış sayaçları sıfırlar; (3) arada hiçbir
+# eylem yokken aynı dış okumanın tekrarı yerel okuma gibi sayılır (3. kez = döngü; masaüstü QA ölçümü, R-22 testleri).
+EXTERNAL_PREFIX = "mcp__"
+EXTERNAL_ACTION_WARN = DESKTOP_ACTION_WARN
+EXTERNAL_ACTION_STOP = DESKTOP_ACTION_STOP
+EXTERNAL_REPEAT_NOTE = ("\n\n[Döngü uyarısı] Bu dış aracı aynı parametrelerle bu turda zaten {n} kez çağırdın ve arada "
+                        "bu araçla durumu değiştiren bir işlem yapmadın. Bir şeyin olmasını bekliyorsan bekleme aracını "
+                        "kullan ya da farklı bir yol dene; ilerleyemiyorsan dur ve neyin engel olduğunu açıkça söyle.")
+# Proje yürütücüsünün kendi dosyaları (agent/project.py PLAN_FILE/REPORT_FILE): görev turunda ajan bunları düzenlerse
+# yürütücü bir sonraki kayıtta üzerine yazar — emek boşa gider (2026-11-11 e2e: ajan planı "tamam" işaretleyip doğrulama
+# komutunu orada düzeltmeye çalıştı). Koşucuya `protected_files` verilince bu dosyalara yazma çalıştırılmadan açıklanır.
+PROTECTED_NOTE = ("{name} dosyası proje yürütücüsüne ait: görev durumunu ve planı yürütücü kendisi işler, buradaki "
+                  "değişiklik bir sonraki kayıtta silinir. Bu dosyayı düzenleme; görevin kendi işine devam et.")
 # glm-5.3 metin protokolünde tek yanıtta 39 çağrı (çoğu uydurma dosya) üretti:
 MAX_CALLS_PER_STEP = 12
 REPEAT_NOTE = ("\n\n[Döngü uyarısı] Bu çağrıyı bu turda aynı parametrelerle zaten {n} kez yaptın ve "
@@ -136,6 +157,11 @@ NUDGE_REPEAT = ("[Otomatik hatırlatma] Son yanıtın aynı cümleleri tekrar te
                 "çağırmadın. Tekrarı bırak: yapacağın işin aracını ŞİMDİ çağır; iş bittiyse kısa bir "
                 "özet yaz, bitmediyse neyin eksik olduğunu açıkça söyle.")
 REPEAT_COLLAPSED = "\n\n[Tekrar eden metin kısaltıldı.]"
+# Madde 23 a: kullanıcı ajan çalışırken mesaj gönderdi (agent/inbox.py). Mesaj kayda GERÇEK kullanıcı mesajı olarak
+# girer (meta steer); bu not yalnız o mesajın hemen ardındaki çağrıda kuyruk notuna eklenir (Claude Code düzeni).
+STEER_NOTE = ("# Kullanıcıdan ara mesaj\nKullanıcı sen çalışırken yukarıdaki mesajı gönderdi. Yarım kalan adımı "
+              "güvenle bitir, sonra bu mesajı dikkate alarak sürdür. Mesaj işi değiştiriyor ya da durdurmanı "
+              "istiyorsa ona uy; bir soruysa kısaca yanıtla ve işe devam et.")
 _INTENT_RE = None
 
 
@@ -252,6 +278,12 @@ def looks_like_unfinished_intent(text: str) -> bool:
 
 def call_signature(call: "ToolCall") -> str:
     return call.name + " " + json.dumps(call.arguments, ensure_ascii=False, sort_keys=True)
+
+
+def external_scope(name: str) -> str:
+    """`mcp__<sunucu>__<araç>` → `mcp__<sunucu>__` (aynı dış sunucunun tüm araçları)."""
+    parts = name.split("__")
+    return "__".join(parts[:2]) + "__" if len(parts) >= 3 else name
 
 
 # ---- veri yapıları --------------------------------------------------------------
@@ -396,6 +428,32 @@ def history_after_summary(history: list[dict]) -> list[dict]:
 MAX_HISTORY_IMAGES = 6      # geçmişte modele yeniden gönderilen en fazla görsel (en yeniler)
 
 
+# Madde 22 B: oturum başına dondurulmuş sabit sistem istemi (anahtar: (veritabanı yolu, oturum) → (imza, metin)).
+# Koşucu her turda yeniden kurulur; aynı süreçte aynı oturumun istemi aynen kalır → EVREN önek önbelleği tutar.
+# EVREN_STUDIO_ONBELLEK_ESKI=1: eski düzen (her adımda yeniden kur, plan/ipucu sistem isteminde) — A/B ölçümü için.
+FREEZE_SYSTEM = os.environ.get("EVREN_STUDIO_ONBELLEK_ESKI") != "1"
+_FROZEN_SYSTEM: "OrderedDict[tuple, tuple[tuple, str]]" = OrderedDict()
+_FROZEN_MAX = 64
+TAIL_SEPARATOR = "\n\n— Uygulama notu (bu istek için güncel) —\n"
+
+
+def append_tail(messages: list[dict], tail: str) -> None:
+    """Kuyruk notunu (Madde 22 B) son mesajın SONUNA ekler: önceki mesajlar aynen kalır, sunucu önbelleği bozulmaz.
+    Son mesaj kullanıcı/araç değilse (ör. yalnız sistem) ayrı kullanıcı mesajı olarak eklenir. Görselli içerik
+    (parça listesi) için metin parçası eklenir."""
+    if not tail:
+        return
+    last = messages[-1] if messages else None
+    if last is None or last.get("role") not in ("user", "tool"):
+        messages.append({"role": "user", "content": tail})
+        return
+    content = last.get("content")
+    if isinstance(content, list):
+        last["content"] = list(content) + [{"type": "text", "text": TAIL_SEPARATOR + tail}]
+    else:
+        last["content"] = (content or "") + TAIL_SEPARATOR + tail
+
+
 def to_api_messages(system: str, history: list[dict], protocol: str,
                     images: bool = True) -> list[dict]:
     """Kayıtlı geçmiş → API mesajları. Kullanıcı mesajındaki görseller (meta.images)
@@ -528,9 +586,13 @@ class AgentRunner:
                  base_body: dict[str, Any] | None = None, extra_hint: str = "",
                  project_map: bool = False, skills: list | None = None, untrusted: list[str] | None = None,
                  user_rules: Any = None, game_tools: bool = False, test_tools: Any = None,
-                 critic: Any = None):
+                 critic: Any = None, protected_files: tuple[str, ...] = (),
+                 steer_source: Callable[[], list[dict]] | None = None):
         self.client = client
         self.model = model
+        # Madde 23 a: çalışırken gönderilen mesajlar. Her adım arasında ve tur bitmeden önce çağrılır; dönen her öğe
+        # {"content": str, "meta": dict} kayda kullanıcı mesajı olarak eklenir. None → kapalı (Proje/QA görev turları).
+        self.steer_source = steer_source
         # MCP araçları (agent/mcp.py; McpToolset veya LazyToolset): specs/get/call/notes.
         # Yalnız proje klasörlü oturumda kullanılır; okuma dışındaki araçlar izinden geçer.
         self.mcp = mcp
@@ -570,7 +632,8 @@ class AgentRunner:
         # model değişince bırakılır) ve tur ipucuna eklenecek metin (A7 rol talimatı, A13 planlayıcının planı).
         self.base_body = dict(base_body) if base_body else None
         self._base_body_model = model
-        self.extra_hint = (extra_hint or "").strip()
+        self.extra_hint = (extra_hint or "").strip()     # kalıcı: rol + profil talimatı (sabit sistem istemi)
+        self.turn_extra = ""                              # tura özel (ör. mimar planı) → kuyruk notu
         # F3/E2: sistem istemine proje haritası (dosya ağacı + semboller, ~3 bin token; agent/projectmap.py)
         self.project_map = project_map
         self._map_section: str | None = None
@@ -623,6 +686,9 @@ class AgentRunner:
         self._nudge: str | None = None          # sonraki çağrıya eklenecek geçici hatırlatma
         # B4 gidiş gözetmeni (agent/critic.py): yalnız gözetimsiz görevde (Proje/Derin) verilir; None → kapalı
         self.critic = critic
+        # Proje görevi turunda yürütücünün kendi dosyaları (EVREN_PLAN.md, EVREN_RAPOR.md): yazılmaz (PROTECTED_NOTE)
+        self.protected_files = tuple(p.lower() for p in protected_files)
+        self._loop_kind = self._loop_tool = ""
         self._extra_body: dict[str, Any] | None = None
         self._writes: list[tuple[str, str | None, str | None]] = []  # (yol, önce, sonra) — son araç
         self.toolbox = (
@@ -678,10 +744,84 @@ class AgentRunner:
         return spec
 
     def _system(self) -> str:
-        if not self.agentic:
-            system = build_chat_system(web=self.chat_tools, brief=self.brief_answers)
+        """Sistem istemi. Madde 22 B (2026-11-13 ölçümü: EVREN istemin değişmeyen başını önbelleğe alır — aynı başla
+        4-7 kat hızlı ve önbellekten okunan token kotadan düşmez): SABİT kısım oturum boyunca dondurulur
+        (`_frozen_static`), turdan/adımdan adıma DEĞİŞEN notlar (tur ipucu, açık plan) sistem istemine değil son mesajın
+        sonuna kuyruk notu olarak eklenir (`_tail`). FREEZE_SYSTEM=False eski düzen (A/B ölçümü için)."""
+        if not FREEZE_SYSTEM:
+            system = (build_chat_system(web=self.chat_tools, brief=self.brief_answers) if not self.agentic
+                      else self._static_system())
+            if self.agentic and self._plan_guard_active():
+                section = planguard.system_section(*self._open_plan())
+                if section:
+                    system += "\n\n" + section
             hint = getattr(self, "_turn_hint", "")
             return system + "\n\n" + hint if hint else system
+        if not self.agentic:
+            system = build_chat_system(web=self.chat_tools, brief=self.brief_answers)
+            # kalıcı rol + profil (+ kişisel kurallar) talimatı sohbette de (2026-11-13: B bölmesinde düşmüştü)
+            return system + "\n\n" + self.extra_hint if self.extra_hint else system
+        return self._frozen_static()
+
+    def _frozen_key(self) -> tuple | None:
+        if self.session_id is None or self.store is None:
+            return None
+        return (str(getattr(self.store, "path", id(self.store))), self.session_id)
+
+    def _static_signature(self) -> tuple:
+        """Sabit istemi YENİDEN kurmayı gerektiren durumlar: kip, protokol, araç listesi, gün, proje hafızası dosyası
+        (kullanıcı EVREN.md'yi düzenledi), özet sonrası yeni geçmiş başı, skill/klasör/oyun/MCP ayarları."""
+        mem = ()
+        for name in ("EVREN.md", "AGENTS.md", "CLAUDE.md"):
+            try:
+                st = (self.workspace.root / name).stat()
+                mem += ((name, st.st_mtime_ns, st.st_size),)
+            except OSError:
+                continue
+        from datetime import date
+
+        return (normalize_mode(self.mode), self.protocol, tuple(s.name for s in self._specs()), date.today().isoformat(),
+                mem, getattr(self, "_summary_anchor", None), bool(self.project_map), self.install_mode,
+                tuple(getattr(s, "name", str(s)) for s in self.skills), tuple(self.untrusted), bool(self.game_tools),
+                tuple(getattr(self.mcp, "hints", []) or []) if self.mcp is not None else (), self.extra_hint)
+
+    def _frozen_static(self) -> str:
+        key = self._frozen_key()
+        sig = self._static_signature()
+        if key is not None:
+            hit = _FROZEN_SYSTEM.get(key)
+            if hit is not None and hit[0] == sig:
+                _FROZEN_SYSTEM.move_to_end(key)
+                return hit[1]
+        text = self._static_system()
+        if key is not None:
+            _FROZEN_SYSTEM[key] = (sig, text)
+            _FROZEN_SYSTEM.move_to_end(key)
+            while len(_FROZEN_SYSTEM) > _FROZEN_MAX:
+                _FROZEN_SYSTEM.popitem(last=False)
+        return text
+
+    def _invalidate_frozen(self) -> None:
+        key = self._frozen_key()
+        if key is not None:
+            _FROZEN_SYSTEM.pop(key, None)
+
+    def _tail(self) -> str:
+        """Kuyruk notu: adımdan adıma değişebilen bilgiler (açık plan, tur ipucu). Kayda yazılmaz; yalnız bu istekte
+        son mesajın sonuna eklenir → önceki geçmiş aynı başla gider, önbellekten okunur."""
+        if not FREEZE_SYSTEM:
+            return ""
+        parts = []
+        if self.agentic and self._plan_guard_active():
+            section = planguard.system_section(*self._open_plan())
+            if section:
+                parts.append(section)
+        hint = getattr(self, "_turn_hint", "")
+        if hint:
+            parts.append(hint)
+        return "\n\n".join(parts)
+
+    def _static_system(self) -> str:
         if self._env_section is None:
             from . import environment
 
@@ -724,12 +864,10 @@ class AgentRunner:
             section = prompt_section(specs, list(getattr(self.mcp, "hints", []) or []))
             if section:
                 system += "\n\n" + section
-        if self._plan_guard_active():
-            section = planguard.system_section(*self._open_plan())
-            if section:
-                system += "\n\n" + section          # özetten/kısaltmadan sonra da plan görünür kalsın
-        hint = getattr(self, "_turn_hint", "")
-        return system + "\n\n" + hint if hint else system
+        # Açık plan (özetten/kısaltmadan sonra da görünür kalsın) ve tur ipucu artık kuyruk notunda (_tail)
+        if FREEZE_SYSTEM and self.extra_hint:
+            system += "\n\n" + self.extra_hint             # kalıcı rol + profil talimatı
+        return system
 
     def _compute_turn_hint(self, history: list[dict]) -> str:
         """Tur başı: kullanıcının andığı ama projede olmayan dosyalar için uyarı (scope.py); istek güncel/dış
@@ -756,13 +894,14 @@ class AgentRunner:
                 from . import websearch
 
                 web = websearch.HINT if websearch.needs_web(text) else ""
+            repro = self._repro_hint(text)
             try:
                 from .scope import missing_hint, missing_mentions
 
                 missing = missing_mentions(text, self.workspace.root)
             except OSError:
-                return web
-            return "\n\n".join(h for h in (missing_hint(missing) if missing else "", web) if h)
+                return "\n\n".join(h for h in (repro, web) if h)
+            return "\n\n".join(h for h in (missing_hint(missing) if missing else "", repro, web) if h)
         return ""
 
     def _record(self, **rec: Any) -> None:
@@ -773,10 +912,11 @@ class AgentRunner:
         except Exception:
             pass                                  # kayıt hatası turu bozmasın
 
-    def _quality(self, event: str, detail: str = "") -> None:
-        """A5: kalite olayı (modelstats.QUALITY_WEIGHTS) — o anki model adına kaydedilir."""
+    def _quality(self, event: str, detail: str = "", model: str | None = None, **extra: Any) -> None:
+        """A5: kalite olayı (modelstats.QUALITY_WEIGHTS) — o anki (ya da verilen) model adına kaydedilir. `extra`
+        gözleme gider (ör. döngü türü + araç adı; gozlem._AYRINTI_IZINLI süzer)."""
         self.quality_events.append(event)
-        self._record(model=self.model, ok=False, event=event, detail=detail[:200])
+        self._record(model=model or self.model, ok=False, event=event, detail=detail[:200], **extra)
 
     def _switch_model(self, outcome: "TurnOutcome", exc: ApiError | None, loop_reason: str = "",
                       slow_reason: str = "", empty_reason: str = "") -> bool:
@@ -880,6 +1020,21 @@ class AgentRunner:
         self.events.message_saved(msg)
         return msg
 
+    def _take_steer(self, history: list[dict]) -> bool:
+        """Madde 23 a: kullanıcının çalışırken gönderdiği mesajları kayda ekler (yalnız araç sonuçları tamamken —
+        adım başı ya da tur sonu — çağrılır: araç çağrısı ile sonucu arasına kullanıcı mesajı girmez). Eklendi mi."""
+        if self.steer_source is None:
+            return False
+        try:
+            items = self.steer_source() or []
+        except Exception:
+            return False
+        for it in items:
+            self._save(history, "user", it.get("content") or "", meta={**(it.get("meta") or {}), "steer": True})
+        if items:
+            self.events.status("Çalışırken gönderdiğiniz mesaj ajana iletildi.")
+        return bool(items)
+
     def _slow_switch_possible(self) -> bool:
         """Yavaşlık yüzünden yedeğe geçilebilir mi (görev başına bir kez; zayıf modele değil)."""
         if not self.fallback_models or self._slow.used:
@@ -902,7 +1057,12 @@ class AgentRunner:
             # Kısaltılan çıktıyı yeniden okumak meşrudur: döngü bekçisi bunu "aynı sonuçla tekrar" saymasın
             self._trim_reset = True
         self._trimmed_seen = trimmed
+        first = next((m for m in history_after_summary(visible)), None)
+        self._summary_anchor = first.get("id") if first else None       # özetten sonra sabit istem yenilenir
         messages = to_api_messages(self._system(), visible, self.protocol)
+        last = visible[-1] if visible else {}
+        steer = STEER_NOTE if last.get("role") == "user" and (last.get("meta") or {}).get("steer") else ""
+        append_tail(messages, "\n\n".join(t for t in (self._tail(), steer) if t))
         if self._nudge:
             # Geçici: kayda yazılmaz, yalnız bu çağrıda gider.
             messages.append({"role": "user", "content": self._nudge})
@@ -961,12 +1121,16 @@ class AgentRunner:
         self._test_orig: dict[str, str | None] = {}     # yol → turdaki ilk hâli
         self._test_cmd_orig: dict[str, bytes] = {}      # komutla değişen test dosyası → komuttan önceki içerik
         self._wrote = False
+        self._gate_passed = False                # iddia bekçisi: bu turda test bekçisi testleri geçirdi mi
         self._test_baseline = None
         self._history_ref = history
         plan_nudges = 0
         plan_strikes = 0
         plan_work_mark = -1
-        self._turn_hint = "\n\n".join(h for h in (self._compute_turn_hint(history), self.extra_hint) if h)
+        # Madde 22 B: kalıcı talimat (extra_hint: rol + profil) sabit sistem isteminde; tura özel olanlar kuyrukta
+        parts = (self._compute_turn_hint(history), self.turn_extra) if FREEZE_SYSTEM else \
+            (self._compute_turn_hint(history), self.extra_hint, self.turn_extra)
+        self._turn_hint = "\n\n".join(h for h in parts if h)
         step = 0
         fallback_used = False
         # döngü bekçisi durumu (tur başına)
@@ -988,6 +1152,7 @@ class AgentRunner:
                 if self._switch_model(outcome, None, slow_reason=pending_slow):
                     self._slow.used = True
                 pending_slow = ""
+            self._take_steer(history)                    # Madde 23 a: araç sonuçları tamam → ara mesaj girebilir
             step += 1
             outcome.steps = step
             if self.before_model_call is not None:
@@ -1167,6 +1332,17 @@ class AgentRunner:
                         nudged.add("tests")
                         self._nudge = gate
                         continue
+                if "claims" not in nudged and step < self.max_steps and not self._cancelled():
+                    claim = self._claim_gate(content, history)
+                    if claim:
+                        nudged.add("claims")                          # tur başına bir kez
+                        self._quality("unverified_claim")
+                        self.events.status("İddia bekçisi: yanıttaki iddianın kanıtı yok; model doğrulamaya yönlendirildi.")
+                        self._nudge = claim
+                        continue
+                # Madde 23 a: yanıt bitti ama kullanıcı bu arada mesaj gönderdi → aynı turda sürdür (bağlam korunur)
+                if step < self.max_steps and not self._cancelled() and self._take_steer(history):
+                    continue
                 outcome.stopped = "done"
                 break
 
@@ -1192,6 +1368,8 @@ class AgentRunner:
                     if stop == "flipflop":
                         flipflops += 1
                         if flipflops >= FLIPFLOP_STOP:
+                            if not loop_reason:
+                                self._loop_kind, self._loop_tool = "ileri_geri", call.name
                             loop_reason = loop_reason or (
                                 f"bir dosya tekrar tekrar eski hâline döndürüldü ({res.extra.get('path', '?')})")
                     elif stop:
@@ -1206,8 +1384,16 @@ class AgentRunner:
                 outcome.stopped = "cancelled"
                 break
             if loop_reason:
-                self._quality("loop", loop_reason)
-            if loop_reason and self._switch_model(outcome, None, loop_reason):
+                kind, tool = getattr(self, "_loop_kind", "") or "ayni_cagri", getattr(self, "_loop_tool", "")
+                prev_model = self.model
+                switched = self._switch_model(outcome, None, loop_reason)
+                # Gözlem: döngünün TÜRÜ + aracın adı (kişisel veri yok) ve sonucu — 2026-11-12'ye kadar yalnız "loop"
+                # yazılıyordu; 13 kaydın hangi araçtan geldiği geriye dönük bulunamadı. Model değişip tur sürdüyse
+                # "durdu" diye raporlanmaz. Kayıt, döngüye giren (eski) modelin adına.
+                self._quality("loop", loop_reason, model=prev_model, loop_kind=kind, tool=tool,
+                              result="model_degisti" if switched else "durdu")
+                self._loop_kind = self._loop_tool = ""
+            if loop_reason and switched:
                 repeats.clear()
                 file_states.clear()
                 flipflops = 0
@@ -1282,6 +1468,7 @@ class AgentRunner:
                 key = call_signature(call)
                 repeats[key] = repeats.get(key, 0) + 1
                 if repeats[key] >= REPEAT_STOP:
+                    self._loop_kind, self._loop_tool = "basarisiz_duzenleme", call.name
                     return "", f"aynı başarısız düzenleme {repeats[key]} kez denendi ({call.name})"
                 if repeats[key] >= REPEAT_WARN:
                     return REPEAT_NOTE.format(n=repeats[key] - 1), ""
@@ -1299,20 +1486,30 @@ class AgentRunner:
         key = call_signature(call)
         repeats[key] = repeats.get(key, 0) + 1
         n = repeats[key]
-        warn, stop = REPEAT_WARN, REPEAT_STOP
-        if call.name.startswith(DESKTOP_PREFIX) and spec.kind == EXEC:
-            warn, stop = DESKTOP_ACTION_WARN, DESKTOP_ACTION_STOP
-            if res.ok:
-                # Ekranı değiştiren eylem: DİĞER tüm masaüstü sayaçları yeniden sayılır (okumalar ve başka eylemler —
-                # gerçek QA 20:3x: farklı sayılar yazıp her seferinde Topla'ya basmak "Click 6 kez" sayılıyordu). Aynı
-                # eylemin arada hiçbir değişiklik olmadan tekrarı sayılmaya devam eder; iki eylem arasında sonsuz gidip
-                # gelme turun adım sınırına takılır.
-                for k in [k for k in repeats if k.startswith(DESKTOP_PREFIX) and k != key]:
-                    del repeats[k]
+        warn, stop, note = REPEAT_WARN, REPEAT_STOP, REPEAT_NOTE
+        external = call.name.startswith(EXTERNAL_PREFIX)
+        if external:
+            note = EXTERNAL_REPEAT_NOTE
+            if spec.kind == EXEC:
+                warn, stop = EXTERNAL_ACTION_WARN, EXTERNAL_ACTION_STOP
+                if res.ok:
+                    # Durumu değiştiren eylem (tıklama, sayfaya gitme, yazma): AYNI SUNUCUNUN diğer sayaçları yeniden
+                    # sayılır (okumalar ve başka eylemler — masaüstü QA 2026-11-06: farklı sayılar yazıp her seferinde
+                    # Topla'ya basmak "Click 6 kez" sayılıyordu). Aynı eylemin arada hiçbir değişiklik olmadan tekrarı
+                    # sayılmaya devam eder; iki eylem arasında sonsuz gidip gelme turun adım sınırına takılır.
+                    scope = external_scope(call.name)
+                    for k in [k for k in repeats if k.startswith(scope) and k != key]:
+                        del repeats[k]
+        elif spec.kind == EXEC and res.ok:
+            # Yerel komut (ör. sunucuyu yeniden başlat, derle) dış uygulamanın / sayfanın durumunu değiştirebilir:
+            # tarayıcıda aynı sayfayı yeniden açmak artık "aynı sonuç" sayılmaz.
+            for k in [k for k in repeats if k.startswith(EXTERNAL_PREFIX)]:
+                del repeats[k]
         if n >= stop:
+            self._loop_kind, self._loop_tool = ("dis_arac_tekrar" if external else "ayni_cagri"), call.name
             return "", f"“{describe_call(call)}” {n} kez aynı sonuçla tekrarlandı"
         if n >= warn:
-            return REPEAT_NOTE.format(n=n - 1), ""
+            return note.format(n=n - 1), ""
         return "", ""
 
     def _history_tokens(self, history: list[dict]) -> int:
@@ -1335,6 +1532,11 @@ class AgentRunner:
         if self.no_writes and spec.kind == WRITE:
             return ToolResult(False, "Bu çalışmada (QA) dosya değiştirilemez: yalnız test et ve bulguyu raporla.",
                               "Engellendi (QA)")
+        if self.protected_files and spec.kind == WRITE:
+            target = str(call.arguments.get("path") or call.arguments.get("file_path") or "")
+            name = target.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+            if name.lower() in self.protected_files:
+                return ToolResult(False, PROTECTED_NOTE.format(name=name), f"Korumalı dosya: {name}")
         if normalize_mode(self.mode) == "plan" and spec.kind in (WRITE, EXEC) and call.name not in WEB_TOOLS:
             _d, reason = decide(self.mode, spec.kind, self.perms)
             return ToolResult(False, reason, "Plan modunda engellendi")
@@ -1808,12 +2010,46 @@ class AgentRunner:
         self.events.status(f"Test bekçisi: proje testleri çalıştırılıyor ({cmd})…")
         state, code, out = testcheck.run(self.toolbox, cmd, cancel=self.cancel)
         if state == "gecti":
+            self._gate_passed = True                # iddia bekçisi: testlerin geçtiği uygulama tarafından doğrulandı
             self.events.status(f"Test bekçisi: testler geçti ({cmd}).")
             return ""
         if state != "dustu":
             return ""
         self.events.status("Test bekçisi: değişiklikten sonra testler düştü; model düzeltmesi için uyarıldı.")
         return testcheck.NUDGE.format(cmd=cmd, code=code, tail=testcheck.tail(out))
+
+    REPRO_HINT = ("# Hata düzeltme (bu tur)\nBu bir hata düzeltme isteği ve projenin testleri var: önce hatayı GÖSTEREN "
+                  "bir test yaz ya da var olanı çalıştır (kırmızı), sonra kodu düzelt, sonra AYNI testi yeniden çalıştır "
+                  "(yeşil). Testi geçirmek için testin beklentisini değiştirme.")
+
+    def _repro_hint(self, text: str) -> str:
+        """Madde 22 C3 (Derin Mod'daki B1 kuralı normal turda; Agentless/SWE-bench: önce yeniden üret): istek hata
+        düzeltmesiyse VE projede otomatik test varsa tur ipucu (kuyrukta). Plan kipinde ve testsiz projede yok (R-22)."""
+        if normalize_mode(self.mode) == "plan" or self.workspace is None:
+            return ""
+        from . import testcheck
+        from .project import is_bugfix
+
+        if not is_bugfix(text):
+            return ""
+        try:
+            has_tests = bool(testcheck._py_tests(self.workspace.root)) or testcheck.detect_command(
+                self.workspace.root) is not None
+        except OSError:
+            return ""
+        return self.REPRO_HINT if has_tests else ""
+
+    def _claim_gate(self, content: str, history: list[dict]) -> str:
+        """İddia bekçisi (Madde 22 C2, 2026-11-13): son yanıt "testler geçti" ya da "`X` dosyasını oluşturdum" diyor ama bu
+        turda kanıtı yoksa modele bir kez söylenir (zayıf modellerin en sık hatası: doğrulamadan "bitti"). Kanıt: son
+        yazmadan sonra başarılı bir test komutu ya da test bekçisinin geçişi; dosya için dosyanın varlığı. Olumsuz
+        cümleler ("testler çalıştırılmadı/geçmedi") iddia sayılmaz (R-22)."""
+        from . import claims
+
+        if not self.agentic or self.workspace is None or normalize_mode(self.mode) == "plan":
+            return ""
+        turn = claims.current_turn(history)
+        return claims.check(content, turn, self.workspace.root, gate_passed=getattr(self, "_gate_passed", False))
 
     def _test_baseline_once(self) -> None:
         """İlk yazmadan ÖNCE testlerin durumu (yalnız tur başında geçenler korunur)."""
@@ -1999,6 +2235,7 @@ class AgentRunner:
         result = envmod.install(key, on_output=lambda chunk: self.events.tool_output(call, chunk),
                                 cancel=self.cancel)
         self._env_section = None          # sonraki istemde güncel durum
+        self._invalidate_frozen()         # kurulan program/paket dondurulmuş istemde de görünsün
         steps = ("\n" + "\n".join(result.steps)) if result.steps else ""
         if result.ok:
             text = f"{tool.title} kuruldu" + (f" (sürüm {result.version})" if result.version else "") + "."
@@ -2072,7 +2309,10 @@ class AgentRunner:
         warn = self._test_cmd_check(snap)
         if warn:
             extra["test_edit"] = True
-        return ToolResult(ok, result.to_text(self.output_limit) + warn,
+        # Program klavyeden girdi bekledi (girdi görevi, 2026-11-12). Çıkış koduna bakılmaz: PowerShell Read-Host
+        # girdisiz çalışınca hata yazar ama betik 0 ile biter (gerçek ölçüm).
+        hint = stdin_hint(result.output)
+        return ToolResult(ok, result.to_text(self.output_limit) + warn + hint,
                           f"Çalıştırıldı: {command[:80]} ({state})", extra)
 
 

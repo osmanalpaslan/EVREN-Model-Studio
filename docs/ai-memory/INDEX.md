@@ -2,7 +2,7 @@
 
 > Bu dosya `tools/ai_memory.py indeks` ile üretilir; elle düzenleme.
 
-Kayıt: 109 · Açık/izlenen: 7 · Oturum: 45 · Kural: 36
+Kayıt: 120 · Açık/izlenen: 8 · Oturum: 48 · Kural: 36
 
 ## Açık ve izlenen kayıtlar
 
@@ -13,6 +13,7 @@ Kayıt: 109 · Açık/izlenen: 7 · Oturum: 45 · Kural: 36
 | yuksek | [2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor](incidents/2026-10-21-ajan-cok-fazli-iste-faz-bitince-sonrakine-gecmeyi-unutuyor.md) | eksik | ajan | Ajan çok fazlı işte faz bitince sonrakine geçmeyi unutuyor |
 | yuksek | [2026-11-01-yavaslik-gecisi-zayif-modele-gitti-gemma-celiskili-testte-hi](incidents/2026-11-01-yavaslik-gecisi-zayif-modele-gitti-gemma-celiskili-testte-hi.md) | hata | ajan | Yavaşlık geçişi zayıf modele gitti, gemma çelişkili testte hile yazdı |
 | orta | [2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k](incidents/2026-10-17-deepseek-v4-1-flash-metin-protokolunde-akista-arac-cagrisi-k.md) | risk | api | deepseek-v4.1-flash metin protokolünde akışta araç çağrısı kayboluyor |
+| orta | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje.md) | risk | test | Zorluk paketi görevi düştü: mini_proje |
 | dusuk | [2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz](incidents/2026-10-16-izleme-dongusu-testi-zamanlamaya-bagli-kararsiz.md) | hata | test/izleme | İzleme döngüsü testi zamanlamaya bağlı ve kararsız |
 | dusuk | [2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi](incidents/2026-10-21-alt-surecler-yuk-altinda-ara-sira-bos-ciktiyla-donuyor-bu-bi.md) | ortam | test | Alt süreçler yük altında ara sıra boş çıktıyla dönüyor (bu bilgisayar) |
 
@@ -20,6 +21,17 @@ Kayıt: 109 · Açık/izlenen: 7 · Oturum: 45 · Kural: 36
 
 | Tarih | Kayıt | Tür | Önem | Durum | Kaynak motor | Başlık |
 |---|---|---|---|---|---|---|
+| 2026-11-14 | [2026-11-14-duman-testi-yolu-qtimer-ice-aktarmasi-silinince-cokuyordu](incidents/2026-11-14-duman-testi-yolu-qtimer-ice-aktarmasi-silinince-cokuyordu.md) | hata | yuksek | cozuldu | Claude Code | Duman testi yolu QTimer içe aktarması silinince çöküyordu |
+| 2026-11-13 | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje-2](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje-2.md) | hata | orta | cozuldu | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: mini_proje (ikinci kök neden: kontrolün yarım UTF-8 ortamı) |
+| 2026-11-13 | [2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje](incidents/2026-11-13-zorluk-paketi-gorevi-dustu-mini-proje.md) | risk | orta | izleniyor | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: mini_proje |
+| 2026-11-13 | [2026-11-13-test-bekcisi-bayat-pyc-ile-eski-kodu-kosturuyordu](incidents/2026-11-13-test-bekcisi-bayat-pyc-ile-eski-kodu-kosturuyordu.md) | hata | yuksek | cozuldu | Claude Code | Test bekcisi bayat pyc ile eski kodu kosturuyordu |
+| 2026-11-13 | [2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib](incidents/2026-11-13-qt-warning-qfontdatabase-cannot-find-font-directory-venv-lib.md) | hata | dusuk | cozuldu | EVREN Studio gözlem ajanı | Qt warning: qfontdatabase: cannot find font directory .venv/lib/site-packages/pyside#/lib/fo… |
+| 2026-11-13 | [2026-11-13-arka-plan-gorevi-hata-verdi-operationalerror](incidents/2026-11-13-arka-plan-gorevi-hata-verdi-operationalerror.md) | hata | yuksek | cozuldu | EVREN Studio gözlem ajanı | Arka plan görevi hata verdi: OperationalError |
+| 2026-11-12 | [2026-11-12-zorluk-paketi-gorevi-dustu-girdi](incidents/2026-11-12-zorluk-paketi-gorevi-dustu-girdi.md) | yanlis-iddia | orta | cozuldu | EVREN Studio gözlem ajanı | Zorluk paketi görevi düştü: girdi |
+| 2026-11-12 | [2026-11-12-logodaki-yildiz-turk-bayragi-kanunu-ndaki-yerinden-uzaktaydi](incidents/2026-11-12-logodaki-yildiz-turk-bayragi-kanunu-ndaki-yerinden-uzaktaydi.md) | hata | orta | cozuldu | Claude Code | Logodaki yıldız Türk Bayrağı Kanunu'ndaki yerinden uzaktaydı |
+| 2026-11-12 | [2026-11-12-dongu-bekcisi-turu-durdurdu](incidents/2026-11-12-dongu-bekcisi-turu-durdurdu.md) | risk | orta | cozuldu | EVREN Studio gözlem ajanı | Döngü bekçisi turu durdurdu |
+| 2026-11-12 | [2026-11-12-anahtarsiz-yerel-ozel-sunucu-modelleri-seciciye-girmiyordu-v](incidents/2026-11-12-anahtarsiz-yerel-ozel-sunucu-modelleri-seciciye-girmiyordu-v.md) | hata | orta | cozuldu | Claude Code | Anahtarsız yerel/özel sunucu modelleri seçiciye girmiyordu ve "Bearer yok" başlığı gidiyordu |
+| 2026-11-12 | [2026-11-12-ajan-komutlarinda-pipe-edilen-metnin-basina-bom-ekleniyordu](incidents/2026-11-12-ajan-komutlarinda-pipe-edilen-metnin-basina-bom-ekleniyordu.md) | hata | yuksek | cozuldu | Claude Code | Ajan komutlarında pipe edilen metnin başına BOM ekleniyordu |
 | 2026-11-11 | [2026-11-11-proje-python-c-dogrulamasinin-kendi-yazim-hatasi-gorevi-taki](incidents/2026-11-11-proje-python-c-dogrulamasinin-kendi-yazim-hatasi-gorevi-taki.md) | hata | orta | cozuldu | Claude Code | Proje: python -c dogrulamasinin kendi yazim hatasi gorevi takiltiyordu |
 | 2026-11-07 | [2026-11-07-windows-mcp-kisayolu-alt-i-altgr-olarak-gonderiyor](incidents/2026-11-07-windows-mcp-kisayolu-alt-i-altgr-olarak-gonderiyor.md) | hata | orta | cozuldu | Claude Code | Windows-MCP kisayolu Alt'i AltGr olarak gonderiyor |
 | 2026-11-06 | [2026-11-06-dongu-bekcisi-turu-durdurdu](incidents/2026-11-06-dongu-bekcisi-turu-durdurdu.md) | hata | orta | cozuldu | EVREN Studio gözlem ajanı | Döngü bekçisi turu durdurdu |
@@ -134,7 +146,10 @@ Kayıt: 109 · Açık/izlenen: 7 · Oturum: 45 · Kural: 36
 
 | Tarih | Oturum | Motor / model | Sonuç | Başlık |
 |---|---|---|---|---|
+| 2026-11-13 | [2026-11-13-claude-code-madde-23-mesaj-kuyrugu-yedek-motor-sagla](sessions/2026-11-13-claude-code-madde-23-mesaj-kuyrugu-yedek-motor-sagla.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 23 mesaj kuyrugu yedek motor saglayicidan bagimsiz otomatik isler ve 0.5.1 cikti |
+| 2026-11-13 | [2026-11-13-claude-code-madde-22-hiz-ve-dogruluk-altyapisi-onbel](sessions/2026-11-13-claude-code-madde-22-hiz-ve-dogruluk-altyapisi-onbel.md) | Claude Code / claude-opus-5-5 | tamamlandi | Madde 22 hiz ve dogruluk altyapisi (onbellek, bekciler, masaustu, arka plan, talimatlar) |
 | 2026-11-12 | [2026-11-12-claude-code-madde-20-c-asamasi-tree-sitter-harita-gu](sessions/2026-11-12-claude-code-madde-20-c-asamasi-tree-sitter-harita-gu.md) | Claude Code / claude-opus-5-5 | tamamlandi | Madde 20 C asamasi: tree-sitter harita, guncelleme, ses, terminal |
+| 2026-11-12 | [2026-11-12-claude-code-0-5-1-kullanici-istekleri-toplu-kurulum](sessions/2026-11-12-claude-code-0-5-1-kullanici-istekleri-toplu-kurulum.md) | Claude Code / claude-opus-5-5 | devam-ediyor | 0.5.1 kullanici istekleri (toplu): kurulum yalniz kullanici |
 | 2026-11-11 | [2026-11-11-claude-code-madde-20-repo-taramasi-uygulamasi-a-json](sessions/2026-11-11-claude-code-madde-20-repo-taramasi-uygulamasi-a-json.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 20 repo taraması uygulaması (A json_repair ruff belgeler, B Derin, C) |
 | 2026-11-07 | [2026-11-07-claude-code-madde-16-kurulumlu-exe-mit-kendi-imza-go](sessions/2026-11-07-claude-code-madde-16-kurulumlu-exe-mit-kendi-imza-go.md) | Claude Code / claude-opus-5-5 | kismi | Madde 16 kurulumlu exe (MIT, kendi imza, gomulu programlar) |
 | 2026-11-06 | [2026-11-06-claude-code-madde-14-motor-karnesi-ve-akilli-yonlend](sessions/2026-11-06-claude-code-madde-14-motor-karnesi-ve-akilli-yonlend.md) | Claude Code / claude-opus-5-5 | devam-ediyor | Madde 14 motor karnesi ve akilli yonlendirme |

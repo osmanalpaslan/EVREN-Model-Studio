@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tools"))
 from gecici import klasor  # noqa: E402 — geçici klasörler çıkışta silinir (2026-11-11 disk sızıntısı)
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("EVREN_STUDIO_NO_ANIM", "1")      # karşılama logosu ara karede değil, son hâlinde ölçülsün
 
 HATA_ESIK = 3.0
 UYARI_ESIK = 4.5
@@ -172,26 +173,27 @@ def denetle(tema: str, out: Path, goruntu: bool, gecis: bool = False) -> list[di
             return "sekme"
         return None
 
-    def olc(ekran: str) -> None:
+    def olc(ekran: str, hedef=None) -> None:
+        hedef = hedef or w                    # ayrı pencereler de ölçülür (2026-11-12: Sağlayıcı ekle)
         pump(0.25)
-        img = w.grab().toImage()
+        img = hedef.grab().toImage()
         hata_kutulari = []
-        for wd in w.findChildren(object):
+        for wd in hedef.findChildren(object):
             tur = tur_adi(wd) if hasattr(wd, "isVisible") else None
-            if tur is None or not wd.isVisible() or wd.window() is not w:
+            if tur is None or not wd.isVisible() or wd.window() is not hedef:
                 continue
             if wd.width() < 8 or wd.height() < 8:
                 continue
-            p = wd.mapTo(w, QPoint(0, 0))
+            p = wd.mapTo(hedef, QPoint(0, 0))
             r = QRect(p.x(), p.y(), wd.width(), wd.height()).intersected(QRect(0, 0, img.width(), img.height()))
             if r.width() < 8 or r.height() < 8:
                 continue
             # kaydırma alanının dışında kalan (görünmeyen) kısmı ölçme
             par = wd.parentWidget()
-            while par is not None and par is not w:
+            while par is not None and par is not hedef:
                 if isinstance(par, QAbstractScrollArea):
                     vp = par.viewport()
-                    vpr = QRect(vp.mapTo(w, QPoint(0, 0)), vp.size())
+                    vpr = QRect(vp.mapTo(hedef, QPoint(0, 0)), vp.size())
                     r = r.intersected(vpr)
                 par = par.parentWidget()
             if r.width() < 8 or r.height() < 8:
@@ -265,7 +267,7 @@ def denetle(tema: str, out: Path, goruntu: bool, gecis: bool = False) -> list[di
                     hata_kutulari.append(r)
             _ = simge_esik
         if goruntu:
-            pix = w.grab()
+            pix = hedef.grab()
             if hata_kutulari:
                 pt = QPainter(pix)
                 pt.setPen(QPen(QColor("#ff0000"), 2))
@@ -363,7 +365,24 @@ def denetle(tema: str, out: Path, goruntu: bool, gecis: bool = False) -> list[di
     _r = db.add_scheduled_run(_tid, "tamamlandi", manual=True)
     db.update_scheduled_run(_r, started_at=_sched.to_utc_iso(_dt.now()), session_id=sid)
     db.add_scheduled_run(_tid, "atlandi", reason="2 çalıştırma kaçırıldı (uygulama kapalıydı)")
-    for key, sayfa in w.pages.items():
+    # Sağlayıcı ekle penceresi (2026-11-12 tek ekran): seçim sayfası ve dolu form ayrı pencerede ölçülür
+    from evren_studio.ui import connections as _cn
+
+    _dlg = _cn.ConnectionDialog(w.ctx, parent=w)
+    _dlg.resize(680, 640)
+    _dlg.show()
+    olc("saglayici_ekle_secim", _dlg)
+    _dlg.open_template("openrouter")
+    for _m in ("anthropic/claude-x", "openai/gpt-y", "google/gemini-z"):
+        _dlg._add_model(_m, _m != "openai/gpt-y")
+    _dlg._set_status(True, "✓ Bağlandı · 3 model. Kullanacaklarınızı işaretleyin.")
+    olc("saglayici_ekle_form", _dlg)
+    _dlg._set_status(False, "✗ Anahtar reddedildi — anahtarı kontrol edin.")
+    olc("saglayici_ekle_hata", _dlg)
+    _dlg.close()
+
+    for key in w.page_keys:                  # sayfalar ilk açılışta kurulur (2026-11-12): hepsini sırayla aç
+        sayfa = w.pages[key]
         w.show_page(key)
         pump(0.6)
         kategoriler = getattr(sayfa, "CATEGORIES", None)

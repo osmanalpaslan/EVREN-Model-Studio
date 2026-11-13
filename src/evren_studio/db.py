@@ -9,14 +9,60 @@ Tablolar:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
+import zlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = 3
+
+# ---- dosya geçmişi sıkıştırma (2026-11-12, kullanıcı onayı) -------------------------------------------------------
+# Ajanın her dosya değişikliği dosyanın TAM önceki/sonraki hâlini saklar; gerçek veritabanında bu metin 12,7 MB'ın
+# 8,4 MB'ıydı. Yeni kayıtlar zlib ile sıkıştırılmış BLOB olarak yazılır (gerçek veride 3,3 kat küçük). Okurken açılır:
+# çağıranlar aynı `before_text` / `after_text` METNİNİ görür. Eski (TEXT) kayıtlar okunmaya devam eder
+# ve açılıştan sonra arka planda dönüştürülür (`pack_file_changes`). NULL = dosya yoktu / silindi; NULL olarak kalır.
+# Açma Python'da yapılır (SQL işlevi DEĞİL): tek başına vekil karakter içeren metni SQLite metin olarak döndüremez;
+# böylece her metin birebir korunur. list_file_changes / get_file_change sözlük döndürür (aynı anahtarlar).
+# Bilinen kısıt: 0.5.0'a geri dönülürse eski sürüm sıkıştırılmış kayıtları açamaz (hata verir; dosyaya içerik yazmaz).
+PACK_MAGIC = b"EZ1"
+PACK_DONE_KEY = "dosya_gecmisi_sikistirma"
+
+
+def pack_text(text: str | None) -> bytes | None:
+    if text is None:
+        return None
+    return PACK_MAGIC + zlib.compress(text.encode("utf-8", "surrogatepass"), 6)
+
+
+def unpack_text(value: Any) -> str | None:
+    """BLOB (sıkıştırılmış) → metin; eski TEXT ve NULL aynen."""
+    if value is None or isinstance(value, str):
+        return value
+    data = bytes(value)
+    if data.startswith(PACK_MAGIC):
+        return zlib.decompress(data[len(PACK_MAGIC):]).decode("utf-8", "surrogatepass")
+    return data.decode("utf-8", "surrogatepass")
+
+
+def _pack_verified(text: str) -> bytes | None:
+    """Sıkıştırır ve hemen geri açıp karşılaştırır; tutmazsa None (satıra dokunulmaz — veri kaybı olmaz)."""
+    packed = pack_text(text)
+    try:
+        return packed if unpack_text(packed) == text else None
+    except (zlib.error, UnicodeDecodeError):
+        return None
+
+
+def _change_row(row: sqlite3.Row) -> dict[str, Any]:
+    """Dosya değişikliği satırı, içerikler açılmış (anahtarlar eski `SELECT *` ile aynı)."""
+    d = dict(row)
+    d["before_text"] = unpack_text(d.get("before_text"))
+    d["after_text"] = unpack_text(d.get("after_text"))
+    return d
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -277,6 +323,22 @@ class ErrorRecord:
     signature: str | None = None
 
 
+def _is_network_path(path: Path) -> bool:
+    """UNC yolu (\\\\sunucu\\paylasim) ya da eşlenmiş ağ sürücüsü (Z:) mi? SQLite'ın WAL kipi ağ dosya sisteminde güvenli
+    çalışmaz (Ayarlar'da veri klasörü başka yere taşınabilir)."""
+    p = str(path)
+    if p.startswith(("\\\\", "//")):
+        return True
+    drive = Path(p).drive
+    if os.name != "nt" or not drive.endswith(":"):
+        return False
+    try:
+        import ctypes
+        return ctypes.windll.kernel32.GetDriveTypeW(drive + "\\") == 4      # DRIVE_REMOTE
+    except (AttributeError, OSError):
+        return False
+
+
 class Database:
     """Tüm yerel veri erişimi bu sınıftan geçer."""
 
@@ -287,6 +349,7 @@ class Database:
         self._lock = threading.RLock()
         self.conn.row_factory = sqlite3.Row
         self._exec("PRAGMA foreign_keys = ON")
+        self.journal_mode = self._set_journal_mode()
         self._script(SCHEMA)
         row = self._exec("SELECT value FROM meta WHERE key='schema_version'").fetchone()
         version = int(row["value"]) if row else None
@@ -346,6 +409,18 @@ class Database:
     def delete_meta(self, key: str) -> None:
         self._exec("DELETE FROM meta WHERE key=?", (key,))
         self._commit()
+
+    def _set_journal_mode(self) -> str:
+        """WAL kipi (2026-11-13 ölçümü, 200 mesaj yazmanın ortancası: mesaj başına 3,42 → 0,96 ms). Eski kipte her işlem
+        yanında bir -journal dosyası açıp silerdi (Windows'ta virüs tarayıcısı her yeni dosyayı yoklar); WAL'da okuma
+        yazmayı beklemez. synchronous FULL kalır: elektrik kesintisinde de son mesaj kaybolmaz (NORMAL 0,06 ms ölçüldü
+        ama işletim sistemi çökerse son işlemler geri alınabilir). Ağ sürücüsünde WAL güvenli değildir (paylaşılan
+        bellek dosyası) → orada eski kipe (DELETE) döner. Dönüş: etkin kip."""
+        want = "DELETE" if _is_network_path(self.path) else "WAL"
+        try:
+            return str(self._exec(f"PRAGMA journal_mode={want}").fetchone()[0]).lower()
+        except sqlite3.DatabaseError:                  # kip değiştirilemedi (salt okunur ortam vb.) → olduğu gibi
+            return str(self._exec("PRAGMA journal_mode").fetchone()[0]).lower()
 
     def _exec(self, sql: str, params: tuple = ()) -> "_Result":
         # Satırlar kilit altında okunur: ajan iş parçacığı yazarken arayüz
@@ -862,22 +937,88 @@ class Database:
         cur = self._exec(
             "INSERT INTO file_changes(session_id, turn_id, path, before_text, after_text,"
             " created_at) VALUES(?,?,?,?,?,?)",
-            (session_id, turn_id, rel_path, before, after, utcnow_iso()),
+            (session_id, turn_id, rel_path, pack_text(before), pack_text(after), utcnow_iso()),
         )
         self._commit()
         return int(cur.lastrowid)
 
-    def list_file_changes(self, session_id: int) -> list[sqlite3.Row]:
-        return self._exec(
+    def list_file_changes(self, session_id: int) -> list[dict[str, Any]]:
+        return [_change_row(r) for r in self._exec(
             "SELECT * FROM file_changes WHERE session_id=? ORDER BY id", (session_id,)
+        ).fetchall()]
+
+    def list_file_change_meta(self, session_id: int) -> list[sqlite3.Row]:
+        """Dosya içerikleri OLMADAN değişiklik listesi (sağ panel; 2026-11-12: gerçek oturumda 145 değişiklik = 8,3 MB
+        metin her açılışta belleğe alınıyordu). İçerik gerektiğinde `get_file_change` ile tek tek okunur."""
+        return self._exec(
+            "SELECT id, session_id, turn_id, path, reverted, created_at, before_text IS NULL AS is_new,"
+            " after_text IS NULL AS is_deleted FROM file_changes WHERE session_id=? ORDER BY id", (session_id,)
         ).fetchall()
 
-    def get_file_change(self, change_id: int) -> sqlite3.Row | None:
-        return self._exec("SELECT * FROM file_changes WHERE id=?", (change_id,)).fetchone()
+    def get_file_change(self, change_id: int) -> dict[str, Any] | None:
+        row = self._exec("SELECT * FROM file_changes WHERE id=?", (change_id,)).fetchone()
+        return _change_row(row) if row is not None else None
 
     def mark_change_reverted(self, change_id: int) -> None:
         self._exec("UPDATE file_changes SET reverted=1 WHERE id=?", (change_id,))
         self._commit()
+
+    # ---- dosya geçmişi bakımı (sıkıştırma + küçültme) ----
+
+    def pack_file_changes(self, batch: int = 40) -> int:
+        """Eski (sıkıştırılmamış) dosya geçmişi kayıtlarını sıkıştırır; dönüştürülen satır sayısı. Kimlik sırasıyla bir
+        kez taranır; her parti kısa bir işlemdir (sıkıştırma kilit DIŞINDA yapılır, arayüz beklemez). Her değer yazılmadan
+        önce açılıp aslıyla karşılaştırılır; tutmazsa o satıra dokunulmaz. Metinler yazıldıktan sonra değişmez; parti
+        arasında silinen satırda UPDATE etkisiz kalır."""
+        last, done = 0, 0
+        while True:
+            rows = self._exec(
+                "SELECT id, before_text, after_text FROM file_changes WHERE id > ? AND"
+                " (typeof(before_text) = 'text' OR typeof(after_text) = 'text') ORDER BY id LIMIT ?", (last, batch),
+            ).fetchall()
+            if not rows:
+                return done
+            last = rows[-1]["id"]
+            updates = []
+            for r in rows:
+                vals = []
+                for v in (r["before_text"], r["after_text"]):
+                    vals.append(_pack_verified(v) if isinstance(v, str) else v)
+                if all(not isinstance(old, str) or new is not None
+                       for old, new in zip((r["before_text"], r["after_text"]), vals)):
+                    updates.append((vals[0], vals[1], r["id"]))
+            with self._lock:
+                self.conn.executemany("UPDATE file_changes SET before_text=?, after_text=? WHERE id=?", updates)
+                self.conn.commit()
+            done += len(updates)
+
+    def compact_if_worthwhile(self, min_free_ratio: float = 0.25, max_mb: float = 200.0) -> bool:
+        """Boş sayfalar dosyanın ≥ %25'iyse VACUUM ile dosyayı küçültür. Büyük veritabanında (> 200 MB) yapılmaz:
+        VACUUM süresince bağlantı kilitli kalır; boş sayfalar zaten yeni verilere yeniden kullanılır."""
+        pages = int(self._exec("PRAGMA page_count").fetchone()[0])
+        free = int(self._exec("PRAGMA freelist_count").fetchone()[0])
+        size_mb = pages * int(self._exec("PRAGMA page_size").fetchone()[0]) / 1e6
+        if pages == 0 or free / pages < min_free_ratio or size_mb > max_mb:
+            return False
+        with self._lock:
+            self.conn.commit()
+            self.conn.execute("VACUUM")
+            if self.journal_mode == "wal":
+                # WAL'da VACUUM yeni içeriği -wal dosyasına yazar; ana dosya ancak checkpoint'te küçülür ve -wal
+                # veritabanı boyunda kalırdı → hemen aktar ve -wal'ı sıfırla
+                self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        return True
+
+    def maintain_file_history(self) -> dict:
+        """Açılıştan sonra arka planda bir kez: eski kayıtları sıkıştır, gerekiyorsa küçült, bitti işaretini yaz."""
+        if self.get_meta(PACK_DONE_KEY) == "1":
+            return {"sikistirilan": 0, "kuculdu": False, "zaten": True}
+        before = self.path.stat().st_size if self.path.is_file() else 0
+        n = self.pack_file_changes()
+        shrunk = self.compact_if_worthwhile() if n else False
+        self.set_meta(PACK_DONE_KEY, "1")
+        after = self.path.stat().st_size if self.path.is_file() else 0
+        return {"sikistirilan": n, "kuculdu": shrunk, "once_bayt": before, "sonra_bayt": after, "zaten": False}
 
     def export_session_markdown(self, session_id: int) -> str:
         s = self.get_session(session_id)

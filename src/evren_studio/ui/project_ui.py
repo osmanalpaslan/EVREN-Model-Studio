@@ -164,8 +164,8 @@ class ProjectController(QObject):
             models = [chain.model] + chain.fallbacks
         else:
             models = [session_model] + [m for m in [chain.model] + chain.fallbacks if m != session_model]
-        if self.evren_only:                 # Derin Mod: ücretli sağlayıcıya ASLA (kullanıcı kararı)
-            models = [m for m in models if self.ctx.provider_of(m) == "evren"] or models
+        if self.evren_only:                 # Derin Mod: EVREN varken ücretli sağlayıcıya ASLA (Madde 23 c: yoksa kendi API'si)
+            models = [m for m in models if self.ctx.auto_ok(self.ctx.provider_of(m))] or models
         if fallback and len(models) > 1:
             models = models[1:] + models[:1]
         return models[0], models[1:], role
@@ -448,7 +448,8 @@ class ProjectController(QObject):
         req["critic"] = critic
         sv._turn_id = msg_id
         sv._turn_hook = hook
-        sv.start_run(history_from=msg_id, mode_override="auto", model_override=(model, fallbacks, role), critic=critic)
+        sv.start_run(history_from=msg_id, mode_override="auto", model_override=(model, fallbacks, role), critic=critic,
+                     protected_files=(pj.PLAN_FILE, pj.REPORT_FILE))
         if not sv.running and not req["event"].is_set():
             sv._turn_hook = None
             req["result"] = pj.TaskRun(stopped="error", error=None, summary="tur başlatılamadı")
@@ -519,21 +520,25 @@ class ProjectController(QObject):
         return r.exit_code, r.output
 
     def _make_critic(self):
-        """B4: görev denemesi başına yeni gözetmen (ayar kapalıysa / EVREN yoksa None). Yalnız EVREN: ücret yok."""
+        """B4: görev denemesi başına yeni gözetmen (ayar kapalıysa / API yoksa None). EVREN varken yalnız EVREN; yoksa
+        kullanıcının API'si (Madde 23 c; ai_chat ücretli maliyeti kaydeder, bütçe dolunca atlar)."""
         from ..agent import critic as cr
 
-        if not getattr(self.ctx.settings, "progress_critic", False) or "evren" not in self.ctx.available_providers():
+        if not getattr(self.ctx.settings, "progress_critic", False) or not self.ctx.available_providers():
             return None
         sid = self.view.session_id
         return cr.Critic(chat=lambda msgs: self.ctx.ai_chat("elestirmen", msgs, max_tokens=300, session_id=sid,
                                                         evren_only=True)[0])
 
     def _free_chain(self) -> list[str]:
-        """Kod rolü zincirinin EVREN (ücretsiz) modelleri; birincil model EVREN değilse boş."""
+        """Arayüzsüz (paralel) görevin kod zinciri: birincil modelin sağlayıcısı otomatik işlere açıksa (EVREN varken
+        yalnız EVREN; yoksa kullanıcının API'si — Madde 23 c) o sağlayıcının modelleri; değilse boş (paralel kapalı).
+        Ücretli API'de maliyet ve bütçe arayüzsüz ajanda da işler (AppContext.headless_billing)."""
         model, fallbacks, _role = self._model_for("kod")
-        if not model or self.ctx.provider_of(model) != "evren":
+        prov = self.ctx.provider_of(model) if model else ""
+        if not model or not self.ctx.auto_ok(prov):
             return []
-        return [m for m in [model, *fallbacks] if m and self.ctx.provider_of(m) == "evren"]
+        return [m for m in [model, *fallbacks] if m and self.ctx.provider_of(m) == prov]
 
     def _headless_rules(self, root: Path):
         """Kopyadaki kullanıcı kuralları YALNIZ ana proje klasöründe aynı içerikle onaylıysa (onay kartı açılmaz:
@@ -564,7 +569,7 @@ class ProjectController(QObject):
 
         chain = self._free_chain()
         if not chain:
-            return pj.TaskRun(stopped="error", summary="EVREN modeli yok (paralel görev yalnız EVREN ile)")
+            return pj.TaskRun(stopped="error", summary="paralel görev için kullanılabilir model yok (API anahtarı)")
         info = self.ctx.model_info(chain[0])
         s, sv = self.ctx.settings, self.view
         # Oturum ajanıyla (session_view.start_run) AYNI ayarlar: proje kuralları (ana klasörde onaylıysa), beceriler,
@@ -579,16 +584,19 @@ class ProjectController(QObject):
                                     if info and (info.capabilities or {}).get("reasoning_effort") else None))
         critic = self._make_critic()
         kw["critic"] = critic
+        kw["protected_files"] = (pj.PLAN_FILE, pj.REPORT_FILE)
         token = CancelToken()
         token._event = self._cancel                 # kullanıcı projeyi durdurunca bu ajan da güvenli noktada durur
-        client = self.ctx.make_client()
+        client = self.ctx.make_client_for(self.ctx.provider_of(chain[0]))
+        sink, stop = self.ctx.headless_billing(chain[0], sv.session_id)      # ücretli API: maliyet + bütçe
         try:
             res = deep.run_subagent(client=client, model=chain[0], fallbacks=chain[1:], root=root, prompt=prompt,
                                     marker="", cancel=token, mode="auto", test_check=True,
                                     gate=getattr(self, "_par_gate", None), runner_kw=kw,
                                     base_body=router.consistent_body("kod", chain[0]),
                                     context_tokens=getattr(info, "context_length", None),
-                                    max_steps=int(self.ctx.settings.agent_max_steps or 80))
+                                    max_steps=int(self.ctx.settings.agent_max_steps or 80),
+                                    cost_sink=sink, budget_stop=stop)
         finally:
             client.close()
         marks = list(getattr(critic, "log", None) or [])
@@ -597,6 +605,8 @@ class ProjectController(QObject):
         return pj.TaskRun(stopped=res.stopped, summary=res.text, model=res.model, critic=marks)
 
     def _fetch_quota(self):
+        if not self.ctx.auto_ok("evren"):
+            return None                      # kota ucu yalnız EVREN'de (paralel görev başka API'de: bütçe koruması)
         client = self.ctx.make_client()
         try:
             return client.get_quota()

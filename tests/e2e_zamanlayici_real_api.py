@@ -39,6 +39,7 @@ def main() -> int:
     from evren_studio.ui.main_window import MainWindow
 
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.show()
     proj = klasor("zaman-proje-")
     s = w.ctx.settings

@@ -71,6 +71,48 @@ def load_api_key(provider: str = "evren") -> str | None:
     return value or None
 
 
+# ---- açılışta arka planda önceden okuma (2026-11-12) ---------------------------------------------------------------
+# Ölçüm: pencere kurulurken anahtar kasası 7 kez okunuyordu (EVREN + ücretli sağlayıcılar; eksik kayıt ~20 ms) ve
+# keyring'in ilk yüklenmesi ~80 ms — hepsi ana iş parçacığında. app.py Qt yüklenirken bunları arka planda okur;
+# AppContext kurulurken sonucu BİR KEZ alır (take_preloaded) ve kendi önbelleğine koyar. Sonuç alındıktan sonra burada
+# hiçbir anahtar tutulmaz. Önceden okuma başlatılmadıysa (testler, araçlar) hiçbir şey değişmez.
+_preload: dict[str, str | None] = {}
+_preload_state = {"started": False}
+_preload_done: Any = None
+
+
+def preload_keys(providers: tuple[str, ...] = ("evren", "openai", "anthropic", "tavily")) -> None:
+    import threading
+
+    global _preload_done
+    _preload_done = threading.Event()
+    _preload_state["started"] = True
+    done = _preload_done
+
+    def job() -> None:
+        try:
+            for p in providers:
+                _preload[p] = load_api_key(p)
+        except Exception:
+            _preload.clear()                  # yarım sonuç kullanılmaz; AppContext normal yoldan okur
+        finally:
+            done.set()
+
+    threading.Thread(target=job, name="anahtar-onokuma", daemon=True).start()
+
+
+def take_preloaded(timeout: float = 2.0) -> dict[str, str | None]:
+    """Önceden okunan anahtarlar (bir kez). Başlatılmadıysa ya da süre içinde bitmediyse boş sözlük."""
+    if not _preload_state["started"] or _preload_done is None:
+        return {}
+    _preload_state["started"] = False
+    if not _preload_done.wait(timeout):
+        return {}
+    out = dict(_preload)
+    _preload.clear()
+    return out
+
+
 def delete_api_key(provider: str = "evren") -> bool:
     """Anahtarı siler. Kayıt yoksa False döner, hata fırlatmaz."""
     import keyring.errors

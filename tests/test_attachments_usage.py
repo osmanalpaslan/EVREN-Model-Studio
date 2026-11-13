@@ -307,6 +307,32 @@ def test_kullanim_dugmesi_ve_paneli(win):
     assert UsageSnapshot().quota is None
 
 
+def test_kullanim_oturumun_onbellek_payini_gosterir(win):
+    """Madde 22 A (2026-11-13 ölçümü): önbellekten okunan token kotadan düşmez → oturum özetinde gösterilir; önbellek
+    yoksa satır çıkmaz (R-22)."""
+    from PySide6.QtWidgets import QLabel
+
+    from evren_studio.ui.usage_popup import UsagePanel
+
+    app, w = win
+    s = w.session
+    sid = w.ctx.db.create_session("m", None, "auto")
+    s.session_id = sid
+    w.ctx.db.add_session_message(sid, "assistant", "a", meta={"usage": {"input_tokens": 1000, "output_tokens": 50,
+                                                                       "cached_tokens": 0}})
+    w.ctx.db.add_session_message(sid, "assistant", "b", meta={"usage": {"input_tokens": 3000, "output_tokens": 50,
+                                                                       "cached_tokens": 2400}})
+    snap = s._usage_snapshot()
+    assert (snap.session_in, snap.session_cached) == (4000, 2400)
+    pop = UsagePanel()
+    pop.set_snapshot(snap)
+    texts = " ".join(lab.text() for lab in pop.findChildren(QLabel))
+    assert "Önbellekten: 2.400 (%60)" in texts and "kotadan düşmez" in texts
+    snap.session_cached = 0
+    pop.set_snapshot(snap)
+    assert "Önbellekten" not in " ".join(lab.text() for lab in pop.findChildren(QLabel) if lab.isVisibleTo(pop))
+
+
 def test_kullanim_ucretli_modelde_butce_gosterir(win):
     app, w = win
     s = w.session

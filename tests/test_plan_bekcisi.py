@@ -178,15 +178,19 @@ def test_kapali_oldugu_durumlar(db, proj, kw):
     assert _nudges(client) == []
 
 
-def test_sistem_isteminde_acik_maddeler(db, proj):
+def test_istekte_acik_maddeler_kuyruk_notunda(db, proj):
+    """Açık plan modele her istekte gider; Madde 22 B'den beri sistem isteminde DEĞİL son mesajın kuyruğunda (plan
+    ilerledikçe değişir; sistem isteminde dursa her adımda tüm geçmişin önbelleği giderdi)."""
     client = FakeClient([
         ChatResult(tool_calls=[call("write_file", path="PLAN.md", content=PLAN3)]),
         ChatResult(content="ENGEL: dur", finish_reason="stop"),
     ])
     runner, history, _ = make_runner(db, client, proj, mode="auto", plan_guard=True)
     runner.run(history)
-    system = client.calls[1]["messages"][0]["content"]
-    assert "# Açık plan maddeleri (PLAN.md)" in system and "Faz 3: c.py" in system
+    msgs = client.calls[1]["messages"]
+    assert "Açık plan maddeleri" not in msgs[0]["content"]
+    last = msgs[-1]["content"]
+    assert "# Açık plan maddeleri (PLAN.md)" in last and "Faz 3: c.py" in last and "Uygulama notu" in last
 
 
 # ---- arayüz: Proje ajanı önerisi ----------------------------------------------------------------

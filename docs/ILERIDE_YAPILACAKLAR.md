@@ -36,8 +36,8 @@ dosyaları, AppMutex, duman testi, PATH tazeleme, Store python yer tutucusu). Te
 | Paketleyici | **PyInstaller, klasörlü (onedir)**, pencereli (konsolsuz) | Olgun, ücretsiz, PySide6 desteği iyi. Onedir her açılışta geçici klasöre açılmaz: hızlı başlar, antivirüs yanlış alarmı daha az |
 | Kurulum aracı | **Inno Setup 6** (ücretsiz, açık kaynak; `ISCC.exe`) | Türkçe arayüz hazır (`Turkish.isl`), kullanıcı veya tüm kullanıcılar kurulumu, kaldırıcı, yükseltme, imzalama desteği |
 | Değerlendirilip ertelenen | MSIX (imza zorunlu, Store akışı), Nuitka (derleme uzun; antivirüs açısından daha iyi olabilir; sorun çıkarsa yeniden değerlendir), cx_Freeze, WiX/MSI (kurumsal dağıtım istenirse) | — |
-| Kurulum kapsamı | Varsayılan **yalnız bu kullanıcı** (`PrivilegesRequired=lowest`, `PrivilegesRequiredOverridesAllowed=dialog`): yönetici izni gerekmez. İsteyen "tüm kullanıcılar" seçer (UAC ister) | Kurumsal bilgisayarlarda yönetici izni olmayan kullanıcılar da kurabilsin |
-| Kurulum yeri | Kullanıcı: `%LOCALAPPDATA%\Programs\EVREN Studio` · Tüm kullanıcılar: `%ProgramFiles%\EVREN Studio` | Windows standardı |
+| Kurulum kapsamı | **Yalnız bu kullanıcı** (`PrivilegesRequired=lowest`): yönetici izni gerekmez, SORMAZ. "Tüm kullanıcılar" seçeneği 2026-11-12 kullanıcı kararıyla KALDIRILDI (`PrivilegesRequiredOverridesAllowed` yok) | Kurumsal bilgisayarlarda yönetici izni olmayan kullanıcılar da kurabilsin |
+| Kurulum yeri | `%LOCALAPPDATA%\Programs\EVREN Studio` | Windows standardı (kullanıcı kapsamı) |
 | Kullanıcı verisi | Değişmez: `%LOCALAPPDATA%\EVREN-Model-Studio` (config.json, evren.db, attachments, logs), anahtar Credential Manager'da | Kaynak koddan kurulumla aynı yer: geçişte veri kaybolmaz |
 | Mimari | Yalnız **Windows 10/11 x64** | PySide6 6.7+ gereksinimi |
 | Sürüm | Tek kaynak: `evren_studio.__version__` → pyproject, EXE sürüm bilgisi ve Inno `AppVersion` buradan | Şu an sürüm `pyproject.toml` ve `__init__.py`'de iki kez yazılı (0.2.0) |
@@ -148,7 +148,7 @@ Sandbox** (Windows 10/11 Pro'da yerleşik) veya sanal makine:
 - [x] Kullanıcı adında boşluk ve Türkçe harf (ör. `C:\Users\Osman Alpaslan`). (geliştirme bilgisayarı)
 - [ ] Eski sürümün üzerine yükseltme: veri ve anahtar korunur.
 - [ ] Kaldırma: "verileri sil = hayır" veri kalır; "evet" veri + anahtarlar silinir.
-- [ ] Tüm kullanıcılar kurulumu (UAC) da çalışır. — DOĞRULANMADI (yönetici onayı gerekir)
+- [x] ~~Tüm kullanıcılar kurulumu (UAC)~~ — seçenek KALDIRILDI (kullanıcı kararı 2026-11-12), denenecek bir şey yok.
 - [ ] Defender taraması temiz; SmartScreen davranışı belgelenir.
 - [ ] Ekran görüntüleriyle kurulum adımları (R-05), sonuç bu dosyaya ve
       CHANGELOG'a yazılır; doğrulanmayan madde "doğrulanmadı" diye kalır.
@@ -297,7 +297,7 @@ Açık kalanlar / ileride:
       beklenirken 20-30 sn'lik yoklama.
 - [ ] gemma-4-31b için maraton ölçümü (kısa görevlerde en hızlı; uzun işte döngü geçmişi var).
 
-## 7. Toplu yapılacaklar listesi — BEKLİYOR (kullanıcı "toplu yap" diyene kadar BAŞLAMA; 2026-10-23)
+## 7. Toplu yapılacaklar listesi — YAPILDI (F1-F7, 2026-10-24; aşağıdaki §7.5 tablosu). Tek açık: ücretli sağlayıcıların gerçek anahtarla doğrulanması (ücretli → kullanıcı kararı)
 
 Kullanıcı kararı: maddeler biriktirilir, sonra toplu uygulanır. Rakip/açık kaynak analizi ve Auto Pro analizi
 `docs/knowledge/RAKIP_VE_AUTOPRO_ANALIZI.md`'de; oradan kullanıcının ONAYLADIĞI maddeler buraya eklenir.
@@ -410,3 +410,15 @@ Kullanıcı onayı gereken anlar: program/şablon indirme (Godot şablonları, M
 - ~~Akışlı yanıtta auto'nun yönlendirdiği modeli kaydetme~~ — YAPILDI 2026-10-24: EVREN akışta da veriyormuş
   (`X-Evren-Routed-Model` başlığı); önceki "vermiyor" iddiası yanlıştı.
 - ~~Ayarlar'da "oyun araçlarını kur" düğmesi~~ — YAPILDI 2026-10-24 (onaylı indirme + gömülü sağlama toplamı).
+- **Madde 24 — web araması için kullanıcının kendi API'si (kullanıcı 2026-11-14: "şimdi yapmayalım, kaydet, sonra
+  planlarız")**: Web erişimi olmayan API'lerde (EVREN dahil — 2026-11-14 ölçümü: `evren_tools` açıkken de canlı veri
+  yok) web sorgusu için kullanıcının kendi arama API'sini gireceği belirgin bir alan; bu alandaki ücretsiz Tavily gibi
+  arama API'leri, arama yapamayan tüm motorlara hizmet etsin. Bugünkü durum (doğrulandı): Tavily alanı "Sağlayıcılar ve
+  anahtarlar" ekranında var, anahtar yalnız o bilgisayarın Credential Manager'ında (pakete GİRMEZ); anahtarı olmayan
+  kullanıcı anahtarsız Tavily → DuckDuckGo'ya düşer. Planlanacaklar: ilk kurulumda/ilk aramada "arama anahtarı ekle"
+  yönlendirmesi, birden çok arama sağlayıcısı (Brave, Serper, Exa vb. ücretsiz katmanlar) arasında seçim ve yedek
+  zinciri, kalan kota göstergesi, sağlayıcının kendi web araması varsa (ör. OpenAI/Anthropic) onu kullanma seçeneği.
+- Madde 22 sonrası adaylar (2026-11-13, onay bekler): (1) test bekçisi testleri ikinci kez DÜZ ortamda (ajanın
+  PYTHONUTF8/PYTHONIOENCODING değişkenleri olmadan) koşsun — modelin yazdığı, yalnız UTF-8 kipinde geçen testi yakalar
+  (2026-11-14 zorluk mini_proje: alt süreç çıktısını utf-8 okuyan test düz konsolda UnicodeDecodeError ile düştü); (2) `json_schema`
+  yapılandırılmış çıktıyı deepseek'te ölç (qwen'de 2 kat yavaştı), hızlıysa yalnız o modelde aç.

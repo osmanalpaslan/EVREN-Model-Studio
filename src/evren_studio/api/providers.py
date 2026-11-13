@@ -97,7 +97,60 @@ GATEWAY_KINDS: dict[str, dict] = {
     "openai_uyumlu": {"name": "OpenAI uyumlu sunucu", "base_url": "", "key_prefix": "",
                       "keys_url": "", "docs_url": "", "billing_url": "",
                       "note": "Chat Completions destekleyen herhangi bir sunucu (yerel LM Studio/Ollama, kurum içi…)."},
+    # ---- Tek ekran (2026-11-12, kullanıcı: "kilo code gibi bütün api anahtarları ve motorlar için genel bir alan").
+    # Hepsi OpenAI uyumlu Chat Completions sunar. Model listesi uçları 2026-11-12'de ANAHTARSIZ yoklandı (kişisel veri
+    # yok): 401/403/400 "anahtar gerekli" = uç var · 200 = açık liste. Gemini anahtarsız 404 döndü, sahte anahtarla
+    # "Please pass a valid API key" (400) → uç doğru. Cerebras bot korumasına (429) takıldı → eklenmedi.
+    # Gerçek (ücretli) anahtarla DOĞRULANMADI (R-17).
+    "gemini": {"name": "Google Gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+               "key_prefix": "AIza", "keys_url": "https://aistudio.google.com/apikey",
+               "docs_url": "https://ai.google.dev/gemini-api/docs/openai",
+               "billing_url": "https://aistudio.google.com/usage",
+               "note": "Google'ın Gemini modelleri (ücretsiz kullanım kotası olan hesaplar var)."},
+    "deepseek": {"name": "DeepSeek", "base_url": "https://api.deepseek.com", "key_prefix": "sk-",
+                 "keys_url": "https://platform.deepseek.com/api_keys", "docs_url": "https://api-docs.deepseek.com",
+                 "billing_url": "https://platform.deepseek.com/usage",
+                 "note": "DeepSeek'in kendi modelleri (sohbet ve akıl yürütme)."},
+    "mistral": {"name": "Mistral AI", "base_url": "https://api.mistral.ai/v1", "key_prefix": "",
+                "keys_url": "https://console.mistral.ai/api-keys", "docs_url": "https://docs.mistral.ai",
+                "billing_url": "https://console.mistral.ai/usage",
+                "note": "Mistral modelleri (Codestral kodlama modeli dahil)."},
+    "groq": {"name": "Groq", "base_url": "https://api.groq.com/openai/v1", "key_prefix": "gsk_",
+             "keys_url": "https://console.groq.com/keys", "docs_url": "https://console.groq.com/docs",
+             "billing_url": "https://console.groq.com/settings/billing",
+             "note": "Çok hızlı çıkarım yapan açık modeller."},
+    "xai": {"name": "xAI (Grok)", "base_url": "https://api.x.ai/v1", "key_prefix": "xai-",
+            "keys_url": "https://console.x.ai", "docs_url": "https://docs.x.ai",
+            "billing_url": "https://console.x.ai", "note": "xAI'ın Grok modelleri."},
+    "together": {"name": "Together AI", "base_url": "https://api.together.xyz/v1", "key_prefix": "",
+                 "keys_url": "https://api.together.ai/settings/api-keys", "docs_url": "https://docs.together.ai",
+                 "billing_url": "https://api.together.ai/settings/billing",
+                 "note": "Çok sayıda açık model (Llama, Qwen, DeepSeek…)."},
+    "fireworks": {"name": "Fireworks AI", "base_url": "https://api.fireworks.ai/inference/v1", "key_prefix": "fw_",
+                  "keys_url": "https://fireworks.ai/account/api-keys", "docs_url": "https://docs.fireworks.ai",
+                  "billing_url": "https://fireworks.ai/account/billing", "note": "Hızlı açık modeller."},
+    "moonshot": {"name": "Moonshot (Kimi)", "base_url": "https://api.moonshot.ai/v1", "key_prefix": "sk-",
+                 "keys_url": "https://platform.moonshot.ai/console/api-keys",
+                 "docs_url": "https://platform.moonshot.ai/docs", "billing_url": "https://platform.moonshot.ai/console",
+                 "note": "Moonshot'ın Kimi modelleri."},
+    "huggingface": {"name": "Hugging Face", "base_url": "https://router.huggingface.co/v1", "key_prefix": "hf_",
+                    "keys_url": "https://huggingface.co/settings/tokens",
+                    "docs_url": "https://huggingface.co/docs/inference-providers",
+                    "billing_url": "https://huggingface.co/settings/billing",
+                    "note": "Hugging Face çıkarım sağlayıcıları üzerinden açık modeller."},
+    "vercel": {"name": "Vercel AI Gateway", "base_url": "https://ai-gateway.vercel.sh/v1", "key_prefix": "",
+               "keys_url": "https://vercel.com/docs/ai-gateway", "docs_url": "https://vercel.com/docs/ai-gateway",
+               "billing_url": "https://vercel.com/docs/ai-gateway",
+               "note": "Tek anahtarla birçok sağlayıcının modelleri (model adı: sağlayıcı/model)."},
+    "ollama": {"name": "Ollama (bu bilgisayarda)", "base_url": "http://localhost:11434/v1", "key_prefix": "",
+               "keys_url": "", "docs_url": "https://ollama.com", "billing_url": "",
+               "note": "Bilgisayarınızda çalışan ücretsiz modeller; anahtar gerekmez (Ollama açık olmalı)."},
+    "lmstudio": {"name": "LM Studio (bu bilgisayarda)", "base_url": "http://localhost:1234/v1", "key_prefix": "",
+                 "keys_url": "", "docs_url": "https://lmstudio.ai", "billing_url": "",
+                 "note": "Bilgisayarınızda çalışan ücretsiz modeller; anahtar gerekmez (LM Studio sunucusu açık olmalı)."},
 }
+# Anahtar istemeyen (yerel/özel) türler: ücretsiz sayılır, anahtar alanı isteğe bağlı
+KEYLESS_KINDS = frozenset({"openai_uyumlu", "ollama", "lmstudio"})
 
 
 def gateway_id(kind: str, existing: set[str]) -> str:
@@ -113,7 +166,7 @@ def register_gateway(pid: str, kind: str, name: str = "", base_url: str = "") ->
     """Kullanıcının eklediği ağ geçidini çalışma anında PROVIDERS'a kaydeder (ad, faturalama bağlantısı vb.
     mevcut ekranlarda değişiklik gerektirmeden görünsün). Ücretli sayılır; doğrulanmamış."""
     k = GATEWAY_KINDS.get(kind, GATEWAY_KINDS["openai_uyumlu"])
-    info = ProviderInfo(pid, name or k["name"], base_url or k["base_url"], paid=(kind != "openai_uyumlu"),
+    info = ProviderInfo(pid, name or k["name"], base_url or k["base_url"], paid=(kind not in KEYLESS_KINDS),
                         verified=False, key_prefix=k["key_prefix"], keys_url=k["keys_url"],
                         billing_url=k["billing_url"], usage_url=k["billing_url"], docs_url=k["docs_url"],
                         notes=(k["note"], "Harcama uygulamada tahmin edilemez: sağlayıcı panelinden izleyin."))

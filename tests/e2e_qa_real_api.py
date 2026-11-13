@@ -136,6 +136,7 @@ def main() -> int:
 
     sv_mod.AgentRunner = RecordingRunner
     w = MainWindow()
+    w.start_background_loads()  # uygulamayla aynı açılış: canlı model listesi + kullanım (app.py)
     w.resize(1440, 900)
     w.show()
     w.ctx.mcp.data_dir = mcp_data

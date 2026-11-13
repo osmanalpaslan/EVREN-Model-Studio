@@ -1,5 +1,110 @@
 # Değişiklik Günlüğü
 
+## 0.5.1 — 2026-11-14
+
+- **İş sürerken mesaj yazabilirsiniz**: Ajan çalışırken yazıp Enter'a bastığınız mesaj artık reddedilmez, sıraya alınır.
+  Normal turda bir sonraki adımda çalışan işe iletilir (Claude Code gibi: "bunu da ekle", "dur, şöyle yap"); ajan
+  yanıtını bitirmişse aynı bağlamla devam eder. QA, Proje ve Derin akışları sürerken mesaj bekler, akış bitince gönderilir.
+  Henüz işlenmemiş mesaj yazma kutusunun üstünde görünür; "Geri çek" ile kutuya döner. Esc ile durdurduğunuzda ya da
+  başka oturuma geçtiğinizde sıradaki mesajlar kendiliğinden gönderilmez, kutuya geri gelir.
+- **Bozulan motordan yedeğe geçiş**: Uygulamanın kendi işlerinde (başlık, özet, inceleme, Derin/Proje/QA görevleri)
+  kullanılan bir motor son saatlerde çoğunlukla hata ya da boş yanıt veriyorsa (bakım, performans düşüşü) yedek motor
+  öne alınır; motor düzelince birkaç saat içinde eski sırasına döner. Bir rolde tek motor kaldıysa diğer motorlar yedek olur.
+- **EVREN dışındaki API ile de tam otomatik çalışma**: EVREN anahtarı yoksa Derin Mod, QA ajanı, paralel proje görevleri,
+  otomatik test araçları ve uygulamanın iç işleri seçtiğiniz API'nin (OpenAI, Anthropic, OpenRouter, yerel sunucu…)
+  modelleriyle yürür. EVREN varken bu işler eskisi gibi yalnız ücretsiz EVREN ile yapılır. Ücretli API'de arka plandaki
+  alt ajanların kullanımı da maliyete yazılır ve aylık bütçe dolunca durur.
+- **Düzeltme — zorluk ölçümü**: Modelin kendi testleri artık uygulamanın ajana verdiği ortamla ve düz Windows ortamıyla
+  denetlenir (yarım ayarlı ölçüm ortamı doğru testi "düştü" gösteriyordu).
+
+- **Kişisel kurallar**: Ayarlar > Kod ajanı'nda her işte geçerli kısa kurallarınızı (ör. "yanıtları kısa yaz") bir kez
+  yazarsınız; sohbette ve ajanda uygulanır. `/hafiza-olustur` (eski adı `/init`) projeye özgü kısa EVREN.md hazırlar:
+  yalnız doğrulanmış komutlar ve projeye özgü kurallar, en çok 40 satır (uzun talimat zayıf modelleri yavaşlatır).
+- **Takılan kısa isteklerde yedek**: Uygulamanın kısa iç işleri (başlık, yargıç, soru birleştirme gibi) bir EVREN modeli
+  12 saniyede yanıt vermezse sıradaki modele paralel olarak da sorulur, önce gelen yanıt kullanılır (EVREN'de aynı istek
+  arada 50 saniyeye kadar takılabiliyor). Ücretli sağlayıcılarda yapılmaz.
+- **Masaüstü kontrolü hızlı yol**: Ajan artık yalnız hedef pencereyi okuyan bir araçla ve tek çağrıda birden çok eylem
+  (yaz, tıkla, seç, tuş) yapan bir araçla çalışır; tüm masaüstünü taramaz, her tıklama için ayrı tur beklemez. Mümkünse
+  fare yerine Windows'un erişilebilirlik arayüzü kullanılır (farenizle çakışmaz). Windows oturumu kilitliyken masaüstü
+  işi başlamaz, nedeni söylenir. Gerçek ölçüm: "uygulamayı aç, iki sayı yaz, Topla'ya bas, sonucu söyle, kapat" görevi
+  714 sn → 91-108 sn.
+- **Düzeltme — test bekçisi eski kodu test edebiliyordu**: Ajan bir Python dosyasını testlerle aynı saniyede ve aynı
+  uzunlukta düzenlediğinde (ör. `a + b` → `a - b`) Python eski derlenmiş kopyayı kullanıyor, bozuk kod "testler geçti"
+  görünüyordu. Ajan ya da dosya paneli bir .py dosyası yazınca o dosyanın derlenmiş kopyaları artık silinir.
+- **Yeni hata bekçileri**: Ajan sağlam bir Python/JSON/TOML dosyasını bozacak bir düzenleme gönderirse dosya
+  değiştirilmez, hata satırıyla birlikte modele geri döner. Ajan kanıtı olmadan "testler geçti" ya da "dosyayı
+  oluşturdum" derse doğrulamaya yönlendirilir. Hata düzeltme isteklerinde önce hatayı gösteren testi çalıştırması
+  hatırlatılır.
+- **Uzun oturumlar daha hızlı ve kota dostu**: Ajan isteklerinin sabit başı oturum boyunca aynı tutulur, değişen notlar
+  sona eklenir. Önceki turların geçmişi artık sunucu önbelleğinden okunur (gerçek ölçüm: tur başında önbellek %45 → %96,
+  3 turluk oturum 155/65 sn → 72/45 sn). Önbellekten okunan kısım günlük kotadan düşmez.
+- **Önbellek göstergesi**: Kullanım penceresinde oturumun ne kadarının sunucu önbelleğinden geldiği görünür. Önbellekten okunan kısım EVREN'in günlük kotasından düşmez ve yanıtı hızlandırır (ölçüldü: aynı başlı istek 4-7 kat hızlı).
+
+- **Düzeltme — kapanmış pencerenin gecikmeli işleri**: pencere kapandıktan sonra günlük yedek, geçmiş bakımı, güncelleme
+  denetimi ve gözlem gönderimi artık başlamaz (aynı süreçte ikinci pencere açan araçlarda silinmiş klasördeki veritabanını
+  açmaya çalışıyordu). Yedek, veritabanı dosyası yoksa boş dosya oluşturmak yerine açık hata verir.
+
+- **Veritabanı yazma 3,5 kat hızlı (WAL kipi)**: her mesaj kaydı 3,4 → 1 ms; kayıt sürerken okuma beklemez. Elektrik
+  kesintisinde son mesaj kaybolmaz (tam eşitleme korunur). Veri klasörü ağ sürücüsündeyse eski kip kullanılır. Yedekteki
+  YEDEK_BILGI.json elle geri yüklemenin güvenli sırasını yazar.
+
+- **Derin Mod daha güvenilir**: doğrulamadan önce projenin testleri gerçekten çalıştırılır; değişiklikten önce geçen
+  test düşerse, denetçilerin yorumundan bağımsız olarak "yüksek" sorun sayılır ve düzeltme turu açılır (gerçek test
+  çıktısı denetçilere kanıt olarak gider). Projede işten ÖNCE de düşen testler varsa bunlar bu değişikliğin hatası
+  sayılmaz; ilgisiz eski hata için düzeltme turu açılmaz. Alt ajanlar proje haritasını kullanır. Aynı kararı farklı sözcüklerle soran tekrar eden sorular tek
+  soruya iner: önce sözcük benzerliği, sonra kısa bir model isteği soruları karara göre gruplar ve her gruptan en kapsamlı
+  soru kalır (gerçek koşuda 5 soru → 3; farklı kararlar hiç birleştirilmedi).
+- **Ajan daha kısa ve odaklı kod/test yazar**: EVREN saniyede ~10-20 token yazdığı için gereksiz uzun test dosyaları
+  dakikalar sürüyordu (171 satırlık tek dosya 5 dk); her davranış ve kenar durum için bir test kuralı korunur.
+- **Düzenleme hatası daha hızlı toparlanır**: ajanın değiştirmek istediği metin dosyada birebir bulunamazsa dosyadaki
+  en yakın bölüm (ya da "boşluk/girinti farklı") satır numaralarıyla gösterilir; ajan dosyayı yeniden okumak için ayrı
+  bir adım harcamaz.
+
+- **Kurulum artık soru sormadan yalnız sizin için kurar**: "Kimin için kurulsun?" penceresi ve "tüm kullanıcılar" seçeneği kaldırıldı; yönetici izni istenmez.
+- **Döngü koruması kalıcı çözüm**: tarayıcı gibi dış araçlarla (MCP) çalışırken yersiz "döngü" uyarısı verilmez; ajan
+  gerçekten aynı işi tekrarlarsa yine durdurulur. Proje yürütücüsünün plan/rapor dosyalarını ajan artık bozamaz.
+- **Düzeltme — klavyeden girdi bekleyen program**: ajan, girdi isteyen bir programı girdisiz çalıştırınca durumu size
+  açıklar; uydurma girdiyle çıkan sonucu gerçekmiş gibi sunmaz.
+- **Düzeltme — komutlara aktarılan metnin başına görünmez karakter (BOM) ekleniyordu**: `Get-Content veri.csv | python
+  isle.py` gibi komutlarda ilk satır/sütun sessizce bozuluyordu.
+- **Uzun oturumlar 3 kat hızlı açılır, daha az bellek kullanır**: 716 mesajlık gerçek oturumda açılış 1,0 → 0,34 sn,
+  bellek artışı 80 → 35 MB. Kapalı araç kartlarının ayrıntıları ve boş yanıt parçaları gerektiğinde kurulur; tek bir
+  uzun ajan turu artık tamamı birden çizilmez. Sağ paneldeki Değişiklikler listesi yalnız açıkken hesaplanır ve ajan
+  çalışırken her dosya değişikliğinde tüm farkları baştan hesaplamaz.
+- **Tüm API anahtarları ve motorlar tek ekranda (Kilo Code gibi)**: Ayarlar > "Sağlayıcılar ve anahtarlar". OpenAI,
+  Claude ve diğerleri için ayrı ayrı alanlar kalktı: tek liste + "Sağlayıcı ekle". Popüler sağlayıcılar (EVREN, OpenAI,
+  Anthropic/Claude, Google Gemini, DeepSeek, OpenRouter) kutu olarak, diğerleri aranabilir listede (Mistral, Groq, xAI,
+  Together, Fireworks, Moonshot, Hugging Face, Vercel, Kilo), bilgisayarınızdaki Ollama / LM Studio (anahtarsız,
+  ücretsiz) ve "Özel sağlayıcı" (adres + model adı). "Bağlantıyı dene" modelleri getirir; hata satırda nedeniyle
+  gösterilir (anahtar reddedildi, ulaşılamadı, kredi bitti…). Web araması (Tavily) anahtarı da aynı yerde. Eski
+  anahtarlarınız kendiliğinden listede. Karşılamadaki "Anahtar gir" doğrudan EVREN penceresini açar.
+- **Düzeltme — anahtarsız yerel/özel sunucu modelleri görünmüyordu**: anahtar istemeyen sunucu eklenince modelleri
+  seçicide çıkmıyordu; anahtarsız istekte sunucuya geçersiz kimlik başlığı gidiyordu.
+- **Ekran geçişlerinde yumuşak animasyon**: sayfalar arası (oturum ↔ Ayarlar/Modeller/…), başka oturum açılınca, yeni
+  oturumda, sağ panel sekmelerinde, Ayarlar bölümlerinde ve zamanlanmış görev listesi ↔ ayrıntıda eski ekran 0,2 sn'de
+  yumuşakça kaybolur, yeni sayfa birkaç piksel aşağıdan yerine oturur. Sayfa anında kullanılabilir (geçiş tıklamayı
+  engellemez). Windows'ta animasyonlar kapalıysa geçiş anında olur.
+- **Daha küçük veritabanı**: ajanın dosya geçmişi (her düzenlemede dosyanın önceki/sonraki hâli) sıkıştırılarak saklanır.
+  Gerçek veride veritabanı 12,7 → 6,8 MB; eski kayıtlar açılıştan 15 sn sonra arka planda bir kez dönüştürülür (her
+  kayıt yazılmadan önce açılıp aslıyla karşılaştırılır). Not: 0.5.0'a geri dönülürse eski sürüm sıkıştırılmış kayıtları
+  açamaz.
+- **Yeni görünüm: güncel iOS tasarım dili (iOS 27 "Liquid Glass")**: yazma kutusu, düğmeler ve öneri kartları ince
+  belirgin kenarlı "cam" yüzey; hap biçimli seçiciler; ayarlarda onay kutuları yerine iOS anahtarları; açılır listelerde
+  ⌃⌄ işareti (artık açılır olduğu belli); sağ panelde iOS bölümlü sekme düğmesi; büyük, kalın başlıklar; iOS sistem
+  renkleri. Açık tema parlak beyaz değil yumuşak gri; koyu temada yazılar parlak, vurgu beyaz (önceki kararlarınız
+  korundu). Tüm yazılar iki temada okunurluk ölçümünden geçti.
+- **Düzeltme — komut listesi yazma kutusunun üstüne biniyordu**: "/" ile açılan liste küçük pencerede yazma kutusunun
+  arkasına ve alttaki uyarı yazısının üstüne taşıyordu; artık pencereye göre kısalır, karşılama ekranı gerekirse kayar.
+- **Yeni logo ve animasyonlar (Türk bayrağına sadık)**: uygulama simgesi artık iOS tarzı yuvarlatılmış kırmızı cam
+  karo üzerinde beyaz ay-yıldız (görev çubuğu, kısayol, kurulum sihirbazı, kenar çubuğu, yanıt başlığı). Karşılama
+  ekranında ay-yıldız canlı oluşur: halka kayarak hilale dönüşür, yıldız 72° dönerek yerine oturur, camdan ışık geçer.
+  Çalışma göstergesi yıldız 72° adımlarla parıldar. Windows'ta animasyonlar kapalıysa hareket gösterilmez.
+- **Düzeltme — logodaki yıldızın yeri**: yıldız, Türk Bayrağı Tüzüğü'ndeki yerinden uzakta çiziliyordu (büyük
+  boyutlarda); artık resmî ölçülerle her boyutta aynı.
+- **Uygulama 2 kat hızlı açılır**: pencere görünene kadar ~1,7 → ~0,7 sn. Ayarlar, Yardım, Modeller gibi sayfalar ilk
+  açıldıklarında hazırlanır; API anahtarları Windows kasasından arka planda bir kez okunur; açılışta model listesi
+  iki kez indirilmez.
+
 ## 0.5.0 — 2026-11-12 (kurulum dosyası `EVREN-Studio-Kurulum-0.5.0.exe`)
 
 Açık kaynak depo taramasından gelen geliştirmeler (Madde 20):

@@ -8,6 +8,10 @@
 3. DOĞRULA (R-25 kabul denetimi sınaması): BİLİNEN YANLIŞ bir değişiklikte (bölme sıfır kontrolü
    yok, istenen hata fırlatılmıyor) onaylanmış sorun bulunmalı; BİLİNEN DOĞRU değişiklikte
    "yüksek" sorun çıkmamalı.
+
+2026-11-12 (uygulamayla aynı): alt ajanlar proje haritasını alır; doğrulamadan önce testler GERÇEKTEN çalışır.
+A/B bayrakları: --haritasiz (eski: harita yok) · --testsiz (eski: test kanıtı yok) · --yalniz-anla (yalnız 1. aşama).
+Her alt ajanın araç çağrısı sayısı ve süresi yazdırılır (EVREN hızından bağımsız karşılaştırma ölçüsü).
 """
 from __future__ import annotations
 
@@ -30,6 +34,10 @@ BASE_CALC = '"""Basit hesap makinesi."""\n\n\ndef add(a, b):\n    return a + b\n
 BASE_TEST = ("import unittest\n\nfrom calc import add, sub\n\n\nclass T(unittest.TestCase):\n"
              "    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n\n"
              "    def test_sub(self):\n        self.assertEqual(sub(5, 3), 2)\n")
+
+# İşle ilgisiz, değişiklikten ÖNCE de düşen test (kullanıcı projelerinde sık görülür)
+OLD_FAILING = ("import unittest\n\n\nclass Eski(unittest.TestCase):\n    def test_bilinen_eski_hata(self):\n"
+               "        self.assertEqual('istanbul'.upper(), 'İSTANBUL')   # Python Türkçe i'yi bilmez\n")
 
 BAD_CALC = BASE_CALC + "\n\ndef div(a, b):\n    return a / b\n"
 BAD_TEST = BASE_TEST + "\n    def test_div(self):\n        self.assertEqual(div(6, 3), 2)\n"
@@ -104,12 +112,19 @@ def main() -> int:
         r = ctx.ai_route(role)
         return [m for m in [r.model] + r.fallbacks if ctx.provider_of(m) == "evren"]
 
+    harita = "--haritasiz" not in sys.argv
+    adimlar: list[tuple[str, int, float]] = []          # (etiket, araç çağrısı, süre sn)
+    print(f"proje haritası: {'AÇIK' if harita else 'KAPALI'} · test kanıtı: "
+          f"{'KAPALI' if '--testsiz' in sys.argv else 'AÇIK'}", flush=True)
+
     def sub_for(model_chain):
         def run(prompt, marker, label=""):
             c = ctx.make_client()
             try:
-                return dp.run_subagent(client=c, model=model_chain[0], fallbacks=model_chain[1:], root=tmp,
-                                       prompt=prompt, marker=marker, gate=gate)
+                res = dp.run_subagent(client=c, model=model_chain[0], fallbacks=model_chain[1:], root=tmp,
+                                      prompt=prompt, marker=marker, gate=gate, runner_kw={"project_map": harita})
+                adimlar.append((label or marker, int(res.tools or 0), float(res.seconds or 0.0)))
+                return res
             finally:
                 c.close()
         return run
@@ -121,7 +136,13 @@ def main() -> int:
         got = [f["angle"] for f in st.findings if f.get("data")]
         print(f"1 ANLA: {len(got)}/{len(st.findings)} bulgu ({', '.join(got)}) · {time.monotonic() - t0:.0f} sn "
               f"· durum: {[f['stopped'] for f in st.findings]}", flush=True)
+        anla = [a for a in adimlar if a[0].startswith("anla")]
+        print(f"   araç çağrısı: {[a[1] for a in anla]} (toplam {sum(a[1] for a in anla)}) · alt ajan süreleri "
+              f"{[round(a[2]) for a in anla]} sn", flush=True)
         print(f"   net istekte sorular ({len(st.questions)}): {st.questions}", flush=True)
+        if "--yalniz-anla" in sys.argv:
+            print("SONUÇ:", "GEÇTİ" if (ok and len(got) >= 2) else "KALDI")
+            return 0 if (ok and len(got) >= 2) else 1
         ok &= len(st.questions) == 0                     # R-22: net istekte soru kartı çıkmamalı
         ok &= len(got) >= 2
 
@@ -141,13 +162,18 @@ def main() -> int:
                 try:
                     ch = chain("kod")
                     return dp.run_subagent(client=c, model=ch[0], fallbacks=ch[1:], root=amb, prompt=prompt,
-                                           marker=marker, gate=gate)
+                                           marker=marker, gate=gate, runner_kw={"project_map": harita})
                 finally:
                     c.close()
+            def merge(messages):            # uygulamadaki gibi (deep_ui): tekrar eden sorular kısa iç istekle birleşir
+                text, _m = ctx.ai_chat("inceleme", messages, max_tokens=120, evren_only=True)
+                return text
+            notes: list[str] = []
             t0 = time.monotonic()
-            dp.understand(ast, sub_amb, gate, gate.max_parallel, lambda t: None)
-            print(f"1b ANLA (eksik veri, belirsiz): {len(ast.questions)} soru · {time.monotonic() - t0:.0f} sn",
-                  flush=True)
+            dp.understand(ast, sub_amb, gate, gate.max_parallel, notes.append,
+                          merge=None if "--birlestirmesiz" in sys.argv else merge)
+            print(f"1b ANLA (eksik veri, belirsiz): {len(ast.questions)} soru · {time.monotonic() - t0:.0f} sn"
+                  + "".join(f" · {n}" for n in notes if "birleştirildi" in n), flush=True)
             for q in ast.questions:
                 print("     ?", q[:160], flush=True)
             ok &= len(ast.questions) >= 1
@@ -183,7 +209,13 @@ def main() -> int:
             (tmp / "calc.py").write_text(files[name][0], encoding="utf-8")
             (tmp / "test_calc.py").write_text(files[name][1], encoding="utf-8")
             vst = dp.DeepState(goal=GOAL)
-            issues = dp.verify(vst, diff, vsub, gate, gate.max_parallel, lambda t: None)
+            with_tests = "--testsiz" not in sys.argv
+            tests = dp.project_tests(tmp) if with_tests else None
+            if with_tests:
+                print(f"   gerçek test: {tests['durum'] if tests else 'yok'} ({tests['komut'] if tests else '-'})",
+                      flush=True)
+            issues = dp.verify(vst, diff, vsub, gate, gate.max_parallel, lambda t: None, tests=tests,
+                               with_tests=with_tests)
             high = [i for i in issues if str(i.get("ciddiyet", "")).lower().startswith(("yuk", "yük"))]
             passed = bool(issues) if expect_issue else not high
             ok &= passed
@@ -191,6 +223,31 @@ def main() -> int:
                   f"{'BEKLENEN' if passed else 'BEKLENMEYEN'} · {time.monotonic() - t0:.0f} sn", flush=True)
             for i in issues[:4]:
                 print(f"     [{i.get('ciddiyet')}] {i.get('dosya')}: {str(i.get('aciklama'))[:120]}", flush=True)
+        if "--testsiz" not in sys.argv:
+            # 2026-11-13: projede İŞLE İLGİSİZ, önceden düşen bir test var → doğru değişiklik "yüksek" sorun almamalı
+            # (başlangıç ölçümü; Proje ajanının test bekçisiyle aynı ilke, R-20)
+            t0 = time.monotonic()
+            (tmp / "calc.py").write_text(BASE_CALC, encoding="utf-8")
+            (tmp / "test_calc.py").write_text(BASE_TEST, encoding="utf-8")
+            (tmp / "test_eski.py").write_text(OLD_FAILING, encoding="utf-8")
+            vst = dp.DeepState(goal=GOAL)
+            vst.baseline_tests = dp.project_tests(tmp)
+            (tmp / "calc.py").write_text(GOOD_CALC, encoding="utf-8")
+            (tmp / "test_calc.py").write_text(GOOD_TEST, encoding="utf-8")
+            tests = dp.project_tests(tmp)
+            print(f"   gerçek test: önce {vst.baseline_tests and vst.baseline_tests['durum']} · sonra "
+                  f"{tests and tests['durum']}", flush=True)
+            issues = dp.verify(vst, GOOD_DIFF, vsub, gate, gate.max_parallel, lambda t: None, tests=tests,
+                               with_tests=True)
+            high = [i for i in issues if str(i.get("ciddiyet", "")).lower().startswith(("yuk", "yük"))]
+            passed = (vst.baseline_tests or {}).get("durum") == "dustu" and not high
+            ok &= passed
+            print(f"3 DOĞRULA (DOĞRU değişiklik + ÖNCEDEN düşen ilgisiz test): {len(issues)} onaylı sorun, "
+                  f"{len(high)} yüksek → {'BEKLENEN' if passed else 'BEKLENMEYEN'} · {time.monotonic() - t0:.0f} sn",
+                  flush=True)
+            for i in issues[:4]:
+                print(f"     [{i.get('ciddiyet')}] {i.get('dosya')}: {str(i.get('aciklama'))[:120]}", flush=True)
+            (tmp / "test_eski.py").unlink()
         q = gate.snapshot(fresh=True)
         print(f"Kota: pencere %{int((getattr(q, 'usage_ratio', 0) or 0) * 100)}, "
               f"günlük kalan {getattr(q, 'daily_remaining_tokens', '?')}", flush=True)

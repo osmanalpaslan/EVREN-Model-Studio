@@ -39,7 +39,7 @@ class HelpPage(BasePage):
         c2, l2 = card()
         l2.addWidget(QLabel("Hızlı Kullanım"))
         quick = QLabel(
-            "1. Ayarlar > API Anahtarı bölümünden EVREN anahtarınızı girin.\n"
+            "1. Ayarlar > Sağlayıcılar ve anahtarlar > “Sağlayıcı ekle” ile EVREN anahtarınızı girin (ücretsiz).\n"
             "2. Sol üstten “Yeni oturum”a tıklayın ve bir proje klasörü seçin "
             "(veya klasörsüz sohbet edin).\n"
             "3. Görevi yazın. Ajan dosyaları okur; değişiklik ve komutlar için "

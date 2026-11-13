@@ -51,6 +51,7 @@ class UsageSnapshot:
     error: str = ""
     session_in: int = 0
     session_out: int = 0
+    session_cached: int = 0                 # girdinin sunucu önbelleğinden okunan kısmı (EVREN kotasından düşmez)
     paid_name: str = ""                     # seçili model ücretliyse sağlayıcı adı
     paid_spent: float = 0.0
     paid_limit: float = 0.0
@@ -365,6 +366,11 @@ class UsagePanel(QFrame):
             self.body_l.addWidget(_title("Bu oturum"))
             self.body_l.addWidget(_dim(f"Girdi {fmt_tokens(s.session_in)} · Çıktı "
                                        f"{fmt_tokens(s.session_out)} token"))
+            if s.session_cached and s.session_in:
+                # 2026-11-13 ölçümü: önbellekten okunan token kotadan düşmüyor ve yanıtı 4-7 kat hızlandırıyor
+                self.body_l.addWidget(_dim(
+                    f"Önbellekten: {fmt_tokens(s.session_cached)} (%{round(100 * s.session_cached / s.session_in)}) "
+                    "— bu kısım kotadan düşmez, yanıtı hızlandırır", faint=True))
         # ücretli
         if s.paid_name:
             from ..budget import format_usd
