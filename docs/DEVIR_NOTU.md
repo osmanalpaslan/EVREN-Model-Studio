@@ -12,7 +12,7 @@
 
 ## Şu an
 
-- **Güncelleme:** 2026-11-13 02:30 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. 0.5.0 yayında. Madde 21 (0.5.1 istekleri, TOPLU; dal `surum/0.5.1-istekler`) SÜRÜYOR — (k)–(r) YAPILDI. Kullanıcının 2026-11-12 "aşırı detaylı test + QA" isteği: statik tarama (0 gerçek hata), tam takım + kapsam (%86; 1325/1326 → düşen düzeltildi), gerçek API (zorluk 12/12, R-13, proje 8/8, web QA 9/9, derin, sağlayıcı 14/14) YAPILDI; masaüstü QA koşuyor (02:17-~02:47). Sırada: son tam takım + ui_denetim iki tema + docs/knowledge/RAPOR_2026-11-13.md + yedek; sonra kullanıcı isteğiyle bilgisayar 3 dk sonra kapanır. Paket/yayın İSTENMEDİ (açık onay olmadan yok). Yarım kalırsa: bu satırdaki "Sırada"dan devam.
+- **Güncelleme:** 2026-11-13 03:15 · Claude Code (claude-opus-5-5) · masaüstü bilgisayar. 0.5.0 yayında. Madde 21 (0.5.1 istekleri, TOPLU; dal `surum/0.5.1-istekler`) SÜRÜYOR — (k)–(r) YAPILDI, YARIM İŞ YOK. Kullanıcının 2026-11-12 "aşırı detaylı test + QA" isteği TAMAM: statik tarama (0 gerçek hata), tam takım + kapsam (%86), SON tam takım 1356/1356, ui_denetim iki tema 0/0/0, gerçek API (zorluk 12/12, R-13, proje 8/8, web QA 9/9, derin, sağlayıcı 14/14). Masaüstü QA GEÇERSİZ (Windows oturumu gece kilitlendi) → kullanıcı başındayken yeniden koşulacak (sıradaki ilk iş). Rapor: docs/knowledge/RAPOR_2026-11-13.md. Paket/yayın İSTENMEDİ: kullanıcı "yeni çıktıyı oluştur" deyince 0.5.1 çıktısı (yayın ayrıca onaylı).
 - **Aktif dal:** `surum/0.5.1-istekler` (master 9ba3543 üstünde; 0.5.1 istekleri burada birikir).
 - **PR birleştirme:** masaüstünde `.claude/settings.local.json` allow `Bash(gh pr merge *)`, `Bash(gh pr edit *)` var →
   motor birleştirebilir. Başka bilgisayarda bu kural yoksa Claude Code engeller: kullanıcıya aynı dosyaya bu iki kuralı

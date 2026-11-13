@@ -36,6 +36,10 @@
   (paralel yükte; 4. senaryo 501 sn).
 - Derin Mod (02:09): soru birleştirme 5 → 3 ("2 soru aynı kararı soruyordu"); önceden düşen ilgisiz testte 0 sorun. GEÇTİ.
 - Sağlayıcı ekranı (`tests/e2e_saglayici_ekrani_real_api.py`): 14/14.
+- Masaüstü QA (`tests/e2e_masaustu_real_api.py hepsi --kur`, 02:17-03:03): **GEÇERSİZ** — Windows oturumu gece kilitlendi
+  (kilit ekranı; QA hatalı sürüm 4/4 "engellendi", ajan bölümü 4/5). Uyku engelleyici ekran kilidini engellemez; masaüstü
+  testi kullanıcı başındayken ya da gece sırasının en başında koşulmalı. Masaüstü kodu bu gece değişmedi.
+- Son tam takım (03:04): **1356/1356**, 6 dk 42 sn · ui_denetim iki tema HATA 0 · KESIK 0 · UYARI 0.
 
 ## Derin Mod kanıt + soru ayıklama (2026-11-13 00:56-01:09, dal `surum/0.5.1-istekler`, `tests/e2e_derin_real_api.py`)
 
