@@ -2,6 +2,8 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Önbellek göstergesi**: Kullanım penceresinde oturumun ne kadarının sunucu önbelleğinden geldiği görünür. Önbellekten okunan kısım EVREN'in günlük kotasından düşmez ve yanıtı hızlandırır (ölçüldü: aynı başlı istek 4-7 kat hızlı).
+
 - **Düzeltme — kapanmış pencerenin gecikmeli işleri**: pencere kapandıktan sonra günlük yedek, geçmiş bakımı, güncelleme
   denetimi ve gözlem gönderimi artık başlamaz (aynı süreçte ikinci pencere açan araçlarda silinmiş klasördeki veritabanını
   açmaya çalışıyordu). Yedek, veritabanı dosyası yoksa boş dosya oluşturmak yerine açık hata verir.

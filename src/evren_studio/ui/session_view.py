@@ -2357,6 +2357,7 @@ class SessionView(QWidget):
                 u = (m.get("meta") or {}).get("usage") or {}
                 s.session_in += int(u.get("input_tokens") or 0)
                 s.session_out += int(u.get("output_tokens") or 0)
+                s.session_cached += int(u.get("cached_tokens") or 0)
         prov = self.ctx.provider_of(self.model) if self.model else "evren"
         provs = self.ctx.available_providers()
         paid_provs = [p for p in provs if p != "evren"]
