@@ -144,10 +144,12 @@ class Script:
     def __init__(self, seq):
         self.seq = list(seq)
         self.systems: list[str] = []
+        self.lasts: list[str] = []          # son mesaj (Madde 22 B: tura özel ipuçları kuyruk notunda)
         self.tool_names: list[list[str]] = []
 
     def chat(self, model, messages, stream=False, cancel=None, on_delta=None, on_reasoning=None, tools=None, **kw):
         self.systems.append(messages[0]["content"])
+        self.lasts.append(str(messages[-1]["content"]))
         self.tool_names.append([t["function"]["name"] for t in tools or []])
         return self.seq.pop(0) if self.seq else ChatResult(content="bitti", finish_reason="stop")
 
@@ -230,9 +232,9 @@ def test_arama_yapilamazsa_is_durmaz(db, tmp_path, monkeypatch):
 
 def test_tur_basi_hatirlatma_tetiklenir_ve_tetiklenmez(db, tmp_path):
     c, _t = run(db, tmp_path / "p", [], text="Flask'ın en son sürümünü internette araştır ve requirements'a yaz")
-    assert "# Web araması (bu tur)" in c.systems[0]
+    assert "# Web araması (bu tur)" in c.lasts[0] and "# Web araması" not in c.systems[0]   # kuyruk notunda
     c, _t = run(db, tmp_path / "q", [], text="app.py'deki hatayı düzelt ve testleri güncelle")
-    assert "# Web araması" not in c.systems[0]
+    assert "# Web araması" not in c.lasts[0] and "# Web araması" not in c.systems[0]
 
 
 # ---- Ayarlar: Tavily kartı -------------------------------------------------------------------------

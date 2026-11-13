@@ -39,9 +39,24 @@ modelde tam dosya daha güvenilir) · vLLM APC + structured outputs.
   - Kalıcı: kullanım penceresinde "Bu oturum → Önbellekten: N (%X) — kotadan düşmez, yanıtı hızlandırır" (önbellek
     yoksa satır yok); tools/onbellek_raporu.py (tüm / 2.+ adım / TUR BAŞI oranı, kotadan düşmeyen token).
 
+- B önbellek dostu istek düzeni (runner): SABİT sistem istemi oturum başına dondurulur (`_FROZEN_SYSTEM`, anahtar
+  (veritabanı, oturum), imza: kip, protokol, araç listesi, gün, EVREN/AGENTS/CLAUDE.md mtime+boyut, özet sonrası geçmiş
+  başı, harita/skill/klasör/oyun/MCP ipuçları, kalıcı rol+profil talimatı); kurulum sonrası geçersizlenir. DEĞİŞEN notlar
+  (tura özel ipucu: eksik dosya/web/model değişti, mimar planı → `turn_extra`, açık plan bölümü) sistem isteminden çıkıp
+  son mesajın sonuna kuyruk notu (`append_tail`, kayda yazılmaz). Proje haritası artık oturum başında alınır (özetten
+  sonra yenilenir) — eskiden her turda yeniden hesaplanıp değişince tüm geçmişin önbelleğini bozuyordu. A/B için
+  EVREN_STUDIO_ONBELLEK_ESKI=1. Yeni gerçek API betiği tests/e2e_onbellek_real_api.py (3 tur; tur başı oranı).
+
 ## Test sonuçları
 - A: test_attachments_usage +1 (gerçek _usage_snapshot yolu + panel satırı, önbelleksiz satır yok), test_onbellek_raporu
   (oranlar + tur başı + komut satırı). Mutasyon 4/4.
+- B: tests/test_onbellek_duzeni.py 6 (ardışık isteklerde önceki istek kuyruksuz olarak sonrakinin AYNEN başı — adım ve
+  tur, dosya değişse ve ipucu gelip gitse bile; EVREN.md / kip / aynı araçlı kip değişince yenilenir; özetten sonra
+  yenilenir, kurulumda geçersizlenir; eski düzen; kuyruk ekleme biçimleri) + güncellenen 3 test (plan, web, eksik dosya
+  ipucu artık kuyrukta). Mutasyon 9/9 (ilk turda 2 kaçış → aynı araçlı kip + kalıcı talimat kuyrukta değil testleri).
+  Risk paketi (ajan/derin/proje/plan/web/skill/MCP 20 dosya) 354 geçti. GERÇEK EVREN (deepseek-v4.1-flash, aynı saatte
+  ikişer): ESKİ tur başı %45/%46, tüm %69/%65, süre 155/65 sn → YENİ tur başı %96/%96, tüm %87/%86, süre 72/45 sn;
+  görev 4/4 GEÇTİ.
 
 ## Sorunlar ve kayıtlar
 - Kendi hatam (R-29, yine): DEVIR tablosuna madde 22 satırını eklerken Python'u bash heredoc ile çalıştırdım (içerik

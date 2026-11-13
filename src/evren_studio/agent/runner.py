@@ -16,8 +16,10 @@ aynı adım metin protokolüyle bir kez daha denenir.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -421,6 +423,32 @@ def history_after_summary(history: list[dict]) -> list[dict]:
 MAX_HISTORY_IMAGES = 6      # geçmişte modele yeniden gönderilen en fazla görsel (en yeniler)
 
 
+# Madde 22 B: oturum başına dondurulmuş sabit sistem istemi (anahtar: (veritabanı yolu, oturum) → (imza, metin)).
+# Koşucu her turda yeniden kurulur; aynı süreçte aynı oturumun istemi aynen kalır → EVREN önek önbelleği tutar.
+# EVREN_STUDIO_ONBELLEK_ESKI=1: eski düzen (her adımda yeniden kur, plan/ipucu sistem isteminde) — A/B ölçümü için.
+FREEZE_SYSTEM = os.environ.get("EVREN_STUDIO_ONBELLEK_ESKI") != "1"
+_FROZEN_SYSTEM: "OrderedDict[tuple, tuple[tuple, str]]" = OrderedDict()
+_FROZEN_MAX = 64
+TAIL_SEPARATOR = "\n\n— Uygulama notu (bu istek için güncel) —\n"
+
+
+def append_tail(messages: list[dict], tail: str) -> None:
+    """Kuyruk notunu (Madde 22 B) son mesajın SONUNA ekler: önceki mesajlar aynen kalır, sunucu önbelleği bozulmaz.
+    Son mesaj kullanıcı/araç değilse (ör. yalnız sistem) ayrı kullanıcı mesajı olarak eklenir. Görselli içerik
+    (parça listesi) için metin parçası eklenir."""
+    if not tail:
+        return
+    last = messages[-1] if messages else None
+    if last is None or last.get("role") not in ("user", "tool"):
+        messages.append({"role": "user", "content": tail})
+        return
+    content = last.get("content")
+    if isinstance(content, list):
+        last["content"] = list(content) + [{"type": "text", "text": TAIL_SEPARATOR + tail}]
+    else:
+        last["content"] = (content or "") + TAIL_SEPARATOR + tail
+
+
 def to_api_messages(system: str, history: list[dict], protocol: str,
                     images: bool = True) -> list[dict]:
     """Kayıtlı geçmiş → API mesajları. Kullanıcı mesajındaki görseller (meta.images)
@@ -595,7 +623,8 @@ class AgentRunner:
         # model değişince bırakılır) ve tur ipucuna eklenecek metin (A7 rol talimatı, A13 planlayıcının planı).
         self.base_body = dict(base_body) if base_body else None
         self._base_body_model = model
-        self.extra_hint = (extra_hint or "").strip()
+        self.extra_hint = (extra_hint or "").strip()     # kalıcı: rol + profil talimatı (sabit sistem istemi)
+        self.turn_extra = ""                              # tura özel (ör. mimar planı) → kuyruk notu
         # F3/E2: sistem istemine proje haritası (dosya ağacı + semboller, ~3 bin token; agent/projectmap.py)
         self.project_map = project_map
         self._map_section: str | None = None
@@ -706,10 +735,82 @@ class AgentRunner:
         return spec
 
     def _system(self) -> str:
-        if not self.agentic:
-            system = build_chat_system(web=self.chat_tools, brief=self.brief_answers)
+        """Sistem istemi. Madde 22 B (2026-11-13 ölçümü: EVREN istemin değişmeyen başını önbelleğe alır — aynı başla
+        4-7 kat hızlı ve önbellekten okunan token kotadan düşmez): SABİT kısım oturum boyunca dondurulur
+        (`_frozen_static`), turdan/adımdan adıma DEĞİŞEN notlar (tur ipucu, açık plan) sistem istemine değil son mesajın
+        sonuna kuyruk notu olarak eklenir (`_tail`). FREEZE_SYSTEM=False eski düzen (A/B ölçümü için)."""
+        if not FREEZE_SYSTEM:
+            system = (build_chat_system(web=self.chat_tools, brief=self.brief_answers) if not self.agentic
+                      else self._static_system())
+            if self.agentic and self._plan_guard_active():
+                section = planguard.system_section(*self._open_plan())
+                if section:
+                    system += "\n\n" + section
             hint = getattr(self, "_turn_hint", "")
             return system + "\n\n" + hint if hint else system
+        if not self.agentic:
+            return build_chat_system(web=self.chat_tools, brief=self.brief_answers)
+        return self._frozen_static()
+
+    def _frozen_key(self) -> tuple | None:
+        if self.session_id is None or self.store is None:
+            return None
+        return (str(getattr(self.store, "path", id(self.store))), self.session_id)
+
+    def _static_signature(self) -> tuple:
+        """Sabit istemi YENİDEN kurmayı gerektiren durumlar: kip, protokol, araç listesi, gün, proje hafızası dosyası
+        (kullanıcı EVREN.md'yi düzenledi), özet sonrası yeni geçmiş başı, skill/klasör/oyun/MCP ayarları."""
+        mem = ()
+        for name in ("EVREN.md", "AGENTS.md", "CLAUDE.md"):
+            try:
+                st = (self.workspace.root / name).stat()
+                mem += ((name, st.st_mtime_ns, st.st_size),)
+            except OSError:
+                continue
+        from datetime import date
+
+        return (normalize_mode(self.mode), self.protocol, tuple(s.name for s in self._specs()), date.today().isoformat(),
+                mem, getattr(self, "_summary_anchor", None), bool(self.project_map), self.install_mode,
+                tuple(getattr(s, "name", str(s)) for s in self.skills), tuple(self.untrusted), bool(self.game_tools),
+                tuple(getattr(self.mcp, "hints", []) or []) if self.mcp is not None else (), self.extra_hint)
+
+    def _frozen_static(self) -> str:
+        key = self._frozen_key()
+        sig = self._static_signature()
+        if key is not None:
+            hit = _FROZEN_SYSTEM.get(key)
+            if hit is not None and hit[0] == sig:
+                _FROZEN_SYSTEM.move_to_end(key)
+                return hit[1]
+        text = self._static_system()
+        if key is not None:
+            _FROZEN_SYSTEM[key] = (sig, text)
+            _FROZEN_SYSTEM.move_to_end(key)
+            while len(_FROZEN_SYSTEM) > _FROZEN_MAX:
+                _FROZEN_SYSTEM.popitem(last=False)
+        return text
+
+    def _invalidate_frozen(self) -> None:
+        key = self._frozen_key()
+        if key is not None:
+            _FROZEN_SYSTEM.pop(key, None)
+
+    def _tail(self) -> str:
+        """Kuyruk notu: adımdan adıma değişebilen bilgiler (açık plan, tur ipucu). Kayda yazılmaz; yalnız bu istekte
+        son mesajın sonuna eklenir → önceki geçmiş aynı başla gider, önbellekten okunur."""
+        if not FREEZE_SYSTEM:
+            return ""
+        parts = []
+        if self.agentic and self._plan_guard_active():
+            section = planguard.system_section(*self._open_plan())
+            if section:
+                parts.append(section)
+        hint = getattr(self, "_turn_hint", "")
+        if hint:
+            parts.append(hint)
+        return "\n\n".join(parts)
+
+    def _static_system(self) -> str:
         if self._env_section is None:
             from . import environment
 
@@ -752,12 +853,10 @@ class AgentRunner:
             section = prompt_section(specs, list(getattr(self.mcp, "hints", []) or []))
             if section:
                 system += "\n\n" + section
-        if self._plan_guard_active():
-            section = planguard.system_section(*self._open_plan())
-            if section:
-                system += "\n\n" + section          # özetten/kısaltmadan sonra da plan görünür kalsın
-        hint = getattr(self, "_turn_hint", "")
-        return system + "\n\n" + hint if hint else system
+        # Açık plan (özetten/kısaltmadan sonra da görünür kalsın) ve tur ipucu artık kuyruk notunda (_tail)
+        if FREEZE_SYSTEM and self.extra_hint:
+            system += "\n\n" + self.extra_hint             # kalıcı rol + profil talimatı
+        return system
 
     def _compute_turn_hint(self, history: list[dict]) -> str:
         """Tur başı: kullanıcının andığı ama projede olmayan dosyalar için uyarı (scope.py); istek güncel/dış
@@ -931,7 +1030,10 @@ class AgentRunner:
             # Kısaltılan çıktıyı yeniden okumak meşrudur: döngü bekçisi bunu "aynı sonuçla tekrar" saymasın
             self._trim_reset = True
         self._trimmed_seen = trimmed
+        first = next((m for m in history_after_summary(visible)), None)
+        self._summary_anchor = first.get("id") if first else None       # özetten sonra sabit istem yenilenir
         messages = to_api_messages(self._system(), visible, self.protocol)
+        append_tail(messages, self._tail())
         if self._nudge:
             # Geçici: kayda yazılmaz, yalnız bu çağrıda gider.
             messages.append({"role": "user", "content": self._nudge})
@@ -995,7 +1097,10 @@ class AgentRunner:
         plan_nudges = 0
         plan_strikes = 0
         plan_work_mark = -1
-        self._turn_hint = "\n\n".join(h for h in (self._compute_turn_hint(history), self.extra_hint) if h)
+        # Madde 22 B: kalıcı talimat (extra_hint: rol + profil) sabit sistem isteminde; tura özel olanlar kuyrukta
+        parts = (self._compute_turn_hint(history), self.turn_extra) if FREEZE_SYSTEM else \
+            (self._compute_turn_hint(history), self.extra_hint, self.turn_extra)
+        self._turn_hint = "\n\n".join(h for h in parts if h)
         step = 0
         fallback_used = False
         # döngü bekçisi durumu (tur başına)
@@ -2054,6 +2159,7 @@ class AgentRunner:
         result = envmod.install(key, on_output=lambda chunk: self.events.tool_output(call, chunk),
                                 cancel=self.cancel)
         self._env_section = None          # sonraki istemde güncel durum
+        self._invalidate_frozen()         # kurulan program/paket dondurulmuş istemde de görünsün
         steps = ("\n" + "\n".join(result.steps)) if result.steps else ""
         if result.ok:
             text = f"{tool.title} kuruldu" + (f" (sürüm {result.version})" if result.version else "") + "."

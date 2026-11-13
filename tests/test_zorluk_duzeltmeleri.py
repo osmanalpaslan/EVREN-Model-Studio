@@ -89,7 +89,8 @@ def test_kosucu_tur_uyarisini_sisteme_ekler(tmp_path):
 
     class C:
         def chat(self, model, messages, **kw):
-            seen.append(messages[0]["content"])
+            # Madde 22 B: tura özel uyarı sistem isteminde değil son mesajın kuyruk notunda
+            seen.append(messages[0]["content"] + "\n" + str(messages[-1]["content"]))
             return ChatResult(content="ayarlar.yaml bulunamadı; ayar.ini'yi mi kastettiniz?", finish_reason="stop")
 
     db = Database(tmp_path / "t.db")

@@ -2,6 +2,9 @@
 
 ## Yayınlanmamış — 0.5.1 (istekler birikiyor)
 
+- **Uzun oturumlar daha hızlı ve kota dostu**: Ajan isteklerinin sabit başı oturum boyunca aynı tutulur, değişen notlar
+  sona eklenir. Önceki turların geçmişi artık sunucu önbelleğinden okunur (gerçek ölçüm: tur başında önbellek %45 → %96,
+  3 turluk oturum 155/65 sn → 72/45 sn). Önbellekten okunan kısım günlük kotadan düşmez.
 - **Önbellek göstergesi**: Kullanım penceresinde oturumun ne kadarının sunucu önbelleğinden geldiği görünür. Önbellekten okunan kısım EVREN'in günlük kotasından düşmez ve yanıtı hızlandırır (ölçüldü: aynı başlı istek 4-7 kat hızlı).
 
 - **Düzeltme — kapanmış pencerenin gecikmeli işleri**: pencere kapandıktan sonra günlük yedek, geçmiş bakımı, güncelleme

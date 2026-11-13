@@ -2167,7 +2167,8 @@ class SessionView(QWidget):
                                     "ok": bool(plan), "duration_s": round(took, 1),
                                     "error_kind": None if plan else "plan_yok"})
         if plan:
-            runner.extra_hint = "\n\n".join(h for h in (runner.extra_hint, architect.hint(plan, planner.model)) if h)
+            # tura özel (Madde 22 B): sabit sistem istemine değil kuyruk notuna gider (önbellek bozulmasın)
+            runner.turn_extra = "\n\n".join(h for h in (runner.turn_extra, architect.hint(plan, planner.model)) if h)
             short = plan if len(plan) <= 900 else plan[:900] + " …"
             b.sig_status.emit(f"Plan hazır ({took:.0f} sn, {planner.model}):\n{short}")
         elif res is not None:
