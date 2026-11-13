@@ -418,6 +418,7 @@ Kullanıcı onayı gereken anlar: program/şablon indirme (Godot şablonları, M
   kullanıcı anahtarsız Tavily → DuckDuckGo'ya düşer. Planlanacaklar: ilk kurulumda/ilk aramada "arama anahtarı ekle"
   yönlendirmesi, birden çok arama sağlayıcısı (Brave, Serper, Exa vb. ücretsiz katmanlar) arasında seçim ve yedek
   zinciri, kalan kota göstergesi, sağlayıcının kendi web araması varsa (ör. OpenAI/Anthropic) onu kullanma seçeneği.
-- Madde 22 sonrası adaylar (2026-11-13, onay bekler): (1) test bekçisi testleri ikinci kez `PYTHONIOENCODING=utf-8`
-  ile koşsun — modelin yazdığı ortama bağlı (kodlama) testi yakalar (zorluk mini_proje kanıtı); (2) `json_schema`
+- Madde 22 sonrası adaylar (2026-11-13, onay bekler): (1) test bekçisi testleri ikinci kez DÜZ ortamda (ajanın
+  PYTHONUTF8/PYTHONIOENCODING değişkenleri olmadan) koşsun — modelin yazdığı, yalnız UTF-8 kipinde geçen testi yakalar
+  (2026-11-14 zorluk mini_proje: alt süreç çıktısını utf-8 okuyan test düz konsolda UnicodeDecodeError ile düştü); (2) `json_schema`
   yapılandırılmış çıktıyı deepseek'te ölç (qwen'de 2 kat yavaştı), hızlıysa yalnız o modelde aç.

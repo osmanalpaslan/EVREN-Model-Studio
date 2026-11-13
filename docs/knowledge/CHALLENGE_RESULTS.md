@@ -23,6 +23,17 @@
 | plan | Plan modunda özellik isteği | dosya değişmez, plan yazılır |
 | girdi | `input()` bekleyen betiği çalıştır | girdi beklediğini açıklar (takılmaz) |
 
+## 0.5.1 çıktı öncesi (Madde 23 sonrası, 2026-11-14 00:06-00:26, dal `surum/0.5.1-istekler`, auto)
+
+- Zorluk paketi **11/12, 1218 sn** (önceki 1362 sn). Düşen mini_proje 4/5, süre içinde (310 sn): YENİ sıkı kontrol
+  (modelin testleri ajanın ortamı + DÜZ Windows ortamında) gerçek bir taşınabilirlik hatası yakaladı — modelin testi
+  alt süreç çıktısını `encoding="utf-8"` ile okuyor, düz konsolda program cp1254 yazıyor → UnicodeDecodeError (2 hata).
+  Kullanıcı testleri kendi terminalinde çalıştırsa düşerdi; eski (yarım ortamlı) kontrol bunu kaçırıyordu. Uygulama
+  gerilemesi değil (önceki koşu da 11/12). İyileştirme adayı (ILERIDE): test bekçisi testleri düz ortamda da koşsun.
+- R-13: E2E_OK · arayüz 15/15 · ajan 5/6 (glm-5.3 native: sunucu 503 "model şu anda dolu", geçici kapasite).
+- Ara mesaj (`tests/e2e_ara_mesaj_real_api.py`, auto): **8/8, 33 sn** — ara mesaj aynı turda uygulandı (c.txt),
+  geri çekilen mesaj hiçbir yere gitmedi.
+
 ## Madde 22 (önbellek düzeni + bekçiler) sonrası (2026-11-13 21:10-21:33, dal `surum/0.5.1-istekler`, auto)
 
 - Zorluk paketi **11/12, 1362 sn**. Düşen mini_proje 4/5 (6 dk sınırı). Modelin yazdığı kod miktarı dünkü ile aynı
