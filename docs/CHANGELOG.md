@@ -1,6 +1,21 @@
 # Değişiklik Günlüğü
 
-## Yayınlanmamış — 0.5.1 (istekler birikiyor)
+## 0.5.1 — 2026-11-14
+
+- **İş sürerken mesaj yazabilirsiniz**: Ajan çalışırken yazıp Enter'a bastığınız mesaj artık reddedilmez, sıraya alınır.
+  Normal turda bir sonraki adımda çalışan işe iletilir (Claude Code gibi: "bunu da ekle", "dur, şöyle yap"); ajan
+  yanıtını bitirmişse aynı bağlamla devam eder. QA, Proje ve Derin akışları sürerken mesaj bekler, akış bitince gönderilir.
+  Henüz işlenmemiş mesaj yazma kutusunun üstünde görünür; "Geri çek" ile kutuya döner. Esc ile durdurduğunuzda ya da
+  başka oturuma geçtiğinizde sıradaki mesajlar kendiliğinden gönderilmez, kutuya geri gelir.
+- **Bozulan motordan yedeğe geçiş**: Uygulamanın kendi işlerinde (başlık, özet, inceleme, Derin/Proje/QA görevleri)
+  kullanılan bir motor son saatlerde çoğunlukla hata ya da boş yanıt veriyorsa (bakım, performans düşüşü) yedek motor
+  öne alınır; motor düzelince birkaç saat içinde eski sırasına döner. Bir rolde tek motor kaldıysa diğer motorlar yedek olur.
+- **EVREN dışındaki API ile de tam otomatik çalışma**: EVREN anahtarı yoksa Derin Mod, QA ajanı, paralel proje görevleri,
+  otomatik test araçları ve uygulamanın iç işleri seçtiğiniz API'nin (OpenAI, Anthropic, OpenRouter, yerel sunucu…)
+  modelleriyle yürür. EVREN varken bu işler eskisi gibi yalnız ücretsiz EVREN ile yapılır. Ücretli API'de arka plandaki
+  alt ajanların kullanımı da maliyete yazılır ve aylık bütçe dolunca durur.
+- **Düzeltme — zorluk ölçümü**: Modelin kendi testleri artık uygulamanın ajana verdiği ortamla ve düz Windows ortamıyla
+  denetlenir (yarım ayarlı ölçüm ortamı doğru testi "düştü" gösteriyordu).
 
 - **Kişisel kurallar**: Ayarlar > Kod ajanı'nda her işte geçerli kısa kurallarınızı (ör. "yanıtları kısa yaz") bir kez
   yazarsınız; sohbette ve ajanda uygulanır. `/hafiza-olustur` (eski adı `/init`) projeye özgü kısa EVREN.md hazırlar:

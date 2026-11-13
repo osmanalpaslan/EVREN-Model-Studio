@@ -86,6 +86,9 @@ Ek (R-36): açık gözlem c9b5c1591110 (mini_proje: modelin ortama bağlı testi
   istek atıyordu → sahte istemci). Mutasyon 18/18 (bir gereksiz koşul kaldırıldı). Geniş alan paketi 384 + sağlayıcı
   ekranı 30 geçti.
 
+### Çıktı 0.5.1
+- Sürüm 0.5.1 (`__init__.__version__`), CHANGELOG 0.5.1 bölümü (Madde 21-23).
+
 ## Sorunlar ve kayıtlar
 - Yeni testte oturumsuz `_note` modal QMessageBox açtı → test 10 dk asıldı (mutasyon koşucusu zaman aşımı); faulthandler
   ile bulundu, testte QMessageBox.information susturuldu.
