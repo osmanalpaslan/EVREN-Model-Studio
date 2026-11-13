@@ -11,7 +11,11 @@
 - **Masaüstü kontrolü hızlı yol**: Ajan artık yalnız hedef pencereyi okuyan bir araçla ve tek çağrıda birden çok eylem
   (yaz, tıkla, seç, tuş) yapan bir araçla çalışır; tüm masaüstünü taramaz, her tıklama için ayrı tur beklemez. Mümkünse
   fare yerine Windows'un erişilebilirlik arayüzü kullanılır (farenizle çakışmaz). Windows oturumu kilitliyken masaüstü
-  işi başlamaz, nedeni söylenir.
+  işi başlamaz, nedeni söylenir. Gerçek ölçüm: "uygulamayı aç, iki sayı yaz, Topla'ya bas, sonucu söyle, kapat" görevi
+  714 sn → 91-108 sn.
+- **Düzeltme — test bekçisi eski kodu test edebiliyordu**: Ajan bir Python dosyasını testlerle aynı saniyede ve aynı
+  uzunlukta düzenlediğinde (ör. `a + b` → `a - b`) Python eski derlenmiş kopyayı kullanıyor, bozuk kod "testler geçti"
+  görünüyordu. Ajan ya da dosya paneli bir .py dosyası yazınca o dosyanın derlenmiş kopyaları artık silinir.
 - **Yeni hata bekçileri**: Ajan sağlam bir Python/JSON/TOML dosyasını bozacak bir düzenleme gönderirse dosya
   değiştirilmez, hata satırıyla birlikte modele geri döner. Ajan kanıtı olmadan "testler geçti" ya da "dosyayı
   oluşturdum" derse doğrulamaya yönlendirilir. Hata düzeltme isteklerinde önce hatayı gösteren testi çalıştırması

@@ -23,6 +23,16 @@
 | plan | Plan modunda özellik isteği | dosya değişmez, plan yazılır |
 | girdi | `input()` bekleyen betiği çalıştır | girdi beklediğini açıklar (takılmaz) |
 
+## Madde 22 (önbellek düzeni + bekçiler) sonrası (2026-11-13 21:10-21:33, dal `surum/0.5.1-istekler`, auto)
+
+- Zorluk paketi **11/12, 1362 sn**. Düşen mini_proje 4/5 (6 dk sınırı). Modelin yazdığı kod miktarı dünkü ile aynı
+  (6.756 / 6.034 kar), adım daha az (6 / 8). EVREN bu akşam 22 kar/sn (dün 58 kar/sn) → süre dış etken.
+- mini_proje tek başına tekrar: 4/5, 325 sn, süre içinde bitti. Program 4 kabul ölçütünü geçti. Modelin testleri kendi
+  ortamında geçti, kontrolde düştü: testler alt süreç çıktısını cp1254 okuyor, kontrol `PYTHONIOENCODING=utf-8` veriyor
+  (değişken olmadan 8/8 geçiyor). Önbellek/bekçi gerilemesi değil; modelin ortama bağımlı test yazması.
+- Önbellek A/B (`tests/e2e_onbellek_real_api.py`, deepseek, 3 tur): tur başı önbellek %45/46 → **%96/96**, toplam
+  %69/65 → %87/86, süre 155/65 sn → 72/45 sn.
+
 ## 0.5.1 toplu ölçüm (2026-11-13 01:40-02:14, dal `surum/0.5.1-istekler`, auto)
 
 - Zorluk paketi **12/12, 520 sn** (önceki 928 / 1444 sn). mini_proje **5/5, 163 sn** (önce 362-363 sn ve 6 dk sınırında

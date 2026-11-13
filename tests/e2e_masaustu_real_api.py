@@ -167,6 +167,8 @@ def run_agent(app, w) -> int:
     passed = sum(1 for _n, ok, _i in checks if ok)
     print(f"AJAN SONUÇ: {passed}/{len(checks)} · {dur:.0f} sn · araçlar {len(calls)} · "
           f"masaüstü {sum(c.startswith('mcp__masaustu__') for c in calls)}")
+    # R-25: hangi masaüstü aracının seçildiği (hızlı yol PencereOgeleri/UIEylem mi, Snapshot/Click mi) kanıt olsun.
+    print("ARAÇLAR:", ", ".join(c.removeprefix("mcp__masaustu__") for c in calls))
     return passed == len(checks)
 
 

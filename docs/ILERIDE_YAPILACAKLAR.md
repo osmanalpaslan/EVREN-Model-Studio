@@ -410,3 +410,6 @@ Kullanıcı onayı gereken anlar: program/şablon indirme (Godot şablonları, M
 - ~~Akışlı yanıtta auto'nun yönlendirdiği modeli kaydetme~~ — YAPILDI 2026-10-24: EVREN akışta da veriyormuş
   (`X-Evren-Routed-Model` başlığı); önceki "vermiyor" iddiası yanlıştı.
 - ~~Ayarlar'da "oyun araçlarını kur" düğmesi~~ — YAPILDI 2026-10-24 (onaylı indirme + gömülü sağlama toplamı).
+- Madde 22 sonrası adaylar (2026-11-13, onay bekler): (1) test bekçisi testleri ikinci kez `PYTHONIOENCODING=utf-8`
+  ile koşsun — modelin yazdığı ortama bağlı (kodlama) testi yakalar (zorluk mini_proje kanıtı); (2) `json_schema`
+  yapılandırılmış çıktıyı deepseek'te ölç (qwen'de 2 kat yavaştı), hızlıysa yalnız o modelde aç.
